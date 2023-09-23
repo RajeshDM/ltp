@@ -10,6 +10,8 @@ import time
 from pddlgym.parser import PDDLProblemParser, parse_plan_step
 from pddlgym.spaces import LiteralSpace
 
+from icecream import ic
+
 from .planner import Planner, PlanningTimeout
 
 
@@ -39,6 +41,8 @@ class PDDLPlanner(Planner):
         cmd_str = self._get_cmd_str(dom_file, prob_file, timeout)
         start_time = time.time()
         output = subprocess.getoutput(cmd_str)
+        #ic (cmd_str)
+        #ic (output)
         self._cleanup()
         # f = open(prob_file, "r")
         # lines = f.readlines()

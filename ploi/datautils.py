@@ -7,6 +7,7 @@ from torch.utils.data import Dataset
 
 import pddlgym
 from pddlgym.structs import Predicate
+from icecream import ic
 
 from .planning import PlanningFailure, PlanningTimeout
 
@@ -26,7 +27,6 @@ class GraphDictDataset(Dataset):
         }
         return sample
 
-
 def collect_training_data(
     train_env_name, train_planner, num_train_problems, timeout=60
 ):
@@ -43,6 +43,7 @@ def collect_training_data(
         try:
             train_planner.reset_statistics()
             plan = train_planner(env.domain, state, timeout=timeout)
+            ic (plan)
         except (PlanningTimeout, PlanningFailure):
             warnings.warn(
                 f"Planning failed. Skipping problem {idx}, env.problems[idx].fname"

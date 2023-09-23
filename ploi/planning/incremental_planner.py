@@ -11,6 +11,7 @@ import numpy as np
 from pddlgym.parser import PDDLProblemParser
 from pddlgym.spaces import LiteralSpace
 from pddlgym.structs import State
+from icecream import ic
 
 from .planner import Planner, PlanningFailure
 from .validate import validate_strips_plan
@@ -27,7 +28,8 @@ class IncrementalPlanner(Planner):
         seed,
         gamma=0.9,  # parameter for incrementing by score
         threshold_mode="geometric",  # geometric vs linear thresholding
-        max_iterations=1000,
+        #max_iterations=1000,
+        max_iterations=3,
         force_include_goal_objects=True,
     ):
         super().__init__()
@@ -57,6 +59,8 @@ class IncrementalPlanner(Planner):
         )
         dom_file = tempfile.NamedTemporaryFile(delete=False).name
         prob_file = tempfile.NamedTemporaryFile(delete=False).name
+
+
         if domain_file_global is not None:
             shutil.copy(domain_file_global, dom_file)
         else:
@@ -73,6 +77,7 @@ class IncrementalPlanner(Planner):
             state.goal,
             fast_downward_order=True,
         )
+
         cur_objects = set()
         if self._force_include_goal_objects:
             # Always start off considering objects in the goal.
@@ -129,13 +134,19 @@ class IncrementalPlanner(Planner):
                 time_elapsed = time.time() - start_time
                 # Get a plan from base planner & validate it.
                 plan = self._planner(domain, dummy_state, timeout - time_elapsed)
+                #plan = self._planner(domain, state, timeout)
+                #ic ("Done with planning : ", plan)
                 if not validate_strips_plan(
                     domain_file=dom_file, problem_file=prob_file, plan=plan
                 ):
+                    ic (dom_file)
+                    ic (prob_file)
+                    ic (plan)
                     raise PlanningFailure("Invalid plan")
             except PlanningFailure:
                 num_replanning_steps += 1
                 # Try again with more objects.
+                ic ("It thinks it has failed at planning")
                 continue
             planner_stats = self._planner.get_statistics().copy()
             planner_stats["objects_used"] = len(cur_objects)

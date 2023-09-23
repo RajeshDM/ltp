@@ -1,0 +1,32 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args" :["--domain", "ManyBlocks_ipcc_big",
+             "--method", 
+             "ltp",
+            "--num-train-problems",
+             "1",
+              "--epochs",
+              "100",
+              "--mode", 
+              "train",
+            "--timeout",
+             "30",
+            "--expid",
+            "blocks",
+            "--logdir",
+            "cache/results",
+            "--all-problems"]
+        }
+    ]
+}

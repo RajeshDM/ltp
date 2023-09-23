@@ -4,6 +4,7 @@ from .traineval import (
     predict_graph_with_graphnetwork,
     predict_graph_with_graphnetwork_hierarchical,
 )
+import torch
 
 
 class PLOIGuidance(BaseSearchGuidance):
@@ -30,6 +31,29 @@ class PLOIGuidance(BaseSearchGuidance):
             self._last_object_scores = object_scores
             self._last_processed_state = state
         return self._last_object_scores[obj]
+
+    
+    def _predict_multiple_graph_from_single_output(self,input_graph):
+        assert self.model is not None, "Must train before calling predict"
+        #predictions = get_single_model_multiple_prediction(self._model, input_graph)
+        predictions = predict_graph_with_graphnetwork(self._model, input_graph)
+        sigmoid = lambda x: 1/(1 + np.exp(-x))
+        for i,prediction in enumerate(predictions):
+            predictions[i][0]['action_scores'][:] = torch.nn.functional.softmax(prediction[0]['action_scores'], dim=0)[:]
+            predictions[i][0]['action_object_scores'][:] = torch.nn.functional.softmax(prediction[0]['action_object_scores'], dim=1)[:]
+
+        return predictions
+
+    def _predict_multiple_graph_from_single_output_with_model(self,model,input_graph):
+        assert self._model is not None, "Must train before calling predict"
+        #predictions = get_single_model_multiple_prediction(model, input_graph)
+        predictions = predict_graph_with_graphnetwork(model, input_graph)
+        sigmoid = lambda x: 1/(1 + np.exp(-x))
+        for i,prediction in enumerate(predictions):
+            predictions[i][0]['action_scores'][:] = torch.nn.functional.softmax(prediction[0]['action_scores'], dim=1)[:]
+            predictions[i][0]['action_object_scores'][:] = torch.nn.functional.softmax(prediction[0]['action_object_scores'], dim=1)[:]
+
+        return predictions
 
 
 class HierarchicalGuidance(object):

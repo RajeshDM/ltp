@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_scatter import scatter_mean
 from torch_geometric.nn import MetaLayer
-
+from icecream import ic
 
 class EdgeModel(nn.Module):
     def __init__(self, n_features, n_edge_features, n_hidden, dropout=0.0):
@@ -38,7 +38,7 @@ class NodeModel(nn.Module):
             nn.ReLU(),
             nn.LayerNorm(n_hidden),
             nn.Dropout(dropout) if dropout > 0.0 else nn.Identity(),
-            nn.Linear(n_hidden, n_targets),
+            nn.Linear(n_hidden, n_hidden),
         )
 
     def forward(self, x, edge_idx, edge_attr, u=None, batch=None):
@@ -48,7 +48,6 @@ class NodeModel(nn.Module):
         out = scatter_mean(out, row, dim=0, dim_size=x.size(0))
         out = torch.cat([x, out], dim=1)
         return self.node_mlp_2(out)
-
 
 class GraphNetwork(nn.Module):
     def __init__(self, n_features, n_edge_features, n_hidden, dropout=0.0):

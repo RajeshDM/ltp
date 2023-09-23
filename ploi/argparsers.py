@@ -9,8 +9,8 @@ def get_ploi_argument_parser():
     parser.add_argument(
         "--method",
         type=str,
-        choices=["scenegraph", "hierarchical", "ploi"],
-        default="scenegraph",
+        choices=["scenegraph", "hierarchical", "ploi", "ltp"],
+        default="ltp",
     )
     parser.add_argument(
         "--mode",
@@ -61,7 +61,7 @@ def get_ploi_argument_parser():
     parser.add_argument(
         "--logdir",
         type=str,
-        default="cache",
+        default="cache/results/",
         help="Directory to store all expt logs in",
     )
     parser.add_argument(
@@ -112,5 +112,11 @@ def get_ploi_argument_parser():
         action="store_true",
         help="Force data collection (ignore pre-cached datasets).",
     )
+
+    parser.add_argument("--model_version", 
+                        type=int,
+                        default=0
+    )
+
 
     return parser
