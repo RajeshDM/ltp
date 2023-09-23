@@ -135,3 +135,6 @@ wandb/
 cache/
 exp/
 model/
+
+#editor files
+.vscode/
