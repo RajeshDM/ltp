@@ -77,8 +77,8 @@ if __name__ == "__main__":
         args.datafile = os.path.join(args.logdir, f"ploi_{args.domain[:-5]}.pkl")
 
     print(f"Domain: {args.domain}")
-    print(f"Train planner: {args.train_planner_name}")
-    print(f"Test planner: {args.eval_planner_name}")
+    #print(f"Train planner: {args.train_planner_name}")
+    #print(f"Test planner: {args.eval_planner_name}")
 
     eval_planner = _create_planner(args.eval_planner_name)
     is_strips_domain = True

@@ -21,11 +21,13 @@ class FD(PDDLPlanner):
         super().__init__()
         dirname = os.path.dirname(os.path.realpath(__file__))
         self._exec = os.path.join(dirname, "FD/fast-downward.py")
+        '''
         assert alias_flag in ("--alias lama-first", "--alias seq-opt-lmcut")
         if alias_flag == "--alias seq-opt-lmcut":
             print("Instantiating FD in OPTIMAL mode")
         else:
             print("Instantiating FD in SATISFICING mode")
+        '''
         self._alias_flag = alias_flag
         if not os.path.exists(self._exec):
             self._install_fd()

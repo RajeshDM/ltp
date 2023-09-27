@@ -162,27 +162,21 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
         model = model.cuda()
         if criterion is not None:
             criterion = criterion.cuda()
-        if global_criterion is not None:
-            global_criterion = global_criterion.cuda()
 
     if use_gpu:
         device = "cuda:0"
     else:
         device = "cpu"
 
-    #epochs = [i for i in range(num_epochs)]
     epochs = []
     train_loss_values = []
     val_loss_values = []
     time_taken_for_save_iter = time.time()
-    #for name, param in model.named_parameters():
-    #    ic(name, param)
     for epoch in range(starting_epoch,final_epoch):
         if epoch % print_iter == 0:
             print('Epoch {}/{}'.format(epoch, final_epoch - 1), flush=True)
             print('-' * 10, flush=True)
         # Each epoch has a training and validation phase
-        #if epoch % print_iter == 0 and dagger_train == False:
         running_num_samples = 0
         if epoch % print_iter == 0 :
             phases = ['train','val']
@@ -194,9 +188,10 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
 
         for phase in phases:
             if phase == 'train':
-                model.train()  # Set model to training mode
+                # Set model to training mode
+                model.train()  
             else:
-                #model.train(False)  # Set model to evaluate mode
+                # Set model to evaluate mode
                 model.eval()
 
             for batch_data in datasets[phase]:
@@ -268,6 +263,7 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
         if epoch % save_iter == 0 and epoch >= min_save_epoch:
             best_seen_running_validation_loss, best_validation_loss_epoch, best_seen_model_weights =  save_model_graphnetwork(model, save_folder, epoch, optimizer,train_env_name,seed,message_string,
                                     best_seen_running_validation_loss,running_loss,best_seen_model_weights,best_validation_loss_epoch, time_taken_for_save_iter)
+            time_taken_for_save_iter = time.time()
 
     plt.plot(epochs, train_loss_values, label="Training")
     plt.plot(epochs, val_loss_values, label="Val")

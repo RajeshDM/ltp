@@ -91,6 +91,7 @@ cheating_input = False
 representation_size = 64
 gnn_rounds = 7
 gru_layers = 3
+n_heads = 1
 
 '''
 Debug level information:

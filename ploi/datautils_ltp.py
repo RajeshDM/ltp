@@ -73,8 +73,8 @@ def graph_to_pyg_data(graph):
     gnn_processing_info = ['nodes','senders','receivers','edges','globals']
     hetero_data['node'].x = torch.tensor(graph['nodes'],dtype=all_dtype) 
     hetero_data['node', 'sends','node'].edge_index = torch.tensor(
-                                [graph['senders'],
-                                graph['receivers']],
+                                np.array([graph['senders'],
+                                graph['receivers']]),
                                 dtype=torch.long)
     hetero_data['node','sends','node'].edge_attr = torch.tensor(graph['edges'],dtype=all_dtype)
     hetero_data['globals'].x = torch.tensor(graph['globals'],dtype=all_dtype)   

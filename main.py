@@ -92,6 +92,7 @@ if __name__ == "__main__":
             "num_test_problems": args.num_test_problems,
             "expid": args.expid,
             "gru_layers" : constants.gru_layers,
+            "n_heads" : constants.n_heads,
         })
 
 
@@ -420,6 +421,7 @@ if __name__ == "__main__":
 
         representation_size = constants.representation_size
         gnn_rounds = constants.gnn_rounds
+        n_heads = constants.n_heads
 
         _model = GNN_GRU(
             n_features=args.num_node_features,
@@ -430,7 +432,8 @@ if __name__ == "__main__":
             num_decoder_layers = args.decoder_layers ,
             dropout = 0,
             action_space= training_data[3],
-            batch_size=batch_size
+            batch_size=batch_size,
+            n_heads = n_heads,
         )
 
 
