@@ -83,15 +83,20 @@ plot_aggregates = False
 max_file_open = 50
 debug_level = -1
 seed = 10
-batch_size = 16
 pyg = True
 learning_rate = 5* 1e-4
 #cheating_input = True
 cheating_input = False
-representation_size = 64
+test = False
+if test == False :
+    representation_size = 64
+    batch_size = 16
+else :
+    representation_size = 4
+    batch_size = 1
+n_heads = 1
 gnn_rounds = 7
 gru_layers = 3
-n_heads = 1
 
 '''
 Debug level information:

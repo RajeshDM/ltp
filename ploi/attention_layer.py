@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 from icecream import ic
+from torch_geometric.nn import MessagePassing
+import torch.nn.functional as F
 import time
 
 def prepare_adjacency_matrix(num_nodes,receivers):
@@ -132,9 +134,40 @@ class GraphAttentionV2Layer(nn.Module):
         #ic (g_l.squeeze(1).shape)
         #ic (aggregated_effects.t().shape)
 
-        #global_idxs = torch.repeat_interleave(torch.arange(0, len(graph['globals'])).cuda(), graph['n_node'][:,0])
-
-        #global_tf = u[global_idxs].view(len(global_idxs), u.shape[2])
-        #ic (global_tf.shape)
         #del h,e,g_l_repeat,g_r,g_concat,receiver_counts,rec_m
         return torch.cat((g_l.squeeze(1),aggregated_effects.t(),u),dim=1)
+
+
+
+class CustomAttentionGNNLayer(MessagePassing):
+    def __init__(self, in_channels, out_channels, n_heads):
+        super(CustomAttentionGNNLayer, self).__init__(aggr='add')  # "Add" aggregation.
+        self.n_heads = n_heads
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.linear_l = nn.Linear(in_channels, n_heads * out_channels)
+        self.linear_r = nn.Linear(in_channels, n_heads * out_channels)
+        self.attn = nn.Parameter(torch.Tensor(1, n_heads, out_channels * 2))
+        self.activation = nn.LeakyReLU()
+
+    def forward(self, x, edge_index, edge_attr, u):
+        # x has shape [N, in_channels]
+        # edge_index has shape [2, E]
+        # edge_attr has shape [E, whatever]
+        # Step 1: Linearly transform node feature matrices
+        g_l = self.linear_l(x).view(-1, self.n_heads, self.out_channels)
+        g_r = self.linear_r(edge_attr).view(-1, self.n_heads, self.out_channels)
+
+        # Step 2: Calculate attention coefficients
+        return self.propagate(edge_index, x=g_l, edge_attr=g_r, u=u, size=None)
+
+    def message(self, x_j, edge_attr):
+        g_concat = torch.cat([x_j, edge_attr], dim=-1)
+        e = self.attn(self.activation(g_concat))
+        alpha = F.softmax(e, dim=1)
+        return alpha * edge_attr
+
+    def update(self, aggr_out, x, u):
+        # aggr_out has shape [N, n_heads * out_channels]
+        # Step 3: Update node embeddings
+        return torch.cat((x, aggr_out, u), dim=1)
