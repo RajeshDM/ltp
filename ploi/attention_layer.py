@@ -113,6 +113,7 @@ class GraphAttentionV2Layer(nn.Module):
 
         # Calculate
         attn = self.attn(self.activation(g_concat))
+        attn = self.dropout(attn)
         attn_softmax = scatter_softmax(attn, receivers, dim=0)
 
         g_r_with_attn = g_r * attn_softmax

@@ -96,7 +96,9 @@ else :
     batch_size = 1
 n_heads = 1
 gnn_rounds = 7
-gru_layers = 3
+gru_layers = 3#
+dropout = 0.0
+attention_dropout = 0.2
 
 '''
 Debug level information:

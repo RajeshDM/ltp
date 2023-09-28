@@ -124,7 +124,7 @@ class NodeUpdateAttn(nn.Module):
 # Define the hetero graph neural network
 class HeteroGNN(nn.Module):
     def __init__(self,n_features,n_edge_features,n_global_features,
-                        representation_size ,dropout=None,num_rounds=3,n_heads=1):
+                        representation_size ,dropout=0.0,attn_dropout=0.0,num_rounds=3,n_heads=1):
         super(HeteroGNN, self).__init__()
         
         self.num_rounds = num_rounds
@@ -142,7 +142,7 @@ class HeteroGNN(nn.Module):
                                                     out_features_2=self.representation_size,
                                                     n_heads=1,
                                                     is_concat=False,
-                                                    dropout=0,
+                                                    dropout=attn_dropout,
                                                     leaky_relu_negative_slope=0.2,
                                                     share_weights=False)
         #self.node_update_2 = NodeModelLtp(self.representation_size,self.representation_size,self.representation_size,self.representation_size)
@@ -188,6 +188,7 @@ class GNN_GRU(nn.Module):
                 n_hidden, gnn_rounds,
                  num_decoder_layers,
                  dropout, 
+                 attn_dropout ,
                  action_space,
                  batch_size,
                  n_heads):
@@ -197,7 +198,7 @@ class GNN_GRU(nn.Module):
         #                               ,n_hidden,dropout,gnn_rounds)
 
         self.encoder = HeteroGNN(n_features,n_edge_features,n_global_features\
-                                       ,n_hidden,dropout,gnn_rounds,n_heads)
+                                       ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads)
         
         self.representation_size = n_hidden
         self.max_number_action_parameters = 0
