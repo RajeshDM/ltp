@@ -8,7 +8,10 @@ from icecream import ic
 from torch_geometric.nn import GATv2Conv,BatchNorm
 from torch_geometric.nn import TransformerConv
 from torch_geometric.nn import aggr
-from ploi.attention_layer import GraphAttentionV2Layer
+from ploi.attention_layer import (
+ GraphAttentionV2Layer,
+ MLP,
+)
 import time
 
 class EdgeModelLtp(nn.Module):
@@ -175,7 +178,7 @@ class HeteroGNN(nn.Module):
             edge_features_node = F.relu(self.edge_update_network(src,dest,edge_features_node,global_edge_repeat))
             #node_data = F.relu(self.node_update(node_data,edge_features_node_index,edge_features_node,global_node_repeat))
             node_data = F.relu(self.node_attention_layer(node_data,edge_features_node,edge_features_node_index[1],global_node_repeat))
-            node_data  = self.node_update(node_data)
+            #node_data  = self.node_update(node_data)
             #node_data = F.relu(self.node_update(node_data, edge_features_node_index, edge_features_node))
             global_data = F.relu(self.global_update(node_data,edge_index,edge_features_node,global_data,node_index))
         return node_data, edge_features_node,global_data
@@ -629,19 +632,6 @@ class GNN_GRU(nn.Module):
         #return replace(graph,replacements)
 
 
-def MLP(layers, input_dim, dropout=0.):
-    """Create MLP
-    """
-    mlp_layers = [nn.Linear(input_dim, layers[0])]
-
-    for layer_num in range(0, len(layers)-1):
-        mlp_layers.append(nn.ReLU())
-        mlp_layers.append(nn.Linear(layers[layer_num], layers[layer_num+1]))
-    if len(layers) > 1:
-        mlp_layers.append(nn.LayerNorm(mlp_layers[-1].weight.size()[:-1]))
-        if dropout > 0:
-            mlp_layers.append(nn.Dropout(p=dropout))
-    return nn.Sequential(*mlp_layers)
 
 
 class GraphNetworkLtp(nn.Module):

@@ -2,8 +2,24 @@ import torch
 import torch.nn as nn
 from icecream import ic
 from torch_geometric.nn import MessagePassing
+from torch_scatter.composite import scatter_softmax
+from torch_scatter import scatter
 import torch.nn.functional as F
 import time
+
+def MLP(layers, input_dim, dropout=0.):
+    """Create MLP
+    """
+    mlp_layers = [nn.Linear(input_dim, layers[0])]
+
+    for layer_num in range(0, len(layers)-1):
+        mlp_layers.append(nn.ReLU())
+        mlp_layers.append(nn.Linear(layers[layer_num], layers[layer_num+1]))
+    if len(layers) > 1:
+        mlp_layers.append(nn.LayerNorm(mlp_layers[-1].weight.size()[:-1]))
+        if dropout > 0:
+            mlp_layers.append(nn.Dropout(p=dropout))
+    return nn.Sequential(*mlp_layers)
 
 def prepare_adjacency_matrix(num_nodes,receivers):
     #num_nodes = graph['nodes'].size()[0]
@@ -66,6 +82,8 @@ class GraphAttentionV2Layer(nn.Module):
         # Dropout layer to be applied for attention
         self.dropout = nn.Dropout(dropout)
 
+        self.node_update = MLP([self.n_hidden_1]*2,self.n_hidden_1*3) 
+
 
     def forward(self, h, e, receivers,u):
         #,h: torch.Tensor,e:torch.Tensor, adj_mat: torch.Tensor,senders,receivers):
@@ -74,9 +92,6 @@ class GraphAttentionV2Layer(nn.Module):
         Adjacency matrix represent the edges (or connections) among nodes.
         `adj_mat[i][j]` is `True` if there is an edge from node `i` to node `j`
         """
-        #h = graph['nodes']
-        #e = graph['edges']
-        #receivers = graph['receivers']
         # Number of nodes
         n_nodes = h.shape[0]
         n_edges = e.shape[0]
@@ -87,33 +102,35 @@ class GraphAttentionV2Layer(nn.Module):
         g_r = self.linear_r(e).view(n_edges, self.n_heads, self.n_hidden_2)
         #linear_time = time.time()
         #ic ("linear time", linear_time-start_time)
-
-        #unique_time = time.time()
-        unique_info = torch.unique(receivers, return_counts=True, sorted=True,return_inverse=True)
-        #ic (receiver_counts.is_cuda)
-        #if graph['nodes'].is_cuda:
-        receiver_counts = torch.zeros(n_nodes,dtype=torch.long).cuda()
-        #else :
-        #receiver_counts = torch.zeros(n_nodes,dtype=torch.long)
-        #receiver_counts = receiver_counts.cuda()
-
-        receiver_counts[unique_info[0]] = unique_info[2]
         #ic (g_r.shape)
         #g_r_repeat_interleave = g_r.repeat_interleave(n_edges, dim=0)
-        g_l_repeat = torch.repeat_interleave(g_l,receiver_counts,dim=0)
+        unique_info = torch.unique(receivers, return_counts=True, sorted=True,return_inverse=True)
+        receiver_counts = torch.zeros(n_nodes,dtype=torch.long).cuda()
+        receiver_counts[unique_info[0]] = unique_info[2]
 
+        g_l_repeat = torch.repeat_interleave(g_l,receiver_counts,dim=0)
         g_concat = torch.cat((g_l_repeat, g_r),dim=2)
-        #g_concat = g_concat.view(n_nodes, n_edges, self.n_heads, self.n_hidden_1+self.n_hidden_2)
 
         # Calculate
-        e = self.attn(self.activation(g_concat))
-        #rec_m = prepare_adjacency_matrix(graph, 'receivers')
-        rec_m = prepare_adjacency_matrix(n_nodes,receivers)
-        e = e.squeeze(-1)
+        attn = self.attn(self.activation(g_concat))
+        attn_softmax = scatter_softmax(attn, receivers, dim=0)
 
+        g_r_with_attn = g_r * attn_softmax
+
+        #aggregated_effects = torch.zeros((n_nodes,self.n_heads,self.n_hidden_1)).cuda()
+        #aggregated_effects[torch.arange(torch.max(receivers)+1)] = scatter(g_r_with_attn, receivers, dim=0, reduce='add')
+        aggregated_effects = torch.zeros(h.shape).cuda()
+        aggregated_effects[torch.arange(torch.max(receivers)+1)] = scatter(g_r_with_attn.squeeze(), receivers, dim=0, reduce='add')
+
+        #ic (g_l.squeeze(1).shape)
+        out = torch.cat([g_l.squeeze(1),aggregated_effects,u],dim=1)
+        out = self.node_update (out)
+        return out
+
+    def forward_old(self, h,g_l, e, receivers,u):
+        e = e.squeeze(-1)
+        rec_m = prepare_adjacency_matrix(n_nodes,receivers)
         count = 0
-        #for i,curr_count in enumerate(unique_info[2]):
-        #ic (rec_m.shape)
         number_zero = 0
         updating_rec_time_start = time.time()
         for i,curr_count in enumerate(receiver_counts):
@@ -122,52 +139,7 @@ class GraphAttentionV2Layer(nn.Module):
                 number_zero += 1
                 continue
             edge_indices = (unique_info[1] == i-number_zero).nonzero(as_tuple=True)[0]
-            #ic (self.softmax(e[count:count + curr_count].squeeze(1)))
-            #ic (rec_m[edge_indices,i] * self.softmax(e[count:count+curr_count]).squeeze(1))
             rec_m[edge_indices,i] = self.softmax(e[count:count+curr_count]).squeeze(1)
             count = count + curr_count
-
-        #a = self.dropout(a)
-        # Calculate final output for each head
-        #attn_res = torch.einsum('ijh,jhf->ihf', a, g_r)
         aggregated_effects = torch.mm(g_r.squeeze(1).t(), rec_m)
-        #ic (g_l.squeeze(1).shape)
-        #ic (aggregated_effects.t().shape)
-
-        #del h,e,g_l_repeat,g_r,g_concat,receiver_counts,rec_m
         return torch.cat((g_l.squeeze(1),aggregated_effects.t(),u),dim=1)
-
-
-
-class CustomAttentionGNNLayer(MessagePassing):
-    def __init__(self, in_channels, out_channels, n_heads):
-        super(CustomAttentionGNNLayer, self).__init__(aggr='add')  # "Add" aggregation.
-        self.n_heads = n_heads
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.linear_l = nn.Linear(in_channels, n_heads * out_channels)
-        self.linear_r = nn.Linear(in_channels, n_heads * out_channels)
-        self.attn = nn.Parameter(torch.Tensor(1, n_heads, out_channels * 2))
-        self.activation = nn.LeakyReLU()
-
-    def forward(self, x, edge_index, edge_attr, u):
-        # x has shape [N, in_channels]
-        # edge_index has shape [2, E]
-        # edge_attr has shape [E, whatever]
-        # Step 1: Linearly transform node feature matrices
-        g_l = self.linear_l(x).view(-1, self.n_heads, self.out_channels)
-        g_r = self.linear_r(edge_attr).view(-1, self.n_heads, self.out_channels)
-
-        # Step 2: Calculate attention coefficients
-        return self.propagate(edge_index, x=g_l, edge_attr=g_r, u=u, size=None)
-
-    def message(self, x_j, edge_attr):
-        g_concat = torch.cat([x_j, edge_attr], dim=-1)
-        e = self.attn(self.activation(g_concat))
-        alpha = F.softmax(e, dim=1)
-        return alpha * edge_attr
-
-    def update(self, aggr_out, x, u):
-        # aggr_out has shape [N, n_heads * out_channels]
-        # Step 3: Update node embeddings
-        return torch.cat((x, aggr_out, u), dim=1)

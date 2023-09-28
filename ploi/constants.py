@@ -87,8 +87,8 @@ pyg = True
 learning_rate = 5* 1e-4
 #cheating_input = True
 cheating_input = False
-test = False
-if test == False :
+debug = False
+if debug == False :
     representation_size = 64
     batch_size = 16
 else :

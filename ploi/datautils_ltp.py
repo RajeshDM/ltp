@@ -760,7 +760,9 @@ def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent
         "all_predicates" : _all_predicates
         #"model_version" : model_version
     }
-
+    if action_space != None:
+        all_actions = [k for k, v in action_space.items()]
+        num_actions =len(all_actions)
 
     for i in range(num_training_examples):
         #state = training_data[0][i]
@@ -782,97 +784,96 @@ def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent
             prev_actions = None
             prev_state = None
             #graph_input,node_to_objects = self._state_to_graph_ltp(state,training_data[4],grounding,prev_actions,prev_state)
-            graph_input,node_to_objects = _state_to_graph_ltp(state,training_data[3],grounding,prev_actions,prev_state,
-                                                              graph_metadata=graph_metadata)
+            graph_input, graph_target = state_to_graph_wrapper(state,action_space,grounding,
+                                                               prev_actions,prev_state,graph_metadata,num_actions,curr_action,objects,cheating_input)
             all_graphs.append(graph_input)
-            graph_target = {
-                "n_node": graph_input["n_node"],
-                "nodes" : graph_input["nodes"],
-                "n_edge": graph_input["n_edge"],
-                "edges": graph_input["edges"],
-                "senders": graph_input["senders"],
-                "receivers": graph_input["receivers"],
-                "globals": graph_input["globals"],
-                "action_scores": graph_input["action_scores"],
-                "action_object_scores": graph_input["action_object_scores"],
-                "n_action" : graph_input['n_action'],
-                "n_object": graph_input['n_object'],
-                #"prev_graph" : graph_input['prev_graph'],
-                "n_non_action_nodes": graph_input['n_non_action_nodes']
-            }
-
-            # Target nodes
-            if action_space != None:
-                all_actions = [k for k, v in action_space.items()]
-            #ic (all_actions[0].__dict__)
-            #exit()
-            num_actions =len(all_actions)
-            #literals = list(state.literals)
-            literals = [literal for literal in sorted(state.literals)]
-            goal_literals = [G(literal) for literal in sorted(state.goal.literals)]
-            #literals = [literal for literal in state.literals if literal.predicate.arity != 0]
-            #goal_literals = [G(literal) for literal in list(state.goal.literals) if literal.predicate.arity != 0]
-            num_objects = len(node_to_objects) - (num_actions) - (len(literals + goal_literals))
-            #num_objects = len(node_to_objects) - (num_actions) - (self._num_predicates)
-            num_non_action_nodes = len(node_to_objects) - num_actions
-            #num_objects = len(node_to_objects) - (num_actions + 1)
-            #num_objects = len(node_to_objects) - (num_actions)
-            objects_to_node = {v: k for k, v in node_to_objects.items()}
-            object_mask = np.zeros((len(node_to_objects),1), dtype=np.int64)
-            action_scores = np.zeros((1,num_actions))
-
-            edges = []
-            action_index = objects_to_node[curr_action]
-            action_scores[0][action_index - num_non_action_nodes] = 1
-            #TODO - CHAGE this back for blocks - done
-            #max_number_action_parameters = 2
-            max_number_action_parameters = 0
-            #ic (action_space)
-            for key,values in action_space.items():
-                if len(values.params) > max_number_action_parameters:
-                    max_number_action_parameters = len(values.params)
-            action_object_scores = np.zeros((max_number_action_parameters,num_objects))
-            for o,curr_object in enumerate(objects):
-                obj_index = objects_to_node[curr_object]
-                action_object_scores[o][obj_index] = 1
-            n_edge = graph_input['edges'].shape[0]
-            # TODO - CHAGE this back for blocks - done
-            #edges = np.reshape(edges,[n_edge,3])
-            #edges = np.reshape(edges,[n_edge,1])
-            max_number_action_parameters = np.array(max_number_action_parameters)
-            n_edge = np.reshape(n_edge, [1]).astype(np.int64)
-            #max_number_action_parameters = np.reshape(max_number_action_parameters,(1,1))
-
-            graph_target['nodes'] = object_mask
-            graph_target['n_edge'] = n_edge
-            graph_target['action_scores'] = np.reshape(np.array(action_scores),[1,num_actions]).astype(np.float)
-            graph_input['action_scores'] = np.reshape(np.array(action_scores),[1,num_actions]).astype(np.float)
-            graph_target['action_object_scores'] = np.reshape(np.array(action_object_scores),[max_number_action_parameters,num_objects]).astype(np.float)
-            graph_input['action_object_scores'] = np.reshape(np.array(action_object_scores),[max_number_action_parameters,num_objects]).astype(np.float)
-            graph_target['n_parameters'] = np.reshape(np.array([len(objects)]),[1]).astype(np.int64)
-            graph_input['n_parameters'] = np.reshape(max_number_action_parameters,[1]).astype(np.int64)
-            graph_input['target_n_parameters'] = np.reshape(np.array([len(objects)]),[1]).astype(np.int64)
-
-            '''
-            Adding in the cheating encoding to see if it overfits to just those features
-            The Cheating encoding experiment 
-            '''
-
-            #ic (graph_input['nodes'])
-            if cheating_input == True :
-                graph_input['nodes'][action_index][-3] = 1
-                for c,curr_object in enumerate(reversed(objects)):
-                    obj_index = objects_to_node[curr_object]
-                    graph_input['nodes'][obj_index][-1-c] =1
-            #ic (graph_input)
-            #ic (graph_target)
-            #exit()
-
             graphs_input.append(graph_input)
             graphs_target.append(graph_target)
 
     graphs_input,graphs_target = _expand_graph_to_max_size_features(graphs_input,graphs_target)
     return graphs_input,graphs_target, graph_metadata
+
+def state_to_graph_wrapper(state,action_space,grounding,prev_actions,prev_state,graph_metadata,num_actions,curr_action,objects,cheating_input=False):
+    graph_input,node_to_objects = _state_to_graph_ltp(state,action_space,grounding,prev_actions,prev_state,
+                                                        graph_metadata=graph_metadata)
+
+    # Target nodes
+    G = wrap_goal_literal
+    literals = [literal for literal in sorted(state.literals)]
+    goal_literals = [G(literal) for literal in sorted(state.goal.literals)]
+    num_objects = len(node_to_objects) - (num_actions) - (len(literals + goal_literals))
+    num_non_action_nodes = len(node_to_objects) - num_actions
+    objects_to_node = {v: k for k, v in node_to_objects.items()}
+    action_scores = np.zeros((1,num_actions))
+    action_index = objects_to_node[curr_action]
+    action_scores[0][action_index - num_non_action_nodes] = 1
+    max_number_action_parameters = 0
+    for key,values in action_space.items():
+        if len(values.params) > max_number_action_parameters:
+            max_number_action_parameters = len(values.params)
+    action_object_scores = np.zeros((max_number_action_parameters,num_objects))
+    for o,curr_object in enumerate(objects):
+        obj_index = objects_to_node[curr_object]
+        action_object_scores[o][obj_index] = 1
+    n_edge = graph_input['edges'].shape[0]
+    max_number_action_parameters = np.array(max_number_action_parameters)
+    n_edge = np.reshape(n_edge, [1]).astype(np.int64)
+
+    graph_target = copy_info_from_graph(graph_input)
+
+    add_extra_info_in_graph(graph_input, action_scores, num_actions,action_object_scores, objects, 
+                            num_objects, max_number_action_parameters,action_index,cheating_input,objects_to_node)
+    add_extra_info_in_graph(graph_target, action_scores, num_actions,action_object_scores, objects,
+                                num_objects, max_number_action_parameters,action_index,cheating_input,objects_to_node)
+
+    return graph_input, graph_target
+
+
+def add_extra_info_in_graph(graph_input, action_scores, num_actions,action_object_scores,
+                             objects, num_objects, max_number_action_parameters,
+                             action_index,cheating_input,objects_to_node):
+    graph_input['action_scores'] = np.reshape(np.array(action_scores),[1,num_actions]).astype(np.int64)
+    graph_input['action_object_scores'] = np.reshape(np.array(action_object_scores),[max_number_action_parameters,num_objects]).astype(np.int64)
+    graph_input['n_parameters'] = np.reshape(max_number_action_parameters,[1]).astype(np.int64)
+    graph_input['target_n_parameters'] = np.reshape(np.array([len(objects)]),[1]).astype(np.int64)
+    '''
+    Adding in the cheating encoding to see if it overfits to just those features
+    The Cheating encoding experiment 
+    '''
+    if cheating_input == True :
+        graph_input['nodes'][action_index][-3] = 1
+        for c,curr_object in enumerate(reversed(objects)):
+            obj_index = objects_to_node[curr_object]
+            graph_input['nodes'][obj_index][-1-c] =1
+
+def copy_info_from_graph(graph_input):
+    graph_target = {
+        "n_node": graph_input["n_node"],
+        "nodes" : graph_input["nodes"],
+        "n_edge": graph_input["n_edge"],
+        "edges": graph_input["edges"],
+        "senders": graph_input["senders"],
+        "receivers": graph_input["receivers"],
+        "globals": graph_input["globals"],
+        "action_scores": graph_input["action_scores"],
+        "action_object_scores": graph_input["action_object_scores"],
+        "n_action" : graph_input['n_action'],
+        "n_object": graph_input['n_object'],
+        #"prev_graph" : graph_input['prev_graph'],
+        "n_non_action_nodes": graph_input['n_non_action_nodes']
+    }
+    return graph_target
+    '''
+    graph_target['nodes'] = object_mask
+    graph_target['n_edge'] = n_edge
+    graph_target['action_scores'] = np.reshape(np.array(action_scores),[1,num_actions]).astype(np.int64)
+    graph_target['action_object_scores'] = np.reshape(np.array(action_object_scores),[max_number_action_parameters,num_objects]).astype(np.int64)
+    graph_target['n_parameters'] = np.reshape(np.array([len(objects)]),[1]).astype(np.int64)
+    graph_input['action_object_scores'] = np.reshape(np.array(action_object_scores),[max_number_action_parameters,num_objects]).astype(np.int64)
+    graph_input['action_scores'] = np.reshape(np.array(action_scores),[1,num_actions]).astype(np.int64)
+    graph_input['n_parameters'] = np.reshape(max_number_action_parameters,[1]).astype(np.int64)
+    graph_input['target_n_parameters'] = np.reshape(np.array([len(objects)]),[1]).astype(np.int64)
+    '''
 
 
 def _expand_graph_to_max_size_features(graphs_input,graphs_target):
@@ -1122,6 +1123,9 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
             #continue
 
             in_grounding = True
+
+            all_sub_plans = generate_repeated_sub_plans(env,plan,curr_idx)
+
             for action in plan:
                 #ic (action)
                 if str_plan == True :
@@ -1233,6 +1237,12 @@ def _collect_training_data_ltp(train_env_name,_planner,_num_train_problems,outfi
     #exit()
     return training_data,None,domain_name
 
+def generate_repeated_sub_plans(env,plan,curr_idx):
+    env.fix_problem_index(curr_idx)
+    #ic (env.problems[curr_idx].problem_fname)
+    state, _ = env.reset()
+    for action in plan:
+        return 1
 
 def convert_str_action_to_pddlgym_action(action_str,groundings):
 
