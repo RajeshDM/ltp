@@ -21,24 +21,6 @@ def MLP(layers, input_dim, dropout=0.):
             mlp_layers.append(nn.Dropout(p=dropout))
     return nn.Sequential(*mlp_layers)
 
-def prepare_adjacency_matrix(num_nodes,receivers):
-    #num_nodes = graph['nodes'].size()[0]
-    #num_edges = graph['edges'].size()[0]
-
-    columns = torch.arange(0, num_nodes).long().cuda()
-    #columns = columns.cuda()
-    #ic (graph['senders'])
-    #ic (columns)
-    #ic (graph[edge_end_string].view(-1))
-    #ic (columns)
-    #ic (graph['receivers'])
-    #ic (graph[edge_end_string].view(-1)[:,None])
-    rec_m = receivers.view(-1)[:,None] == columns
-    #ic (rec_m)
-    #for elem in rec_m:
-    #    print (elem)
-    return rec_m.float()
-
 class GraphAttentionV2Layer(nn.Module):
     def __init__(self, in_features_1 : int, out_features_1: int,
                 in_features_2 : int, out_features_2: int,
@@ -95,15 +77,8 @@ class GraphAttentionV2Layer(nn.Module):
         # Number of nodes
         n_nodes = h.shape[0]
         n_edges = e.shape[0]
-        #ic (self.n_hidden)
-        #start_time = time.time()
         g_l = self.linear_l(h).view(n_nodes, self.n_heads, self.n_hidden_1)
-        #g_r = self.linear_r(h).view(n_nodes, self.n_heads, self.n_hidden)
         g_r = self.linear_r(e).view(n_edges, self.n_heads, self.n_hidden_2)
-        #linear_time = time.time()
-        #ic ("linear time", linear_time-start_time)
-        #ic (g_r.shape)
-        #g_r_repeat_interleave = g_r.repeat_interleave(n_edges, dim=0)
         unique_info = torch.unique(receivers, return_counts=True, sorted=True,return_inverse=True)
         receiver_counts = torch.zeros(n_nodes,dtype=torch.long).cuda()
         receiver_counts[unique_info[0]] = unique_info[2]
@@ -118,29 +93,13 @@ class GraphAttentionV2Layer(nn.Module):
 
         g_r_with_attn = g_r * attn_softmax
 
-        #aggregated_effects = torch.zeros((n_nodes,self.n_heads,self.n_hidden_1)).cuda()
-        #aggregated_effects[torch.arange(torch.max(receivers)+1)] = scatter(g_r_with_attn, receivers, dim=0, reduce='add')
-        aggregated_effects = torch.zeros(h.shape).cuda()
-        aggregated_effects[torch.arange(torch.max(receivers)+1)] = scatter(g_r_with_attn.squeeze(), receivers, dim=0, reduce='add')
+        aggregated_effects = torch.zeros((n_nodes,self.n_heads,self.n_hidden_1)).cuda()
+        aggregated_effects[torch.arange(torch.max(receivers)+1)] = scatter(g_r_with_attn, receivers, dim=0, reduce='add')
+        #aggregated_effects = torch.zeros(h.shape).cuda()
+        #aggregated_effects[torch.arange(torch.max(receivers)+1)] = scatter(g_r_with_attn.squeeze(), receivers, dim=0, reduce='add')
 
-        #ic (g_l.squeeze(1).shape)
-        out = torch.cat([g_l.squeeze(1),aggregated_effects,u],dim=1)
+        #out = torch.cat([g_l.squeeze(1),aggregated_effects,u],dim=1)
+        out = torch.cat([g_l.mean(dim=1),aggregated_effects.mean(dim=1),u],dim=1)
+
         out = self.node_update (out)
         return out
-
-    def forward_old(self, h,g_l, e, receivers,u):
-        e = e.squeeze(-1)
-        rec_m = prepare_adjacency_matrix(n_nodes,receivers)
-        count = 0
-        number_zero = 0
-        updating_rec_time_start = time.time()
-        for i,curr_count in enumerate(receiver_counts):
-            #node_indice = unique_info[0][i]
-            if curr_count == 0 :
-                number_zero += 1
-                continue
-            edge_indices = (unique_info[1] == i-number_zero).nonzero(as_tuple=True)[0]
-            rec_m[edge_indices,i] = self.softmax(e[count:count+curr_count]).squeeze(1)
-            count = count + curr_count
-        aggregated_effects = torch.mm(g_r.squeeze(1).t(), rec_m)
-        return torch.cat((g_l.squeeze(1),aggregated_effects.t(),u),dim=1)

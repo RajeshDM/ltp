@@ -16,6 +16,7 @@ import pickle
 
 import ploi.constants as constants
 
+
 from .planning import PlanningFailure, PlanningTimeout
 
 class TorchGraphDictDataset(Dataset):
@@ -105,7 +106,7 @@ def graph_dataset_to_pyg_dataset(graphs):
 
 def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
                     prev_actions=None,prev_state=None,test=False,
-                    graph_metadata=None):
+                    graph_metadata=None,goal_state=None):
     """Create a graph from a State
     """
     #ic (type(state))
@@ -136,7 +137,8 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     #goal_literals = [ G(literal) for literal in list(state.goal.literals) if literal.predicate.arity != 0]
     #literals = list(state.literals)
     literals = [literal for literal in sorted(state.literals)]
-    goal_literals = [G(literal) for literal in sorted(state.goal.literals)]
+    #goal_literals = [G(literal) for literal in sorted(state.goal.literals)]
+    goal_literals = [G(literal) for literal in sorted(goal_state.literals)]
     #goal_literals_without_g = list(state.goal.literals)
     #all_literals = list(state.literals) + list(state.goal.literals)
     #all_literals_without_g = literals + goal_literals_without_g
@@ -438,7 +440,7 @@ def _get_precondition_satisfaction_position(curr_action, all_literals, all_objec
             break
 
 
-def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent=None):
+def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent=None,args=None):
     # Initializem the graph features
 
     # First get the types and predicates
@@ -536,7 +538,7 @@ def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent
         _node_feature_to_index[unary_type] = index
         index += 1
 
-    cheating_input = constants.cheating_input
+    cheating_input = args.cheating_input
 
     if cheating_input == True :
         _node_feature_to_index['is_correct_action'] = index
@@ -784,23 +786,34 @@ def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent
             prev_actions = None
             prev_state = None
             #graph_input,node_to_objects = self._state_to_graph_ltp(state,training_data[4],grounding,prev_actions,prev_state)
-            graph_input, graph_target = state_to_graph_wrapper(state,action_space,grounding,
-                                                               prev_actions,prev_state,graph_metadata,num_actions,curr_action,objects,cheating_input)
-            all_graphs.append(graph_input)
-            graphs_input.append(graph_input)
-            graphs_target.append(graph_target)
+
+            if args.data_augmentation == True :
+                goal_states = training_data[0][i][j+1:]
+            else :
+                goal_states = [state.goal] 
+
+            for goal_state in goal_states :
+                graph_input, graph_target = state_to_graph_wrapper(state,action_space,grounding,
+                                                                prev_actions,prev_state,graph_metadata,
+                                                                num_actions,curr_action,objects,goal_state,
+                                                                cheating_input)
+                all_graphs.append(graph_input)
+                graphs_input.append(graph_input)
+                graphs_target.append(graph_target)
 
     graphs_input,graphs_target = _expand_graph_to_max_size_features(graphs_input,graphs_target)
     return graphs_input,graphs_target, graph_metadata
 
-def state_to_graph_wrapper(state,action_space,grounding,prev_actions,prev_state,graph_metadata,num_actions,curr_action,objects,cheating_input=False):
+def state_to_graph_wrapper(state,action_space,grounding,prev_actions,prev_state,graph_metadata,
+                           num_actions,curr_action,objects,goal_state,cheating_input=False):
     graph_input,node_to_objects = _state_to_graph_ltp(state,action_space,grounding,prev_actions,prev_state,
-                                                        graph_metadata=graph_metadata)
+                                                        graph_metadata=graph_metadata,goal_state=goal_state)
 
     # Target nodes
-    G = wrap_goal_literal
     literals = [literal for literal in sorted(state.literals)]
-    goal_literals = [G(literal) for literal in sorted(state.goal.literals)]
+    G = wrap_goal_literal
+    #goal_literals_old = [G(literal) for literal in sorted(state.goal.literals)]
+    goal_literals = [G(literal) for literal in sorted(goal_state.literals)]
     num_objects = len(node_to_objects) - (num_actions) - (len(literals + goal_literals))
     num_non_action_nodes = len(node_to_objects) - num_actions
     objects_to_node = {v: k for k, v in node_to_objects.items()}
@@ -952,7 +965,8 @@ def get_feasible_action_param_list(self,env,state,action_space,ensemble):
 
 def get_action_object_scores_ensemble( state, action_space,pyperplan_task ,
                                         prev_actions=None,prev_state=None
-                                        ,correct_action_object_tuple=None,ensemble=False):
+                                        ,correct_action_object_tuple=None,
+                                        ensemble=False):
 
     #start_time = time.time()
     graph, node_to_objects = _state_to_graph_ltp(state,action_space,pyperplan_task,
@@ -1042,11 +1056,11 @@ def _get_action_param_list_from_predictions(predictions,action_space, node_to_ob
     return action_param_tuples
 
 def _collect_training_data( train_env_name,load_existing_and_add_plans=False,collection_cycle=0,
-                           outfile=None,_planner=None,_num_train_problems=None):
+                           outfile=None,_planner=None,_num_train_problems=None,args=None):
     """Returns X, Y where X are States and Y are sets of objects
     """
     #ic (train_env_name)
-    _max_file_open = constants.max_file_open
+    _max_file_open = args.max_file_open
     ic (load_existing_and_add_plans)
     _load_dataset_from_file = True
     env = pddlgym.make("PDDLEnv{}-v0".format(train_env_name))
@@ -1075,7 +1089,7 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
             plan_file_loc = get_plan_file_loc(env,curr_idx)
 
             state_sequence = []
-            if _debug_level == constants.max_debug_level -1 :
+            if _debug_level == args.max_debug_level -1 :
                 print("Collecting training data problem {}".format(curr_idx),
                         flush=True)
             env.fix_problem_index(curr_idx)
@@ -1196,8 +1210,8 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
     return training_data,None,env.domain.domain_name
     #return training_data
 
-def _collect_training_data_ltp(train_env_name,_planner,_num_train_problems,outfile):
-    _max_file_open = constants.max_file_open
+def _collect_training_data_ltp(train_env_name,_planner,_num_train_problems,outfile,args):
+    _max_file_open = args.max_file_open
     #outfile =_dataset_file_prefix + "_{}.pkl".format(train_env_name)
     if os.path.exists(outfile):
         with open(outfile, "rb") as f:
@@ -1215,13 +1229,16 @@ def _collect_training_data_ltp(train_env_name,_planner,_num_train_problems,outfi
                 ic (i)
                 if i == 0 :
                     training_data,dom_file,domain_name = _collect_training_data(train_env_name,False,i,outfile,
-                                                                                _planner,_num_train_problems)
+                                                                                _planner,_num_train_problems,
+                                                                                args)
                 else :
                     training_data,dom_file,domain_name = _collect_training_data(train_env_name,True,i,outfile,
-                                                                                _planner,_num_train_problems)
+                                                                                _planner,_num_train_problems,
+                                                                                args)
         else:
             training_data, dom_file, domain_name = _collect_training_data(train_env_name, False, 0,outfile,
-                                                                                _planner,_num_train_problems)
+                                                                                _planner,_num_train_problems,
+                                                                                args)
     else :
         env = pddlgym.make("PDDLEnv{}-v0".format(train_env_name))
         #training_data = training_data_from_file
@@ -1276,17 +1293,18 @@ def get_plan_file_loc(env,curr_idx):
     return plan_file_loc
 
 def get_filenames(dataset_size,train_env_name,epochs,_model_version,
-                       representation_size,_save_model_prefix,_seed):
-    #_model_version = constants.model_version
+                       representation_size,_save_model_prefix,_seed,
+                       args):
+    #_model_version = args.model_version
     #message_strings = [['','orig_v1_r7']]
-    gnn_rounds = constants.gnn_rounds
-    _num_epochs = constants.num_epochs
-    _debug_level = constants.debug_level
+    gnn_rounds = args.gnn_rounds
+    _num_epochs = args.epochs
+    _debug_level = args.debug_level
     message_strings = []
-    concept_loc = constants.concept_loc
-    #epoch_number = constants.epoch_number
+    concept_loc = args.concept_loc
+    #epoch_number = args.epoch_number
     #epoch_number = _epoch_number
-    if constants.server == True :
+    if args.server == True :
         #self.save_folder = os.path.join(os.path.dirname(__file__), "model/intermediate_models")
         save_folder = os.path.join(os.path.abspath('.'),'model')
         save_folder = os.path.join(save_folder,'intermediate_models')
@@ -1303,7 +1321,11 @@ def get_filenames(dataset_size,train_env_name,epochs,_model_version,
         message_strings.append(message_strings_versions)
 
     message_string = message_strings[concept_loc-1][_model_version-1][round_loc-1] + "_" + \
-                        str(representation_size)+"_" + str(dataset_size)
+                        str(representation_size)+"_d" + str(dataset_size)
+
+    message_string += '_h' + str(args.n_heads)
+    message_string += '_aug' + str(args.data_augmentation)
+    message_string += '_ad' + str(int(args.attention_dropout))
 
     if _debug_level < constants.max_debug_level :
         ic (message_string)

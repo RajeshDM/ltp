@@ -140,7 +140,7 @@ class HeteroGNN(nn.Module):
                                                     out_features_1=self.representation_size,
                                                     in_features_2=self.representation_size,
                                                     out_features_2=self.representation_size,
-                                                    n_heads=1,
+                                                    n_heads=n_heads,
                                                     is_concat=False,
                                                     dropout=attn_dropout,
                                                     leaky_relu_negative_slope=0.2,

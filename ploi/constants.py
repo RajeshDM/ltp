@@ -59,46 +59,42 @@ versions = ['v1', 'v2', 'v3', 'v4', 'v4_1',
 rounds = ['r5', 'r6', 'r7', 'r8', 'r9', 'r10', 'r11', 'r12', 'r13']
 
 #constants for guidance
-num_epochs = 750
-concept_loc = 2
-version_loc = 38
-#epoch_number = 740
+NUM_EPOCHS = 750
+CONCEPT_LOC = 2
+VERSION_LOC = 38
+#EPOCH_NUMBER = 740
 
-use_gpu = server_information.use_gpu
-server = server_information.server
-continue_training = False
+USE_GPU = server_information.USE_GPU
+SERVER = server_information.SERVER
+CONTINUE_TRAINING = False
 
-#constants for main
+#CONSTANTS FOR MAIN
 
-starting_epoch = 0
-problem_number = 0
-number_problems_each_division = 10
-max_plan_length_permitted = 90
-opt_planner = False
-#non_opt_planner = False
-non_opt_planner = True
-external_monitor_bool = False
-heuristic_planner = False
-plot_aggregates = False
-max_file_open = 50
-debug_level = -1
-seed = 10
-pyg = True
-learning_rate = 5* 1e-4
-#cheating_input = True
-cheating_input = False
-debug = False
-if debug == False :
-    representation_size = 64
-    batch_size = 16
-else :
-    representation_size = 4
-    batch_size = 1
-n_heads = 1
-gnn_rounds = 7
-gru_layers = 3#
-dropout = 0.0
-attention_dropout = 0.2
+STARTING_EPOCH = 0
+PROBLEM_NUMBER = 0
+NUMBER_PROBLEMS_EACH_DIVISION = 10
+MAX_PLAN_LENGTH_PERMITTED = 90
+OPT_PLANNER = False
+#NON_OPT_PLANNER = False
+NON_OPT_PLANNER = True
+EXTERNAL_MONITOR_BOOL = False
+HEURISTIC_PLANNER = False
+PLOT_AGGREGATES = False
+MAX_FILE_OPEN = 50
+DEBUG_LEVEL = -1
+SEED = 10
+PYG = True
+LEARNING_RATE = 5* 1E-4
+#CHEATING_INPUT = True
+CHEATING_INPUT = False
+DATA_AUGMENTATION = False
+BATCH_SIZE = 16
+REPRESENTATION_SIZE = 64
+N_HEADS = 1
+GNN_ROUNDS = 7
+GRU_LAYERS = 3
+DROPOUT = 0.0
+ATTENTION_DROPOUT = 0.5
 
 '''
 Debug level information:

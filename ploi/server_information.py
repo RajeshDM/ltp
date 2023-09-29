@@ -1,2 +1,2 @@
-use_gpu=True
-server=False
+USE_GPU=True
+SERVER=False

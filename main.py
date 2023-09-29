@@ -49,7 +49,7 @@ from ploi.traineval import (
     train_model_hierarchical,
 )
 
-import ploi.constants as constants
+#import ploi.constants as constants
 from icecream import ic
 
 def _create_planner(planner_name):
@@ -58,6 +58,21 @@ def _create_planner(planner_name):
     if planner_name == "fd-opt-lmcut":
         return FD(alias_flag="--alias seq-opt-lmcut")
     raise ValueError(f"Uncrecognized planner name {planner_name}")
+
+def set_seed(args):
+    seed = args.seed
+    torch.manual_seed(seed)
+    if args.server == True:
+        os.environ["CUBLAS_WORKSPACE_CONFIG"]=":16:8"
+        torch.use_deterministic_algorithms(True)
+        torch.cuda.manual_seed(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        os.environ["PYTHONHASHSEED"] = str(seed)
+        #np.random.seed(seed)
+        #random.seed(seed)
+        torch.cuda.manual_seed_all(seed)
+
 
 if __name__ == "__main__":
 
@@ -75,29 +90,38 @@ if __name__ == "__main__":
         project="ltp_gnn_gru_pyg",
         # Track hyperparameters and run metadata
         config={
-            "learning_rate": constants.learning_rate,
+            "learning_rate": args.lr,
             "epochs": args.epochs,
-            "batch_size": constants.batch_size,
-            "representation_size": constants.representation_size,
-            "gnn_rounds": constants.gnn_rounds,
-            "decoder_layers": constants.gru_layers,
-            "seed": constants.seed,
+            "batch_size": args.batch_size,
+            "representation_size": args.representation_size,
+            "gnn_rounds": args.gnn_rounds,
+            "seed": args.seed,
             "domain": args.domain,
             "model_version": args.model_version,
-            "server": constants.server,
-            "continue_training": constants.continue_training,
-            "starting_epoch": constants.starting_epoch,
+            "server": args.server,
+            "continue_training": args.continue_training,
+            "starting_epoch": args.starting_epoch,
             "train_planner_name": args.train_planner_name,
             "num_train_problems": args.num_train_problems,
             "num_test_problems": args.num_test_problems,
             "expid": args.expid,
-            "gru_layers" : constants.gru_layers,
-            "n_heads" : constants.n_heads,
+            "gru_layers" : args.gru_layers,
+            "n_heads" : args.n_heads,
+            "attention_dropout" : args.attention_dropout,
+            "dropout" : args.dropout,
+            "augmentation" : args.data_augmentation,
         })
 
+    mode = args.mode
+    if args.data_augmentation is True :
+        args.batch_size = 64
+    if mode == "debug" :
+        args.representation_size = 4
+        args.batch_size = 1
 
     # Seed RNG
-    torch.manual_seed(args.seed)
+    set_seed(args)
+    #torch.manual_seed(args.seed,args)
 
     # Create dir to log files to
     args.expdir = os.path.join(args.logdir, args.expid)
@@ -131,7 +155,7 @@ if __name__ == "__main__":
             args.datafile = _dataset_file_prefix + "_{}.pkl".format(args.domain)
             training_data,_,_ = _collect_training_data_ltp(
                 args.domain, train_planner, _num_train_problems=args.num_train_problems,
-                outfile=args.datafile)
+                outfile=args.datafile,args=args)
         else :
             training_data = collect_training_data(
                 args.domain, train_planner, num_train_problems=args.num_train_problems
@@ -154,7 +178,7 @@ if __name__ == "__main__":
             training_data
         )
     elif args.method in ["ltp"]:
-        graphs_inp, graphs_tgt, graph_metadata = _create_graph_dataset_ltp(training_data)
+        graphs_inp, graphs_tgt, graph_metadata = _create_graph_dataset_ltp(training_data,args=args)
     else:
         graphs_inp, graphs_tgt, graph_metadata = create_graph_dataset(training_data)
 
@@ -165,8 +189,8 @@ if __name__ == "__main__":
     valid_graphs_input = graphs_inp[:num_validation]
     valid_graphs_target = graphs_tgt[:num_validation]
 
-    pyg = constants.pyg
-    batch_size = constants.batch_size
+    pyg = args.pyg
+    batch_size = args.batch_size
 
     args.num_node_features_object = train_graphs_input[0]['nodes'][0].shape[-1]
     args.num_edge_features_object = train_graphs_input[0]['edges'][0].shape[-1]
@@ -182,6 +206,7 @@ if __name__ == "__main__":
         graph_dataset_val = GraphDictDataset(valid_graphs_input, valid_graphs_target)
 
     else :
+        print ("Size of dataset : ",len(graphs_inp))
         train_graphs_pyg = graph_dataset_to_pyg_dataset(train_graphs_input)
         #train_graphs_target_pyg = graph_dataset_to_pyg_dataset(train_graphs_target)
 
@@ -417,41 +442,42 @@ if __name__ == "__main__":
         #args.num_edge_features = datasets["train"][0]["graph_input"]["edges"].shape[-1]
         #args.num_global_features = datasets["train"][0]["graph_input"]["globals"].shape[-1]
 
-        args.decoder_layers = constants.gru_layers
+        #args.decoder_layers = args.gru_layers
 
-        representation_size = constants.representation_size
-        gnn_rounds = constants.gnn_rounds
-        n_heads = constants.n_heads
+        representation_size = args.representation_size
+        gnn_rounds = args.gnn_rounds
+        n_heads = args.n_heads
 
         _model = GNN_GRU(
             n_features=args.num_node_features,
             n_edge_features=args.num_edge_features,
             n_global_features = args.num_global_features,
-            n_hidden=representation_size,
-            gnn_rounds= gnn_rounds,
-            num_decoder_layers = args.decoder_layers ,
-            dropout = constants.dropout,
-            attn_dropout = constants.attention_dropout,
+            n_hidden=args.representation_size,
+            gnn_rounds= args.gnn_rounds,
+            num_decoder_layers = args.gru_layers ,
+            dropout = args.dropout,
+            attn_dropout = args.attention_dropout,
             action_space= training_data[3],
-            batch_size=batch_size,
-            n_heads = n_heads,
+            batch_size=args.batch_size,
+            n_heads = args.n_heads,
         )
 
 
-        continue_training = constants.continue_training
+        continue_training = args.continue_training
         train_env_name = args.domain
         save_model_prefix=os.path.join(
-            model_dir, "bce10_model_seed{}".format(constants.seed)),
+            model_dir, "bce10_model_seed{}".format(args.seed)),
         dataset_size = len(training_data[0])
 
         model_outfile, message_string,save_folder = get_filenames(dataset_size,train_env_name,
                                                         args.epochs,args.model_version,
                                                         representation_size,
-                                                        save_model_prefix,constants.seed)
+                                                        save_model_prefix,args.seed,
+                                                        args)
         
 
         if not os.path.exists(model_outfile) or continue_training == True:
-            optimizer = torch.optim.Adam(_model.parameters(),lr=constants.learning_rate) 
+            optimizer = torch.optim.Adam(_model.parameters(),lr=args.lr) 
             #optimizer = torch.optim.AdamW(self._model.parameters(), lr=5 * 1e-4,weight_decay=0.01)
             if continue_training == True and os.path.exists(model_outfile) :
                 _model_state = torch.load(model_outfile)
@@ -468,11 +494,11 @@ if __name__ == "__main__":
                                     datasets,
                                     #dataloaders,
                                     criterion=criterion, optimizer=optimizer,
-                                    use_gpu=constants.use_gpu,
-                                    starting_epoch = constants.starting_epoch,
+                                    use_gpu=args.use_gpu,
+                                    starting_epoch = args.starting_epoch,
                                     save_folder = save_folder,
                                     final_epoch= args.epochs,
-                                    train_env_name=train_env_name,seed=constants.seed,
+                                    train_env_name=train_env_name,seed=args.seed,
                                     message_string=message_string)
             #torch.save(model_dict, model_outfile)
             state_save = {'state_dict': model_dict,
@@ -486,7 +512,7 @@ if __name__ == "__main__":
             print("Saved model to {}.".format(model_outfile))
         else:
             #ic (model_outfile)
-            if constants.server == False:
+            if args.server == False:
                 _model_state = torch.load(model_outfile,map_location="cpu")
             else :
                 _model_state = torch.load(model_outfile,map_location="cuda:0")
