@@ -88,7 +88,7 @@ tifffile==2023.9.26
 tomli==2.0.1
 tomlkit==0.12.1
 --find-links https://download.pytorch.org/whl/torch_stable.html
---fine-links https://data.pyg.org/whl/torch-2.0.1+cu118.html
+--find-links https://data.pyg.org/whl/torch-2.0.1+cu118.html
 torch==2.0.1+cu118
 torch-cluster==1.6.1+pt20cu118
 torch-geometric==2.3.1

@@ -1325,7 +1325,8 @@ def get_filenames(dataset_size,train_env_name,epochs,_model_version,
 
     message_string += '_h' + str(args.n_heads)
     message_string += '_aug' + str(args.data_augmentation)
-    message_string += '_ad' + str(int(args.attention_dropout))
+    message_string += '_ad' + str(args.attention_dropout)
+    message_string += '_d' + str(args.dropout)
 
     if _debug_level < constants.max_debug_level :
         ic (message_string)
