@@ -59,7 +59,6 @@ versions = ['v1', 'v2', 'v3', 'v4', 'v4_1',
 rounds = ['r5', 'r6', 'r7', 'r8', 'r9', 'r10', 'r11', 'r12', 'r13']
 
 #constants for guidance
-NUM_EPOCHS = 750
 CONCEPT_LOC = 2
 VERSION_LOC = 38
 #EPOCH_NUMBER = 740
@@ -70,6 +69,7 @@ CONTINUE_TRAINING = False
 
 #CONSTANTS FOR MAIN
 
+NUM_EPOCHS = 800
 STARTING_EPOCH = 0
 PROBLEM_NUMBER = 0
 NUMBER_PROBLEMS_EACH_DIVISION = 10
@@ -95,6 +95,11 @@ GNN_ROUNDS = 7
 GRU_LAYERS = 3
 DROPOUT = 0.0
 ATTENTION_DROPOUT = 0.5
+WEIGHT_DECAY = 0.000
+DOMAIN = "ManyBlocks_ipcc_big"
+NUM_TRAIN_PROBLEMS = 200
+EXPID = "blocks"
+MODE = "train"
 
 '''
 Debug level information:

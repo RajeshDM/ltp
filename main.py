@@ -98,6 +98,7 @@ if __name__ == "__main__":
             "seed": args.seed,
             "domain": args.domain,
             "model_version": args.model_version,
+            "mode" : args.mode,
             "server": args.server,
             "continue_training": args.continue_training,
             "starting_epoch": args.starting_epoch,
@@ -110,6 +111,7 @@ if __name__ == "__main__":
             "attention_dropout" : args.attention_dropout,
             "dropout" : args.dropout,
             "augmentation" : args.data_augmentation,
+            "weight_decay" : args.weight_decay,
         })
 
     mode = args.mode
@@ -477,7 +479,7 @@ if __name__ == "__main__":
         
 
         if not os.path.exists(model_outfile) or continue_training == True:
-            optimizer = torch.optim.Adam(_model.parameters(),lr=args.lr) 
+            optimizer = torch.optim.Adam(_model.parameters(),lr=args.lr,weight_decay=args.weight_decay) 
             #optimizer = torch.optim.AdamW(self._model.parameters(), lr=5 * 1e-4,weight_decay=0.01)
             if continue_training == True and os.path.exists(model_outfile) :
                 _model_state = torch.load(model_outfile)
@@ -509,6 +511,10 @@ if __name__ == "__main__":
             _model.load_state_dict(_model_state['state_dict'])
             #self._model_state.load_state_dict(model_dict)
             #self._model = self._model_state['state_dict']
+            ic (args.attention_dropout)
+            ic (args.dropout)
+            ic (args.weight_decay)
+            ic (args.n_heads)
             print("Saved model to {}.".format(model_outfile))
         else:
             #ic (model_outfile)

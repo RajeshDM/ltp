@@ -29,14 +29,14 @@ def get_ploi_argument_parser():
         "--mode",
         type=str,
         choices=["train", "test", "visualize","debug"],
-        default="train",
+        default=constants.MODE,
         help="Mode to run the script in",
     )
 
     parser.add_argument(
         "--domain",
         type=str,
-        default="Taskographyv2tiny1",
+        default=constants.DOMAIN,
         help="Name of the pddlgym domain to use.",
     )
     parser.add_argument(
@@ -54,7 +54,10 @@ def get_ploi_argument_parser():
         help="Eval planner to use",
     )
     parser.add_argument(
-        "--num-train-problems", type=int, default=25, help="Number of train problems"
+        "--num-train-problems", 
+        type=int, 
+        default=constants.NUM_TRAIN_PROBLEMS, 
+        help="Number of train problems"
     )
     parser.add_argument(
         "--num-test-problems", type=int, default=5, help="Number of test problems"
@@ -69,7 +72,9 @@ def get_ploi_argument_parser():
     )
 
     parser.add_argument(
-        "--expid", type=str, default="debug", help="Unique exp id to log data to"
+        "--expid", type=str, 
+        default=constants.EXPID, 
+        help="Unique exp id to log data to"
     )
     parser.add_argument(
         "--logdir",
@@ -230,6 +235,13 @@ def get_ploi_argument_parser():
         type=float,
         default=constants.LEARNING_RATE, 
         help="Learning rate")
+
+    parser.add_argument(
+        "--weight-decay", 
+        type=float,
+        default=constants.WEIGHT_DECAY, 
+        help="L2 regularization weight decay")
+
 
     parser.add_argument(
         "--debug-level", 

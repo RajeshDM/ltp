@@ -1089,7 +1089,7 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
             plan_file_loc = get_plan_file_loc(env,curr_idx)
 
             state_sequence = []
-            if _debug_level == args.max_debug_level -1 :
+            if _debug_level == constants.max_debug_level -1 :
                 print("Collecting training data problem {}".format(curr_idx),
                         flush=True)
             env.fix_problem_index(curr_idx)
@@ -1327,6 +1327,10 @@ def get_filenames(dataset_size,train_env_name,epochs,_model_version,
     message_string += '_aug' + str(args.data_augmentation)
     message_string += '_ad' + str(args.attention_dropout)
     message_string += '_d' + str(args.dropout)
+    message_string += '_lr' + str(args.lr)
+
+    if args.weight_decay != 0 :
+        message_string += "_wd" + str(args.weight_decay)
 
     if _debug_level < constants.max_debug_level :
         ic (message_string)
