@@ -515,6 +515,7 @@ if __name__ == "__main__":
             ic (args.dropout)
             ic (args.weight_decay)
             ic (args.n_heads)
+            ic (args.lr)
             print("Saved model to {}.".format(model_outfile))
         else:
             #ic (model_outfile)

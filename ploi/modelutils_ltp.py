@@ -124,7 +124,11 @@ class NodeUpdateAttn(nn.Module):
 # Define the hetero graph neural network
 class HeteroGNN(nn.Module):
     def __init__(self,n_features,n_edge_features,n_global_features,
-                        representation_size ,dropout=0.0,attn_dropout=0.0,num_rounds=3,n_heads=1):
+                        representation_size ,
+                        dropout=0.0,
+                        attn_dropout=0.0,
+                        num_rounds=3,
+                        n_heads=1):
         super(HeteroGNN, self).__init__()
         
         self.num_rounds = num_rounds
@@ -146,15 +150,15 @@ class HeteroGNN(nn.Module):
                                                     leaky_relu_negative_slope=0.2,
                                                     share_weights=False)
         #self.node_update_2 = NodeModelLtp(self.representation_size,self.representation_size,self.representation_size,self.representation_size)
-        self.node_update = MLP([self.representation_size]*2, self.representation_size*3)
+        self.node_update = MLP([self.representation_size]*2, self.representation_size*3,dropout=dropout)
         
         # Edge related layers
         self.edge_encoder = MLP([self.representation_size]*2, n_edge_features)
-        self.edge_update_network = EdgeModelLtp(self.representation_size,self.representation_size,self.representation_size)
+        self.edge_update_network = EdgeModelLtp(self.representation_size,self.representation_size,self.representation_size,dropout=dropout)
 
         # Global related layers
         self.global_encoder  = MLP([self.representation_size]*2,n_global_features)
-        self.global_update = GlobalModel(self.representation_size,self.representation_size)
+        self.global_update = GlobalModel(self.representation_size,self.representation_size,dropout=dropout)
         
     def forward(self, batch):
         node_data  = batch['node'].x
