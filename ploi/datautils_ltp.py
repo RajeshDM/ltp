@@ -67,7 +67,6 @@ def reverse_binary_literal(x):
     variables = [v for v in x.variables]
     assert len(variables) == 2
 
-
 def graph_to_pyg_data(graph):
     hetero_data = HeteroData()
     all_dtype = torch.float32
@@ -81,7 +80,6 @@ def graph_to_pyg_data(graph):
     hetero_data['globals'].x = torch.tensor(graph['globals'],dtype=all_dtype)   
 
     for key,items in graph.items():
-
         if key == 'action_scores' :
             hetero_data['target_action_scores'].x = torch.tensor(copy.deepcopy(items),dtype=all_dtype)
             hetero_data[key].x = torch.tensor(copy.deepcopy(items),dtype=all_dtype)
@@ -147,7 +145,12 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     #all_literals = literals + goal_literals_without_g
     #all_literals = literals + goal_literals_without_g
     #node_to_objects = dict(enumerate(all_agents + all_objects + _all_predicates + all_actions))
-    node_to_objects = dict(enumerate(all_agents + all_objects + all_literals + all_actions))
+
+    all_predicates = all_literals[:]
+    all_predicates = _all_predicates[:]
+
+
+    node_to_objects = dict(enumerate(all_agents + all_objects + all_predicates + all_actions))
     if test == True:
         pass
         #ic (node_to_objects)
@@ -160,10 +163,11 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     num_actions = len(all_actions)
     num_agents = len(all_agents)
     #num_predicates = len(_all_predicates)
-    num_predicates = len(all_literals)
+    #num_predicates = len(all_literals)
+    num_predicates = len(all_predicates)
     #num_globals = len(all_global_nodes)
     #num_nodes = num_objects+ num_actions + num_agents
-    num_nodes = num_objects+ num_actions + num_agents +num_predicates
+    num_nodes = num_objects+ num_actions + num_agents + num_predicates
     #num_nodes = num_objects + num_actions + num_agents + num_globals
 
     action_nodes = []
@@ -237,24 +241,22 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     #ic (all_literals)
     #ic (_node_feature_to_index)
     #ic (_all_predicates)
-    for lit_index, lit in enumerate(all_literals):
+    #for lit_index, lit in enumerate(all_literals):
+    #for lit_index, lit in enumerate(_all_predicates):
     #for# lit_index, lit in enumerate(all_literals_without_g):
-        #if _model_version == 38 or _model_version == 36 or _model_version == 39 or _model_version == 40:
-        #    pass
-        #else :
-        #    if lit.predicate.arity == 0:
-        #        continue
-        #ic (lit.__dict__)
+    for lit_index, pred in enumerate(all_predicates):
         type_index = _node_feature_to_index['predicate_node']
-        pred_index = objects_to_node[lit]
-        pred = lit.predicate
+        pred_index = objects_to_node[pred]
+        #pred = lit.predicate
         predicate_feature_index = _node_feature_to_index[pred]
         input_node_features[pred_index, type_index] = 1
         input_node_features[pred_index, predicate_feature_index] = 1
 
+        '''
         if lit in goal_literals and 'goal_pred' in _node_feature_to_index:
             goal_index = _node_feature_to_index['goal_pred']
             input_node_features[pred_index, goal_index] = 1
+        '''
 
     all_edge_features_stack = np.zeros((max_action_arity,num_nodes, num_nodes,_num_edge_features))
     all_edge_features = all_edge_features_stack[0][:]
@@ -264,6 +266,7 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     '''
     # self.add_all_predicate_edge_info_in_graph(state,objects_to_node,all_edge_features)
     _add_all_predicate_edge_info_in_graph(all_literals, objects_to_node, all_edge_features,_edge_feature_to_index)
+    #_add_all_predicate_edge_info_in_graph(all_predicates, objects_to_node, all_edge_features,_edge_feature_to_index)
 
     node_to_only_actions = dict(enumerate(all_actions))
     action_positions = dict(enumerate(list(range(max_action_arity))))
@@ -286,7 +289,7 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
             #TODO - Change this - currently using same features both ways
             #all_edge_features[obj_index, action_index, pred_index] = 1
 
-            position_index = _edge_feature_to_index['pos_' + str(position)]
+            position_index = _edge_feature_to_index['action_param_pos_' + str(position)]
             all_edge_features_stack[position,action_index, obj_index, pred_index] = 1
             all_edge_features_stack[position,obj_index, action_index, pred_index] = 1
             all_edge_features_stack[position,action_index, obj_index, position_index] = 1
@@ -383,7 +386,8 @@ def _add_all_predicate_edge_info_in_graph(all_literals, objects_to_node,
         # ic (lit.__dict__)
         if len(lit.variables) == 0:
             continue
-        pred_index = objects_to_node[lit]
+        #pred_index = objects_to_node[lit]
+        pred_index = objects_to_node[lit.predicate]
         # ic (lit)
         # ic (pred_index)
         # ic (lit_index)
@@ -632,7 +636,7 @@ def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent
     '''
 
     for arity in range(_max_objects):
-        _edge_feature_to_index['pos_' + str(arity)] = index
+        _edge_feature_to_index['action_param_pos_' + str(arity)] = index
         index+=1
     #self._action_edge_feature_to_index['action_object'] = index
     #exit()
@@ -759,7 +763,7 @@ def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent
         "unary_types": _unary_types,
         "unary_predicates": _unary_predicates,
         "binary_predicates": _binary_predicates,
-        "all_predicates" : _all_predicates
+        "all_predicates" : _all_predicates + [G(predicate) for predicate in _all_predicates]
         #"model_version" : model_version
     }
     if action_space != None:
