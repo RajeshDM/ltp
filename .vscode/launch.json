@@ -27,6 +27,31 @@
             "--logdir",
             "cache/results",
             "--all-problems"]
+        },
+        {
+            "name": "Debug Train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args" :["--domain", "ManyBlocks_ipcc_big",
+             "--method", "ltp",
+            "--num-train-problems","20",
+            "--num-test-problems", "5" ,
+            "--seed", "5",
+            "--batch-size", "1",
+            "--epochs","100",
+            "--mode", "debug",
+            "--timeout", "30",
+            "--expid", "blocks",
+            "--logdir", "cache/results",
+            "--all-problems",
+            "--lr", "0.0003",
+            "--n-heads", "1",
+            "--attention-dropout", "0.4" ,
+            "--dropout", "0" ,
+            "--weight-decay", "0.00015"]
         }
     ]
 }

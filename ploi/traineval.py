@@ -149,7 +149,8 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
                                    criterion, optimizer, use_gpu, print_iter=10, 
                 save_iter=100, save_folder='/tmp',starting_epoch=0, final_epoch=1000, global_criterion=None,
                 return_last_model_weights=True,dagger_train=False,train_env_name=None,seed=None,
-                message_string=''):
+                message_string='',
+                log_wandb=False):
 
     since = time.time()
     min_save_epoch = 0
@@ -247,7 +248,8 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
                 # statistics
                 running_loss[phase] += loss.item()
                 running_num_samples += 1
-            wandb.log({f"loss_{phase}": running_loss[phase]})
+            if log_wandb:
+                wandb.log({f"loss_{phase}": running_loss[phase]})
 
         if epoch % print_iter == 0:
             print("running_loss:", running_loss, flush=True)

@@ -261,5 +261,11 @@ def get_ploi_argument_parser():
         default=constants.CONCEPT_LOC,
         help="Experiment concept number (for tracking with model filename)")
 
+    parser.add_argument(
+        "--wandb", 
+        type=str2bool,
+        default=False,
+        help="Whether to log on Wandb or not")
+
 
     return parser

@@ -85,34 +85,35 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    run = wandb.init(
-        # Set the project where this run will be logged
-        project="ltp_gnn_gru_pyg",
-        # Track hyperparameters and run metadata
-        config={
-            "learning_rate": args.lr,
-            "epochs": args.epochs,
-            "batch_size": args.batch_size,
-            "representation_size": args.representation_size,
-            "gnn_rounds": args.gnn_rounds,
-            "seed": args.seed,
-            "domain": args.domain,
-            "model_version": args.model_version,
-            "mode" : args.mode,
-            "server": args.server,
-            "continue_training": args.continue_training,
-            "starting_epoch": args.starting_epoch,
-            "train_planner_name": args.train_planner_name,
-            "num_train_problems": args.num_train_problems,
-            "num_test_problems": args.num_test_problems,
-            "expid": args.expid,
-            "gru_layers" : args.gru_layers,
-            "n_heads" : args.n_heads,
-            "attention_dropout" : args.attention_dropout,
-            "dropout" : args.dropout,
-            "augmentation" : args.data_augmentation,
-            "weight_decay" : args.weight_decay,
-        })
+    if args.wandb:  
+        run = wandb.init(
+            # Set the project where this run will be logged
+            project="ltp_gnn_gru_pyg",
+            # Track hyperparameters and run metadata
+            config={
+                "learning_rate": args.lr,
+                "epochs": args.epochs,
+                "batch_size": args.batch_size,
+                "representation_size": args.representation_size,
+                "gnn_rounds": args.gnn_rounds,
+                "seed": args.seed,
+                "domain": args.domain,
+                "model_version": args.model_version,
+                "mode" : args.mode,
+                "server": args.server,
+                "continue_training": args.continue_training,
+                "starting_epoch": args.starting_epoch,
+                "train_planner_name": args.train_planner_name,
+                "num_train_problems": args.num_train_problems,
+                "num_test_problems": args.num_test_problems,
+                "expid": args.expid,
+                "gru_layers" : args.gru_layers,
+                "n_heads" : args.n_heads,
+                "attention_dropout" : args.attention_dropout,
+                "dropout" : args.dropout,
+                "augmentation" : args.data_augmentation,
+                "weight_decay" : args.weight_decay,
+            })
 
     mode = args.mode
     if args.data_augmentation is True :
@@ -501,7 +502,8 @@ if __name__ == "__main__":
                                     save_folder = save_folder,
                                     final_epoch= args.epochs,
                                     train_env_name=train_env_name,seed=args.seed,
-                                    message_string=message_string)
+                                    message_string=message_string,
+                                    log_wandb=args.wandb,)
             #torch.save(model_dict, model_outfile)
             state_save = {'state_dict': model_dict,
             'optimizer': optimizer.state_dict(),
