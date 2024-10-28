@@ -25,7 +25,8 @@ from ploi.datautils_ltp import (
     graph_dataset_to_pyg_dataset,
 )
 from ploi.run_planner_with_ltp import (
-    run_planner_with_gnn
+    run_planner_with_gnn_ltp,
+    _create_planner,
 )
 from ploi.guiders import HierarchicalGuidance, PLOIGuidance, SceneGraphGuidance
 from ploi.modelutils import (
@@ -52,12 +53,6 @@ from ploi.traineval import (
 #import ploi.constants as constants
 from icecream import ic
 
-def _create_planner(planner_name):
-    if planner_name == "fd-lama-first":
-        return FD(alias_flag="--alias lama-first")
-    if planner_name == "fd-opt-lmcut":
-        return FD(alias_flag="--alias seq-opt-lmcut")
-    raise ValueError(f"Uncrecognized planner name {planner_name}")
 
 def set_seed(args):
     seed = args.seed
@@ -478,8 +473,7 @@ if __name__ == "__main__":
                                                         save_model_prefix,args.seed,
                                                         args)
         
-
-        if not os.path.exists(model_outfile) or continue_training == True:
+        if args.mode == 'train' and (not os.path.exists(model_outfile) or continue_training == True):
             optimizer = torch.optim.Adam(_model.parameters(),lr=args.lr,weight_decay=args.weight_decay) 
             #optimizer = torch.optim.AdamW(self._model.parameters(), lr=5 * 1e-4,weight_decay=0.01)
             if continue_training == True and os.path.exists(model_outfile) :
@@ -527,6 +521,10 @@ if __name__ == "__main__":
                 _model_state = torch.load(model_outfile,map_location="cuda:0")
 
             _model.load_state_dict(_model_state['state_dict'])
+            if args.use_gpu == True:
+                _model.to('cuda')
             #print("Loaded saved model from {}.".format(model_outfile))
 
         #run_planner_with_gnn(_model, args.domain, args.num_test_problems, args.timeout)
+        _model.eval()
+        run_planner_with_gnn_ltp(args, _model, graph_metadata)

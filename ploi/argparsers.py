@@ -26,6 +26,11 @@ def get_ploi_argument_parser():
         default="ltp",
     )
     parser.add_argument(
+        "--num-seeds",
+        type=int,
+        default="1",
+    )
+    parser.add_argument(
         "--mode",
         type=str,
         choices=["train", "test", "visualize","debug"],

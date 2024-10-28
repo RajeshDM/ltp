@@ -110,6 +110,15 @@ Level 1 : will have full plan outputs
 Level 0 : Full everything output - action param list etc.
 '''
 max_debug_level = 3
+problem_number = 0
+number_problems_each_division = 10
+max_plan_length_permitted = 60
+opt_planner = False
+non_opt_planner = False
+external_monitor_bool = False
+heuristic_planner = False
+plot_aggregates = False
+
 
 # model_outfile = self._save_model_prefix+"__dagger_{}Test_2.pt".format(train_env_name)
 # model_outfile = "/tmp/model80.pt"

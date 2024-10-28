@@ -255,16 +255,18 @@ class GNN_GRU(nn.Module):
         x = self.action_score_decoder(x)
         decoder_total_time = time.time()-decoder_time
 
-        self.training_mode = False
+        #self.training_mode = False
+        self.training_mode = self.training
 
         if self.training_mode: 
             return self.non_beam_decode(x,hidden_state,a_scores,ao_scores,n_node,
                                         n_parameters,n_objects,object_idxs,n_actions,action_idxs)
     
         else :
-            return self.beam_search_v2(x,hidden_state,beam_width=3,number_graphs=number_graphs,
-                         a_scores=a_scores,ao_scores=ao_scores,n_node=n_node,n_parameters=n_parameters,
-                         n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,action_idxs=action_idxs)
+            return self.beam_search_v2(x,hidden_state,number_graphs=number_graphs,
+                         ao_scores=ao_scores,n_node=n_node,n_parameters=n_parameters,
+                         n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
+                         action_idxs=action_idxs)
 
     def non_beam_decode(self,x,hidden_state,a_scores,ao_scores,n_node,n_parameters,n_objects,object_idxs,n_actions,action_idxs):
         all_actions_batches,_ = self.get_best_action_scores_locations(a_scores,self.max_num_actions)
@@ -315,6 +317,77 @@ class GNN_GRU(nn.Module):
         print ("actual time spent decoding", decoder_total_time_2)
         print ("Total TIME : ", end_time-start_time)
         '''
+    def beam_search_v2(self, x, hidden_state, number_graphs,ao_scores,n_node,
+                    n_parameters,n_objects,object_idxs,n_actions,
+                    action_idxs):
+
+        a_scores_new = self.compute_action_scores(x,n_actions,hidden_state,action_idxs)
+        self.max_num_actions = 2
+        self.max_num_objects = 3
+        all_actions_batches,all_actions_scores = self.get_best_action_scores_locations(a_scores_new,self.max_num_actions)
+
+        # Active beams now contain (token_ids, embeddings, scores)
+        active_beams = []
+        
+        # Storage for completed sequences
+        finished_beams = []
+        finished_scores = []
+        curr_depth = 0
+
+        for action_idx in range(self.max_num_actions):
+            all_actions = [elem[action_idx] for elem in all_actions_batches]
+            decoder_input = self.get_best_action_embeddings(x,all_actions,n_node,domain_number_actions=4)
+            all_curr_action_scores = [elem[action_idx] for elem in all_actions_scores]
+            active_beams.append(([all_actions[0]], decoder_input, 
+                                 all_curr_action_scores[0], hidden_state, curr_depth ))
+
+        for parameter_number in range(self.max_number_action_parameters):  # replace with the actual maximum sequence length
+            if not active_beams:
+                break
+
+            # Prepare batched inputs for the model
+            current_decoder_input = torch.cat([beam[1] for beam in active_beams], dim=0)
+            current_scores = [beam[2] for beam in active_beams]
+            current_hidden = torch.cat([beam[3] for beam in active_beams], dim=1)
+            curr_depth = active_beams[0][4]
+            _, new_hidden = self.decoder(current_decoder_input, current_hidden)
+
+            new_hidden_split = torch.split(new_hidden, split_size_or_sections=1, dim=1)
+
+            # Prepare for next step
+            new_active_beams = []
+            ao_scores_new = torch.zeros(ao_scores.shape).cuda()
+
+            for beam_idx, beam in enumerate(active_beams):
+                ao_scores_new = self.compute_object_scores(x, n_parameters,n_objects, 
+                                                            ao_scores_new,new_hidden_split[beam_idx],
+                                                        object_idxs,parameter_number)
+                all_objects_batches_all_params,all_objects_scores_all_params = self.get_best_action_object_scores_locations(
+                                        ao_scores=ao_scores_new, n_node=n_node, k=self.max_num_objects)
+
+                all_objects_scores = all_objects_scores_all_params[parameter_number]
+                all_objects_batches = all_objects_batches_all_params[parameter_number]
+                for object_option in range(self.max_num_objects):
+                    all_objects = [all_objects_batches[object_option]] 
+                    all_curr_obj_scores = [all_objects_scores[object_option]]
+                    new_decoder_input = self.get_best_object_embeddings_ltp(x, all_objects, n_node, number_graphs)
+
+                    curr_sequence = active_beams[beam_idx][0] + [all_objects[0]] 
+
+                    action = curr_sequence[0].item()
+                    new_score = (current_scores[beam_idx]*(curr_depth+1) + all_curr_obj_scores[0])/ (curr_depth + 2 )
+                    if curr_depth + 1 == self.action_parameter_number_dict[action]:
+                        finished_beams.append(curr_sequence)
+                        finished_scores.append(new_score)
+                        continue
+
+                    new_active_beams.append((curr_sequence, new_decoder_input, 
+                                             new_score, new_hidden_split[beam_idx],curr_depth+1))
+            
+            active_beams = new_active_beams[:]
+
+        results = sorted(zip(finished_scores, finished_beams), reverse=True)
+        return results
 
     def get_best_action_scores_locations(self,a_scores,k):
         all_actions_batches = []
@@ -338,137 +411,6 @@ class GNN_GRU(nn.Module):
 
         return all_objects_batches, all_objects_scores
 
-    #def beam_search_decode(self,x,edge_idx,edge_attr,u,batch=None):
-    def beam_search(self, x, hidden_state, beam_width,number_graphs,a_scores,
-                     ao_scores,n_node,
-                    n_parameters,n_objects,object_idxs,n_actions,
-                    action_idxs):
-        # Initial inputs and states
-        #decoder_input = torch.zeros((number_graphs, 1), dtype=torch.long)  # replace with actual start token
-        action_depth = 0
-        #beams = [(0, x, hidden_state, action_depth)]
-        beams = []
-        number_graphs = 1
-
-        a_scores_new = self.compute_action_scores(x,n_actions,hidden_state,action_idxs)
-        self.max_num_actions = 2
-        self.max_num_objects = 3
-        all_actions_batches,all_actions_scores = self.get_best_action_scores_locations(a_scores_new,self.max_num_actions)
-        ao_scores_new = torch.zeros(ao_scores.shape).cuda()
-
-        for action_idx in range(self.max_num_actions):
-            all_actions = [elem[action_idx] for elem in all_actions_batches]
-            decoder_input = self.get_best_action_embeddings(x,all_actions,n_node,domain_number_actions=4)
-            _, new_hidden = self.decoder(decoder_input, hidden_state)
-            all_curr_action_scores = [elem[action_idx] for elem in all_actions_scores]
-            beams.append((all_curr_action_scores, decoder_input, new_hidden, action_depth))
-        
-        for parameter_number in range(self.max_number_action_parameters):  # replace with the actual maximum sequence length
-            new_beams = []
-            for score, decoder_input, hidden_curr, action_depth in beams:
-                _, hidden_state = self.decoder(decoder_input, hidden_curr)
-
-                all_objects_batches,all_objects_scores = self.get_best_action_object_scores_locations(ao_scores=ao_scores, n_node=n_node, k=self.max_num_objects)
-                for object_option in range(self.max_num_objects):
-                    ao_scores_new += self.compute_object_scores(x, n_parameters,n_objects, ao_scores,hidden_curr,
-                                                            object_idxs,parameter_number)
-                    all_objects = [elem[object_option] for elem in all_objects_batches] 
-                    all_curr_obj_scores = [elem[object_option] for elem in all_objects_scores]
-                    #new_decoder_input = self.get_best_object_embeddings(x, all_objects, all_actions,
-                    #                                                    parameter_number=parameter_number,
-                    #                                                n_params=n_parameters,
-                    #                                                n_node=n_node)    
-                    new_decoder_input = self.get_best_object_embeddings_ltp(x, all_objects, n_node, number_graphs)
-
-                    new_score = score + 0
-                    new_beams.append((all_curr_obj_scores, new_decoder_input, hidden, action_depth))
-            
-            beams = sorted(new_beams, key=lambda x: x[0], reverse=True)[:beam_width]
-        return beams
-
-    def beam_search_v2(self, x, hidden_state, beam_width,number_graphs,a_scores, ao_scores,n_node,
-                    n_parameters,n_objects,object_idxs,n_actions,
-                    action_idxs):
-
-        a_scores_new = self.compute_action_scores(x,n_actions,hidden_state,action_idxs)
-        self.max_num_actions = 2
-        self.max_num_objects = 3
-        all_actions_batches,all_actions_scores = self.get_best_action_scores_locations(a_scores_new,self.max_num_actions)
-
-        # Active beams now contain (token_ids, embeddings, scores)
-        active_beams = []
-        
-        # Storage for completed sequences
-        finished_beams = []
-        finished_scores = []
-        ao_scores_new = torch.zeros(ao_scores.shape).cuda()
-        curr_depth = 0
-        number_graphs = 1
-
-        for action_idx in range(self.max_num_actions):
-            all_actions = [elem[action_idx] for elem in all_actions_batches]
-            decoder_input = self.get_best_action_embeddings(x,all_actions,n_node,domain_number_actions=4)
-            all_curr_action_scores = [elem[action_idx] for elem in all_actions_scores]
-            active_beams.append((all_actions[0],[all_actions[0]], decoder_input, 
-                                 all_curr_action_scores[0], hidden_state, curr_depth ))
-
-        for parameter_number in range(self.max_number_action_parameters):  # replace with the actual maximum sequence length
-            if not active_beams:
-                break
-
-            # Prepare batched inputs for the model
-            current_tokens = torch.cat([beam[0].unsqueeze(0) for beam in active_beams], dim=0)
-            current_decoder_input = torch.cat([beam[2] for beam in active_beams], dim=0)
-            current_scores = [beam[3] for beam in active_beams]
-            current_hidden = torch.cat([beam[4] for beam in active_beams], dim=1)
-
-            curr_depth = active_beams[0][5]
-
-            _, new_hidden = self.decoder(current_decoder_input, current_hidden)
-
-            new_hidden_split = torch.split(new_hidden, split_size_or_sections=1, dim=1)
-
-            # Prepare for next step
-            new_active_beams = []
-            ao_scores_new = torch.zeros(ao_scores.shape).cuda()
-
-            for beam_idx, beam in enumerate(active_beams):
-                ao_scores_new = self.compute_object_scores(x, n_parameters,n_objects, 
-                                                            ao_scores_new,new_hidden_split[beam_idx],
-                                                        object_idxs,parameter_number)
-                all_objects_batches_all_params,all_objects_scores_all_params = self.get_best_action_object_scores_locations(
-                                        ao_scores=ao_scores_new, n_node=n_node, k=self.max_num_objects)
-
-                all_objects_scores = all_objects_scores_all_params[parameter_number]
-                all_objects_batches = all_objects_batches_all_params[parameter_number]
-                for object_option in range(self.max_num_objects):
-                    all_objects = [all_objects_batches[object_option]] 
-                    all_curr_obj_scores = [all_objects_scores[object_option]]
-                    #new_decoder_input = self.get_best_object_embeddings(x, all_objects, all_actions,
-                    #new_decoder_input = self.get_best_object_embeddings(x, all_objects, 
-                    #                                                    all_actions,
-                    #                                                    parameter_number=parameter_number,
-                    #                                                n_params=n_parameters,
-                    #                                                n_node=n_node)    
-                    new_decoder_input = self.get_best_object_embeddings_ltp(x, all_objects, n_node, number_graphs)
-
-                    curr_sequence = active_beams[beam_idx][1] + [all_objects[0]] 
-
-                    action = curr_sequence[0].item()
-                    new_score = (current_scores[beam_idx]*(curr_depth+1) + all_curr_obj_scores[0])/ (curr_depth + 2 )
-                    if curr_depth + 1 == self.action_parameter_number_dict[action]:
-                        finished_beams.append(curr_sequence)
-                        finished_scores.append(new_score)
-                        continue
-
-                    new_active_beams.append((all_objects[0], curr_sequence, new_decoder_input, 
-                                             new_score, new_hidden_split[beam_idx],curr_depth+1))
-            
-            active_beams = new_active_beams[:]
-
-        results = sorted(zip(finished_scores, finished_beams), reverse=True)
-        #return results[:self.beam_width]
-        return results
 
     def greedy_decode(self, trg, decoder_hidden, encoder_outputs, ):
         '''
@@ -491,8 +433,6 @@ class GNN_GRU(nn.Module):
 
         return decoded_batch
 
-    #def get_best_action_embedding(self,x,scores,all_actions,number_actions):
-    #    return []
     def extract_graph_info_ltp(self,data):
         torch_time = time.time()
         action_idxs = torch.where(data['node'].x[:,0] == 1)[0]
@@ -509,15 +449,11 @@ class GNN_GRU(nn.Module):
         return action_idxs, object_idxs, a_scores, ao_scores, n_node, n_parameters, n_actions, n_objects,number_graphs
 
     def get_best_action_embeddings(self,x,all_actions,n_node,domain_number_actions):
-        #if graph['nodes'].is_cuda:
         required_correct_features = torch.zeros((len(all_actions),1,self.representation_size),dtype=torch.float32).cuda()
         current_number_nodes = 0
-        #ic (all_actions)
         for a,action in enumerate(all_actions) :
             action_curr_graph = n_node[a] - domain_number_actions
-            #ic (graph['n_node'][a])
             required_correct_features[a][0] = x[current_number_nodes+action_curr_graph+action][:]
-
             current_number_nodes += n_node[a]
         return required_correct_features#,number_action_parameters
 
@@ -543,13 +479,10 @@ class GNN_GRU(nn.Module):
 
             feature_captured_object_counter += 1
             current_number_nodes += n_node[a]
-
         #ic (required_correct_object_features)
         return required_correct_object_features
 
     def get_best_object_embeddings_ltp(self,x,all_objects,n_node, num_graphs):
-
-        #objects_counter = 0 
         current_number_nodes = 0
         required_correct_object_features = torch.zeros((num_graphs, 1, self.representation_size),
                                                        dtype=torch.float32).cuda()
@@ -557,9 +490,7 @@ class GNN_GRU(nn.Module):
         for i in range(num_graphs):
             object_idx = all_objects[i]
             required_correct_object_features[i][0] = x[current_number_nodes+object_idx][:]
-            #objects_counter += 1
             current_number_nodes += n_node[i]
-
         return required_correct_object_features
 
     def compute_action_scores(self,x,n_actions,hidden_state, action_idxs):

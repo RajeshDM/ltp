@@ -161,11 +161,9 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
     best_validation_loss_epoch = 0
     if use_gpu:
         model = model.cuda()
+        device = "cuda:0"
         if criterion is not None:
             criterion = criterion.cuda()
-
-    if use_gpu:
-        device = "cuda:0"
     else:
         device = "cpu"
 

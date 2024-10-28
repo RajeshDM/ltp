@@ -41,8 +41,8 @@
             "--num-test-problems", "5" ,
             "--seed", "5",
             "--batch-size", "1",
-            "--epochs","100",
-            "--mode", "debug",
+            "--epochs","1",
+            "--mode", "train",
             "--timeout", "30",
             "--expid", "blocks",
             "--logdir", "cache/results",
@@ -51,7 +51,8 @@
             "--n-heads", "1",
             "--attention-dropout", "0.4" ,
             "--dropout", "0" ,
-            "--weight-decay", "0.00015"]
+            "--weight-decay", "0.00015",
+            "--num-seeds", "1"],
         }
     ]
 }

@@ -9,6 +9,9 @@ import warnings
 import time
 import argparse
 import pddlgym
+#from planning import PlanningTimeout, PlanningFailure, FD, \
+#    validate_strips_plan, IncrementalPlanner
+from ploi.planning import FD 
 
 from icecream import ic
 import tempfile
@@ -19,7 +22,13 @@ from pyperplan import grounding
 import matplotlib.pyplot as plt
 from ploi.datautils_ltp import _state_to_graph_ltp
 import ploi.constants as constants
+from ploi.datautils_ltp import state_to_graph_wrapper
+from ploi.datautils_ltp import (
+    graph_dataset_to_pyg_dataset,
+)
+from torch_geometric.loader import DataLoader as pyg_dataloader
 
+'''
 def run_planner_with_gnn(planner, domain_name, num_problems, timeout,current_problems_to_solve=None,ensemble=False,
                          train_planner=None,epoch_number=0,debug_level=constants.max_debug_level-1,
                          model=None):
@@ -107,6 +116,7 @@ def run_planner_with_gnn(planner, domain_name, num_problems, timeout,current_pro
                 print (action_loop.__dict__)
 
     return
+'''
 
 def get_action_object_scores_ensemble(state, action_space,pyperplan_task ,model,
                                           prev_actions=None,prev_state=None
@@ -206,7 +216,155 @@ def get_action_param_list_from_predictions(predictions,action_space, node_to_obj
 
     return action_param_tuples
 
-def _test_planner(planner, domain_name, num_problems, timeout,current_problems_to_solve=None,ensemble=False,train_planner=None,epoch_number=0,debug_level=constants.max_debug_level-1):
+def run_non_opt_planner(env,state,action_space,timeout,planner):
+    try:
+        plan, time_taken = planner(env.domain, state, action_space, timeout=timeout)
+        return plan, time_taken
+    except Exception as e:
+        print("\t\tPlanning failed with error: {}".format(e), flush=True)
+        return None,None
+
+def run_opt_planner(env,state,action_space,timeout,train_planner):
+    try:
+        opt_start_time = time.time()
+        opt_plan = train_planner(env.domain, state, timeout=timeout)
+        opt_time_taken = time.time() - opt_start_time
+    except Exception as e:
+        print("\t\tPlanning failed with error: {}".format(e), flush=True)
+        return None,None
+
+def compare_actions(action1,action2):
+    if action1.predicate != action2.predicate:
+        return False
+    if len(action1.variables) != len(action2.variables):
+        return False
+    for obj1,obj2 in zip(action1.variables,action2.variables):
+        if obj1 != obj2:
+            return False
+    return True
+
+def _create_planner(planner_name):
+    if planner_name == "fd-lama-first":
+        return FD(alias_flag="--alias lama-first")
+    if planner_name == "fd-opt-lmcut":
+        return FD(alias_flag="--alias seq-opt-lmcut")
+    raise ValueError(f"Uncrecognized planner name {planner_name}")
+
+def convert_state_and_run_model(model, state, action_space , device, groundings, 
+                                graph_metadata,cheating_input=None):
+    g_inp , _, node_to_objects = state_to_graph_wrapper(state,action_space,groundings,
+                                                    prev_actions=None,prev_state=None,
+                                                    graph_metadata=graph_metadata,
+                                                    curr_action=None,objects=None,goal_state=state.goal,
+                                                    cheating_input=cheating_input)
+
+    all_actions = [k for k, v in action_space.items()]
+    num_actions =len(all_actions)
+    num_non_action_nodes = len(node_to_objects) - (num_actions) 
+                                    
+    model_input = convert_graph_to_model_input_v2(g_inp,device)
+    #nfeat, edge_indices, efeat, u, a_scores, ao_scores = model_input
+    #results = model(nfeat, edge_indices, efeat,u,a_scores,ao_scores)
+    results = model(model_input)
+    action_param_list = []
+
+    for action_data in results : 
+        action_idx = int(action_data[1][0])
+        number_parameters = len(action_data[1]) - 1
+        decoded_action = node_to_objects[action_idx+num_non_action_nodes]
+        decoded_action_parameters = []
+        for i in range(number_parameters):
+            obj_idx = int(action_data[1][i+1])
+            obj = node_to_objects[obj_idx]
+            decoded_action_parameters.append(obj)
+
+        #ic (decoded_action)
+        #ic (type(decoded_action))
+        #ic (type(decoded_action_parameters[0]))
+        new_action = pddlgym.structs.Literal(decoded_action,decoded_action_parameters)
+        action_param_list.append(new_action)
+
+    return action_param_list 
+
+def convert_graph_to_model_input_v1(g_inp, device):
+    nfeat = torch.from_numpy(g_inp["nodes"]).float().to(device)
+    efeat = torch.from_numpy(g_inp["edges"]).float().to(device)
+    u     = torch.from_numpy(g_inp["globals"]).float().to(device)
+    senders = torch.from_numpy(g_inp["senders"]).long().to(device)
+    receivers = torch.from_numpy(g_inp["receivers"]).long().to(device)
+    edge_indices = torch.stack((senders, receivers))
+    a_scores = torch.from_numpy(g_inp["action_scores"]).long().to(device)
+    ao_scores = torch.from_numpy(g_inp["action_object_scores"]).long().to(device)
+    return nfeat, edge_indices, efeat, u, a_scores, ao_scores
+
+def convert_graph_to_model_input_v2(g_inp, device):
+    hetero_graphs = graph_dataset_to_pyg_dataset([g_inp])
+    hetero_dataset = pyg_dataloader(hetero_graphs, batch_size=1)
+    return next(iter(hetero_dataset)).to(device) 
+
+def discrepancy_get_best_action(feasible_action_list,action_loc,discrepancy_loc):
+    if action_loc == discrepancy_loc and len(feasible_action_list) > 1:
+        new_action = feasible_action_list[1]
+    else:
+        new_action = feasible_action_list[0]
+    return new_action
+
+def discrepancy_search(planner,env,state,action_space,ensemble,plan):
+    #ic (plan)
+    discrepancy_locations = np.arange(0,len(plan))
+    succesful_plans = []
+    action_selection_function = discrepancy_get_best_action
+    for discrepancy_loc in discrepancy_locations:
+        action_loc = 0
+        new_plan = []
+        plan_found = False
+        _, _ = env.reset()
+        while len(new_plan) < len(plan):
+            if action_loc < discrepancy_loc :
+                state = env.step(plan[action_loc])
+                state = state[0]
+                new_plan.append(plan[action_loc])
+                action_loc += 1
+                continue
+            feasible_action_list = planner._guidance.get_feasible_action_param_list(env,state,action_space,ensemble)
+            #if len(feasible_action_list) == [] :
+            if feasible_action_list[-1] == -1:
+                plan_found =False
+                #succesful_plans.append(None)
+                break
+
+            new_action = action_selection_function(feasible_action_list,action_loc,discrepancy_loc)
+
+            state = env.step(new_action[0])
+            state = state[0]
+            new_plan.append(new_action[0])
+            plan_found = True
+            for goal in state.goal.literals:
+                if goal not in list(state.literals):
+                    plan_found = False
+            action_loc += 1
+            if plan_found == True :
+                succesful_plans.append(new_plan)
+                break
+        #ic ("plan 1 done")
+        #ic (new_plan)
+        if plan_found != True:
+            succesful_plans.append(None)
+        else :
+            #ic (plan)
+            #ic (new_plan)
+            print ("Found new plan in discrepancy search")
+            break
+
+    return succesful_plans
+
+
+def _test_planner(planner, domain_name, num_problems, 
+                  timeout,current_problems_to_solve=None,
+                  ensemble=False,train_planner=None,
+                  epoch_number=0,debug_level=constants.max_debug_level-1,
+                  model=None,
+                  graph_metadata=None,):
     if debug_level < constants.max_debug_level :
         print("Running testing...")
     #ic (domain_name)
@@ -242,17 +400,6 @@ def _test_planner(planner, domain_name, num_problems, timeout,current_problems_t
     heuristic_planner = constants.heuristic_planner
     plot_aggregates = constants.plot_aggregates
     max_debug_level = constants.max_debug_level
-    '''
-    problem_number =0
-    number_problems_each_division = 10
-    max_plan_length_permitted = 60
-    opt_planner = False
-    non_opt_planner = False
-    external_monitor_bool = False
-    heuristic_planner = False
-    plot_aggregates = False
-    #heuristic_planner = False
-    '''
     correct_plan_lengths_system = 0
     correct_plan_lengths_planner = 0
     total_correct_time_system = 0
@@ -277,6 +424,9 @@ def _test_planner(planner, domain_name, num_problems, timeout,current_problems_t
     average_plan_len_planner = {i:[] for i in range(int(number_divisions))}
     average_plan_len_opt_planner = {i:[] for i in range(int(number_divisions))}
 
+    #TODO - ADD CHECK HERE ABOUT WHETHER TO USE GPU
+    device = "cuda:0"
+
     #average_success_time = {}
 
     if current_problems_to_solve == None :
@@ -284,18 +434,6 @@ def _test_planner(planner, domain_name, num_problems, timeout,current_problems_t
     else :
         problems_to_solve = current_problems_to_solve[:]
 
-    if ensemble :
-        models_specifications = []
-        ensemble_models_dir = '/Users/rajesh/Rajesh/Subjects/Research/affordance_learning/PLOI/model/ensemble_models'
-        ensemble_models = [ensemble_models_dir+"/" + f for f in listdir(ensemble_models_dir) if isfile(join(ensemble_models_dir, f)) and not f.startswith('.')]
-        for location in ensemble_models:
-            model_specification = 6,False,64,64,location
-            models_specifications.append(model_specification)
-        planner._guidance.load_ensemble_models(models_specifications, domain_name)
-
-    if constants.use_gpu == True :
-        planner._guidance._model = planner._guidance._model.cuda()
-    #exit()
     if len(problems_to_solve) == 0 :
         ic ("exiting from 0 oproblems to solve")
         exit()
@@ -317,13 +455,11 @@ def _test_planner(planner, domain_name, num_problems, timeout,current_problems_t
         #state = start_state
         state,_ = env.reset()
         #ic (type(state))
-        #ic ()
-        #ic(type(pddlgym.structs))
-        #ic (pddlgym.structs)
 
         state_2, _ = env_2.reset()
         #planning_time_start = time.time()
         action_space = env.action_space
+        action_space = action_space._action_predicate_to_operators
         plan = None
         new_plan = []
         j+= 1
@@ -336,7 +472,6 @@ def _test_planner(planner, domain_name, num_problems, timeout,current_problems_t
             non_opt_plan, non_opt_time = run_non_opt_planner(env,state,action_space._action_predicate_to_operators,timeout,planner)
         if opt_planner:
             opt_plan, opt_time_taken = run_opt_planner(env, state, action_space._action_predicate_to_operators, timeout, train_planner)
-
 
         #planner_time = time.time() - planning_time_start
         dom_file = tempfile.NamedTemporaryFile(delete=False).name
@@ -354,8 +489,6 @@ def _test_planner(planner, domain_name, num_problems, timeout,current_problems_t
 
         while True :
             single_action_time = time.time()
-            #decoded_action, decoded_action_parameters = planner._guidance.get_action_object_scores(state,action_space._action_predicate_to_operators)
-            #problem = parse_dom_problem_for_grounding(dom_file, prob_file)
             #pyperplan_task = grounding.ground(problem)
             groundings = env.action_space.all_ground_literals(state)
             prev_actions = None
@@ -365,13 +498,8 @@ def _test_planner(planner, domain_name, num_problems, timeout,current_problems_t
             #    prev_actions = [new_plan[-1],new_plan[-2]]
             prev_actions= None
             prev_graph = None
-            #action_param_list = planner._guidance.get_action_object_scores(state,action_space._action_predicate_to_operators,prev_actions)
-            #action_param_list = planner._guidance.get_action_object_scores(state,action_space._action_predicate_to_operators,None)
-            #action_param_list,prev_graph = planner._guidance.get_action_object_scores(state,action_space._action_predicate_to_operators,prev_actions,prev_graph)
-            #action_param_list,prev_graph = planner._guidance.get_action_object_scores(state,action_space._action_predicate_to_operators,prev_actions,prev_graph)
-            #action_param_list,prev_graph = planner._guidance.get_action_object_scores_ensemble(state,action_space._action_predicate_to_operators,pyperplan_task, prev_actions,prev_graph,ensemble=ensemble)
             inference_start_time = time.time()
-            action_param_list,prev_graph = planner._guidance.get_action_object_scores_ensemble(state,action_space._action_predicate_to_operators,groundings, prev_actions,prev_graph,ensemble=ensemble)
+            action_param_list = convert_state_and_run_model(model, state, action_space, device, groundings, graph_metadata)
             inference_end_time = time.time()
             #ic ("Inference time", inference_end_time-inference_start_time)
             groundings = list(groundings)
@@ -388,17 +516,11 @@ def _test_planner(planner, domain_name, num_problems, timeout,current_problems_t
             new_action = pddlgym.structs.Literal(decoded_action, decoded_action_parameters)
             '''
             action_selection_time = time.time()
-            for action_data in action_param_list :
-
+            #for action_data in action_param_list :
+            for new_action in action_param_list : 
                 in_grounding = False
-
                 #decoded_action, decoded_action_parameters = action_param_list[0][0],action_param_list[0][1]
-                decoded_action,decoded_action_parameters = action_data[0],action_data[1]
-                #ic (decoded_action)
-                #ic (type(decoded_action))
-                #ic (type(decoded_action_parameters[0]))
-                #exit()
-                new_action = pddlgym.structs.Literal(decoded_action,decoded_action_parameters)
+
                 #ic (decoded_action)
                 #ic (decoded_action_parameters)
 
@@ -684,3 +806,86 @@ def _test_planner(planner, domain_name, num_problems, timeout,current_problems_t
     #ic (average_success_time_opt_planner)
     return failed_plans_locations
 
+def _run_planner_with_gnn(domain_name, train_planner_name, test_planner_name,
+         num_seeds, num_train_problems, num_test_problems,
+         do_incremental_planning, timeout, debug_level,model_version,
+         graph_metadata,
+         model):
+    if debug_level < constants.max_debug_level :
+        print("Starting run:")
+        print("\tDomain: {}".format(domain_name))
+        print("\tTrain planner: {}".format(train_planner_name))
+        print("\tTest planner: {}".format(test_planner_name))
+        #print("\tDoing incremental planning? {}".format(do_incremental_planning))
+        print("\t{} seeds, {} train problems, {} test problems".format(
+                 num_seeds, num_train_problems, num_test_problems), flush=True)
+
+    #env = pddlgym.make("PDDLEnvUnity_1-v0")
+    #env = pddlgym.make("PDDLEnvSokoban-v0")
+    #obs, debug_info = env.reset()
+    #action = env.action_space.sample(obs)
+    #ic (action)
+    #exit()
+
+    planner = _create_planner(test_planner_name)
+    pddlgym_env_names = {"Blocks": "Manyblockssmallpiles",
+                         "Blocks_ipcc" : "Manyblocks_ipcc",
+                         "Blocks_ipcc_big" : "Manyblocks_ipcc_big",
+                         "Discrete_tamp" : "Discrete_tamp",
+                         "Discrete_tamp_3d" : "Discrete_tamp_3d",
+                         "Kuka" : "Kuka",
+                         "N_puzzle_ipcc" : "N_puzzle_ipcc",
+                         "Miconic": "Manymiconic",
+                         "Gripper": "Manygripper",
+                         "Gripper_ipcc": "Gripper_ipcc",
+                         "Snake" : "Snake",
+                         "Ferry": "Manyferry",
+                         "Ferry_ipcc": "Ferry_ipcc",
+                         "Logistics": "Manylogistics",
+                         "Hanoi": "Hanoi_operator_actions",
+                         "Unity_1" : "Unity_1",
+                         "Sokoban" : "Sokoban",
+                         "Sokoban_ipcc" : "Sokoban_ipcc"
+                         }
+
+    #assert domain_name in pddlgym_env_names
+    #domain_name = pddlgym_env_names[domain_name]
+    is_strips_domain = True
+    ensemble = False
+    #analyse_dataset(domain_name, num_train_problems)
+    train_planner = _create_planner(train_planner_name)
+    #train_planner =
+    #ic (domain_name)
+
+    for seed in range(num_seeds):
+        '''
+        if do_incremental_planning:
+            planner_to_test = IncrementalPlanner(
+                is_strips_domain=is_strips_domain,
+                base_planner=planner, search_guider=guider, seed=seed)
+            #ic ("doing incremental planning")
+            #exit()
+            #planner_to_test = planner
+        else:
+            planner_to_test = planner
+        '''
+
+        #failed_plans_locations = [51,52,148]
+        #failed_plans_locations = [9,20,90]
+        #failed_plans_locations = [10, 19, 30, 40, 54, 55, 56, 61, 67, 97, 99, 105, 110, 111, 113]
+        failed_plans_locations = _test_planner(planner, domain_name+"Test",
+                                               num_problems=num_test_problems, timeout=timeout
+                                               ,ensemble=ensemble,train_planner=train_planner,debug_level=debug_level,
+                                               graph_metadata=graph_metadata,model=model)
+
+    if debug_level < constants.max_debug_level :
+        print("\n\nFinished run\n\n\n\n")
+
+def run_planner_with_gnn_ltp(args, model, graph_metadata):
+    _run_planner_with_gnn(args.domain, args.train_planner_name,
+        args.eval_planner_name, args.num_seeds,
+        args.num_train_problems, args.num_test_problems,
+        args.do_incremental_planning, args.timeout, 
+        args.debug_level,args.model_version,
+        graph_metadata,
+        model)

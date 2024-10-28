@@ -441,8 +441,11 @@ def _get_precondition_satisfaction_position(curr_action, all_literals, all_objec
 
 
 def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent=None,args=None):
-    # Initializem the graph features
+    graph_metadata, action_space = _create_graph_structure_ltp(training_data,dom_file,domain_name,agent,args)
+    input_graphs, target_graphs = _create_graph_from_state_ltp(training_data,action_space,graph_metadata=graph_metadata,args=args) 
+    return input_graphs, target_graphs, graph_metadata
 
+def _create_graph_structure_ltp(training_data,dom_file=None,domain_name=None,agent=None,args=None):
     # First get the types and predicates
     #self._no_params_predicates = set()
     _unary_types = set()
@@ -452,11 +455,8 @@ def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent
     _ternary_predicates = set()
     _agent_object_properties = ["Conf"]
 
-    #action_space = training_data[4]
     action_space = training_data[3]
-    if action_space != None:
-        all_actions = [k for k, v in action_space.items()]
-    #ic (training_data)
+    all_actions = [k for k, v in action_space.items()]
 
     for states in training_data[0]:
         for state in states :
@@ -465,7 +465,6 @@ def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent
             for lit in set(state.literals) | set(state.goal.literals):
                 arity = lit.predicate.arity
                 assert arity == len(lit.variables)
-                #assert arity <= 2, "Arity > 2 predicates not yet supported"
                 if arity == 0:
                     _zero_size_predicate.add(lit.predicate)
                 elif arity == 1:
@@ -745,12 +744,6 @@ def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent
     _num_edge_features= len(_edge_feature_to_index)
     nef = _num_edge_features
 
-    # Process data
-    num_training_examples = len(training_data[0])
-
-    graphs_input = []
-    graphs_target = []
-
     graph_metadata = {
         "num_node_features": _num_node_features,
         "num_edge_features": _num_edge_features,
@@ -762,9 +755,15 @@ def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent
         "all_predicates" : _all_predicates
         #"model_version" : model_version
     }
-    if action_space != None:
-        all_actions = [k for k, v in action_space.items()]
-        num_actions =len(all_actions)
+    return graph_metadata, action_space
+
+def _create_graph_from_state_ltp(training_data,action_space=None,graph_metadata=None,args=None ):
+    # Process data
+    num_training_examples = len(training_data[0])
+    cheating_input = args.cheating_input
+
+    graphs_input = []
+    graphs_target = []
 
     for i in range(num_training_examples):
         #state = training_data[0][i]
@@ -793,22 +792,24 @@ def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent
                 goal_states = [state.goal] 
 
             for goal_state in goal_states :
-                graph_input, graph_target = state_to_graph_wrapper(state,action_space,grounding,
+                graph_input, graph_target, _ = state_to_graph_wrapper(state,action_space,grounding,
                                                                 prev_actions,prev_state,graph_metadata,
-                                                                num_actions,curr_action,objects,goal_state,
+                                                                curr_action,objects,goal_state,
                                                                 cheating_input)
                 all_graphs.append(graph_input)
                 graphs_input.append(graph_input)
                 graphs_target.append(graph_target)
 
     graphs_input,graphs_target = _expand_graph_to_max_size_features(graphs_input,graphs_target)
-    return graphs_input,graphs_target, graph_metadata
+    return graphs_input,graphs_target 
 
 def state_to_graph_wrapper(state,action_space,grounding,prev_actions,prev_state,graph_metadata,
-                           num_actions,curr_action,objects,goal_state,cheating_input=False):
+                           curr_action,objects,goal_state,cheating_input=False):
     graph_input,node_to_objects = _state_to_graph_ltp(state,action_space,grounding,prev_actions,prev_state,
                                                         graph_metadata=graph_metadata,goal_state=goal_state)
 
+    all_actions = [k for k, v in action_space.items()]
+    num_actions =len(all_actions)
     # Target nodes
     literals = [literal for literal in sorted(state.literals)]
     G = wrap_goal_literal
@@ -818,28 +819,35 @@ def state_to_graph_wrapper(state,action_space,grounding,prev_actions,prev_state,
     num_non_action_nodes = len(node_to_objects) - num_actions
     objects_to_node = {v: k for k, v in node_to_objects.items()}
     action_scores = np.zeros((1,num_actions))
-    action_index = objects_to_node[curr_action]
+    if curr_action is not None :
+        action_index = objects_to_node[curr_action]
+    else :
+        action_index = num_non_action_nodes
     action_scores[0][action_index - num_non_action_nodes] = 1
     max_number_action_parameters = 0
     for key,values in action_space.items():
         if len(values.params) > max_number_action_parameters:
             max_number_action_parameters = len(values.params)
     action_object_scores = np.zeros((max_number_action_parameters,num_objects))
-    for o,curr_object in enumerate(objects):
-        obj_index = objects_to_node[curr_object]
-        action_object_scores[o][obj_index] = 1
+
+    if objects is not None :
+        for o,curr_object in enumerate(objects):
+            obj_index = objects_to_node[curr_object]
+            action_object_scores[o][obj_index] = 1
     n_edge = graph_input['edges'].shape[0]
     max_number_action_parameters = np.array(max_number_action_parameters)
     n_edge = np.reshape(n_edge, [1]).astype(np.int64)
 
     graph_target = copy_info_from_graph(graph_input)
 
-    add_extra_info_in_graph(graph_input, action_scores, num_actions,action_object_scores, objects, 
-                            num_objects, max_number_action_parameters,action_index,cheating_input,objects_to_node)
-    add_extra_info_in_graph(graph_target, action_scores, num_actions,action_object_scores, objects,
+    if objects is not None :
+        add_extra_info_in_graph(graph_input, action_scores, num_actions,action_object_scores, objects, 
                                 num_objects, max_number_action_parameters,action_index,cheating_input,objects_to_node)
 
-    return graph_input, graph_target
+        add_extra_info_in_graph(graph_target, action_scores, num_actions,action_object_scores, objects,
+                                    num_objects, max_number_action_parameters,action_index,cheating_input,objects_to_node)
+
+    return graph_input, graph_target, node_to_objects
 
 
 def add_extra_info_in_graph(graph_input, action_scores, num_actions,action_object_scores,
