@@ -8,6 +8,9 @@ import torch
 import wandb
 #from torch.utils.data import DataLoader
 from torch_geometric.loader import DataLoader as pyg_dataloader
+from ploi.model_checkpointing import ModelManager 
+from pathlib import Path
+from typing import Dict, List, Optional, Set
 from torch_geometric.data import Data
 from ploi.argparsers import get_ploi_argument_parser
 from ploi.datautils import (
@@ -16,6 +19,11 @@ from ploi.datautils import (
     create_graph_dataset_hierarchical,
     GraphDictDataset,
 )
+import logging
+from datetime import datetime
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 from ploi.datautils_ltp import (
     _collect_training_data_ltp,
     _create_graph_dataset_ltp,
@@ -68,6 +76,85 @@ def set_seed(args):
         #random.seed(seed)
         torch.cuda.manual_seed_all(seed)
 
+def initialize_model(model_class, args, action_space):
+    return model_class(
+        n_features=args.num_node_features,
+        n_edge_features=args.num_edge_features,
+        n_global_features = args.num_global_features,
+        n_hidden=args.representation_size,
+        gnn_rounds= args.gnn_rounds,
+        num_decoder_layers = args.gru_layers ,
+        dropout = args.dropout,
+        attn_dropout = args.attention_dropout,
+        action_space= action_space,
+        batch_size=args.batch_size,
+        n_heads = args.n_heads,
+    )
+
+def run_tests(
+            curr_manager,
+            model_class,
+             train_env_name: str,
+             seed: int,
+             hyperparameters: Dict,
+             test_function,
+             metric: str = 'validation',
+             device: str = "cuda:0",
+             args = None,
+             action_space = None,
+             tested_epoch_numbers: Set[int] = None,
+             ) -> List[Dict]:
+    """
+    Run tests on best models for a specific configuration
+    """
+    
+    # Get best models for this configuration
+    best_models = curr_manager.load_best_models(
+        train_env_name=train_env_name,
+        seed=seed,
+        hyperparameters=hyperparameters,
+        metric=metric,
+        #device=device
+    )
+    
+    if not best_models:
+        logger.warning("No models found to test")
+        return []
+    
+    results = []
+    for model_info in best_models[::-1]:
+        # Create fresh model instance
+        #model = model_class()
+        curr_model = initialize_model(model_class, args, action_space)
+        
+        # Load model state
+        curr_model.load_state_dict(model_info['state_dict'])
+        curr_model.to(device)
+        curr_model.eval()
+
+        if model_info['epoch'] in tested_epoch_numbers:
+            print ("Already tested model from epoch ",model_info['epoch'])
+            continue 
+        else :
+            tested_epoch_numbers.add(model_info['epoch'])
+        
+        # Run tests
+        try:
+            #test_results = 
+            test_function(curr_model)
+            results.append({
+                'epoch': model_info['epoch'],
+                'validation_loss': model_info['validation_loss'],
+                'training_loss': model_info['training_loss'],
+                'combined_loss': model_info['combined_loss'],
+                #'test_results': test_results
+            })
+            logger.info(f"Successfully tested model from epoch {model_info['epoch']}")
+        except Exception as e:
+            logger.error(f"Error testing model from epoch {model_info['epoch']}: {e}")
+            continue
+    
+    return results
 
 if __name__ == "__main__":
 
@@ -435,37 +522,31 @@ if __name__ == "__main__":
                 json.dump(global_stats, fp, indent=4, sort_keys=True)
 
     elif args.method == 'ltp' :
-        ic ("training start")
-        #args.num_node_features = datasets["train"][0]["graph_input"]["nodes"].shape[-1]
-        #args.num_edge_features = datasets["train"][0]["graph_input"]["edges"].shape[-1]
-        #args.num_global_features = datasets["train"][0]["graph_input"]["globals"].shape[-1]
-
-        #args.decoder_layers = args.gru_layers
-
+        ic ("LTP start")
         representation_size = args.representation_size
         gnn_rounds = args.gnn_rounds
         n_heads = args.n_heads
+        action_space = training_data[3]
 
-        _model = GNN_GRU(
-            n_features=args.num_node_features,
-            n_edge_features=args.num_edge_features,
-            n_global_features = args.num_global_features,
-            n_hidden=args.representation_size,
-            gnn_rounds= args.gnn_rounds,
-            num_decoder_layers = args.gru_layers ,
-            dropout = args.dropout,
-            attn_dropout = args.attention_dropout,
-            action_space= training_data[3],
-            batch_size=args.batch_size,
-            n_heads = args.n_heads,
-        )
+        _model = initialize_model(GNN_GRU, args, action_space)
 
+        training_hyperparameters = {
+            'lr': args.lr,
+            'gnn_rounds': args.gnn_rounds,
+            'd' : args.num_train_problems,
+            'ad' : args.attention_dropout,
+            'wd' : args.dropout,
+            'heads' : args.n_heads,
+        }
 
         continue_training = args.continue_training
         train_env_name = args.domain
         save_model_prefix=os.path.join(
             model_dir, "bce10_model_seed{}".format(args.seed)),
         dataset_size = len(training_data[0])
+        save_folder = os.path.join(Path.cwd(),"models")
+        manager = ModelManager(save_folder, hyperparameters=training_hyperparameters,
+                               train_env_name=train_env_name,seed=args.seed)
 
         model_outfile, message_string,save_folder = get_filenames(dataset_size,train_env_name,
                                                         args.epochs,args.model_version,
@@ -473,7 +554,8 @@ if __name__ == "__main__":
                                                         save_model_prefix,args.seed,
                                                         args)
         
-        if args.mode == 'train' and (not os.path.exists(model_outfile) or continue_training == True):
+        #if args.mode == 'train' and (not os.path.exists(model_outfile) or continue_training == True):
+        if args.mode == 'train' :
             optimizer = torch.optim.Adam(_model.parameters(),lr=args.lr,weight_decay=args.weight_decay) 
             #optimizer = torch.optim.AdamW(self._model.parameters(), lr=5 * 1e-4,weight_decay=0.01)
             if continue_training == True and os.path.exists(model_outfile) :
@@ -487,7 +569,8 @@ if __name__ == "__main__":
             criterion = torch.nn.CrossEntropyLoss()
             #criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
             # Train model
-            model_dict = train_model_graphnetwork_ltp_batch(_model, 
+            #model_dict = train_model_graphnetwork_ltp_batch(_model, 
+            train_model_graphnetwork_ltp_batch(_model, 
                                     datasets,
                                     #dataloaders,
                                     criterion=criterion, optimizer=optimizer,
@@ -497,34 +580,36 @@ if __name__ == "__main__":
                                     final_epoch= args.epochs,
                                     train_env_name=train_env_name,seed=args.seed,
                                     message_string=message_string,
-                                    log_wandb=args.wandb,)
-            #torch.save(model_dict, model_outfile)
-            state_save = {'state_dict': model_dict,
-            'optimizer': optimizer.state_dict(),
-            'epochs': args.epochs}
-            torch.save(state_save,model_outfile)
-            _model_state = torch.load(model_outfile)
-            _model.load_state_dict(_model_state['state_dict'])
-            #self._model_state.load_state_dict(model_dict)
-            #self._model = self._model_state['state_dict']
+                                    log_wandb=args.wandb,
+                                    chpkt_manager=manager,)
             ic (args.attention_dropout)
             ic (args.dropout)
             ic (args.weight_decay)
             ic (args.n_heads)
             ic (args.lr)
-            print("Saved model to {}.".format(model_outfile))
-        else:
-            #ic (model_outfile)
-            if args.server == False:
-                _model_state = torch.load(model_outfile,map_location="cpu")
-            else :
-                _model_state = torch.load(model_outfile,map_location="cuda:0")
 
-            _model.load_state_dict(_model_state['state_dict'])
-            if args.use_gpu == True:
-                _model.to('cuda')
-            #print("Loaded saved model from {}.".format(model_outfile))
+        all_model_types = ['validation','training','combined']
+        def test_function(curr_model):
+            return run_planner_with_gnn_ltp(args, curr_model, graph_metadata)
 
-        #run_planner_with_gnn(_model, args.domain, args.num_test_problems, args.timeout)
-        _model.eval()
-        run_planner_with_gnn_ltp(args, _model, graph_metadata)
+        def run_tests_model_type(model_type, tested_epoch_numbers):
+            return run_tests(
+                curr_manager=manager,
+                model_class=GNN_GRU,
+                train_env_name=train_env_name,
+                seed=42,
+                hyperparameters=training_hyperparameters,
+                test_function=test_function,
+                metric=model_type,  # or 'training' or 'combined',
+                args=args,
+                action_space=action_space,
+                tested_epoch_numbers=tested_epoch_numbers,
+            )
+
+        tested_epoch_numbers = set()
+        for model_type in all_model_types : 
+            results = run_tests_model_type(model_type, tested_epoch_numbers)
+            for result in results:
+                print(f"\nResults for model from epoch {result['epoch']}:")
+                print(f"Validation Loss: {result['validation_loss']}")
+                #print(f"Test Results: {result['test_results']}")

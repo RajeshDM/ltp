@@ -509,7 +509,6 @@ def _create_graph_structure_ltp(training_data,dom_file=None,domain_name=None,age
                                 'UnsafePose','UnsafeApproach','UnsafeTraj']
     non_goal_str_predicates = [elem.lower() for elem in non_goal_str_predicates]
 
-
     for action in all_actions:
         _node_feature_to_index[action] = index
         index += 1

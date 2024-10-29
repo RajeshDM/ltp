@@ -120,7 +120,6 @@ class NodeUpdateAttn(nn.Module):
 
         return out
 
-
 # Define the hetero graph neural network
 class HeteroGNN(nn.Module):
     def __init__(self,n_features,n_edge_features,n_global_features,
@@ -182,8 +181,6 @@ class HeteroGNN(nn.Module):
             edge_features_node = F.relu(self.edge_update_network(src,dest,edge_features_node,global_edge_repeat))
             #node_data = F.relu(self.node_update(node_data,edge_features_node_index,edge_features_node,global_node_repeat))
             node_data = F.relu(self.node_attention_layer(node_data,edge_features_node,edge_features_node_index[1],global_node_repeat))
-            #node_data  = self.node_update(node_data)
-            #node_data = F.relu(self.node_update(node_data, edge_features_node_index, edge_features_node))
             global_data = F.relu(self.global_update(node_data,edge_index,edge_features_node,global_data,node_index))
         return node_data, edge_features_node,global_data
 
@@ -238,7 +235,7 @@ class GNN_GRU(nn.Module):
         self.training_mode = True
 
     #def forward(self,x,edge_idx,edge_attr,u,a_scores, ao_scores, batch=None):
-    def forward(self,data):
+    def forward(self,data, beam_search = False):
         start_time = time.time()
 
         graph_info = self.extract_graph_info_ltp(data)
@@ -258,7 +255,8 @@ class GNN_GRU(nn.Module):
         #self.training_mode = False
         self.training_mode = self.training
 
-        if self.training_mode: 
+        #if self.training_mode or number_graphs > 1 : 
+        if beam_search == False :
             return self.non_beam_decode(x,hidden_state,a_scores,ao_scores,n_node,
                                         n_parameters,n_objects,object_idxs,n_actions,action_idxs)
     

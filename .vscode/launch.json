@@ -53,6 +53,28 @@
             "--dropout", "0" ,
             "--weight-decay", "0.00015",
             "--num-seeds", "1"],
-        }
+        },
+
+        {
+            "name": "Test LTP FUll",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args" :["--domain", "ManyBlocks_ipcc_big",
+                "--all-problems",
+                "--lr", "0.0003",
+                "--n-heads", "1",
+                "--attention-dropout", "0.4",
+                "--dropout", "0",
+                "--weight-decay", "0.00015",
+                "--wandb", "False",
+                "--mode", "test",
+                "--num-test-problems", "1",
+                "--num-train-problems", "20",
+                "--epochs" , "80",
+            ],
+        },
     ]
 }

@@ -1,0 +1,14 @@
+{
+  "train_env_name": "Manyblocks_ipcc_big",
+  "seed": 10,
+  "hyperparameters": {
+    "lr": 0.0003,
+    "gnn_rounds": 7,
+    "d": 20,
+    "ad": 0.4,
+    "wd": 0.0,
+    "heads": 1
+  },
+  "config_hash": "5ed5ee970b",
+  "last_updated": "2024-10-29 00:45:55"
+}

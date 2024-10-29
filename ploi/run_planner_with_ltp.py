@@ -265,7 +265,7 @@ def convert_state_and_run_model(model, state, action_space , device, groundings,
     model_input = convert_graph_to_model_input_v2(g_inp,device)
     #nfeat, edge_indices, efeat, u, a_scores, ao_scores = model_input
     #results = model(nfeat, edge_indices, efeat,u,a_scores,ao_scores)
-    results = model(model_input)
+    results = model(model_input, beam_search=True)
     action_param_list = []
 
     for action_data in results : 
@@ -519,10 +519,6 @@ def _test_planner(planner, domain_name, num_problems,
             #for action_data in action_param_list :
             for new_action in action_param_list : 
                 in_grounding = False
-                #decoded_action, decoded_action_parameters = action_param_list[0][0],action_param_list[0][1]
-
-                #ic (decoded_action)
-                #ic (decoded_action_parameters)
 
                 #if new_action in groundings_list :
                 for grounded_action in groundings_list:
@@ -535,10 +531,9 @@ def _test_planner(planner, domain_name, num_problems,
                         if in_grounding_temp == True :
                             in_grounding = True
                             break
-                    #else :
-                    #    in_grounding = False
-                    #ic (grounded_action.__dict__)
-                    #ic (new_action.__dict__)
+
+                if number_impossible_actions > max_plan_length_permitted :
+                    break
 
                 if in_grounding == False :
                     number_impossible_actions += 1
@@ -725,16 +720,16 @@ def _test_planner(planner, domain_name, num_problems,
         #ic(succesful_plans)
         #exit()
         #correct_actions.append(correct_actions_current)
-        if debug_level < max_debug_level - 1:
-            for action_loop in new_plan :
-                print (action_loop.__dict__)
+        #if debug_level < max_debug_level - 1:
+        #    for action_loop in new_plan :
+        #        print (action_loop.__dict__)
     #ic(plan_lengths)
     # ic ("Plan success rate ", (1-failed_plans/num_problems))
     #ic("Plan success rate ", (1 - failed_plans / j))
     if debug_level <= max_debug_level :
         print ("Total Plan successes {}/{} , succes rate {}".format(j-failed_plans,j,1-(failed_plans/j) ))
 
-    if debug_level == max_debug_level -1 :
+    if True or debug_level == max_debug_level -1 :
         ic (debug_level,max_debug_level)
         ic (external_monitor_bool)
         #ic("Plan success rate ", correct_plans / j)

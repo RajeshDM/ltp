@@ -1,0 +1,118 @@
+{
+  "ca59b18f65": {
+    "validation": [
+      {
+        "loss": -2.7100895792245865,
+        "checkpoint": {
+          "epoch": 70,
+          "validation_loss": 2.7100895792245865,
+          "training_loss": 11.99486967921257,
+          "combined_loss": 14.704959258437157,
+          "save_path": "/home/rajesh/rajesh/ploi/full_repo/2_full_repo/ltp/models/Manyblocks_ipcc_big_seed10_ad0_4_d20_gnn_rounds7_heads1_lr3e-04_wd0e_00/model_e70_20241029_004122.pt",
+          "hyperparameters": {
+            "lr": 0.0003,
+            "gnn_rounds": 7,
+            "d": 20,
+            "ad": 0.4,
+            "wd": 0.0,
+            "heads": 1
+          }
+        }
+      },
+      {
+        "loss": -2.1178068220615387,
+        "checkpoint": {
+          "epoch": 50,
+          "validation_loss": 2.1178068220615387,
+          "training_loss": 18.752402797341347,
+          "combined_loss": 20.870209619402885,
+          "save_path": "/home/rajesh/rajesh/ploi/full_repo/2_full_repo/ltp/models/Manyblocks_ipcc_big_seed10_ad0_4_d20_gnn_rounds7_heads1_lr3e-04_wd0e_00/model_e50_20241029_004056.pt",
+          "hyperparameters": {
+            "lr": 0.0003,
+            "gnn_rounds": 7,
+            "d": 20,
+            "ad": 0.4,
+            "wd": 0.0,
+            "heads": 1
+          }
+        }
+      }
+    ],
+    "training": [
+      {
+        "loss": -18.752402797341347,
+        "checkpoint": {
+          "epoch": 50,
+          "validation_loss": 2.1178068220615387,
+          "training_loss": 18.752402797341347,
+          "combined_loss": 20.870209619402885,
+          "save_path": "/home/rajesh/rajesh/ploi/full_repo/2_full_repo/ltp/models/Manyblocks_ipcc_big_seed10_ad0_4_d20_gnn_rounds7_heads1_lr3e-04_wd0e_00/model_e50_20241029_004056.pt",
+          "hyperparameters": {
+            "lr": 0.0003,
+            "gnn_rounds": 7,
+            "d": 20,
+            "ad": 0.4,
+            "wd": 0.0,
+            "heads": 1
+          }
+        }
+      },
+      {
+        "loss": -11.99486967921257,
+        "checkpoint": {
+          "epoch": 70,
+          "validation_loss": 2.7100895792245865,
+          "training_loss": 11.99486967921257,
+          "combined_loss": 14.704959258437157,
+          "save_path": "/home/rajesh/rajesh/ploi/full_repo/2_full_repo/ltp/models/Manyblocks_ipcc_big_seed10_ad0_4_d20_gnn_rounds7_heads1_lr3e-04_wd0e_00/model_e70_20241029_004122.pt",
+          "hyperparameters": {
+            "lr": 0.0003,
+            "gnn_rounds": 7,
+            "d": 20,
+            "ad": 0.4,
+            "wd": 0.0,
+            "heads": 1
+          }
+        }
+      }
+    ],
+    "combined": [
+      {
+        "loss": -20.870209619402885,
+        "checkpoint": {
+          "epoch": 50,
+          "validation_loss": 2.1178068220615387,
+          "training_loss": 18.752402797341347,
+          "combined_loss": 20.870209619402885,
+          "save_path": "/home/rajesh/rajesh/ploi/full_repo/2_full_repo/ltp/models/Manyblocks_ipcc_big_seed10_ad0_4_d20_gnn_rounds7_heads1_lr3e-04_wd0e_00/model_e50_20241029_004056.pt",
+          "hyperparameters": {
+            "lr": 0.0003,
+            "gnn_rounds": 7,
+            "d": 20,
+            "ad": 0.4,
+            "wd": 0.0,
+            "heads": 1
+          }
+        }
+      },
+      {
+        "loss": -14.704959258437157,
+        "checkpoint": {
+          "epoch": 70,
+          "validation_loss": 2.7100895792245865,
+          "training_loss": 11.99486967921257,
+          "combined_loss": 14.704959258437157,
+          "save_path": "/home/rajesh/rajesh/ploi/full_repo/2_full_repo/ltp/models/Manyblocks_ipcc_big_seed10_ad0_4_d20_gnn_rounds7_heads1_lr3e-04_wd0e_00/model_e70_20241029_004122.pt",
+          "hyperparameters": {
+            "lr": 0.0003,
+            "gnn_rounds": 7,
+            "d": 20,
+            "ad": 0.4,
+            "wd": 0.0,
+            "heads": 1
+          }
+        }
+      }
+    ]
+  }
+}

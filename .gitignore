@@ -141,3 +141,6 @@ model/
 
 #editor files
 .vscode/
+
+#Model files
+*.pt

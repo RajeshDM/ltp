@@ -1,12 +1,13 @@
 #!/bin/bash
 
-heads=(1 4)
-lrs=(0.0003 0.0005)
-decays=(0.0001 0.00015 0.0002)
-attn_drops=(0 0.4 0.7)
-other_drops=(0 0.4 0.7)
-gnn_rounds=(5 7 9 11 13 15)
+heads=(1)
+lrs=(0.0003)
+decays=(0.00015)
+attn_drops=(0.4)
+other_drops=(0)
 expid="blocks"
+gnn_rounds=(5 7 9)
+timestamp=$(date +"%Y_%m_%d_%H_%M")
 
 for head in ${heads[@]};
 do

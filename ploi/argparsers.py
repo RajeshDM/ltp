@@ -65,7 +65,7 @@ def get_ploi_argument_parser():
         help="Number of train problems"
     )
     parser.add_argument(
-        "--num-test-problems", type=int, default=5, help="Number of test problems"
+        "--num-test-problems", type=int, default=constants.NUM_TEST_PROBLEMS, help="Number of test problems"
     )
     parser.add_argument(
         "--do-incremental-planning",
@@ -271,6 +271,4 @@ def get_ploi_argument_parser():
         type=str2bool,
         default=False,
         help="Whether to log on Wandb or not")
-
-
     return parser
