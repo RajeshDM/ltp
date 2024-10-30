@@ -240,6 +240,7 @@ def run_opt_planner(env,state,action_space,timeout,train_planner):
         opt_start_time = time.time()
         opt_plan = train_planner(env.domain, state, timeout=timeout)
         opt_time_taken = time.time() - opt_start_time
+        return opt_plan, opt_time_taken
     except Exception as e:
         print("\t\tPlanning failed with error: {}".format(e), flush=True)
         return None,None
@@ -455,10 +456,12 @@ def _test_planner(planner, domain_name, num_problems,
     #for problem_idx in range(1):
         curr_plan_states = []
         #for problem_idx in range(num_problems):
+        '''
         if debug_level < max_debug_level :
             print  ("#############################################")
             print("   Testing problem {} of {}, scene {}".format(problem_idx+1+problem_number, num_problems+problem_number,env.problems[problem_idx+problem_number].problem_fname),
                   flush=True)
+        '''
         env.fix_problem_index(problem_idx+problem_number)
         env_2.fix_problem_index(problem_idx+problem_number)
         #ic (env.problems[problem_idx+problem_number].problem_fname)

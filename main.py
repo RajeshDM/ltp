@@ -36,6 +36,7 @@ from ploi.run_planner_with_ltp import (
     run_planner_with_gnn_ltp,
     _create_planner,
 )
+from ploi.run_planner_with_ltp_2 import PlannerTester, PlannerConfig, PlannerType
 from ploi.guiders import HierarchicalGuidance, PLOIGuidance, SceneGraphGuidance
 from ploi.modelutils import (
     GraphNetwork,
@@ -44,16 +45,14 @@ from ploi.modelutils_ltp import (
     GraphNetworkLtp,
     GNN_GRU,
 )
-from ploi.planning import FD, IncrementalPlanner
+from ploi.planning import IncrementalPlanner
 from ploi.planning.incremental_hierarchical_planner import (
     IncrementalHierarchicalPlanner,
 )
 from ploi.planning.scenegraph_planner import SceneGraphPlanner
 from ploi.traineval import (
     test_planner,
-    #test_planner_ltp,
     train_model_graphnetwork,
-    train_model_graphnetwork_ltp,
     train_model_graphnetwork_ltp_batch,
     train_model_hierarchical,
 )
@@ -194,6 +193,7 @@ if __name__ == "__main__":
                 "dropout" : args.dropout,
                 "augmentation" : args.data_augmentation,
                 "weight_decay" : args.weight_decay,
+                "monitor" : args.monitor,
             })
 
     mode = args.mode
@@ -590,11 +590,25 @@ if __name__ == "__main__":
         if args.mode != 'test' and args.mode != 'train_test' :
            exit() 
 
+        config = PlannerConfig(
+            planner_types=[PlannerType.LEARNED_MODEL],
+            domain_name="Blocks",
+            num_problems=args.num_test_problems,
+            timeout=30.0,
+            enable_state_monitor=args.monitor,  # Enable monitoring
+            max_plan_length=60,
+        )
+        tester = PlannerTester(config)
+
         all_model_types = ['validation','training','combined']
+        #all_model_types = ['combined']
         def test_function(curr_model):
             #return run_planner_with_gnn_ltp(args, curr_model, graph_metadata)
             return run_planner_with_gnn_ltp(test_planner, train_planner, 
                                             args, curr_model, graph_metadata)
+
+        def test_function_v2(curr_model):
+            return tester.test_planners(model=curr_model, graph_metadata=graph_metadata)
 
         def run_tests_model_type(model_type, tested_epoch_numbers):
             return run_tests(
@@ -604,6 +618,7 @@ if __name__ == "__main__":
                 seed=42,
                 hyperparameters=training_hyperparameters,
                 test_function=test_function,
+                #test_function=test_function_v2,
                 metric=model_type,  # or 'training' or 'combined',
                 args=args,
                 action_space=action_space,
@@ -622,6 +637,6 @@ if __name__ == "__main__":
                 "model_type": model_type,
                 "impossible_actions": metrics.number_impossible_actions,
                 "correct_plan_lengths_system": metrics.correct_plan_lengths_system,
-                "correct_plan_lengths_planner": metrics.correct_plan_lengths_planner,
+                #"correct_plan_lengths_planner": metrics.correct_plan_lengths_planner,
                 "time_taken_system": metrics.time_taken_system
                 })

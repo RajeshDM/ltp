@@ -204,6 +204,13 @@ def get_ploi_argument_parser():
     )
 
     parser.add_argument(
+        "--monitor",
+        type=str2bool,
+        default=constants.EXTERNAL_MONITOR_BOOL,
+        help="Using pytorch geometric or not",
+    )
+
+    parser.add_argument(
         "--cheating-input",
         type=str2bool,
         default=constants.CHEATING_INPUT,

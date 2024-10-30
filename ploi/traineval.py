@@ -43,6 +43,126 @@ def save_model_graphnetwork(model, save_folder, epoch, optimizer,train_env_name,
 
     return best_seen_running_validation_loss,best_validation_loss_epoch, best_seen_model_weights
 
+def train_model_graphnetwork_ltp_batch(model, datasets,
+                                 #dataloaders,
+                                   criterion, optimizer, use_gpu, print_iter=10, 
+                save_iter=100, save_folder='/tmp',starting_epoch=0, final_epoch=1000, global_criterion=None,
+                return_last_model_weights=True,dagger_train=False,train_env_name=None,seed=None,
+                message_string='',
+                log_wandb=False,
+                chpkt_manager=None):
+
+    since = time.time()
+    min_save_epoch = 0
+    print_iter = 10
+    save_iter = print_iter
+    if use_gpu:
+        model = model.cuda()
+        device = "cuda:0"
+        if criterion is not None:
+            criterion = criterion.cuda()
+    else:
+        device = "cpu"
+
+    epochs = []
+    train_loss_values = []
+    val_loss_values = []
+    time_taken_for_save_iter = time.time()
+    for epoch in range(starting_epoch,final_epoch+1):
+        if epoch % print_iter == 0:
+            print('Epoch {}/{}'.format(epoch, final_epoch), flush=True)
+            print('-' * 10, flush=True)
+        # Each epoch has a training and validation phase
+        running_num_samples = 0
+        if epoch % print_iter == 0 :
+            phases = ['train','val']
+        else:
+            phases = ['train']
+
+        running_loss = {'train':0.0,'val':0.0}
+
+        for phase in phases:
+            if phase == 'train':
+                # Set model to training mode
+                model.train()  
+            else:
+                # Set model to evaluate mode
+                model.eval()
+
+            for i,batch_data in enumerate(datasets[phase]):
+                optimizer.zero_grad()
+                batch_data = batch_data.to(device)
+                action_scores, action_object_scores = model(batch_data, beam_search=False)
+                tgt_action_scores = batch_data['target_action_scores'].x
+                tgt_action_object_scores = batch_data['target_action_object_scores'].x
+                tgt_params = batch_data['target_n_parameters'].x
+                loss = 0.
+                curr_param_counter = 0
+                required_action_object_scores = []
+                total_number_params = 0
+
+                for idx,n_params in enumerate(tgt_params):
+                    #ic (output['action_object_scores'][0:2])
+                    #ic (curr_param_counter)
+                    n_params = int(n_params)
+                    #ic (n_params)
+                    for correct_index in range(curr_param_counter,curr_param_counter+n_params):
+                        required_action_object_scores.append(correct_index)
+                    #loss += criterion(output['action_object_scores'][curr_param_counter:curr_param_counter+n_params], targets['action_object_scores'][curr_param_counter:curr_param_counter+n_params])
+                    #TODO ADD an assert here to check if any of the elements in target are all zeroes
+                    #ic (output['action_object_scores'][curr_param_counter:curr_param_counter+n_params])
+                    #ic (targets['action_object_scores'][curr_param_counter:curr_param_counter+n_params])
+                    #curr_param_counter += 2
+                    curr_param_counter += model.max_number_action_parameters
+                    total_number_params += n_params
+
+                required_action_object_scores = torch.tensor(required_action_object_scores)
+                target_indices = tgt_action_scores.argmax(dim=1)
+                target_indices_2 = tgt_action_object_scores[required_action_object_scores].argmax(dim=1)
+                tgt_action_scores = tgt_action_scores.squeeze(0)
+
+                m = torch.nn.ConstantPad2d((0,tgt_action_object_scores.shape[1]-action_object_scores.shape[1]\
+                                            ,0,0),0)
+                
+                action_object_scores = m(action_object_scores)
+                #loss += criterion(output['action_object_scores'][required_action_object_scores],targets['action_object_scores'][required_action_object_scores])/division_coeff
+                loss += criterion(action_scores,target_indices)
+                loss += criterion(action_object_scores[required_action_object_scores],target_indices_2)
+
+                if phase == 'train':
+                    backward_time = time.time()
+                    loss.backward()
+                    #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                    optimizer.step()
+                    #ic ("backprop time",time.time()-backward_time)
+
+                # statistics
+                running_loss[phase] += loss.item()
+                running_num_samples += 1
+            if log_wandb:
+                wandb.log({f"loss_{phase}": running_loss[phase]})
+
+        if epoch % print_iter == 0:
+            print("running_loss:", running_loss, flush=True)
+            epochs.append(epoch)
+            train_loss_values.append(running_loss['train'])
+            val_loss_values.append(running_loss['val'])
+    
+        if epoch % save_iter == 0 and epoch >= min_save_epoch:
+            chpkt_manager.save_checkpoint(
+                model=model,
+                optimizer=optimizer,
+                epoch=epoch,
+                train_env_name=train_env_name,
+                seed=42,
+                losses={'train': running_loss["train"], 'val': running_loss["val"]},
+            )
+            print ("Time taken for {} epochs : {}".format(save_iter, time.time() - time_taken_for_save_iter))
+            time_taken_for_save_iter = time.time()
+
+    time_elapsed = time.time() - since
+    print('Training complete in {:.0f}m {:.0f}s'.format(
+        time_elapsed // 60, time_elapsed % 60), flush=True)
 
 def train_model_graphnetwork(
     model,
@@ -146,386 +266,6 @@ def train_model_graphnetwork(
 
     return best_seen_model_weights
 
-def train_model_graphnetwork_ltp_batch(model, datasets,
-                                 #dataloaders,
-                                   criterion, optimizer, use_gpu, print_iter=10, 
-                save_iter=100, save_folder='/tmp',starting_epoch=0, final_epoch=1000, global_criterion=None,
-                return_last_model_weights=True,dagger_train=False,train_env_name=None,seed=None,
-                message_string='',
-                log_wandb=False,
-                chpkt_manager=None):
-
-    # Initialize the checkpoint manager with max 2 models per metric and max 6 total
-    #checkpoint_manager = ModelCheckpointManager(max_checkpoints_per_metric=2, max_total_checkpoints=6)
-
-    since = time.time()
-    min_save_epoch = 0
-    print_iter = 10
-    save_iter = print_iter
-    best_seen_model_weights = None # as measured on validation loss
-    best_seen_running_validation_loss = np.inf
-    best_validation_loss_epoch = 0
-    if use_gpu:
-        model = model.cuda()
-        device = "cuda:0"
-        if criterion is not None:
-            criterion = criterion.cuda()
-    else:
-        device = "cpu"
-
-    epochs = []
-    train_loss_values = []
-    val_loss_values = []
-    time_taken_for_save_iter = time.time()
-    for epoch in range(starting_epoch,final_epoch+1):
-        if epoch % print_iter == 0:
-            print('Epoch {}/{}'.format(epoch, final_epoch), flush=True)
-            print('-' * 10, flush=True)
-        # Each epoch has a training and validation phase
-        running_num_samples = 0
-        if epoch % print_iter == 0 :
-            phases = ['train','val']
-            #phases = ['train']
-        else:
-            phases = ['train']
-
-        running_loss = {'train':0.0,'val':0.0}
-
-        for phase in phases:
-            if phase == 'train':
-                # Set model to training mode
-                model.train()  
-            else:
-                # Set model to evaluate mode
-                model.eval()
-
-            for i,batch_data in enumerate(datasets[phase]):
-                optimizer.zero_grad()
-                batch_data = batch_data.to(device)
-                action_scores, action_object_scores = model(batch_data, beam_search=False)
-                tgt_action_scores = batch_data['target_action_scores'].x
-                tgt_action_object_scores = batch_data['target_action_object_scores'].x
-                tgt_params = batch_data['target_n_parameters'].x
-                loss = 0.
-                curr_param_counter = 0
-                required_action_object_scores = []
-                total_number_params = 0
-
-                for idx,n_params in enumerate(tgt_params):
-                    #ic (output['action_object_scores'][0:2])
-                    #ic (curr_param_counter)
-                    n_params = int(n_params)
-                    #ic (n_params)
-                    for correct_index in range(curr_param_counter,curr_param_counter+n_params):
-                        required_action_object_scores.append(correct_index)
-                    #loss += criterion(output['action_object_scores'][curr_param_counter:curr_param_counter+n_params], targets['action_object_scores'][curr_param_counter:curr_param_counter+n_params])
-                    #TODO ADD an assert here to check if any of the elements in target are all zeroes
-                    #ic (output['action_object_scores'][curr_param_counter:curr_param_counter+n_params])
-                    #ic (targets['action_object_scores'][curr_param_counter:curr_param_counter+n_params])
-                    #curr_param_counter += 2
-                    curr_param_counter += model.max_number_action_parameters
-                    total_number_params += n_params
-                #division_coeff = curr_param_counter /total_number_params
-                #ic (division_coeff)
-                required_action_object_scores = torch.tensor(required_action_object_scores)
-                target_indices = tgt_action_scores.argmax(dim=1)
-                target_indices_2 = tgt_action_object_scores[required_action_object_scores].argmax(dim=1)
-                tgt_action_scores = tgt_action_scores.squeeze(0)
-
-                #ic (required_action_object_scores)
-
-                m = torch.nn.ConstantPad2d((0,tgt_action_object_scores.shape[1]-action_object_scores.shape[1]\
-                                            ,0,0),0)
-                
-                action_object_scores = m(action_object_scores)
-                #loss += criterion(output['action_object_scores'][required_action_object_scores],targets['action_object_scores'][required_action_object_scores])/division_coeff
-                loss += criterion(action_scores,target_indices)
-                loss += criterion(action_object_scores[required_action_object_scores],target_indices_2)
-
-                if phase == 'train':
-                    backward_time = time.time()
-                    loss.backward()
-                    #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                    optimizer.step()
-                    #ic ("backprop time",time.time()-backward_time)
-
-                # statistics
-                running_loss[phase] += loss.item()
-                running_num_samples += 1
-            if log_wandb:
-                wandb.log({f"loss_{phase}": running_loss[phase]})
-
-        if epoch % print_iter == 0:
-            print("running_loss:", running_loss, flush=True)
-            #ic (phase)
-            #ic (action_scores,target_indices)
-            #ic (action_object_scores, target_indices_2, required_action_object_scores)
-            #ic (loss)
-            #exit()
-            epochs.append(epoch)
-            train_loss_values.append(running_loss['train'])
-            val_loss_values.append(running_loss['val'])
-    
-        if epoch % save_iter == 0 and epoch >= min_save_epoch:
-            chpkt_manager.save_checkpoint(
-                model=model,
-                optimizer=optimizer,
-                epoch=epoch,
-                train_env_name=train_env_name,
-                seed=42,
-                losses={'train': running_loss["train"], 'val': running_loss["val"]},
-            )
-            print ("Time taken for {} epochs : {}".format(save_iter, time.time() - time_taken_for_save_iter))
-            time_taken_for_save_iter = time.time()
-
-    #plt.plot(epochs, train_loss_values, label="Training")
-    #plt.plot(epochs, val_loss_values, label="Val")
-    #plt.legend()
-    time_elapsed = time.time() - since
-    print('Training complete in {:.0f}m {:.0f}s'.format(
-        time_elapsed // 60, time_elapsed % 60), flush=True)
-    #return best_seen_model_weights
-    #return manager
-
-def train_model_graphnetwork_ltp(model, datasets,
-                                 #dataloaders,
-                                   criterion, optimizer, use_gpu, print_iter=10, 
-                save_iter=100, save_folder='/tmp',starting_epoch=0, final_epoch=1000, global_criterion=None,
-                return_last_model_weights=True,dagger_train=False,train_env_name=None,seed=None,
-                message_string=''):
-    """Optimize the model and save checkpoints
-    """
-    since = time.time()
-    save_iter = 10
-    min_save_epoch = 0
-    print_iter = 10
-    #num_epochs = 160
-    #torch.manual_seed(seed)
-
-    best_seen_model_weights = None # as measured on validation loss
-    best_seen_running_validation_loss = np.inf
-    best_validation_loss_epoch = 0
-
-    if use_gpu:
-        model = model.cuda()
-        if criterion is not None:
-            criterion = criterion.cuda()
-        if global_criterion is not None:
-            global_criterion = global_criterion.cuda()
-
-    if use_gpu:
-        device = "cuda:0"
-    else:
-        device = "cpu"
-
-    #epochs = [i for i in range(num_epochs)]
-    epochs = []
-    train_loss_values = []
-    val_loss_values = []
-
-    time_taken_for_save_iter = time.time()
-    #for name, param in model.named_parameters():
-    #    ic(name, param)
-
-    for epoch in range(starting_epoch,final_epoch):
-        if epoch % print_iter == 0:
-            print('Epoch {}/{}'.format(epoch, final_epoch - 1), flush=True)
-            print('-' * 10, flush=True)
-        # Each epoch has a training and validation phase
-        #if epoch % print_iter == 0 and dagger_train == False:
-        running_num_samples = 0
-        if epoch % print_iter == 0 :
-            phases = ['train','val']
-        else:
-            phases = ['train']
-        
-        running_loss = {'train':0.0,'val':0.0}
-
-        for phase in phases:
-            if phase == 'train':
-                model.train()  # Set model to training mode
-            else:
-                #model.train(False)  # Set model to evaluate mode
-                model.eval()
-
-            for data in datasets[phase]:
-                optimizer.zero_grad()
-                #g_inp = trainset[idx]["graph_input"]
-                #g_tgt = trainset[idx]["graph_target"]
-                g_inp = data['graph_input']
-                g_tgt = data['graph_target']
-                nfeat = torch.from_numpy(g_inp["nodes"]).float().to(device)
-                efeat = torch.from_numpy(g_inp["edges"]).float().to(device)
-                u     = torch.from_numpy(g_inp["globals"]).float().to(device)
-                senders = torch.from_numpy(g_inp["senders"]).long().to(device)
-                receivers = torch.from_numpy(g_inp["receivers"]).long().to(device)
-                tgt_action_scores = torch.from_numpy(g_tgt["action_scores"]).float().to(device)
-                tgt_action_object_scores = torch.from_numpy(g_tgt["action_object_scores"]).float().to(device)
-                tgt_params = torch.from_numpy(g_tgt["n_parameters"]).float().to(device)
-                edge_indices = torch.stack((senders, receivers))
-                a_scores = torch.from_numpy(g_inp["action_scores"]).long().to(device)
-                ao_scores = torch.from_numpy(g_inp["action_object_scores"]).long().to(device)
-                action_scores, action_object_scores = model(nfeat, edge_indices, efeat,u,a_scores,ao_scores)
-                #loss = criterion(preds, tgt)
-                #running_loss += loss.item()
-                #running_num_samples += 1
-                #loss.backward()
-                #optimizer.step()
-                #optimizer.zero_grad()
-                #output = outputs[0][0]
-                #ic (preds)
-                #output = preds[0]
-                loss = 0.
-
-                #ic (output['edges'].shape)
-                #ic (output['action_object_scores'].shape)
-                #ic (targets['action_object_scores'].shape)
-
-                if criterion is not None:
-                    #ic (type(output['action_scores']))
-                    #ic (output)
-                    #ic (targets)
-                    #ic (targets['action_scores'].shape)
-                    #ic (targets['action_scores'])
-                    #loss += criterion(output['edges'], targets['edges'])
-                    #loss += criterion(output['globals'], targets['globals'])
-                    #loss += criterion(output['action_object_scores'], targets['action_object_scores'])
-                    #best_target_action_locations = get_best_target_locations(outputs['action_scores'],targets['action_scores'])
-                    #extract_action_scores = extract_scores_from_location(best_target_action_locations,output['action_scores'],targets['action_scores'])
-                    #extracted_action_scores,extracted_action_target_scores = get_best_target_based_scores(output['action_scores'],targets['action_scores'])
-                    #loss += criterion(extracted_action_scores,extracted_action_target_scores)
-                    #extracted_object_scores,extracted_object_target_scores = get_best_target_based_scores(output['action_object_scores'],targets['action_object_scores'])
-                    #loss += criterion(extracted_object_scores,extracted_object_target_scores)
-                    #loss += criterion(output['action_object_scores'], targets['action_object_scores'])
-                    #a = torch.tensor([1,2,3])
-                    #ic (torch.index_select(output['action_object_scores'],0,a))
-                    #ic (output['action_object_scores'])
-                    #ic (output['action_object_scores'][a])
-
-                    #exit()
-                    #loss += criterion(output['action_scores'], targets['action_scores'])
-                    curr_param_counter = 0
-                    required_action_object_scores = []
-                    total_number_params = 0
-                    #ic (output['action_object_scores'])
-                    #ic (targets['action_object_scores'])
-                    #for n_params in tgt['n_parameters']:
-                    for idx,n_params in enumerate(tgt_params):
-                        #ic (output['action_object_scores'][0:2])
-                        #ic (curr_param_counter)
-                        n_params = int(n_params.item())
-                        #ic (n_params)
-                        for correct_index in range(curr_param_counter,curr_param_counter+n_params):
-                            required_action_object_scores.append(correct_index)
-                        #loss += criterion(output['action_object_scores'][curr_param_counter:curr_param_counter+n_params], targets['action_object_scores'][curr_param_counter:curr_param_counter+n_params])
-                        #TODO ADD an assert here to check if any of the elements in target are all zeroes
-                        #ic (output['action_object_scores'][curr_param_counter:curr_param_counter+n_params])
-                        #ic (targets['action_object_scores'][curr_param_counter:curr_param_counter+n_params])
-                        #curr_param_counter += 2
-                        curr_param_counter += model.max_number_action_parameters
-                        total_number_params += n_params
-                    #division_coeff = curr_param_counter /total_number_params
-                    #ic (division_coeff)
-                    required_action_object_scores = torch.tensor(required_action_object_scores)
-                    #loss += criterion(output['action_object_scores'][required_action_object_scores],targets['action_object_scores'][required_action_object_scores])/division_coeff
-                    #loss += criterion(output['action_object_scores'][required_action_object_scores],targets['action_object_scores'][required_action_object_scores])#/division_coeff
-                    #exit()
-
-                    #target_indices = tgt['action_scores'].argmax(dim=1)
-                    #target_indices_2 = tgt['action_object_scores'][required_action_object_scores].argmax(dim=1)
-                    target_indices = tgt_action_scores.argmax(dim=1)
-                    target_indices_2 = tgt_action_object_scores[required_action_object_scores].argmax(dim=1)
-                    #ic (targets['action_scores'])
-                    #ic (target_indices)
-                    #ic (target_indices_2)
-                    #ic (output['action_scores'])
-                    #ic (targets['action_object_scores'][required_action_object_scores])
-                    #ic (output['action_object_scores'][required_action_object_scores])
-                    #loss += criterion(output['action_scores'], target_indices)
-                    #loss += criterion(output['action_object_scores'][required_action_object_scores],target_indices_2)
-
-                    tgt_action_scores = tgt_action_scores.squeeze(0)
-
-                    #ic (required_action_object_scores)
-
-                    m = torch.nn.ConstantPad2d((0,tgt_action_object_scores.shape[1]-action_object_scores.shape[1]\
-                                                ,0,0),0)
-                    
-                    action_object_scores = m(action_object_scores)
-
-                    #ic (action_object_scores[required_action_object_scores].shape)
-                    #ic (tgt_action_object_scores[required_action_object_scores].shape)
-                    #tgt_action_object_scores = tgt_action_object_scores.squeeze(0)
-                    #ic (tgt_action_object_scores[required_action_object_scores].shape)
-                    #ic (tgt_action_object_scores)
-
-                    #ic (action_scores)
-                    #ic (action_object_scores)
-                    #loss += criterion(action_scores,tgt_action_scores)
-                    loss += criterion(action_scores.unsqueeze(0),target_indices)
-                    loss += criterion(action_object_scores[required_action_object_scores],target_indices_2)
-                    #loss += criterion(action_object_scores[required_action_object_scores],tgt_action_object_scores[required_action_object_scores])
-                    #ic (loss)
-
-                    #ic (loss)
-                    #exit()
-
-
-                if phase == 'train':
-                    backward_time = time.time()
-                    loss.backward()
-                    optimizer.step()
-                    #ic ("backprop time",time.time()-backward_time)
-
-                # statistics
-                running_loss[phase] += loss.item()
-                running_num_samples += 1
-                #ic (loss.item())
-                #current_running_loss = loss.item()
-
-        if epoch % print_iter == 0:
-            print("running_loss:", running_loss, flush=True)
-            #exit()
-            epochs.append(epoch)
-            train_loss_values.append(running_loss['train'])
-            val_loss_values.append(running_loss['val'])
-            #for name, param in model.named_parameters():
-            #    ic(name, param)
-            #exit()
-
-        if epoch % save_iter == 0 and epoch >= min_save_epoch:
-
-            save_model_graphnetwork(model, save_folder, epoch, optimizer,train_env_name,seed,message_string,
-                                    best_seen_running_validation_loss,running_loss,best_seen_model_weights,best_validation_loss_epoch)
-            #save_path = os.path.join(save_folder,str(train_env_name)+ "_seed"+ str(seed) + "_model" + str(epoch) + ".pt")
-            #save_path = os.path.join(save_folder,str(train_env_name)+ "_seed"+ str(seed) + "_model" + str(epoch) + "_rounds" + str(gnn_rounds) +"_"+message_string+ ".pt")
-            '''
-            save_path = os.path.join(save_folder, str(train_env_name) + "_seed" + str(seed) + "_model" + str(
-                epoch) + "_" + message_string + ".pt")
-            #print("Time taken for {} epochs : {}".format(save_iter, time.time() - time_taken_for_save_iter))
-            state_save = {'state_dict': model.state_dict(),
-             'optimizer': optimizer.state_dict(),
-            'epochs':epoch}
-            #torch.save(model.state_dict(), save_path)
-            torch.save(state_save,save_path)
-            '''
-            time_taken_for_save_iter = time.time()
-
-    #ic (train_loss_values,val_loss_values)
-    plt.plot(epochs, train_loss_values, label="Training")
-    plt.plot(epochs, val_loss_values, label="Val")
-    plt.legend()
-    #plt.show()
-    #plt.savefig(str(epochs))
-    time_elapsed = time.time() - since
-    print('Training complete in {:.0f}m {:.0f}s'.format(
-        time_elapsed // 60, time_elapsed % 60), flush=True)
-
-    if return_last_model_weights:
-        return model.state_dict()
-
-    return best_seen_model_weights
-
 def predict_graph_with_graphnetwork(model, input_graph):
     """Predict the target graph given the input graph"""
     model.eval()
@@ -538,19 +278,6 @@ def predict_graph_with_graphnetwork(model, input_graph):
     scores = torch.sigmoid(scores)
     input_graph["nodes"] = scores.detach().cpu().numpy()
     return input_graph
-
-def get_single_model_multiple_prediction(model,single_input):
-    model.train(False)
-    model.eval()
-    inputs = create_super_graph([single_input])
-    if constants.use_gpu:
-        for key in inputs.keys():
-            if inputs[key] == None or key == 'prev_graph' :
-                continue
-            inputs[key] = inputs[key].cuda()
-    outputs = model(inputs.copy())
-    return outputs
-
 
 def test_planner(
     planner, domain_name, num_problems, timeout, debug_mode=False, all_problems=False

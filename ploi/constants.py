@@ -100,7 +100,7 @@ DOMAIN = "ManyBlocks_ipcc_big"
 NUM_TRAIN_PROBLEMS = 200
 NUM_TEST_PROBLEMS = 200
 EXPID = "blocks"
-MODE = "train"
+MODE = "train_test"
 
 '''
 Debug level information:
