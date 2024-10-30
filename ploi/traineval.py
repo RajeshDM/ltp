@@ -179,7 +179,7 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
     time_taken_for_save_iter = time.time()
     for epoch in range(starting_epoch,final_epoch+1):
         if epoch % print_iter == 0:
-            print('Epoch {}/{}'.format(epoch, final_epoch - 1), flush=True)
+            print('Epoch {}/{}'.format(epoch, final_epoch), flush=True)
             print('-' * 10, flush=True)
         # Each epoch has a training and validation phase
         running_num_samples = 0
