@@ -135,15 +135,22 @@ dmypy.json
 wandb/
 
 # Project-specific files
-cache/
+#cache/
 exp/
 model/
 
 #editor files
 .vscode/
 
-#All folders in model directory
+#All files and folders in model directory
 models/*
 
 #Model files
 *.pt
+
+#Data files
+*.pkl
+
+#result files
+*.txt
+*.json
