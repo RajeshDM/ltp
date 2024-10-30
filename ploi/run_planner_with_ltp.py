@@ -27,6 +27,17 @@ from ploi.datautils_ltp import (
     graph_dataset_to_pyg_dataset,
 )
 from torch_geometric.loader import DataLoader as pyg_dataloader
+from dataclasses import dataclass
+
+@dataclass
+class ModelMetrics:
+    """Data class to store metrics for a single model run"""
+    number_impossible_actions: int
+    correct_plan_lengths_system: int
+    time_taken_system: float
+    plan_success_rate : float
+    total_plan_successes: float
+
 
 '''
 def run_planner_with_gnn(planner, domain_name, num_problems, timeout,current_problems_to_solve=None,ensemble=False,
@@ -309,7 +320,7 @@ def discrepancy_get_best_action(feasible_action_list,action_loc,discrepancy_loc)
         new_action = feasible_action_list[0]
     return new_action
 
-def discrepancy_search(planner,env,state,action_space,ensemble,plan):
+def discrepancy_search(planner,env,state,action_space,plan):
     #ic (plan)
     discrepancy_locations = np.arange(0,len(plan))
     succesful_plans = []
@@ -326,7 +337,8 @@ def discrepancy_search(planner,env,state,action_space,ensemble,plan):
                 new_plan.append(plan[action_loc])
                 action_loc += 1
                 continue
-            feasible_action_list = planner._guidance.get_feasible_action_param_list(env,state,action_space,ensemble)
+            feasible_action_list = None 
+            #feasible_action_list = planner._guidance.get_feasible_action_param_list(env,state,action_space,ensemble)
             #if len(feasible_action_list) == [] :
             if feasible_action_list[-1] == -1:
                 plan_found =False
@@ -361,7 +373,7 @@ def discrepancy_search(planner,env,state,action_space,ensemble,plan):
 
 def _test_planner(planner, domain_name, num_problems, 
                   timeout,current_problems_to_solve=None,
-                  ensemble=False,train_planner=None,
+                  train_planner=None,
                   epoch_number=0,debug_level=constants.max_debug_level-1,
                   model=None,
                   graph_metadata=None,):
@@ -706,7 +718,8 @@ def _test_planner(planner, domain_name, num_problems,
         #discrepancy_search_bool = True
         if discrepancy_search_bool == True :
             if len(new_plan) > max_plan_length_permitted:
-                succesful_plans = discrepancy_search(planner, env, start_state, action_space, ensemble,new_plan)
+                #succesful_plans = discrepancy_search(planner, env, start_state, action_space, ensemble,new_plan)
+                succesful_plans = discrepancy_search(planner, env, start_state, action_space, new_plan)
                 #for plan in succesful_plans:
                 if len(succesful_plans) != 0 :
                     new_plan = succesful_plans[-1]
@@ -741,6 +754,14 @@ def _test_planner(planner, domain_name, num_problems,
         ic ("Average Time taken by system  :", total_correct_time_system/j)
         ic ("Average Time taken by planner :", total_correct_time_planner/j)
         ic (failure_dict)
+        metrics = ModelMetrics(
+                number_impossible_actions=number_impossible_actions,
+                correct_plan_lengths_system=correct_plan_lengths_system,
+                time_taken_system=total_correct_time_system/j,
+                plan_success_rate = 1-(failed_plans/j),
+                total_plan_successes=j-failed_plans,
+            )
+        return metrics
 
     if heuristic_planner == False and plot_aggregates == True:
 
@@ -799,88 +820,13 @@ def _test_planner(planner, domain_name, num_problems,
     #ic (average_success_time_system)
     #ic (average_success_time_planner)
     #ic (average_success_time_opt_planner)
-    return failed_plans_locations
+    #return failed_plans_locations
 
-def _run_planner_with_gnn(domain_name, train_planner_name, test_planner_name,
-         num_seeds, num_train_problems, num_test_problems,
-         do_incremental_planning, timeout, debug_level,model_version,
-         graph_metadata,
-         model):
-    if debug_level < constants.max_debug_level :
-        print("Starting run:")
-        print("\tDomain: {}".format(domain_name))
-        print("\tTrain planner: {}".format(train_planner_name))
-        print("\tTest planner: {}".format(test_planner_name))
-        #print("\tDoing incremental planning? {}".format(do_incremental_planning))
-        print("\t{} seeds, {} train problems, {} test problems".format(
-                 num_seeds, num_train_problems, num_test_problems), flush=True)
 
-    #env = pddlgym.make("PDDLEnvUnity_1-v0")
-    #env = pddlgym.make("PDDLEnvSokoban-v0")
-    #obs, debug_info = env.reset()
-    #action = env.action_space.sample(obs)
-    #ic (action)
-    #exit()
-
-    planner = _create_planner(test_planner_name)
-    pddlgym_env_names = {"Blocks": "Manyblockssmallpiles",
-                         "Blocks_ipcc" : "Manyblocks_ipcc",
-                         "Blocks_ipcc_big" : "Manyblocks_ipcc_big",
-                         "Discrete_tamp" : "Discrete_tamp",
-                         "Discrete_tamp_3d" : "Discrete_tamp_3d",
-                         "Kuka" : "Kuka",
-                         "N_puzzle_ipcc" : "N_puzzle_ipcc",
-                         "Miconic": "Manymiconic",
-                         "Gripper": "Manygripper",
-                         "Gripper_ipcc": "Gripper_ipcc",
-                         "Snake" : "Snake",
-                         "Ferry": "Manyferry",
-                         "Ferry_ipcc": "Ferry_ipcc",
-                         "Logistics": "Manylogistics",
-                         "Hanoi": "Hanoi_operator_actions",
-                         "Unity_1" : "Unity_1",
-                         "Sokoban" : "Sokoban",
-                         "Sokoban_ipcc" : "Sokoban_ipcc"
-                         }
-
-    #assert domain_name in pddlgym_env_names
-    #domain_name = pddlgym_env_names[domain_name]
-    is_strips_domain = True
-    ensemble = False
-    #analyse_dataset(domain_name, num_train_problems)
-    train_planner = _create_planner(train_planner_name)
-    #train_planner =
-    #ic (domain_name)
-
-    for seed in range(num_seeds):
-        '''
-        if do_incremental_planning:
-            planner_to_test = IncrementalPlanner(
-                is_strips_domain=is_strips_domain,
-                base_planner=planner, search_guider=guider, seed=seed)
-            #ic ("doing incremental planning")
-            #exit()
-            #planner_to_test = planner
-        else:
-            planner_to_test = planner
-        '''
-
-        #failed_plans_locations = [51,52,148]
-        #failed_plans_locations = [9,20,90]
-        #failed_plans_locations = [10, 19, 30, 40, 54, 55, 56, 61, 67, 97, 99, 105, 110, 111, 113]
-        failed_plans_locations = _test_planner(planner, domain_name+"Test",
-                                               num_problems=num_test_problems, timeout=timeout
-                                               ,ensemble=ensemble,train_planner=train_planner,debug_level=debug_level,
-                                               graph_metadata=graph_metadata,model=model)
-
-    if debug_level < constants.max_debug_level :
-        print("\n\nFinished run\n\n\n\n")
-
-def run_planner_with_gnn_ltp(args, model, graph_metadata):
-    _run_planner_with_gnn(args.domain, args.train_planner_name,
-        args.eval_planner_name, args.num_seeds,
-        args.num_train_problems, args.num_test_problems,
-        args.do_incremental_planning, args.timeout, 
-        args.debug_level,args.model_version,
-        graph_metadata,
-        model)
+def run_planner_with_gnn_ltp(test_planner,train_planner, args,
+                              model, graph_metadata):
+    metrics = _test_planner(test_planner, args.domain+"Test",
+                                            num_problems=args.num_test_problems, timeout=args.timeout,
+                                            train_planner=train_planner,debug_level=args.debug_level,
+                                            graph_metadata=graph_metadata,model=model)
+    return metrics

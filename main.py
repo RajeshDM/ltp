@@ -140,14 +140,13 @@ def run_tests(
         
         # Run tests
         try:
-            #test_results = 
-            test_function(curr_model)
+            test_results = test_function(curr_model)
             results.append({
                 'epoch': model_info['epoch'],
                 'validation_loss': model_info['validation_loss'],
                 'training_loss': model_info['training_loss'],
                 'combined_loss': model_info['combined_loss'],
-                #'test_results': test_results
+                'test_results': test_results
             })
             logger.info(f"Successfully tested model from epoch {model_info['epoch']}")
         except Exception as e:
@@ -555,7 +554,7 @@ if __name__ == "__main__":
                                                         args)
         
         #if args.mode == 'train' and (not os.path.exists(model_outfile) or continue_training == True):
-        if args.mode == 'train' :
+        if args.mode == 'train'  or args.mode == 'train_test' :
             optimizer = torch.optim.Adam(_model.parameters(),lr=args.lr,weight_decay=args.weight_decay) 
             #optimizer = torch.optim.AdamW(self._model.parameters(), lr=5 * 1e-4,weight_decay=0.01)
             if continue_training == True and os.path.exists(model_outfile) :
@@ -588,9 +587,14 @@ if __name__ == "__main__":
             ic (args.n_heads)
             ic (args.lr)
 
+        if args.mode != 'test' and args.mode != 'train_test' :
+           exit() 
+
         all_model_types = ['validation','training','combined']
         def test_function(curr_model):
-            return run_planner_with_gnn_ltp(args, curr_model, graph_metadata)
+            #return run_planner_with_gnn_ltp(args, curr_model, graph_metadata)
+            return run_planner_with_gnn_ltp(test_planner, train_planner, 
+                                            args, curr_model, graph_metadata)
 
         def run_tests_model_type(model_type, tested_epoch_numbers):
             return run_tests(
@@ -613,3 +617,11 @@ if __name__ == "__main__":
                 print(f"\nResults for model from epoch {result['epoch']}:")
                 print(f"Validation Loss: {result['validation_loss']}")
                 #print(f"Test Results: {result['test_results']}")
+                metrics = result['test_results']
+                wandb.log({
+                "model_type": model_type,
+                "impossible_actions": metrics.number_impossible_actions,
+                "correct_plan_lengths_system": metrics.correct_plan_lengths_system,
+                "correct_plan_lengths_planner": metrics.correct_plan_lengths_planner,
+                "time_taken_system": metrics.time_taken_system
+                })

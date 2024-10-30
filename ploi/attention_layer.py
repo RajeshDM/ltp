@@ -64,7 +64,7 @@ class GraphAttentionV2Layer(nn.Module):
         # Dropout layer to be applied for attention
         self.dropout = nn.Dropout(dropout)
 
-        self.node_update = MLP([self.n_hidden_1]*2,self.n_hidden_1*3) 
+        #self.node_update = MLP([self.n_hidden_1]*2,self.n_hidden_1*3) 
 
 
     def forward(self, h, e, receivers,u):
@@ -93,7 +93,7 @@ class GraphAttentionV2Layer(nn.Module):
 
         g_r_with_attn = g_r * attn_softmax
 
-        aggregated_effects = torch.zeros((n_nodes,self.n_heads,self.n_hidden_1)).cuda()
+        aggregated_effects = torch.zeros((n_nodes,self.n_heads,self.n_hidden_2)).cuda()
         aggregated_effects[torch.arange(torch.max(receivers)+1)] = scatter(g_r_with_attn, receivers, dim=0, reduce='add')
         #aggregated_effects = torch.zeros(h.shape).cuda()
         #aggregated_effects[torch.arange(torch.max(receivers)+1)] = scatter(g_r_with_attn.squeeze(), receivers, dim=0, reduce='add')
@@ -101,5 +101,5 @@ class GraphAttentionV2Layer(nn.Module):
         #out = torch.cat([g_l.squeeze(1),aggregated_effects,u],dim=1)
         out = torch.cat([g_l.mean(dim=1),aggregated_effects.mean(dim=1),u],dim=1)
 
-        out = self.node_update (out)
+        #out = self.node_update (out)
         return out

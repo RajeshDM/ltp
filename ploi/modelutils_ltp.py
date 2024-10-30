@@ -15,10 +15,10 @@ from ploi.attention_layer import (
 import time
 
 class EdgeModelLtp(nn.Module):
-    def __init__(self, n_features, n_edge_features, n_hidden, dropout=0.0):
+    def __init__(self, n_features, n_edge_features, n_global, n_hidden, dropout=0.0):
         super(EdgeModelLtp, self).__init__()
         self.edge_mlp = nn.Sequential(
-            nn.Linear(2 * n_features + n_edge_features + n_hidden, n_hidden),
+            nn.Linear(2 * n_features + n_edge_features + n_global, n_hidden),
             nn.ReLU(),
             nn.Dropout(dropout) if dropout > 0.0 else nn.Identity(),
             nn.Linear(n_hidden, n_hidden),
@@ -61,6 +61,7 @@ class NodeModelLtp(nn.Module):
 class GlobalModel(nn.Module):
     def __init__(self, n_global_features,n_hidden, dropout=0.0):
         super(GlobalModel, self).__init__()
+        '''
         self.global_mlp_1 = nn.Sequential(
             nn.Linear(n_global_features, n_hidden),
             nn.ReLU(),
@@ -68,8 +69,10 @@ class GlobalModel(nn.Module):
             nn.Linear(n_hidden, n_hidden),
             nn.LayerNorm(n_hidden),
         )
+        '''
         self.global_mlp_2 = nn.Sequential(
-            nn.Linear(n_hidden*3, n_hidden),
+            #nn.Linear(n_hidden*3, n_hidden),
+            nn.Linear(n_global_features, n_hidden),
             nn.ReLU(),
             nn.Dropout(dropout) if dropout > 0.0 else nn.Identity(),
             nn.Linear(n_hidden, n_hidden),
@@ -79,7 +82,7 @@ class GlobalModel(nn.Module):
 
     def forward(self, x, edge_index,edge_attr, u ,node_index):
 
-        u = self.global_mlp_1(u)
+        #u = self.global_mlp_1(u)
         nodes_agg = self.aggr(x,index=node_index)
         edges_agg =self.aggr(edge_attr,index=edge_index) 
 
@@ -139,8 +142,8 @@ class HeteroGNN(nn.Module):
         #self.node_update = TransformerConv(in_channels=self.representation_size
         #                                   , out_channels=self.representation_size//n_heads, heads=n_heads, 
         #                                   edge_dim=self.representation_size)
-        self.node_attention_layer = GraphAttentionV2Layer(in_features_1=self.representation_size,
-                                                    out_features_1=self.representation_size,
+        self.node_attention_layer = GraphAttentionV2Layer(in_features_1=self.representation_size*2,
+                                                    out_features_1=self.representation_size*2,
                                                     in_features_2=self.representation_size,
                                                     out_features_2=self.representation_size,
                                                     n_heads=n_heads,
@@ -149,15 +152,19 @@ class HeteroGNN(nn.Module):
                                                     leaky_relu_negative_slope=0.2,
                                                     share_weights=False)
         #self.node_update_2 = NodeModelLtp(self.representation_size,self.representation_size,self.representation_size,self.representation_size)
-        self.node_update = MLP([self.representation_size]*2, self.representation_size*3,dropout=dropout)
+        self.node_update = MLP([self.representation_size]*2, self.representation_size*5,dropout=dropout)
         
         # Edge related layers
         self.edge_encoder = MLP([self.representation_size]*2, n_edge_features)
-        self.edge_update_network = EdgeModelLtp(self.representation_size,self.representation_size,self.representation_size,dropout=dropout)
+        self.edge_update = EdgeModelLtp(self.representation_size*2, #Node features
+                                        self.representation_size*2, #Edge features
+                                        self.representation_size*2, #global features
+                                        self.representation_size, #hidden features
+                                        dropout=dropout)
 
         # Global related layers
         self.global_encoder  = MLP([self.representation_size]*2,n_global_features)
-        self.global_update = GlobalModel(self.representation_size,self.representation_size,dropout=dropout)
+        self.global_update = GlobalModel(self.representation_size*4,self.representation_size,dropout=dropout)
         
     def forward(self, batch):
         node_data  = batch['node'].x
@@ -172,15 +179,24 @@ class HeteroGNN(nn.Module):
         edge_features_node = self.edge_encoder(edge_features_node)
         global_data = self.global_encoder(global_data)
 
+        node_data_original = node_data
+        edge_features_node_original = edge_features_node
+        global_data_original = global_data
+
         for i in range(self.num_rounds) :
+            node_data = torch.cat([node_data_original,node_data],dim=1)
+            edge_features_node = torch.cat([edge_features_node_original,edge_features_node],dim=1)
+            global_data = torch.cat([global_data_original,global_data],dim=1)
+
             src = node_data[edge_features_node_index[0]]
             dest = node_data[edge_features_node_index[1]]
             global_node_repeat = global_data[node_index]
             global_edge_repeat = global_data[edge_index]
 
-            edge_features_node = F.relu(self.edge_update_network(src,dest,edge_features_node,global_edge_repeat))
+            edge_features_node = F.relu(self.edge_update(src,dest,edge_features_node,global_edge_repeat))
             #node_data = F.relu(self.node_update(node_data,edge_features_node_index,edge_features_node,global_node_repeat))
-            node_data = F.relu(self.node_attention_layer(node_data,edge_features_node,edge_features_node_index[1],global_node_repeat))
+            #node_data = F.relu(self.node_attention_layer(node_data,edge_features_node,edge_features_node_index[1],global_node_repeat))
+            node_data = F.relu(self.node_update(self.node_attention_layer(node_data,edge_features_node,edge_features_node_index[1],global_node_repeat)))
             global_data = F.relu(self.global_update(node_data,edge_index,edge_features_node,global_data,node_index))
         return node_data, edge_features_node,global_data
 

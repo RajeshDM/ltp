@@ -142,5 +142,8 @@ model/
 #editor files
 .vscode/
 
+#All folders in model directory
+models/*
+
 #Model files
 *.pt

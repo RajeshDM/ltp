@@ -177,7 +177,7 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
     train_loss_values = []
     val_loss_values = []
     time_taken_for_save_iter = time.time()
-    for epoch in range(starting_epoch,final_epoch):
+    for epoch in range(starting_epoch,final_epoch+1):
         if epoch % print_iter == 0:
             print('Epoch {}/{}'.format(epoch, final_epoch - 1), flush=True)
             print('-' * 10, flush=True)
@@ -199,7 +199,8 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
                 # Set model to evaluate mode
                 model.eval()
 
-            for batch_data in datasets[phase]:
+            for i,batch_data in enumerate(datasets[phase]):
+                optimizer.zero_grad()
                 batch_data = batch_data.to(device)
                 action_scores, action_object_scores = model(batch_data, beam_search=False)
                 tgt_action_scores = batch_data['target_action_scores'].x
@@ -246,7 +247,6 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
                     loss.backward()
                     #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                     optimizer.step()
-                    optimizer.zero_grad()
                     #ic ("backprop time",time.time()-backward_time)
 
                 # statistics
@@ -267,8 +267,6 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
             val_loss_values.append(running_loss['val'])
     
         if epoch % save_iter == 0 and epoch >= min_save_epoch:
-            #best_seen_running_validation_loss, best_validation_loss_epoch, best_seen_model_weights =  save_model_graphnetwork(model, save_folder, epoch, optimizer,train_env_name,seed,message_string,
-            #                        best_seen_running_validation_loss,running_loss,best_seen_model_weights,best_validation_loss_epoch, time_taken_for_save_iter)
             chpkt_manager.save_checkpoint(
                 model=model,
                 optimizer=optimizer,
@@ -277,11 +275,12 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
                 seed=42,
                 losses={'train': running_loss["train"], 'val': running_loss["val"]},
             )
+            print ("Time taken for {} epochs : {}".format(save_iter, time.time() - time_taken_for_save_iter))
             time_taken_for_save_iter = time.time()
 
-    plt.plot(epochs, train_loss_values, label="Training")
-    plt.plot(epochs, val_loss_values, label="Val")
-    plt.legend()
+    #plt.plot(epochs, train_loss_values, label="Training")
+    #plt.plot(epochs, val_loss_values, label="Val")
+    #plt.legend()
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
         time_elapsed // 60, time_elapsed % 60), flush=True)

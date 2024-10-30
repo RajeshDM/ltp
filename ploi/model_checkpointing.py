@@ -276,7 +276,7 @@ class ModelManager:
             self._save_tracking_data()
             
             logger.info(f"Saved new best model for metrics: {', '.join(metrics_updated)}")
-            logger.info(f"Model saved to: {save_path}")
+            #logger.info(f"Model saved to: {save_path}")
         
         return save_path
     
