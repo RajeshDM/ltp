@@ -1,12 +1,12 @@
 #!/bin/bash
 
-heads=(4 8)
-lrs=(0.0003 0.0005)
-decays=(0.00015)
-attn_drops=(0.1 0.4)
+heads=(1)
+lrs=(0.0005)
+decays=(0.000 0.00015)
+attn_drops=(0 0.2)
 other_drops=(0)
 expid="blocks"
-gnn_rounds=(7)
+gnn_rounds=(7 9)
 epochs=650
 num_test_problems=100
 timestamp=$(date +"%Y_%m_%d_%H_%M")

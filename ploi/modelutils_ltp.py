@@ -193,11 +193,13 @@ class HeteroGNN(nn.Module):
             global_node_repeat = global_data[node_index]
             global_edge_repeat = global_data[edge_index]
 
-            edge_features_node = F.relu(self.edge_update(src,dest,edge_features_node,global_edge_repeat))
-            #node_data = F.relu(self.node_update(node_data,edge_features_node_index,edge_features_node,global_node_repeat))
+            #edge_features_node = F.relu(self.edge_update(src,dest,edge_features_node,global_edge_repeat))
+            edge_features_node = self.edge_update(src,dest,edge_features_node,global_edge_repeat)
             #node_data = F.relu(self.node_attention_layer(node_data,edge_features_node,edge_features_node_index[1],global_node_repeat))
-            node_data = F.relu(self.node_update(self.node_attention_layer(node_data,edge_features_node,edge_features_node_index[1],global_node_repeat)))
-            global_data = F.relu(self.global_update(node_data,edge_index,edge_features_node,global_data,node_index))
+            #node_data = F.relu(self.node_update(self.node_attention_layer(node_data,edge_features_node,edge_features_node_index[1],global_node_repeat)))
+            node_data = self.node_update(self.node_attention_layer(node_data,edge_features_node,edge_features_node_index[1],global_node_repeat))
+            #global_data = F.relu(self.global_update(node_data,edge_index,edge_features_node,global_data,node_index))
+            global_data = self.global_update(node_data,edge_index,edge_features_node,global_data,node_index)
         return node_data, edge_features_node,global_data
 
 class GNN_GRU(nn.Module):
@@ -418,6 +420,7 @@ class GNN_GRU(nn.Module):
         all_objects_scores = []
 
         for i in range(ao_scores.shape[0]) :
+            #Current graph objects is just a safety net to ensure we don't go over the number of objects in the graph
             current_graph_objects = n_node[int(i/self.max_number_action_parameters)]
             values , indexes = torch.topk(ao_scores[i][:current_graph_objects],k)
             all_objects_batches.append(indexes)
