@@ -37,6 +37,7 @@ from ploi.run_planner_with_ltp import (
     _create_planner,
 )
 from ploi.run_planner_with_ltp_2 import PlannerTester, PlannerConfig, PlannerType
+from ploi.test_utils import format_metrics, log_model_metrics 
 from ploi.guiders import HierarchicalGuidance, PLOIGuidance, SceneGraphGuidance
 from ploi.modelutils import (
     GraphNetwork,
@@ -90,6 +91,7 @@ def initialize_model(model_class, args, action_space):
         n_heads = args.n_heads,
     )
 
+
 def run_tests(
             curr_manager,
             model_class,
@@ -102,6 +104,7 @@ def run_tests(
              args = None,
              action_space = None,
              tested_epoch_numbers: Set[int] = None,
+             num_models_to_test: int = 2
              ) -> List[Dict]:
     """
     Run tests on best models for a specific configuration
@@ -121,7 +124,7 @@ def run_tests(
         return []
     
     results = []
-    for model_info in best_models[::-1]:
+    for model_info in best_models[::-1][:num_models_to_test]:
         # Create fresh model instance
         #model = model_class()
         curr_model = initialize_model(model_class, args, action_space)
@@ -138,20 +141,18 @@ def run_tests(
             tested_epoch_numbers.add(model_info['epoch'])
         
         # Run tests
-        try:
-            test_results = test_function(curr_model)
-            results.append({
-                'epoch': model_info['epoch'],
-                'validation_loss': model_info['validation_loss'],
-                'training_loss': model_info['training_loss'],
-                'combined_loss': model_info['combined_loss'],
-                'test_results': test_results
-            })
-            logger.info(f"Successfully tested model from epoch {model_info['epoch']}")
-        except Exception as e:
-            logger.error(f"Error testing model from epoch {model_info['epoch']}: {e}")
-            continue
-    
+        test_results = test_function(curr_model)
+        results.append({
+            'epoch': model_info['epoch'],
+            'validation_loss': model_info['validation_loss'],
+            'training_loss': model_info['training_loss'],
+            'combined_loss': model_info['combined_loss'],
+            'test_results': test_results
+        })
+        metrics = results[-1]['test_results'][PlannerType.LEARNED_MODEL]
+        print ("failed : ",metrics.failures)
+        _ = format_metrics(results[-1])
+
     return results
 
 if __name__ == "__main__":
@@ -592,23 +593,34 @@ if __name__ == "__main__":
 
         config = PlannerConfig(
             planner_types=[PlannerType.LEARNED_MODEL],
-            domain_name="Blocks",
+            domain_name=args.domain + "Test",
             num_problems=args.num_test_problems,
             timeout=30.0,
             enable_state_monitor=args.monitor,  # Enable monitoring
             max_plan_length=60,
         )
-        tester = PlannerTester(config)
 
-        all_model_types = ['validation','training','combined']
-        #all_model_types = ['combined']
+        tester = PlannerTester(config)
+        problems_to_solve = list(range(args.starting_test_number, args.starting_test_number + args.num_test_problems))
+
+        def test_function_v2(curr_model):
+            return tester.test_planners(problems_to_solve=problems_to_solve,
+                                        model=curr_model, 
+                                        graph_metadata=graph_metadata)
+
         def test_function(curr_model):
             #return run_planner_with_gnn_ltp(args, curr_model, graph_metadata)
             return run_planner_with_gnn_ltp(test_planner, train_planner, 
-                                            args, curr_model, graph_metadata)
+                                            args, curr_model, graph_metadata,
+                                            current_problems_to_solve=problems_to_solve)
 
-        def test_function_v2(curr_model):
-            return tester.test_planners(model=curr_model, graph_metadata=graph_metadata)
+        #all_model_types = ['validation','training','combined']
+        #all_model_types = ['validation','training']
+        all_model_types = ['validation']#,'training']
+
+        #curr_test_function = test_function
+        curr_test_function = test_function_v2
+        num_models_to_test = 1
 
         def run_tests_model_type(model_type, tested_epoch_numbers):
             return run_tests(
@@ -617,26 +629,27 @@ if __name__ == "__main__":
                 train_env_name=train_env_name,
                 seed=42,
                 hyperparameters=training_hyperparameters,
-                test_function=test_function,
-                #test_function=test_function_v2,
+                test_function=curr_test_function,
                 metric=model_type,  # or 'training' or 'combined',
                 args=args,
                 action_space=action_space,
                 tested_epoch_numbers=tested_epoch_numbers,
+                num_models_to_test=num_models_to_test,
             )
 
         tested_epoch_numbers = set()
-        for model_type in all_model_types : 
+
+        all_results = {}
+        for model_type in all_model_types:
             results = run_tests_model_type(model_type, tested_epoch_numbers)
-            for result in results:
-                print(f"\nResults for model from epoch {result['epoch']}:")
-                print(f"Validation Loss: {result['validation_loss']}")
-                #print(f"Test Results: {result['test_results']}")
-                metrics = result['test_results']
-                wandb.log({
-                "model_type": model_type,
-                "impossible_actions": metrics.number_impossible_actions,
-                "correct_plan_lengths_system": metrics.correct_plan_lengths_system,
-                #"correct_plan_lengths_planner": metrics.correct_plan_lengths_planner,
-                "time_taken_system": metrics.time_taken_system
-                })
+            all_results[model_type] = results
+
+        # Log all results and get best model info
+        best_model_type, best_epoch, best_success_rate = log_model_metrics(all_results, args)
+
+        # Print best model info
+        if best_model_type is not None:
+            print(f"\nBest Model:")
+            print(f"Type: {best_model_type}")
+            print(f"Epoch: {best_epoch}")
+            print(f"Success Rate: {best_success_rate:.2%}")

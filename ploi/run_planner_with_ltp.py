@@ -28,7 +28,18 @@ from ploi.datautils_ltp import (
 )
 from torch_geometric.loader import DataLoader as pyg_dataloader
 from dataclasses import dataclass
+import sys
+from tqdm import tqdm
+from ploi.test_utils import (
+    PlannerConfig, PlannerType, PlanningResult, PlannerMetrics,
+    compute_metrics
+)
 
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter("ignore")
+
+'''
 @dataclass
 class ModelMetrics:
     """Data class to store metrics for a single model run"""
@@ -37,6 +48,8 @@ class ModelMetrics:
     time_taken_system: float
     plan_success_rate : float
     total_plan_successes: float
+'''
+
 
 
 '''
@@ -397,6 +410,10 @@ def _test_planner(planner, domain_name, num_problems,
     action_selection_issue = 0
     output_plan_lengths = []
     num_problems = min(num_problems, len(env.problems))
+    if current_problems_to_solve == None :
+        problems_to_solve = range(num_problems)
+    else :
+        problems_to_solve = current_problems_to_solve[:]
     plan_lengths ={}
     correct_actions = []
     planner_plan_lengths = []
@@ -420,8 +437,10 @@ def _test_planner(planner, domain_name, num_problems,
     failed_plans_locations = []
     #for problem_idx in (range(num_problems)):
     #number_divisions = max (int((num_problems-problem_number)/number_problems_each_division),1)
-    number_divisions = max (int((num_problems)/number_problems_each_division),1)
+    #number_divisions = max (int((num_problems)/number_problems_each_division),1)
+    number_divisions = max(int((max(problems_to_solve)) / number_problems_each_division), 1) + 1
     failure_dict = {i:[] for i in range(int(number_divisions) )}
+    failure_dict_2 = {i:[] for i in range(int(number_divisions) )}
     planner_failure_dict = {i:[] for i in range(int(number_divisions) )}
     opt_planner_failure_dict = {i:[] for i in range(int(number_divisions) )}
     planner_timer = []
@@ -442,19 +461,19 @@ def _test_planner(planner, domain_name, num_problems,
 
     #average_success_time = {}
 
-    if current_problems_to_solve == None :
-        problems_to_solve = range(num_problems)
-    else :
-        problems_to_solve = current_problems_to_solve[:]
 
     if len(problems_to_solve) == 0 :
         ic ("exiting from 0 oproblems to solve")
         exit()
     not_in_grounding = 0
+    planner_type = PlannerType.LEARNED_MODEL
+    results = {planner_type: []}
 
-    for problem_idx in problems_to_solve :
+    for problem_idx in tqdm(problems_to_solve) :
     #for problem_idx in range(1):
         curr_plan_states = []
+        result = PlanningResult()
+        result.problem_idx = problem_idx
         #for problem_idx in range(num_problems):
         '''
         if debug_level < max_debug_level :
@@ -604,6 +623,7 @@ def _test_planner(planner, domain_name, num_problems,
 
             curr_plan_states.append(state[0])
             new_plan.append(new_action)
+            result.plan.append(new_action)
             #ic (len(new_plan))
             #break
             #for action_loop in new_plan :
@@ -639,11 +659,14 @@ def _test_planner(planner, domain_name, num_problems,
                 start_point = curr_div * number_problems_each_division
                 end_point = min(start_point+number_problems_each_division, len(learned_system_timer))
                 average_success_time_system[curr_div] = np.nanmean(np.array(learned_system_timer[start_point:end_point]))
+                result.success = True
+                result.time_taken = time.time() - start_time
+                result.plan_length = len(result.plan)
                 #average_plan_len_system[curr_div] = np.nanmean(np.array(learned_system_plan_len[start_point:end_point]))
 
                 #total_correct_time_planner += time_taken
-                if debug_level < max_debug_level :
-                    print ("Valid plan")
+                #if debug_level < max_debug_level :
+                #    print ("Valid plan")
                 break
             else :
                 pass
@@ -663,7 +686,10 @@ def _test_planner(planner, domain_name, num_problems,
                 failure_dict[int(problem_idx / number_problems_each_division)].append(problem_idx)
                 learned_system_timer.append(np.nan)
                 learned_system_plan_len.append(np.nan)
+                result.time_taken = time.time() - start_time
                 break
+
+        results[planner_type].append(result)
         if non_opt_plan != None:
             ic(non_opt_plan)
             plan = non_opt_plan
@@ -742,21 +768,22 @@ def _test_planner(planner, domain_name, num_problems,
     #ic(plan_lengths)
     # ic ("Plan success rate ", (1-failed_plans/num_problems))
     #ic("Plan success rate ", (1 - failed_plans / j))
-    if debug_level <= max_debug_level :
-        print ("Total Plan successes {}/{} , succes rate {}".format(j-failed_plans,j,1-(failed_plans/j) ))
+    #if debug_level <= max_debug_level :
 
     if True or debug_level == max_debug_level -1 :
-        ic (debug_level,max_debug_level)
+        ic ("Total Plan successes {}/{} , succes rate {}".format(j-failed_plans,j,1-(failed_plans/j) ))
+        #ic (debug_level,max_debug_level)
         ic (external_monitor_bool)
         #ic("Plan success rate ", correct_plans / j)
-        ic (sum(planner_plan_lengths))#,sum(correct_actions))
+        #ic (sum(planner_plan_lengths))#,sum(correct_actions))
         #ic (number_rejected_actions)
         ic (number_impossible_actions)
         ic (correct_plan_lengths_system)
-        ic (correct_plan_lengths_planner)
+        #ic (correct_plan_lengths_planner)
         ic ("Average Time taken by system  :", total_correct_time_system/j)
-        ic ("Average Time taken by planner :", total_correct_time_planner/j)
+        #ic ("Average Time taken by planner :", total_correct_time_planner/j)
         ic (failure_dict)
+        '''
         metrics = ModelMetrics(
                 number_impossible_actions=number_impossible_actions,
                 correct_plan_lengths_system=correct_plan_lengths_system,
@@ -764,7 +791,9 @@ def _test_planner(planner, domain_name, num_problems,
                 plan_success_rate = 1-(failed_plans/j),
                 total_plan_successes=j-failed_plans,
             )
-        return metrics
+        '''
+        #return metrics
+        return compute_metrics(number_problems_each_division, results,failure_dict_2)
 
     if heuristic_planner == False and plot_aggregates == True:
 
@@ -827,9 +856,10 @@ def _test_planner(planner, domain_name, num_problems,
 
 
 def run_planner_with_gnn_ltp(test_planner,train_planner, args,
-                              model, graph_metadata):
+                              model, graph_metadata, current_problems_to_solve=None):
     metrics = _test_planner(test_planner, args.domain+"Test",
                                             num_problems=args.num_test_problems, timeout=args.timeout,
+                                            current_problems_to_solve=current_problems_to_solve,
                                             train_planner=train_planner,debug_level=args.debug_level,
                                             graph_metadata=graph_metadata,model=model)
     return metrics

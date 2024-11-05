@@ -183,6 +183,13 @@ def get_ploi_argument_parser():
     )
 
     parser.add_argument(
+        "--starting-test-number",
+        type=int,
+        default=constants.starting_test_number,
+        help="Starting problem number for testing", 
+    )
+
+    parser.add_argument(
         "--data-augmentation",
         type=str2bool,
         default=constants.DATA_AUGMENTATION,

@@ -18,47 +18,21 @@ from ploi.datautils_ltp import (
 )
 from torch_geometric.loader import DataLoader as pyg_dataloader
 from dataclasses import dataclass
-from dataclasses import dataclass
 from typing import List, Dict, Optional, Any
 import numpy as np
 import pddlgym
 import tempfile
 import time
-from enum import Enum, auto
+from tqdm import tqdm
+from ploi.test_utils import (
+    PlannerConfig, PlannerType, PlanningResult, PlannerMetrics,
+    compute_metrics
+)
+import sys
 
-class PlannerType(Enum):
-    LEARNED_MODEL = auto()
-    NON_OPTIMAL = auto()
-    OPTIMAL = auto()
-
-@dataclass
-class PlannerConfig:
-    planner_types: List[PlannerType]
-    domain_name: str
-    num_problems: int
-    timeout: float
-    max_plan_length: int = 40
-    problems_per_division: int = 10
-    device: str = "cuda:0"
-    debug_level: int = 0
-    enable_state_monitor: bool = False
-
-@dataclass
-class PlannerMetrics:
-    success_rate: float
-    avg_plan_length: float
-    avg_time_taken: float
-    impossible_actions: int
-    failures: Dict[int, List[int]]
-    repeated_states: int = 0
-
-class PlanningResult:
-    def __init__(self):
-        self.plan = []
-        self.time_taken = 0
-        self.success = False
-        self.plan_length = 0
-        self.repeated_states = 0 
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter("ignore")
 
 # New class to add
 class StateMonitor:
@@ -239,6 +213,7 @@ class PlannerTester:
     def _run_learned_model(self, problem_idx: int, action_space: Any, model: Any, 
                         graph_metadata: Any, use_monitor: bool = False) -> PlanningResult:
         result = PlanningResult()
+        result.problem_idx = problem_idx
         start_time = time.time()
         monitor = StateMonitor() if use_monitor else None
         
@@ -311,6 +286,7 @@ class PlannerTester:
 
     def _run_external_planner(self, env, problem_idx, action_space, timeout, planner, optimal=False):
         result = PlanningResult()
+        result.problem_idx = problem_idx
         self.env.fix_problem_index(problem_idx)
         state, _ = self.env.reset()
         if optimal:
@@ -332,14 +308,16 @@ class PlannerTester:
             problems_to_solve = range(min(self.config.num_problems, len(self.env.problems)))
             
         results = {planner_type: [] for planner_type in self.config.planner_types}
+        number_divisions = max(int((max(problems_to_solve)) / self.config.problems_per_division), 1) + 1
+        self.failure_dict = {i:[] for i in range(int(number_divisions) )}
         
-        for problem_idx in problems_to_solve:
+        for problem_idx in tqdm(problems_to_solve):
             action_space = self.env.action_space._action_predicate_to_operators
             result = None
             
             for planner_type in self.config.planner_types:
                 if planner_type == PlannerType.LEARNED_MODEL and model:
-                    result = self._run_learned_model(problem_idx, action_space, model, graph_metadata)
+                    result = self._run_learned_model(problem_idx, action_space, model, graph_metadata, use_monitor=self.config.enable_state_monitor)
                 elif planner_type == PlannerType.NON_OPTIMAL:
                     #result = self._run_non_optimal_planner(problem_idx, None)  # Replace None with actual planner
                     result = self._run_external_planner(self.env, problem_idx, action_space, self.config.timeout, planner=None, optimal=False)
@@ -349,52 +327,5 @@ class PlannerTester:
                     
                 results[planner_type].append(result)
 
-        return self._compute_metrics(results)
-
-    def _compute_metrics(self, results: Dict[PlannerType, List[PlanningResult]]) -> Dict[PlannerType, PlannerMetrics]:
-        metrics = {}
-        
-        for planner_type, planner_results in results.items():
-            successful_results = [r for r in planner_results if r.success]
-            num_problems = len(planner_results)
-            
-            if successful_results:
-                avg_plan_length = np.mean([r.plan_length for r in successful_results])
-                avg_time = np.mean([r.time_taken for r in successful_results])
-            else:
-                avg_plan_length = 0
-                avg_time = 0
-                
-            total_repeated_states = sum(r.repeated_states for r in planner_results)
-            
-            metrics[planner_type] = PlannerMetrics(
-                success_rate=len(successful_results) / num_problems,
-                avg_plan_length=avg_plan_length,
-                avg_time_taken=avg_time,
-                repeated_states=total_repeated_states,
-                impossible_actions=sum(1 for r in planner_results if not r.success),
-                failures=self._compute_failures(planner_results)
-            )
-        
-        return metrics
-
-    def _compute_failures(self, planner_results: List[PlanningResult]) -> Dict[int, List[int]]:
-        """
-        Compute failures by division.
-        
-        Args:
-            planner_results: List of PlanningResult objects
-            
-        Returns:
-            Dictionary mapping division index to list of problem indices that failed in that division
-        """
-        failures = {}
-        
-        for i, result in enumerate(planner_results):
-            if not result.success:
-                div_idx = i // self.config.problems_per_division
-                if div_idx not in failures:
-                    failures[div_idx] = []
-                failures[div_idx].append(i)
-                
-        return failures
+        #return self._compute_metrics(results)
+        return compute_metrics(self.config.problems_per_division , results , self.failure_dict )

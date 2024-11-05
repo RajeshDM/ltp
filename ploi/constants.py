@@ -119,6 +119,7 @@ non_opt_planner = False
 external_monitor_bool = False
 heuristic_planner = False
 plot_aggregates = False
+starting_test_number = 0
 
 
 # model_outfile = self._save_model_prefix+"__dagger_{}Test_2.pt".format(train_env_name)
