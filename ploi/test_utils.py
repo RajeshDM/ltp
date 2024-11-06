@@ -24,12 +24,15 @@ class PlannerConfig:
 
 @dataclass
 class PlannerMetrics:
-    success_rate: float
+    success_rate_with_monitor : float
+    success_rate_without_monitor : float
     avg_plan_length: float
     avg_time_taken: float
     impossible_actions: int
     failures: Dict[int, List[int]]
     repeated_states: int = 0
+    max_plan_length: int = 0
+    max_time_taken: float = 0
 
 class PlanningResult:
     def __init__(self):
@@ -46,25 +49,34 @@ def compute_metrics(problems_per_division,
     metrics = {}
     
     for planner_type, planner_results in results.items():
-        successful_results = [r for r in planner_results if r.success]
+        successful_results_with_monitor = [r for r in planner_results if r.success]
+        successful_results_without_monitor = [r for r in planner_results if r.success and r.repeated_states == 0]
         num_problems = len(planner_results)
         
-        if successful_results:
-            avg_plan_length = np.mean([r.plan_length for r in successful_results])
-            avg_time = np.mean([r.time_taken for r in successful_results])
+        
+        if successful_results_with_monitor:
+            avg_plan_length = np.mean([r.plan_length for r in successful_results_with_monitor])
+            avg_time = np.mean([r.time_taken for r in successful_results_with_monitor])
+            max_plan_length = max(r.plan_length for r in planner_results if r.success)
+            max_time_taken = max(r.time_taken for r in planner_results if r.success)
         else:
             avg_plan_length = 0
             avg_time = 0
+            max_plan_length = 0
+            max_time_taken = 0
             
         total_repeated_states = sum(r.repeated_states for r in planner_results)
         
         metrics[planner_type] = PlannerMetrics(
-            success_rate=len(successful_results) / num_problems,
+            success_rate_with_monitor=len(successful_results_with_monitor) / num_problems,
+            success_rate_without_monitor=len(successful_results_without_monitor) / num_problems,
             avg_plan_length=avg_plan_length,
             avg_time_taken=avg_time,
             repeated_states=total_repeated_states,
             impossible_actions=sum(1 for r in planner_results if not r.success),
-            failures=compute_failures(problems_per_division,planner_results, failure_dict)
+            failures=compute_failures(problems_per_division,planner_results, failure_dict),
+            max_plan_length=max_plan_length,
+            max_time_taken=max_time_taken,
         )
     
     return metrics
@@ -108,9 +120,12 @@ def format_metrics(result):
     
     # Format numeric values
     formatted_metrics = {
-        'Success Rate': f"{metrics.success_rate:.2%}",
+        'Success with monitor': f"{metrics.success_rate_with_monitor :.2%}",
+        'Success without monitor': f"{metrics.success_rate_without_monitor :.2%}",
         'Plan Length': f"{metrics.avg_plan_length:.1f}",
         'Time (sec)': f"{metrics.avg_time_taken:.2f}",
+        'MAx Plan Length': f"{metrics.max_plan_length}",
+        'Max Time (sec)': f"{metrics.max_time_taken:.2f}",
         #'Impossible Actions': f"{metrics.impossible_actions:,d}"
     }
     
@@ -120,7 +135,7 @@ def format_metrics(result):
     
     # Print metrics in aligned format
     for key, value in formatted_metrics.items():
-        print(f"{key:<20} {value:>8}")
+        print(f"{key:<25} {value:>8}")
     
     return formatted_metrics
 
@@ -151,13 +166,14 @@ def log_model_metrics(all_results_dict, args):
             # Log to wandb
             if args.wandb:
                 wandb.log({
-                    f"{model_type}/success_rate": metrics.success_rate,
+                    f"{model_type}/success_rate_monitor": metrics.success_rate_with_monitor,
+                    f"{model_type}/success_rate_no_monitor": metrics.success_rate_without_monitor,
                     f"{model_type}/plan_length": metrics.avg_plan_length,
                 },step=epoch)
             
             # Track best model
-            if metrics.success_rate > best_success_rate:
-                best_success_rate = metrics.success_rate
+            if metrics.success_rate_with_monitor > best_success_rate:
+                best_success_rate = metrics.success_rate_with_monitor
                 best_model_type = model_type
                 best_epoch = epoch
 

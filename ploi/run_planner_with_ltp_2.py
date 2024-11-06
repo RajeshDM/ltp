@@ -328,4 +328,4 @@ class PlannerTester:
                 results[planner_type].append(result)
 
         #return self._compute_metrics(results)
-        return compute_metrics(self.config.problems_per_division , results , self.failure_dict )
+        return results, compute_metrics(self.config.problems_per_division , results , self.failure_dict )

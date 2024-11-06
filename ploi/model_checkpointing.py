@@ -347,7 +347,7 @@ class ModelManager:
                     'save_path': model['save_path']
                 })
                 
-                logger.info(f"Successfully loaded model from epoch {model['epoch']}")
+                #logger.info(f"Successfully loaded model from epoch {model['epoch']}")
             except Exception as e:
                 logger.error(f"Error loading model from {model['save_path']}: {e}")
                 continue

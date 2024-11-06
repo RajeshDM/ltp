@@ -36,6 +36,11 @@ from ploi.run_planner_with_ltp import (
     run_planner_with_gnn_ltp,
     _create_planner,
 )
+#from ploi.run_planner_with_ltp_2 import PlannerTester, PlannerConfig, PlannerType
+from ploi.test_utils import (
+    PlannerConfig, PlannerType, PlanningResult, PlannerMetrics,
+    compute_metrics
+)
 from ploi.run_planner_with_ltp_2 import PlannerTester, PlannerConfig, PlannerType
 from ploi.test_utils import format_metrics, log_model_metrics 
 from ploi.guiders import HierarchicalGuidance, PLOIGuidance, SceneGraphGuidance
@@ -104,7 +109,8 @@ def run_tests(
              args = None,
              action_space = None,
              tested_epoch_numbers: Set[int] = None,
-             num_models_to_test: int = 2
+             num_models_to_test: int = 2,
+             starting_model_num: int = 0
              ) -> List[Dict]:
     """
     Run tests on best models for a specific configuration
@@ -124,7 +130,7 @@ def run_tests(
         return []
     
     results = []
-    for model_info in best_models[::-1][:num_models_to_test]:
+    for model_info in best_models[::-1][starting_model_num:starting_model_num+num_models_to_test]:
         # Create fresh model instance
         #model = model_class()
         curr_model = initialize_model(model_class, args, action_space)
@@ -141,16 +147,19 @@ def run_tests(
             tested_epoch_numbers.add(model_info['epoch'])
         
         # Run tests
-        test_results = test_function(curr_model)
+        print ("Testing model from epoch ",model_info['epoch'])
+        test_results, run_metrics = test_function(curr_model)
         results.append({
             'epoch': model_info['epoch'],
             'validation_loss': model_info['validation_loss'],
             'training_loss': model_info['training_loss'],
             'combined_loss': model_info['combined_loss'],
-            'test_results': test_results
+            'test_results': run_metrics, 
+            'all_plan_results': test_results
         })
         metrics = results[-1]['test_results'][PlannerType.LEARNED_MODEL]
         print ("failed : ",metrics.failures)
+        #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
         _ = format_metrics(results[-1])
 
     return results
@@ -586,6 +595,7 @@ if __name__ == "__main__":
             ic (args.dropout)
             ic (args.weight_decay)
             ic (args.n_heads)
+            ic (args.gnn_rounds)
             ic (args.lr)
 
         if args.mode != 'test' and args.mode != 'train_test' :
@@ -597,7 +607,8 @@ if __name__ == "__main__":
             num_problems=args.num_test_problems,
             timeout=30.0,
             enable_state_monitor=args.monitor,  # Enable monitoring
-            max_plan_length=60,
+            max_plan_length=args.max_plan_length,
+            problems_per_division=args.problems_per_division,
         )
 
         tester = PlannerTester(config)
@@ -616,11 +627,13 @@ if __name__ == "__main__":
 
         #all_model_types = ['validation','training','combined']
         #all_model_types = ['validation','training']
-        all_model_types = ['validation']#,'training']
+        #all_model_types = ['validation']#,'training']
+        all_model_types = ['training', 'combined']
 
         #curr_test_function = test_function
         curr_test_function = test_function_v2
         num_models_to_test = 1
+        starting_model_num = 0
 
         def run_tests_model_type(model_type, tested_epoch_numbers):
             return run_tests(
@@ -635,6 +648,7 @@ if __name__ == "__main__":
                 action_space=action_space,
                 tested_epoch_numbers=tested_epoch_numbers,
                 num_models_to_test=num_models_to_test,
+                starting_model_num=starting_model_num,
             )
 
         tested_epoch_numbers = set()
@@ -649,7 +663,7 @@ if __name__ == "__main__":
 
         # Print best model info
         if best_model_type is not None:
-            print(f"\nBest Model:")
+            print(f"\nBest Model (With Monitor):")
             print(f"Type: {best_model_type}")
             print(f"Epoch: {best_epoch}")
             print(f"Success Rate: {best_success_rate:.2%}")

@@ -33,7 +33,7 @@ def get_ploi_argument_parser():
     parser.add_argument(
         "--mode",
         type=str,
-        choices=["train", "test", "visualize","debug"],
+        choices=["train", "test", "visualize","debug", "train_test"],
         default=constants.MODE,
         help="Mode to run the script in",
     )
@@ -63,6 +63,12 @@ def get_ploi_argument_parser():
         type=int, 
         default=constants.NUM_TRAIN_PROBLEMS, 
         help="Number of train problems"
+    )
+    parser.add_argument(
+        "--problems-per-division", 
+        type=int, 
+        default=constants.NUMBER_PROBLEMS_EACH_DIVISION, 
+        help="Problems per division"
     )
     parser.add_argument(
         "--num-test-problems", type=int, default=constants.NUM_TEST_PROBLEMS, help="Number of test problems"
@@ -273,6 +279,12 @@ def get_ploi_argument_parser():
         type=int,
         default=constants.MAX_FILE_OPEN,
         help="Maximum number of files to open at once")
+
+    parser.add_argument(
+        "--max-plan-length", 
+        type=int,
+        default=constants.MAX_PLAN_LENGTH_PERMITTED,
+        help="Maximum plan length to stop at")
 
     parser.add_argument(
         "--concept-loc", 
