@@ -21,6 +21,8 @@ class PlannerConfig:
     device: str = "cuda:0"
     debug_level: int = 0
     enable_state_monitor: bool = False
+    eval_planner_name :str = ""
+    train_planner_name :str = "" 
 
 @dataclass
 class PlannerMetrics:

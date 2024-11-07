@@ -603,12 +603,15 @@ if __name__ == "__main__":
 
         config = PlannerConfig(
             planner_types=[PlannerType.LEARNED_MODEL],
-            domain_name=args.domain + "Test",
+            #planner_types=[PlannerType.LEARNED_MODEL, PlannerType.NON_OPTIMAL],
+            domain_name=args.domain , 
             num_problems=args.num_test_problems,
             timeout=30.0,
             enable_state_monitor=args.monitor,  # Enable monitoring
             max_plan_length=args.max_plan_length,
             problems_per_division=args.problems_per_division,
+            eval_planner_name = args.eval_planner_name,
+            train_planner_name = args.train_planner_name,
         )
 
         tester = PlannerTester(config)

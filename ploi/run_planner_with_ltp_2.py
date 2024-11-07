@@ -28,7 +28,11 @@ from ploi.test_utils import (
     PlannerConfig, PlannerType, PlanningResult, PlannerMetrics,
     compute_metrics
 )
+from ploi.run_planner_with_ltp import (
+    _create_planner,
+)
 import sys
+import json
 
 if not sys.warnoptions:
     import warnings
@@ -200,7 +204,12 @@ def discrepancy_search(planner,env,state,action_space,plan):
 class PlannerTester:
     def __init__(self, config: PlannerConfig):
         self.config = config
-        self.env = pddlgym.make(f"PDDLEnv{config.domain_name}-v0")
+        self.env = pddlgym.make(f"PDDLEnv{config.domain_name}Test-v0")
+        self.non_optimal_planner_data = {}
+        self.optimal_planner_data = {}
+        self.load_planner_data()
+        self.opt_planner = _create_planner(config.train_planner_name)
+        self.non_opt_planner = _create_planner(config.eval_planner_name)
         self.metrics = {}
 
     def _is_valid_action(self, action, groundings) -> bool:
@@ -209,6 +218,41 @@ class PlannerTester:
                 all(v1 == v2 for v1, v2 in zip(action.variables, grounded_action.variables))):
                 return True
         return False
+
+    def load_planner_data(self)  :
+        opt_filename, non_opt_filename = self.get_planner_filename() 
+
+        if PlannerType.NON_OPTIMAL in self.config.planner_types:
+            self.non_optimal_planner_data = self.load_planner_data_from_file(non_opt_filename)
+
+        if PlannerType.OPTIMAL in self.config.planner_types:
+            self.optimal_planner_data = self.load_planner_data_from_file(opt_filename)
+
+    def load_planner_data_from_file(self, filename)  :
+        if os.path.exists(filename):
+            with open(filename, "r") as f:
+                return json.load(f)
+        else :
+            return {}
+
+    def get_planner_filename(self) :
+        domain_name = self.config.domain_name
+        base_dir = "cache/results/planner_data"
+        non_opt_filename = f"{base_dir}/" + domain_name + "_non_opt.json" 
+        opt_filename = f"{base_dir}/" + domain_name + "_opt.json"
+
+        return opt_filename, non_opt_filename
+
+    def save_planner_data(self):
+        opt_filename, non_opt_filename = self.get_planner_filename()
+
+        if PlannerType.NON_OPTIMAL in self.config.planner_types:
+            with open(non_opt_filename, "w") as f:
+                json.dump(self.non_optimal_planner_data, f)
+            
+        if PlannerType.OPTIMAL in self.config.planner_types:
+            with open(opt_filename, "w") as f:
+                json.dump(self.optimal_planner_data, f)
 
     def _run_learned_model(self, problem_idx: int, action_space: Any, model: Any, 
                         graph_metadata: Any, use_monitor: bool = False) -> PlanningResult:
@@ -284,15 +328,25 @@ class PlannerTester:
     def _check_goal_reached(self, state) -> bool:
         return all(goal in list(state.literals) for goal in state.goal.literals)
 
-    def _run_external_planner(self, env, problem_idx, action_space, timeout, planner, optimal=False):
+    def _run_external_planner(self, env, problem_idx, action_space, timeout, optimal=False):
         result = PlanningResult()
         result.problem_idx = problem_idx
         self.env.fix_problem_index(problem_idx)
         state, _ = self.env.reset()
-        if optimal:
-            plan, time_taken = run_opt_planner(env, state, action_space, timeout, planner)
+        fname = env.problems[problem_idx].problem_fname
+        if not optimal:
+            if fname in self.non_optimal_planner_data:
+                plan, time_taken = self.non_optimal_planner_data[fname]
+            else :
+                plan, time_taken = run_non_opt_planner(env, state, action_space, timeout,self.non_opt_planner)
+                self.non_optimal_planner_data[fname] = (plan, time_taken)
         else:
-            plan, time_taken = run_non_opt_planner(env, state, action_space, timeout, planner)
+            if fname in self.optimal_planner_data:
+                plan, time_taken = self.non_optimal_planner_data[fname]
+            else :
+                plan, time_taken = run_opt_planner(env, state, action_space, timeout, self.opt_planner)
+                self.optimal_planner_data[fname] = (plan, time_taken)
+
 
         if plan:
             result.plan = plan
@@ -320,12 +374,14 @@ class PlannerTester:
                     result = self._run_learned_model(problem_idx, action_space, model, graph_metadata, use_monitor=self.config.enable_state_monitor)
                 elif planner_type == PlannerType.NON_OPTIMAL:
                     #result = self._run_non_optimal_planner(problem_idx, None)  # Replace None with actual planner
-                    result = self._run_external_planner(self.env, problem_idx, action_space, self.config.timeout, planner=None, optimal=False)
+                    result = self._run_external_planner(self.env, problem_idx, action_space, self.config.timeout, optimal=False)
                 elif planner_type == PlannerType.OPTIMAL:
-                    result = self._run_external_planner(self.env, problem_idx, action_space, self.config.timeout, planner=None, optimal=True)
+                    result = self._run_external_planner(self.env, problem_idx, action_space, self.config.timeout, optimal=True)
                     #result = self._run_optimal_planner(problem_idx, None)  # Replace None with actual planner
                     
                 results[planner_type].append(result)
+
+        self.save_planner_data()
 
         #return self._compute_metrics(results)
         return results, compute_metrics(self.config.problems_per_division , results , self.failure_dict )
