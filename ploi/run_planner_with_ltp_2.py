@@ -267,7 +267,7 @@ class PlannerTester:
         
         if monitor:
             monitor.add_state(state)
-        
+
         while True:
             groundings = list(self.env.action_space.all_ground_literals(state))
             action_param_list = convert_state_and_run_model(
@@ -291,10 +291,8 @@ class PlannerTester:
                     # Found a repeated state - try next action
                     result.repeated_states += 1
                     # Reset to current state to try next action
-                    self.env.fix_problem_index(problem_idx)
-                    state, _ = self.env.reset()
-                    for action in result.plan:
-                        state = self.env.step(action)[0]
+                    self.env.set_state(state)
+                    
                     continue
                 
                 # Found a non-repeating state
