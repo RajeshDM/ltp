@@ -238,6 +238,7 @@ class GNN_GRU(nn.Module):
                                                         self.max_number_action_parameters)
                 self.action_parameter_number_dict[i] = len(values.params)
                 i += 1
+            self.number_actions = len(action_space.keys())
 
         #self.h0 = torch.zeros(num_decoder_layers,n_hidden).cuda()
         self.decoder = nn.GRU(n_hidden, hidden_size=n_hidden,\
@@ -297,7 +298,7 @@ class GNN_GRU(nn.Module):
         action_scores_total_time = time.time() - action_scores_time
 
         computing_best_action_embedding = time.time()
-        decoder_input = self.get_best_action_embeddings(x,all_actions,n_node,domain_number_actions=4)
+        decoder_input = self.get_best_action_embeddings(x,all_actions,n_node,domain_number_actions=self.number_actions)
         computing_best_action_embedding_time = time.time() - computing_best_action_embedding
 
         decoder_time = time.time()
