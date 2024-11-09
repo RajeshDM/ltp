@@ -61,7 +61,7 @@ rounds = ['r5', 'r6', 'r7', 'r8', 'r9', 'r10', 'r11', 'r12', 'r13']
 #constants for guidance
 CONCEPT_LOC = 2
 VERSION_LOC = 38
-#EPOCH_NUMBER = 740
+EPOCH_NUMBER = -1
 
 USE_GPU = server_information.USE_GPU
 SERVER = server_information.SERVER

@@ -145,6 +145,10 @@ def run_tests(
             continue 
         else :
             tested_epoch_numbers.add(model_info['epoch'])
+
+        if args.epoch_number != -1 : 
+            if model_info['epoch'] != args.epoch_number :
+                continue
         
         # Run tests
         print ("Testing model from epoch ",model_info['epoch'])
@@ -628,15 +632,15 @@ if __name__ == "__main__":
                                             args, curr_model, graph_metadata,
                                             current_problems_to_solve=problems_to_solve)
 
-        #all_model_types = ['validation','training','combined']
+        all_model_types = ['validation','training','combined']
         #all_model_types = ['validation','training']
         #all_model_types = ['validation']#,'training']
-        all_model_types = ['training' ]
+        #all_model_types = ['training' ]
 
         #curr_test_function = test_function
         curr_test_function = test_function_v2
-        num_models_to_test = 1
-        starting_model_num = 1
+        num_models_to_test = 2
+        starting_model_num = 0
 
         def run_tests_model_type(model_type, tested_epoch_numbers):
             return run_tests(

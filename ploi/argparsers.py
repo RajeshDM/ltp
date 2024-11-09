@@ -119,6 +119,13 @@ def get_ploi_argument_parser():
         default=constants.NUM_EPOCHS, 
         help="Number of epochs to run training for"
     )
+
+    parser.add_argument(
+        "--epoch-number", type=int, 
+        default=constants.EPOCH_NUMBER, 
+        help="Model epoch number to run"
+    )
+
     parser.add_argument(
         "--load-model", action="store_true", help="Path to load model from"
     )
