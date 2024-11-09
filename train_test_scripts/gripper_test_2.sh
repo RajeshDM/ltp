@@ -66,13 +66,13 @@ run_experiments() {
 
 # n_head=1 experiments
 n_head=1
-#run_experiments 1 0.1 "310 540 580"
-#run_experiments 1 0.4 "180 540"
+run_experiments 1 0.1 "310 540 580"
+run_experiments 1 0.4 "180 540"
 
 # n_head=2 experiments
 n_head=2
-#run_experiments 2 0.2 "270"
-#run_experiments 2 0.4 "530 570 590"
+run_experiments 2 0.2 "270"
+run_experiments 2 0.4 "530 570 590"
 
 # n_head=4 experiments
 n_head=4
