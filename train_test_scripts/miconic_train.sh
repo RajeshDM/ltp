@@ -6,18 +6,18 @@ decays=(0.000)
 attn_drops=(0.1 0.2 0.3 0.4)
 other_drops=(0)
 #expid="blocks"
-domain="logistics_ipcc"
+domain="miconic_ipcc"
 gnn_rounds=(9)
 epochs=630
-num_test_problems=96
-num_train_problems=192
+num_test_problems=119
+num_train_problems=228
 mode="train_test"
 #mode="test"
 wandb="True"
 timestamp=$(date +"%Y_%m_%d_%H_%M")
 max_plan_length=400
 
-:'
+#:'
 for head in ${heads[@]};
 do
    for decay in ${decays[@]}; 
@@ -39,7 +39,7 @@ do
       done
    done
 done
-'
+#'
 mode="test"
 wandb="False"
 for head in ${heads[@]};

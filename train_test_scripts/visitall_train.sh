@@ -1,23 +1,25 @@
 #!/bin/bash
 
-heads=(2 4)
+#heads=(2 4)
+heads=(2)
+#4)
 lrs=(0.0005)
 decays=(0.000)
-attn_drops=(0.1 0.2 0.3 0.4)
+attn_drops=(0.1)
+#0.2 0.3 0.4)
 other_drops=(0)
-#expid="blocks"
-domain="logistics_ipcc"
+expid="visitall"
+domain="visitall_ipcc"
 gnn_rounds=(9)
-epochs=630
-num_test_problems=96
-num_train_problems=192
-mode="train_test"
-#mode="test"
+epochs=700
+num_test_problems=50
+num_train_problems=125
+#mode="train_test"
+mode="test"
 wandb="True"
 timestamp=$(date +"%Y_%m_%d_%H_%M")
 max_plan_length=400
 
-:'
 for head in ${heads[@]};
 do
    for decay in ${decays[@]}; 
@@ -39,7 +41,7 @@ do
       done
    done
 done
-'
+:'
 mode="test"
 wandb="False"
 for head in ${heads[@]};
@@ -62,3 +64,4 @@ do
       done
    done
 done
+'

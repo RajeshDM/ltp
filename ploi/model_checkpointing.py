@@ -333,6 +333,12 @@ class ModelManager:
         results = []
         for model in model_info[metric]:
             try:
+                #Use local paths only
+                path_end = model['save_path'].split("/")[-3:]
+                path_end = "/".join(path_end)
+                base_dir = os.getcwd()
+                model['save_path'] = os.path.join(base_dir, path_end)
+
                 if not os.path.exists(model['save_path']):
                     logger.warning(f"Model file not found: {model['save_path']}")
                     continue

@@ -226,7 +226,7 @@ class GNN_GRU(nn.Module):
         self.action_parameter_number_dict = {}
         #all_actions = [k for k, v in action_space.items()]
         self.number_actions = len(action_space.keys())
-        self.action_options = 2
+        self.action_options = min(2, self.number_actions)
         self.object_options = 3
         #self.num_decoder_layers = num_decoder_layers
         number_graphs = batch_size
@@ -339,8 +339,8 @@ class GNN_GRU(nn.Module):
                     action_idxs):
 
         a_scores_new = self.compute_action_scores(x,n_actions,hidden_state,action_idxs)
-        self.max_num_actions = 2
-        self.max_num_objects = 3
+        self.max_num_actions = self.action_options
+        self.max_num_objects = self.object_options
         all_actions_batches,all_actions_scores = self.get_best_action_scores_locations(a_scores_new,self.max_num_actions)
 
         # Active beams now contain (token_ids, embeddings, scores)
@@ -353,7 +353,7 @@ class GNN_GRU(nn.Module):
 
         for action_idx in range(self.max_num_actions):
             all_actions = [elem[action_idx] for elem in all_actions_batches]
-            decoder_input = self.get_best_action_embeddings(x,all_actions,n_node,domain_number_actions=4)
+            decoder_input = self.get_best_action_embeddings(x,all_actions,n_node,domain_number_actions=self.number_actions)
             all_curr_action_scores = [elem[action_idx] for elem in all_actions_scores]
             active_beams.append(([all_actions[0]], decoder_input, 
                                  all_curr_action_scores[0], hidden_state, curr_depth ))
