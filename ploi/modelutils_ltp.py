@@ -25,10 +25,11 @@ class EdgeModelLtp(nn.Module):
             nn.LayerNorm(n_hidden),
         )
 
-    #def forward(self, out ):#src, dst, edge_attr, u=None, batch=None):
     def forward(self, src, dest, edge_attr, u=None, batch=None):
-        #out = torch.cat([src, dest, edge_attr], dim=1)
-        out = torch.cat([src,dest, edge_attr,u], dim=1)
+        if u is not None:
+            out = torch.cat([src,dest, edge_attr,u], dim=1)
+        else :
+            out = torch.cat([src, dest, edge_attr], dim=1)
         return self.edge_mlp(out)
 
 class NodeModelLtp(nn.Module):
@@ -93,8 +94,6 @@ class GlobalModel(nn.Module):
 class NodeUpdateAttn(nn.Module):
     def __init__(self, in_channels, n_hidden, out_channels,n_heads=1):
         super(NodeUpdateAttn, self).__init__()
-        #self.attention1 = GATv2Conv((-1, -1), hidden_channels, hidden_channels, add_self_loops=False)
-        #self.attention2 = GATv2Conv((-1, -1), hidden_channels, out_channels, add_self_loops=False)
         self.attention1 = GATv2Conv((-1,-1), n_hidden,heads=n_heads, add_self_loops=False, edge_dim=n_hidden)
         self.attention2 = GATv2Conv((-1,-1), n_hidden,heads=n_heads, add_self_loops=False, edge_dim=n_hidden)
         
@@ -123,7 +122,7 @@ class NodeUpdateAttn(nn.Module):
 
         return out
 
-# Define the hetero graph neural network
+
 class HeteroGNN(nn.Module):
     def __init__(self,n_features,n_edge_features,n_global_features,
                         representation_size ,
@@ -138,10 +137,6 @@ class HeteroGNN(nn.Module):
 
         # Node related layers
         self.node_encoder = MLP([self.representation_size]*2,n_features)
-        #self.node_update = NodeUpdateAttn(self.representation_size,self.representation_size,self.representation_size,n_heads=n_heads)
-        #self.node_update = TransformerConv(in_channels=self.representation_size
-        #                                   , out_channels=self.representation_size//n_heads, heads=n_heads, 
-        #                                   edge_dim=self.representation_size)
         self.node_attention_layer = GraphAttentionV2Layer(in_features_1=self.representation_size*2,
                                                     out_features_1=self.representation_size*2,
                                                     in_features_2=self.representation_size,
@@ -151,7 +146,80 @@ class HeteroGNN(nn.Module):
                                                     dropout=attn_dropout,
                                                     leaky_relu_negative_slope=0.2,
                                                     share_weights=False)
-        #self.node_update_2 = NodeModelLtp(self.representation_size,self.representation_size,self.representation_size,self.representation_size)
+        #self.node_update = MLP([self.representation_size]*2, self.representation_size*5,dropout=dropout)
+        self.node_update = MLP([self.representation_size]*2, self.representation_size*3,dropout=dropout)
+        
+        # Edge related layers
+        self.edge_encoder = MLP([self.representation_size]*2, n_edge_features)
+        self.edge_update = EdgeModelLtp(self.representation_size*2, #Node features
+                                        self.representation_size*2, #Edge features
+                                        0, #No global features 
+                                        self.representation_size, #hidden features
+                                        dropout=dropout)
+
+        # Global related layers
+        self.global_encoder  = MLP([self.representation_size]*2,n_global_features)
+        self.global_update = GlobalModel(self.representation_size*3,self.representation_size,dropout=dropout)
+        
+    def forward(self, batch):
+        node_data  = batch['node'].x
+        node_index = batch['node'].batch
+        edge_index = torch.repeat_interleave(torch.arange(0, len(batch['globals'].x)).cuda(), batch['n_edge'].x)
+
+        edge_features_node = batch['node','sends','node'].edge_attr
+        edge_features_node_index = batch['node','sends','node'].edge_index
+        global_data = batch['globals'].x
+        
+        node_data = self.node_encoder(node_data)
+        edge_features_node = self.edge_encoder(edge_features_node)
+        global_data = self.global_encoder(global_data)
+
+        node_data_original = node_data
+        edge_features_node_original = edge_features_node
+        #global_data_original = global_data
+
+        for i in range(self.num_rounds) :
+            node_data = torch.cat([node_data_original,node_data],dim=1)
+            edge_features_node = torch.cat([edge_features_node_original,edge_features_node],dim=1)
+            #global_data = torch.cat([global_data_original,global_data],dim=1)
+
+            src = node_data[edge_features_node_index[0]]
+            dest = node_data[edge_features_node_index[1]]
+            #global_node_repeat = global_data[node_index]
+            #global_edge_repeat = global_data[edge_index]
+
+            edge_features_node = self.edge_update(src,dest,edge_features_node,None)
+            node_data = self.node_update(self.node_attention_layer(node_data,edge_features_node,edge_features_node_index[1],None))
+            #global_data = self.global_update(node_data,edge_index,edge_features_node,global_data,node_index)
+
+        global_data = self.global_update(node_data,edge_index,edge_features_node,global_data,node_index)
+
+        return node_data, edge_features_node,global_data
+
+#Hetero graph neural network
+class HeteroGNN_global(nn.Module):
+    def __init__(self,n_features,n_edge_features,n_global_features,
+                        representation_size ,
+                        dropout=0.0,
+                        attn_dropout=0.0,
+                        num_rounds=3,
+                        n_heads=1):
+        super(HeteroGNN_global, self).__init__()
+        
+        self.num_rounds = num_rounds
+        self.representation_size = representation_size
+
+        # Node related layers
+        self.node_encoder = MLP([self.representation_size]*2,n_features)
+        self.node_attention_layer = GraphAttentionV2Layer(in_features_1=self.representation_size*2,
+                                                    out_features_1=self.representation_size*2,
+                                                    in_features_2=self.representation_size,
+                                                    out_features_2=self.representation_size,
+                                                    n_heads=n_heads,
+                                                    is_concat=False,
+                                                    dropout=attn_dropout,
+                                                    leaky_relu_negative_slope=0.2,
+                                                    share_weights=False)
         self.node_update = MLP([self.representation_size]*2, self.representation_size*5,dropout=dropout)
         
         # Edge related layers
@@ -193,14 +261,11 @@ class HeteroGNN(nn.Module):
             global_node_repeat = global_data[node_index]
             global_edge_repeat = global_data[edge_index]
 
-            #edge_features_node = F.relu(self.edge_update(src,dest,edge_features_node,global_edge_repeat))
             edge_features_node = self.edge_update(src,dest,edge_features_node,global_edge_repeat)
-            #node_data = F.relu(self.node_attention_layer(node_data,edge_features_node,edge_features_node_index[1],global_node_repeat))
-            #node_data = F.relu(self.node_update(self.node_attention_layer(node_data,edge_features_node,edge_features_node_index[1],global_node_repeat)))
             node_data = self.node_update(self.node_attention_layer(node_data,edge_features_node,edge_features_node_index[1],global_node_repeat))
-            #global_data = F.relu(self.global_update(node_data,edge_index,edge_features_node,global_data,node_index))
             global_data = self.global_update(node_data,edge_index,edge_features_node,global_data,node_index)
         return node_data, edge_features_node,global_data
+
 
 class GNN_GRU(nn.Module):
     def __init__(self, n_features, n_edge_features,n_global_features,
@@ -210,16 +275,18 @@ class GNN_GRU(nn.Module):
                  attn_dropout ,
                  action_space,
                  batch_size,
-                 n_heads):
-        #super().__init__(n_features, n_edge_features, n_hidden, dropout)
+                 n_heads,
+                 g_node):
         super(GNN_GRU,self).__init__()
-        #self.encoder = GraphNetworkLtp(n_features,n_edge_features,n_global_features\
-        #                               ,n_hidden,dropout,gnn_rounds)
         self.max_num_actions = 1
         self.max_num_objects = 1
 
-        self.encoder = HeteroGNN(n_features,n_edge_features,n_global_features\
-                                       ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads)
+        if g_node is True :
+            self.encoder = HeteroGNN_global(n_features,n_edge_features,n_global_features\
+                                        ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads)
+        else :
+            self.encoder = HeteroGNN(n_features,n_edge_features,n_global_features\
+                                        ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads)
         
         self.representation_size = n_hidden
         self.max_number_action_parameters = 0

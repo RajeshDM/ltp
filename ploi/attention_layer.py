@@ -95,11 +95,10 @@ class GraphAttentionV2Layer(nn.Module):
 
         aggregated_effects = torch.zeros((n_nodes,self.n_heads,self.n_hidden_2)).cuda()
         aggregated_effects[torch.arange(torch.max(receivers)+1)] = scatter(g_r_with_attn, receivers, dim=0, reduce='add')
-        #aggregated_effects = torch.zeros(h.shape).cuda()
-        #aggregated_effects[torch.arange(torch.max(receivers)+1)] = scatter(g_r_with_attn.squeeze(), receivers, dim=0, reduce='add')
 
-        #out = torch.cat([g_l.squeeze(1),aggregated_effects,u],dim=1)
-        out = torch.cat([g_l.mean(dim=1),aggregated_effects.mean(dim=1),u],dim=1)
+        if u is not None:
+            out = torch.cat([g_l.mean(dim=1),aggregated_effects.mean(dim=1),u],dim=1)
+        else :
+            out = torch.cat([g_l.mean(dim=1),aggregated_effects.mean(dim=1)],dim=1)
 
-        #out = self.node_update (out)
         return out

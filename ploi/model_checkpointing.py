@@ -91,6 +91,9 @@ class ModelManager:
                 # Format floating point numbers nicely
                 param_str = f"{k}{v:.0e}" if v < 0.01 else f"{k}{v}"
             else:
+                if k == 'g_node' : 
+                    if v is True :
+                        continue
                 param_str = f"{k}{v}"
             param_strs.append(param_str)
         

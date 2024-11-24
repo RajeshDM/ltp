@@ -18,7 +18,7 @@ num_train_problems=125
 mode="test"
 wandb="True"
 timestamp=$(date +"%Y_%m_%d_%H_%M")
-max_plan_length=400
+max_plan_length=800
 
 for head in ${heads[@]};
 do

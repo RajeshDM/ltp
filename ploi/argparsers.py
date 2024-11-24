@@ -48,7 +48,8 @@ def get_ploi_argument_parser():
         "--train-planner-name",
         type=str,
         choices=["fd-lama-first", "fd-opt-lmcut"],
-        default="fd-lama-first",
+        #default="fd-lama-first",
+        default="fd-opt-lmcut",
         help="Train planner to use",
     )
     parser.add_argument(
@@ -79,7 +80,7 @@ def get_ploi_argument_parser():
         help="Whether or not to do incremental planning",
     )
     parser.add_argument(
-        "--timeout", type=int, default=30, help="Timeout for test-time planner"
+        "--timeout", type=int, default=300, help="Timeout for test-time planner"
     )
 
     parser.add_argument(
@@ -304,4 +305,29 @@ def get_ploi_argument_parser():
         type=str2bool,
         default=False,
         help="Whether to log on Wandb or not")
+
+    parser.add_argument(
+        "--run-learned-model", 
+        type=str2bool,
+        default=True,
+        help="Whether to run the learned model or not")
+
+    parser.add_argument(
+        "--run-non-optimal", 
+        type=str2bool,
+        default=False,
+        help="Whether to run the non-optimal planner or not")
+
+    parser.add_argument(
+        "--run-optimal", 
+        type=str2bool,
+        default=False,
+        help="Whether to run the optimal planner or not")
+
+    parser.add_argument(
+        "--use-global-node", 
+        type=str2bool,
+        default=True,
+        help="Whether to use the global node for the learning method")
+
     return parser

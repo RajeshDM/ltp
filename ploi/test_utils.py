@@ -1,9 +1,12 @@
 #from ploi.run_planner_with_ltp_2 import PlannerTester, PlannerConfig, PlannerType
 from enum import Enum, auto
 from dataclasses import dataclass
-from typing import List, Dict, Optional, Any
+from typing import List, Dict 
 import wandb
 import numpy as np
+import tempfile
+import os
+import subprocess
 
 class PlannerType(Enum):
     LEARNED_MODEL = auto()
@@ -106,7 +109,7 @@ def compute_failures(problems_per_division,
             
     return failure_dict
 
-def format_metrics(result):
+def format_metrics(metrics, epoch):
     """
     Formats and displays model metrics with clean formatting.
     
@@ -117,8 +120,7 @@ def format_metrics(result):
         dict: Formatted metrics for potential further use
     """
     # Extract metrics for cleaner access
-    metrics = result['test_results'][PlannerType.LEARNED_MODEL]
-    epoch = result['epoch']
+    #metrics = result['test_results'][PlannerType.LEARNED_MODEL]
     
     # Format numeric values
     formatted_metrics = {
@@ -188,3 +190,27 @@ def log_model_metrics(all_results_dict, args):
         })
 
     return best_model_type, best_epoch, best_success_rate
+
+
+"""Validate plans.
+"""
+
+
+def validate_strips_plan(domain_file, problem_file, plan):
+    """Return True for a successfully validated plan, False otherwise.
+    """
+    plan_str = ""
+    #ic (domain_file)
+    #ic (problem_file)
+    for t, action in enumerate(plan):
+        plan_str += "{}: {}\n".format(t, action.pddl_str())
+    planfile = tempfile.NamedTemporaryFile(delete=False).name
+    with open(planfile, "w") as f:
+        f.write(plan_str)
+    cmd_str = "validate -v {} {} {}".format(domain_file, problem_file, planfile)
+    output = subprocess.getoutput(cmd_str)
+    #ic (output)
+    os.remove(planfile)
+    if "Plan valid" in output:
+        return True
+    return False

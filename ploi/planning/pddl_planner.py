@@ -19,6 +19,7 @@ class PDDLPlanner(Planner):
     """An abstract PDDL planner for PDDLGym."""
 
     def __call__(self, domain, state, timeout):
+        self.reset_statistics()
         act_preds = [domain.predicates[a] for a in list(domain.actions)]
         act_space = LiteralSpace(
             act_preds, type_to_parent_types=domain.type_to_parent_types

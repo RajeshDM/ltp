@@ -26,7 +26,8 @@ import time
 from tqdm import tqdm
 from ploi.test_utils import (
     PlannerConfig, PlannerType, PlanningResult, PlannerMetrics,
-    compute_metrics
+    compute_metrics,
+    validate_strips_plan
 )
 from ploi.run_planner_with_ltp import (
     _create_planner,
@@ -64,7 +65,11 @@ class ModelMetrics:
 
 def run_non_opt_planner(env,state,action_space,timeout,planner):
     try:
-        plan, time_taken = planner(env.domain, state, action_space, timeout=timeout)
+        #plan, time_taken = planner(env.domain, state, action_space, timeout=timeout)
+        #plan, time_taken = planner(env.domain, state, timeout=timeout)
+        start_time = time.time()
+        plan = planner(env.domain, state, timeout=timeout)
+        time_taken = time.time() - start_time
         return plan, time_taken
     except Exception as e:
         print("\t\tPlanning failed with error: {}".format(e), flush=True)
@@ -332,24 +337,61 @@ class PlannerTester:
         self.env.fix_problem_index(problem_idx)
         state, _ = self.env.reset()
         fname = env.problems[problem_idx].problem_fname
+        fname = "/".join(fname.split("/")[-2:])
+
+        plan_len = -1 
+        plan = False
+
+        if not optimal :
+            planner_to_send = self.non_opt_planner
+            function_to_run = run_non_opt_planner
+            planner_data = self.non_optimal_planner_data
+        else :
+            planner_to_send = self.opt_planner
+            function_to_run = run_opt_planner
+            planner_data = self.optimal_planner_data
+
+        if fname in planner_data:
+            plan_len, time_taken = planner_data[fname]
+            if plan_len != -1:
+                plan = True
+        else :
+            plan, time_taken = function_to_run(env, state, action_space, timeout,planner_to_send)
+            if plan is not None :
+                plan_len = len(plan)
+            planner_data[fname] = (plan_len,time_taken)
+
+        if plan:
+            result.success = True
+            result.plan_length = plan_len
+        result.time_taken = time_taken
+        return result
+
+
         if not optimal:
             if fname in self.non_optimal_planner_data:
-                plan, time_taken = self.non_optimal_planner_data[fname]
+                plan_len, time_taken = self.non_optimal_planner_data[fname]
+                plan = True
             else :
                 plan, time_taken = run_non_opt_planner(env, state, action_space, timeout,self.non_opt_planner)
-                self.non_optimal_planner_data[fname] = (plan, time_taken)
+                #self.non_optimal_planner_data[fname] = (plan, time_taken)
+                plan_len = len(plan)
+                self.non_optimal_planner_data[fname] = (plan_len, time_taken)
         else:
             if fname in self.optimal_planner_data:
-                plan, time_taken = self.non_optimal_planner_data[fname]
+                plan_len, time_taken = self.non_optimal_planner_data[fname]
+                plan = True
             else :
                 plan, time_taken = run_opt_planner(env, state, action_space, timeout, self.opt_planner)
-                self.optimal_planner_data[fname] = (plan, time_taken)
+                #self.optimal_planner_data[fname] = (plan, time_taken)
+                plan_len = len(plan)
+                self.optimal_planner_data[fname] = (plan_len,time_taken)
 
 
         if plan:
-            result.plan = plan
+            #result.plan = plan
             result.success = True
-            result.plan_length = len(plan)
+            result.plan_length = plan_len#len(plan)
         result.time_taken = time_taken
         
         return result

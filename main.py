@@ -94,6 +94,7 @@ def initialize_model(model_class, args, action_space):
         action_space= action_space,
         batch_size=args.batch_size,
         n_heads = args.n_heads,
+        g_node = args.use_global_node,
     )
 
 
@@ -110,7 +111,8 @@ def run_tests(
              action_space = None,
              tested_epoch_numbers: Set[int] = None,
              num_models_to_test: int = 2,
-             starting_model_num: int = 0
+             starting_model_num: int = 0,
+             planner_types = [PlannerType.LEARNED_MODEL]
              ) -> List[Dict]:
     """
     Run tests on best models for a specific configuration
@@ -130,41 +132,44 @@ def run_tests(
         return []
     
     results = []
-    for model_info in best_models[::-1][starting_model_num:starting_model_num+num_models_to_test]:
-        # Create fresh model instance
-        #model = model_class()
-        curr_model = initialize_model(model_class, args, action_space)
-        
-        # Load model state
-        curr_model.load_state_dict(model_info['state_dict'])
-        curr_model.to(device)
-        curr_model.eval()
+    curr_model = None
+    if PlannerType.LEARNED_MODEL in planner_types : 
+        for model_info in best_models[::-1][starting_model_num:starting_model_num+num_models_to_test]:
+            # Create fresh model instance
+            #model = model_class()
+            curr_model = initialize_model(model_class, args, action_space)
+            
+            # Load model state
+            curr_model.load_state_dict(model_info['state_dict'])
+            curr_model.to(device)
+            curr_model.eval()
 
-        if model_info['epoch'] in tested_epoch_numbers:
-            print ("Already tested model from epoch ",model_info['epoch'])
-            continue 
-        else :
-            tested_epoch_numbers.add(model_info['epoch'])
+            if model_info['epoch'] in tested_epoch_numbers:
+                print ("Already tested model from epoch ",model_info['epoch'])
+                continue 
+            else :
+                tested_epoch_numbers.add(model_info['epoch'])
 
-        if args.epoch_number != -1 : 
-            if model_info['epoch'] != args.epoch_number :
-                continue
-        
-        # Run tests
-        print ("Testing model from epoch ",model_info['epoch'])
-        test_results, run_metrics = test_function(curr_model)
-        results.append({
-            'epoch': model_info['epoch'],
-            'validation_loss': model_info['validation_loss'],
-            'training_loss': model_info['training_loss'],
-            'combined_loss': model_info['combined_loss'],
-            'test_results': run_metrics, 
-            'all_plan_results': test_results
-        })
-        metrics = results[-1]['test_results'][PlannerType.LEARNED_MODEL]
-        print ("failed : ",metrics.failures)
-        #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
-        _ = format_metrics(results[-1])
+            if args.epoch_number != -1 : 
+                if model_info['epoch'] != args.epoch_number :
+                    continue
+            
+            # Run tests
+            print ("Testing model from epoch ",model_info['epoch'])
+            test_results, run_metrics = test_function(curr_model)
+            results.append({
+                'epoch': model_info['epoch'],
+                'validation_loss': model_info['validation_loss'],
+                'training_loss': model_info['training_loss'],
+                'combined_loss': model_info['combined_loss'],
+                'test_results': run_metrics, 
+                'all_plan_results': test_results
+            })
+            metrics = results[-1]['test_results'][PlannerType.LEARNED_MODEL]
+            print ("failed : ",metrics.failures)
+            _ = format_metrics(results[-1]['test_results'][PlannerType.LEARNED_MODEL], model_info['epoch'])
+            #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
+
 
     return results
 
@@ -550,6 +555,7 @@ if __name__ == "__main__":
             'ad' : args.attention_dropout,
             'wd' : args.dropout,
             'heads' : args.n_heads,
+            'g_node' : args.use_global_node,
         }
 
         continue_training = args.continue_training
@@ -605,9 +611,21 @@ if __name__ == "__main__":
         if args.mode != 'test' and args.mode != 'train_test' :
            exit() 
 
+        planner_types = [] 
+
+        if args.run_learned_model == True :
+            planner_types.append(PlannerType.LEARNED_MODEL)
+
+        if args.run_non_optimal == True :
+            planner_types.append(PlannerType.NON_OPTIMAL)
+        if args.run_optimal == True :
+            planner_types.append(PlannerType.OPTIMAL)
+
         config = PlannerConfig(
-            planner_types=[PlannerType.LEARNED_MODEL],
+            #planner_types=[PlannerType.NON_OPTIMAL],
+            #planner_types=[PlannerType.LEARNED_MODEL],
             #planner_types=[PlannerType.LEARNED_MODEL, PlannerType.NON_OPTIMAL],
+            planner_types=planner_types,
             domain_name=args.domain , 
             num_problems=args.num_test_problems,
             timeout=30.0,
@@ -656,6 +674,7 @@ if __name__ == "__main__":
                 tested_epoch_numbers=tested_epoch_numbers,
                 num_models_to_test=num_models_to_test,
                 starting_model_num=starting_model_num,
+                planner_types=planner_types,
             )
 
         tested_epoch_numbers = set()
@@ -667,6 +686,14 @@ if __name__ == "__main__":
 
         # Log all results and get best model info
         best_model_type, best_epoch, best_success_rate = log_model_metrics(all_results, args)
+
+        curr_model = None
+        if PlannerType.NON_OPTIMAL in planner_types : 
+            test_results, run_metrics = curr_test_function(curr_model)
+            _ = format_metrics(run_metrics[PlannerType.NON_OPTIMAL],"NON OPTIMAL") 
+        if PlannerType.OPTIMAL in planner_types : 
+            test_results, run_metrics = curr_test_function(curr_model)
+            _ = format_metrics(run_metrics[PlannerType.OPTIMAL],"NON OPTIMAL") 
 
         # Print best model info
         if best_model_type is not None:
