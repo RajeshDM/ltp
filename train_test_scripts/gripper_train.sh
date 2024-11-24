@@ -1,16 +1,16 @@
 #!/bin/bash
 
-heads=(2 4)
+heads=(2)
 lrs=(0.0005)
 decays=(0.000)
-attn_drops=(0.1 0.2 0.3 0.4)
+attn_drops=(0.2)
 other_drops=(0)
-expid="miconic"
-domain="miconic_ipcc"
+expid="gripper"
+domain="gripper_ipcc"
 gnn_rounds=(9)
 epochs=630
-num_test_problems=119
-num_train_problems=228
+num_test_problems=128
+num_train_problems=147
 mode="train_test"
 #mode="test"
 wandb="True"
