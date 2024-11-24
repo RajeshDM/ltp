@@ -315,7 +315,7 @@ def get_ploi_argument_parser():
     parser.add_argument(
         "--run-non-optimal", 
         type=str2bool,
-        default=False,
+        default=True,
         help="Whether to run the non-optimal planner or not")
 
     parser.add_argument(

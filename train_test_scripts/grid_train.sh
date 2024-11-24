@@ -1,9 +1,9 @@
 #!/bin/bash
 
-heads=(2 4)
+heads=(2)
 lrs=(0.0005)
 decays=(0.000)
-attn_drops=(0.1 0.2 0.3 0.4)
+attn_drops=(0.4)
 other_drops=(0)
 expid="grid"
 domain="grid_ipcc"
@@ -15,8 +15,9 @@ mode="train_test"
 #mode="test"
 wandb="True"
 timestamp=$(date +"%Y_%m_%d_%H_%M")
-max_plan_length=400
+max_plan_length=700
 g_node="False"
+non_opt="True"
 
 #:'
 for head in ${heads[@]};
@@ -32,8 +33,8 @@ do
 		 for gnn_round in ${gnn_rounds[@]};
 		 do
 			 #echo "python main.py --all-problems --lr $lr --n-heads $head --attention-dropout $attn_drop --dropout $other_drop --weight_decay $decay" |& tee "cache/results/${expid}/lr_${lr}_n_heads_${head}_attn_drop_${attn_drop}_drop_${other_drop}_decay_${decay}.txt" 
-			 echo "python main.py --domain ${domain} --all-problems --lr $lr --n-heads $head --attention-dropout $attn_drop --dropout $other_drop --weight-decay $decay --wandb ${wandb} --mode ${mode} --gnn-rounds $gnn_round --epochs $epochs --num-test-problems $num_test_problems --num-train-problems ${num_train_problems} --max-plan-length ${max_plan_length} --use-global-node ${g_node}" 
-			 python main.py --domain ${domain} --all-problems --lr $lr --n-heads $head --attention-dropout $attn_drop --dropout $other_drop --weight-decay $decay --wandb ${wandb} --mode ${mode} --gnn-rounds $gnn_round --epochs $epochs --num-test-problems $num_test_problems --num-train-problems ${num_train_problems} --max-plan-length ${max_plan_length} --use-global-node ${g_node} |& tee -a "cache/results/${expid}/lr_${lr}_n_heads_${head}_attn_drop_${attn_drop}_drop_${other_drop}_decay_${decay}_g_node_${g_node}.txt" 
+			 echo "python main.py --domain ${domain} --all-problems --lr $lr --n-heads $head --attention-dropout $attn_drop --dropout $other_drop --weight-decay $decay --wandb ${wandb} --mode ${mode} --gnn-rounds $gnn_round --epochs $epochs --num-test-problems $num_test_problems --num-train-problems ${num_train_problems} --max-plan-length ${max_plan_length} --use-global-node ${g_node} --run-non-optimal ${non_opt}" 
+			 python main.py --domain ${domain} --all-problems --lr $lr --n-heads $head --attention-dropout $attn_drop --dropout $other_drop --weight-decay $decay --wandb ${wandb} --mode ${mode} --gnn-rounds $gnn_round --epochs $epochs --num-test-problems $num_test_problems --num-train-problems ${num_train_problems} --max-plan-length ${max_plan_length} --use-global-node ${g_node} --run-non-optimal ${non_opt} |& tee -a "cache/results/${expid}/lr_${lr}_n_heads_${head}_attn_drop_${attn_drop}_drop_${other_drop}_decay_${decay}_g_node_${g_node}.txt" 
 		done
              done
 	 done
@@ -55,8 +56,8 @@ do
 	     do
 		 for gnn_round in ${gnn_rounds[@]};
 		 do
-			 echo "python main.py --domain ${domain} --all-problems --lr $lr --n-heads $head --attention-dropout $attn_drop --dropout $other_drop --weight-decay $decay --wandb ${wandb} --mode ${mode} --gnn-rounds $gnn_round --epochs $epochs --num-test-problems $num_test_problems --num-train-problems ${num_train_problems} --use-global-node ${g_node}" 
-			 python main.py --domain ${domain} --all-problems --lr $lr --n-heads $head --attention-dropout $attn_drop --dropout $other_drop --weight-decay $decay --wandb ${wandb} --mode ${mode} --gnn-rounds $gnn_round --epochs $epochs --num-test-problems $num_test_problems --num-train-problems ${num_train_problems} --max-plan-length=${max_plan_length} --use-global-node ${g_node} 
+			 echo "python main.py --domain ${domain} --all-problems --lr $lr --n-heads $head --attention-dropout $attn_drop --dropout $other_drop --weight-decay $decay --wandb ${wandb} --mode ${mode} --gnn-rounds $gnn_round --epochs $epochs --num-test-problems $num_test_problems --num-train-problems ${num_train_problems} --use-global-node ${g_node} --run-non-optimal ${non_opt}" 
+			 python main.py --domain ${domain} --all-problems --lr $lr --n-heads $head --attention-dropout $attn_drop --dropout $other_drop --weight-decay $decay --wandb ${wandb} --mode ${mode} --gnn-rounds $gnn_round --epochs $epochs --num-test-problems $num_test_problems --num-train-problems ${num_train_problems} --max-plan-length=${max_plan_length} --use-global-node ${g_node} --run-non-optimal ${non_opt} 
 		done
              done
 	 done

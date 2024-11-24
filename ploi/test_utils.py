@@ -29,15 +29,17 @@ class PlannerConfig:
 
 @dataclass
 class PlannerMetrics:
-    success_rate_with_monitor : float
-    success_rate_without_monitor : float
-    avg_plan_length: float
-    avg_time_taken: float
-    impossible_actions: int
     failures: Dict[int, List[int]]
+    success_rate_with_monitor : float = 0
+    success_rate_without_monitor : float = 0
+    avg_plan_length: float = 0
+    avg_time_taken: float = 0
+    impossible_actions: int = 0
     repeated_states: int = 0
     max_plan_length: int = 0
     max_time_taken: float = 0
+    plan_quality: float = 0
+    median_plan_length: float = 0
 
 class PlanningResult:
     def __init__(self):
@@ -64,11 +66,13 @@ def compute_metrics(problems_per_division,
             avg_time = np.mean([r.time_taken for r in successful_results_with_monitor])
             max_plan_length = max(r.plan_length for r in planner_results if r.success)
             max_time_taken = max(r.time_taken for r in planner_results if r.success)
+            median_plan_length = np.median([r.plan_length for r in successful_results_with_monitor])
         else:
             avg_plan_length = 0
             avg_time = 0
             max_plan_length = 0
             max_time_taken = 0
+            median_plan_length = 0
             
         total_repeated_states = sum(r.repeated_states for r in planner_results)
         
@@ -82,9 +86,50 @@ def compute_metrics(problems_per_division,
             failures=compute_failures(problems_per_division,planner_results, failure_dict),
             max_plan_length=max_plan_length,
             max_time_taken=max_time_taken,
+            median_plan_length=median_plan_length
         )
     
     return metrics
+
+def compute_combined_metrics(results):
+
+    non_optimal_results = results[PlannerType.NON_OPTIMAL]
+    learned_model_results = results[PlannerType.LEARNED_MODEL]
+
+    num_problems = len(non_optimal_results)
+
+    successful_results_with_monitor = [(non_opt,leared) for non_opt, leared in zip(non_optimal_results, learned_model_results) 
+                                       if non_opt.success and leared.success]
+
+    if successful_results_with_monitor:
+        total_plan_len_learned = np.sum([r[1].plan_length for r in successful_results_with_monitor])
+        total_plan_len_non_opt = np.sum([r[0].plan_length for r in successful_results_with_monitor])
+        avg_plan_length = np.mean([r[1].plan_length for r in successful_results_with_monitor])
+        avg_time = np.mean([r[1].time_taken for r in successful_results_with_monitor])
+        max_plan_length = max(r[1].plan_length for r in successful_results_with_monitor)
+        max_time_taken = max(r[1].time_taken for r in successful_results_with_monitor)
+        plan_quality = total_plan_len_learned / total_plan_len_non_opt
+
+    else:
+        avg_plan_length = 0
+        avg_time = 0
+        max_plan_length = 0
+        max_time_taken = 0
+        plan_quality = 0
+
+    total_repeated_states = sum(r[1].repeated_states for r in successful_results_with_monitor)
+    
+    combined_metrics = PlannerMetrics(
+        success_rate_with_monitor=len(successful_results_with_monitor) / num_problems,
+        avg_plan_length=avg_plan_length,
+        avg_time_taken=avg_time,
+        repeated_states=total_repeated_states,
+        failures={},
+        max_plan_length=max_plan_length,
+        max_time_taken=max_time_taken,
+        plan_quality=plan_quality
+    )
+    return combined_metrics 
 
 def compute_failures(problems_per_division, 
                      planner_results: List[PlanningResult],
@@ -130,6 +175,7 @@ def format_metrics(metrics, epoch):
         'Time (sec)': f"{metrics.avg_time_taken:.2f}",
         'MAx Plan Length': f"{metrics.max_plan_length}",
         'Max Time (sec)': f"{metrics.max_time_taken:.2f}",
+        'Median Plan Length': f"{metrics.median_plan_length:.1f}",
         #'Impossible Actions': f"{metrics.impossible_actions:,d}"
     }
     

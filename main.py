@@ -39,7 +39,8 @@ from ploi.run_planner_with_ltp import (
 #from ploi.run_planner_with_ltp_2 import PlannerTester, PlannerConfig, PlannerType
 from ploi.test_utils import (
     PlannerConfig, PlannerType, PlanningResult, PlannerMetrics,
-    compute_metrics
+    compute_metrics,
+    compute_combined_metrics,
 )
 from ploi.run_planner_with_ltp_2 import PlannerTester, PlannerConfig, PlannerType
 from ploi.test_utils import format_metrics, log_model_metrics 
@@ -169,6 +170,11 @@ def run_tests(
             print ("failed : ",metrics.failures)
             _ = format_metrics(results[-1]['test_results'][PlannerType.LEARNED_MODEL], model_info['epoch'])
             #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
+
+            if PlannerType.NON_OPTIMAL in planner_types : 
+                combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'])
+                #print (f"Combined Metrics for {model_type} : ", combnined_metrics)
+                print ("Plan Quality : ", combnined_metrics.plan_quality)
 
 
     return results
@@ -621,6 +627,9 @@ if __name__ == "__main__":
         if args.run_optimal == True :
             planner_types.append(PlannerType.OPTIMAL)
 
+        #ONLY DONE FOR FINALY DAY TESTING - REMOVE LATER
+        #planner_types = [PlannerType.LEARNED_MODEL,PlannerType.NON_OPTIMAL]
+
         config = PlannerConfig(
             #planner_types=[PlannerType.NON_OPTIMAL],
             #planner_types=[PlannerType.LEARNED_MODEL],
@@ -684,9 +693,11 @@ if __name__ == "__main__":
             results = run_tests_model_type(model_type, tested_epoch_numbers)
             all_results[model_type] = results
 
+
         # Log all results and get best model info
         best_model_type, best_epoch, best_success_rate = log_model_metrics(all_results, args)
 
+        '''
         curr_model = None
         if PlannerType.NON_OPTIMAL in planner_types : 
             test_results, run_metrics = curr_test_function(curr_model)
@@ -694,6 +705,7 @@ if __name__ == "__main__":
         if PlannerType.OPTIMAL in planner_types : 
             test_results, run_metrics = curr_test_function(curr_model)
             _ = format_metrics(run_metrics[PlannerType.OPTIMAL],"NON OPTIMAL") 
+        '''
 
         # Print best model info
         if best_model_type is not None:
