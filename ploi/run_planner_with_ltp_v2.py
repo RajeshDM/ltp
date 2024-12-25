@@ -29,7 +29,7 @@ from ploi.test_utils import (
     compute_metrics,
     validate_strips_plan
 )
-from ploi.run_planner_with_ltp import (
+from ploi.run_planner_with_ltp_v1 import (
     _create_planner,
 )
 import sys

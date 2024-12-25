@@ -75,7 +75,7 @@ class ModelManager:
     def get_config_hash(train_env_name: str, seed: int, hyperparameters: Dict) -> str:
         """Generate hash for internal tracking"""
         config_str = (f"{train_env_name}_{seed}_" + 
-                     '_'.join(f"{k}_{v}" for k, v in sorted(hyperparameters.items())))
+                     '_'.join(f"{k}_{v}" for k, v in sorted(hyperparameters.items()) if k != 'g_node' or k =='g_node' and v == False))
         return hashlib.md5(config_str.encode()).hexdigest()[:10]
     
     @staticmethod

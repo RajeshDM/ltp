@@ -1,9 +1,9 @@
 #!/bin/bash
 
-heads=(2)
+heads=(4)
 lrs=(0.0005)
 decays=(0.000)
-attn_drops=(0.2)
+attn_drops=(0.1)
 other_drops=(0)
 expid="blocks"
 domain="ManyBlocks_ipcc_big"
@@ -11,12 +11,13 @@ gnn_rounds=(9)
 epochs=630
 num_test_problems=220
 num_train_problems=200
-mode="train_test"
-#mode="test"
+#mode="train_test"
+mode="test"
 wandb="True"
 timestamp=$(date +"%Y_%m_%d_%H_%M")
-max_plan_length=400
-g_node="False"
+max_plan_length=500
+#g_node="False"
+g_node="True"
 non_opt="True"
 
 #:'

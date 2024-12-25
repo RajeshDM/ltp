@@ -11,12 +11,12 @@ gnn_rounds=(9)
 epochs=750
 num_test_problems=48
 num_train_problems=192
-mode="train_test"
-#mode="test"
+#mode="train_test"
+mode="test"
 wandb="True"
 timestamp=$(date +"%Y_%m_%d_%H_%M")
 max_plan_length=700
-g_node="False"
+g_node="True"
 non_opt="True"
 
 #:'
