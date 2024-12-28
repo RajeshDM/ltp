@@ -29,15 +29,21 @@ from ploi.test_utils import (
     compute_metrics,
     validate_strips_plan
 )
+import copy
 from ploi.run_planner_with_ltp_v1 import (
     _create_planner,
 )
 import sys
 import json
+from io import StringIO
+from functools import wraps
 
 if not sys.warnoptions:
     import warnings
     warnings.simplefilter("ignore")
+
+from ploi.baselines.plan import _plan
+import pymimir as mm
 
 # New class to add
 class StateMonitor:
@@ -62,6 +68,59 @@ class ModelMetrics:
     time_taken_system: float
     plan_success_rate : float
     total_plan_successes: float
+
+def silence_prints(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # Store the original stdout
+        original_stdout = sys.stdout
+        # Redirect stdout to a null stream
+        sys.stdout = StringIO()
+        try:
+            result = func(*args, **kwargs)
+            return result
+        finally:
+            # Restore stdout
+            sys.stdout = original_stdout
+    return wrapper
+
+def silence_all_output(func):
+    """
+    Decorator that suppresses ALL output including C/C++ prints
+    by redirecting file descriptors
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # Get file descriptors for stdout and stderr
+        stdout_fd = sys.stdout.fileno()
+        stderr_fd = sys.stderr.fileno()
+        
+        # Save copies of the file descriptors
+        saved_stdout_fd = os.dup(stdout_fd)
+        saved_stderr_fd = os.dup(stderr_fd)
+        
+        try:
+            # Open null device
+            devnull_fd = os.open(os.devnull, os.O_WRONLY)
+            
+            # Replace file descriptors with null device
+            os.dup2(devnull_fd, stdout_fd)
+            os.dup2(devnull_fd, stderr_fd)
+            
+            result = func(*args, **kwargs)
+            return result
+            
+        finally:
+            # Restore original file descriptors
+            os.dup2(saved_stdout_fd, stdout_fd)
+            os.dup2(saved_stderr_fd, stderr_fd)
+            
+            # Clean up
+            os.close(saved_stdout_fd)
+            os.close(saved_stderr_fd)
+            os.close(devnull_fd)
+            
+    return wrapper
 
 def run_non_opt_planner(env,state,action_space,timeout,planner):
     try:
@@ -149,107 +208,101 @@ def convert_graph_to_model_input_v2(g_inp, device):
     hetero_dataset = pyg_dataloader(hetero_graphs, batch_size=1)
     return next(iter(hetero_dataset)).to(device) 
 
-def discrepancy_get_best_action(feasible_action_list,action_loc,discrepancy_loc):
-    if action_loc == discrepancy_loc and len(feasible_action_list) > 1:
-        new_action = feasible_action_list[1]
-    else:
-        new_action = feasible_action_list[0]
-    return new_action
-
-def discrepancy_search(planner,env,state,action_space,plan):
-    #ic (plan)
-    discrepancy_locations = np.arange(0,len(plan))
-    succesful_plans = []
-    action_selection_function = discrepancy_get_best_action
-    for discrepancy_loc in discrepancy_locations:
-        action_loc = 0
-        new_plan = []
-        plan_found = False
-        _, _ = env.reset()
-        while len(new_plan) < len(plan):
-            if action_loc < discrepancy_loc :
-                state = env.step(plan[action_loc])
-                state = state[0]
-                new_plan.append(plan[action_loc])
-                action_loc += 1
-                continue
-            feasible_action_list = [] 
-            #feasible_action_list = planner._guidance.get_feasible_action_param_list(env,state,action_space,ensemble)
-            #if len(feasible_action_list) == [] :
-            if feasible_action_list[-1] == -1:
-                plan_found =False
-                #succesful_plans.append(None)
-                break
-
-            new_action = action_selection_function(feasible_action_list,action_loc,discrepancy_loc)
-
-            state = env.step(new_action[0])
-            state = state[0]
-            new_plan.append(new_action[0])
-            plan_found = True
-            for goal in state.goal.literals:
-                if goal not in list(state.literals):
-                    plan_found = False
-            action_loc += 1
-            if plan_found == True :
-                succesful_plans.append(new_plan)
-                break
-        #ic ("plan 1 done")
-        #ic (new_plan)
-        if plan_found != True:
-            succesful_plans.append(None)
-        else :
-            #ic (plan)
-            #ic (new_plan)
-            print ("Found new plan in discrepancy search")
-            break
-
-    return succesful_plans
-
 class PlannerTester:
     def __init__(self, config: PlannerConfig):
         self.config = config
         self.env = pddlgym.make(f"PDDLEnv{config.domain_name}Test-v0")
-        self.non_optimal_planner_data = {}
-        self.optimal_planner_data = {}
+        #self.non_optimal_planner_data = {}
+        #self.optimal_planner_data = {}
+        # Initialize dictionary to store data for all planner types
+        self.planner_data = {planner_type: {} for planner_type in self.config.planner_types}
+
         self.load_planner_data()
         self.opt_planner = _create_planner(config.train_planner_name)
         self.non_opt_planner = _create_planner(config.eval_planner_name)
         self.metrics = {}
 
-    def _is_valid_action(self, action, groundings) -> bool:
-        for grounded_action in groundings:
-            if (action.predicate == grounded_action.predicate and 
-                all(v1 == v2 for v1, v2 in zip(action.variables, grounded_action.variables))):
-                return True
-        return False
+    def load_planner_data(self):
+        """
+        Load data for all planner types specified in config.
+        """
+        for planner_type in self.config.planner_types:
+            filename = self.get_planner_filename(planner_type)
+            self.planner_data[planner_type] = self.load_planner_data_from_file(filename)
 
-    def load_planner_data(self)  :
-        opt_filename, non_opt_filename = self.get_planner_filename() 
+    def get_planner_filename(self, planner_type: PlannerType) -> str:
+        """
+        Generate filename for storing planner data based on domain and planner type.
+        Args:
+            planner_type: Type of the planner
+        Returns:
+            str: Full path to the planner data file
+        """
+        domain_name = self.config.domain_name
+        base_dir = "cache/results/planner_data"
+        
+        # Create base directory if it doesn't exist
+        os.makedirs(base_dir, exist_ok=True)
 
-        if PlannerType.NON_OPTIMAL in self.config.planner_types:
-            self.non_optimal_planner_data = self.load_planner_data_from_file(non_opt_filename)
+        if planner_type == PlannerType.LEARNED_MODEL:
+            # Generate filename based on domain name
+            #filename = f"{base_dir}/{domain_name}_"#learned_model.json"
+            #return filename
+            param_strs = []
+            filename = ""
+            for k,v in sorted(self.config.model_hyperparameters.items()):
+                if isinstance(v, float):
+                    # Format floating point numbers nicely
+                    param_str = f"{k}{v:.0e}" if v < 0.01 else f"{k}{v}"
+                else:
+                    if k == 'g_node' : 
+                        if v is True :
+                            continue
+                    param_str = f"{k}{v}"
+                param_strs.append(param_str)
+            
+            if param_strs:
+                filename += "_" + "_".join(param_strs)
+            
+            # Clean up any characters that might cause issues
+            #folder_name = "".join(c if c.isalnum() or c in "_-" else "_" for c in folder_name)
+            filename = f"{base_dir}/{domain_name}_{filename}.json"
+            return filename 
+        
+        # Generate filename based on planner type
+        filename = f"{base_dir}/{domain_name}_{planner_type.name.lower()}.json"
+        return filename
 
-        if PlannerType.OPTIMAL in self.config.planner_types:
-            self.optimal_planner_data = self.load_planner_data_from_file(opt_filename)
-
-    def load_planner_data_from_file(self, filename)  :
+    def load_planner_data_from_file(self, filename: str) -> Dict:
+        """
+        Load planner data from a JSON file if it exists.
+        Args:
+            filename: Path to the JSON file
+        Returns:
+            dict: Loaded data or empty dict if file doesn't exist
+        """
         if os.path.exists(filename):
             with open(filename, "r") as f:
                 return json.load(f)
         else :
             return {}
 
-    def get_planner_filename(self) :
-        domain_name = self.config.domain_name
-        base_dir = "cache/results/planner_data"
-        non_opt_filename = f"{base_dir}/" + domain_name + "_non_opt.json" 
-        opt_filename = f"{base_dir}/" + domain_name + "_opt.json"
-
-        return opt_filename, non_opt_filename
-
     def save_planner_data(self):
-        opt_filename, non_opt_filename = self.get_planner_filename()
+        """
+        Save data for all planner types to their respective files.
+        """
+        for planner_type in self.config.planner_types:
+            filename = self.get_planner_filename(planner_type)
+            # Create directory if it doesn't exist
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+            # Save data to file
+            with open(filename, "w") as f:
+                json.dump(self.planner_data[planner_type], f, indent=4)
+
+    '''
+    def save_planner_data_old(self):
+        opt_filename, non_opt_filename = self.get_planner_filename_old()
 
         if PlannerType.NON_OPTIMAL in self.config.planner_types:
             with open(non_opt_filename, "w") as f:
@@ -259,16 +312,59 @@ class PlannerTester:
             with open(opt_filename, "w") as f:
                 json.dump(self.optimal_planner_data, f)
 
-    def _run_learned_model(self, problem_idx: int, action_space: Any, model: Any, 
+    def get_planner_filename_old(self) :
+        domain_name = self.config.domain_name
+        base_dir = "cache/results/planner_data"
+        non_opt_filename = f"{base_dir}/" + domain_name + "_non_opt.json" 
+        opt_filename = f"{base_dir}/" + domain_name + "_opt.json"
+
+        return opt_filename, non_opt_filename
+
+    def load_planner_data_from_file_old(self, filename)  :
+        if os.path.exists(filename):
+            with open(filename, "r") as f:
+                return json.load(f)
+        else :
+            return {}
+
+    def load_planner_data_old(self)  :
+        opt_filename, non_opt_filename = self.get_planner_filename_old() 
+
+        if PlannerType.NON_OPTIMAL in self.config.planner_types:
+            self.non_optimal_planner_data = self.load_planner_data_from_file(non_opt_filename)
+
+        if PlannerType.OPTIMAL in self.config.planner_types:
+            self.optimal_planner_data = self.load_planner_data_from_file(opt_filename)
+    '''
+
+    def _is_valid_action(self, action, groundings) -> bool:
+        for grounded_action in groundings:
+            if (action.predicate == grounded_action.predicate and 
+                all(v1 == v2 for v1, v2 in zip(action.variables, grounded_action.variables))):
+                return True
+        return False
+
+    def _run_learned_model(self, problem_idx: int, action_space: Any, model_epoch: Any, 
                         graph_metadata: Any, use_monitor: bool = False) -> PlanningResult:
         result = PlanningResult()
         result.problem_idx = problem_idx
         start_time = time.time()
         monitor = StateMonitor() if use_monitor else None
+        model, epoch = model_epoch[0], model_epoch[1]
         
         # Initialize state
         self.env.fix_problem_index(problem_idx)
         state, _ = self.env.reset()
+        fname = self.env.problems[problem_idx].problem_fname
+        fname = "/".join(fname.split("/")[-2:]) 
+        fname = fname + "_" + str(epoch)
+
+        planner_data = self.planner_data[PlannerType.LEARNED_MODEL]
+
+        if fname in planner_data:
+            result.success = True
+            result.plan_length, result.time_taken = planner_data[fname]
+            return result 
         
         if monitor:
             monitor.add_state(state)
@@ -311,6 +407,7 @@ class PlannerTester:
                     result.success = True
                     result.time_taken = time.time() - start_time
                     result.plan_length = len(result.plan)
+                    planner_data[fname] = (result.plan_length, result.time_taken)
                     return result
                     
                 break  # Break to get new action predictions for new state
@@ -327,6 +424,8 @@ class PlannerTester:
             if len(result.plan) > self.config.max_plan_length:
                 result.time_taken = time.time() - start_time
                 return result
+
+        return result
 
     def _check_goal_reached(self, state) -> bool:
         return all(goal in list(state.literals) for goal in state.goal.literals)
@@ -345,11 +444,11 @@ class PlannerTester:
         if not optimal :
             planner_to_send = self.non_opt_planner
             function_to_run = run_non_opt_planner
-            planner_data = self.non_optimal_planner_data
+            planner_data = self.planner_data[PlannerType.NON_OPTIMAL]#self.non_optimal_planner_data
         else :
             planner_to_send = self.opt_planner
             function_to_run = run_opt_planner
-            planner_data = self.optimal_planner_data
+            planner_data = self.planner_data[PlannerType.OPTIMAL]#self.optimal_planner_data
 
         if fname in planner_data:
             plan_len, time_taken = planner_data[fname]
@@ -367,41 +466,52 @@ class PlannerTester:
         result.time_taken = time_taken
         return result
 
+    @silence_all_output
+    def create_baseline_parser(self, domain_file, problem_file):
+        parser = mm.PDDLParser(domain_file, problem_file)
+        factories = parser.get_pddl_repositories()
+        problem = parser.get_problem()
+        return problem, factories
 
-        if not optimal:
-            if fname in self.non_optimal_planner_data:
-                plan_len, time_taken = self.non_optimal_planner_data[fname]
-                plan = True
-            else :
-                plan, time_taken = run_non_opt_planner(env, state, action_space, timeout,self.non_opt_planner)
-                #self.non_optimal_planner_data[fname] = (plan, time_taken)
-                plan_len = len(plan)
-                self.non_optimal_planner_data[fname] = (plan_len, time_taken)
-        else:
-            if fname in self.optimal_planner_data:
-                plan_len, time_taken = self.non_optimal_planner_data[fname]
-                plan = True
-            else :
-                plan, time_taken = run_opt_planner(env, state, action_space, timeout, self.opt_planner)
-                #self.optimal_planner_data[fname] = (plan, time_taken)
-                plan_len = len(plan)
-                self.optimal_planner_data[fname] = (plan_len,time_taken)
+    def _run_exp_baseline(self, env, problem_idx, model):
+        result = PlanningResult()
+        result.problem_idx = problem_idx
+        problem_file = env.problems[problem_idx].problem_fname
+        domain_file = env.domain.domain_fname
+        planner_data = self.planner_data[PlannerType.EXP_BASELINE]
+        fname = env.problems[problem_idx].problem_fname
+        fname = "/".join(fname.split("/")[-2:])
 
-
-        if plan:
-            #result.plan = plan
+        if fname in planner_data:
+            result.plan_length, result.time_taken = planner_data[fname]
             result.success = True
-            result.plan_length = plan_len#len(plan)
+            return result 
+
+        #parser = mm.PDDLParser(domain_file, problem_file)
+        #factories = parser.get_pddl_repositories()
+        problem, factories = self.create_baseline_parser(domain_file, problem_file)
+        start_time = time.time()
+        solution = _plan(problem, factories, model, self.config.device, self.config.max_plan_length)
+        time_taken = time.time() - start_time
+
+        if solution is not None:
+            #print(f'Found a solution of length {len(solution)}!')
+            #for index, action in enumerate(solution):
+            #    print(f'{index + 1}: {str(action.to_string_for_plan(factories))}')
+            planner_data[fname] = (len(solution), time_taken)
+            result.success = True
+            result.plan_length =len(solution) 
+
         result.time_taken = time_taken
-        
         return result
 
     def test_planners(self, problems_to_solve: Optional[List[int]] = None,
-                     model=None, graph_metadata=None) -> Dict[PlannerType, PlannerMetrics]:
+                     models=None, graph_metadata=None) -> Dict[PlannerType, PlannerMetrics]:
         if problems_to_solve is None:
             problems_to_solve = range(min(self.config.num_problems, len(self.env.problems)))
             
-        results = {planner_type: [] for planner_type in self.config.planner_types}
+        #results = {planner_type: [] for planner_type in self.config.planner_types}
+        results = {}
         number_divisions = max(int((max(problems_to_solve)) / self.config.problems_per_division), 1) + 1
         self.failure_dict = {i:[] for i in range(int(number_divisions) )}
         
@@ -410,16 +520,21 @@ class PlannerTester:
             result = None
             
             for planner_type in self.config.planner_types:
-                if planner_type == PlannerType.LEARNED_MODEL and model:
-                    result = self._run_learned_model(problem_idx, action_space, model, graph_metadata, use_monitor=self.config.enable_state_monitor)
+                if planner_type == PlannerType.LEARNED_MODEL and PlannerType.LEARNED_MODEL in models:
+                    result = self._run_learned_model(problem_idx, action_space, models[planner_type], graph_metadata, use_monitor=self.config.enable_state_monitor)
+
+                if planner_type == PlannerType.EXP_BASELINE and PlannerType.EXP_BASELINE in models:
+                    result = self._run_exp_baseline(self.env, problem_idx, models[planner_type][0])
+
                 elif planner_type == PlannerType.NON_OPTIMAL:
-                    #result = self._run_non_optimal_planner(problem_idx, None)  # Replace None with actual planner
                     result = self._run_external_planner(self.env, problem_idx, action_space, self.config.timeout, optimal=False)
                 elif planner_type == PlannerType.OPTIMAL:
                     result = self._run_external_planner(self.env, problem_idx, action_space, self.config.timeout, optimal=True)
-                    #result = self._run_optimal_planner(problem_idx, None)  # Replace None with actual planner
                     
-                results[planner_type].append(result)
+                if result is not None : 
+                    if planner_type not in results :
+                        results[planner_type] = []
+                    results[planner_type].append(result)
 
         self.save_planner_data()
 

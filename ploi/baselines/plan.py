@@ -1,0 +1,74 @@
+import argparse
+import pymimir as mm
+import torch
+
+from pathlib import Path
+from typing import List, Union
+from ploi.baselines.relnn_max import SmoothmaxRelationalNeuralNetwork
+from ploi.baselines.utils import create_device, load_checkpoint, create_input
+
+
+def _parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description='Settings for testing')
+    parser.add_argument('--input', required=True, type=Path, help='Path to the problem file')
+    parser.add_argument('--model', required=True, type=Path, help='Path to a pre-trained model')
+    args = parser.parse_args()
+    return args
+
+
+def _create_parser(input: Path) -> mm.PDDLParser:
+    print('Creating parser...')
+    if input.is_file():
+        domain_file = str(input.parent / 'domain.pddl')
+        problem_file = str(input)
+    else:
+        raise Exception('input is not a file')
+    return mm.PDDLParser(domain_file, problem_file)
+
+
+def _plan(problem: mm.Problem, factories: mm.PDDLRepositories, 
+          model: SmoothmaxRelationalNeuralNetwork, device: torch.device,
+          max_plan_length = 1000) -> Union[None, List[mm.GroundAction]]:
+    solution = []
+    # Helper function for testing is a state is a goal state.
+    def is_goal_state(state: mm.State) -> bool:
+        return state.literals_hold(problem.get_fluent_goal_condition()) and state.literals_hold(problem.get_derived_goal_condition())
+    # Disable gradient as we are not optimizing.
+    with torch.no_grad():
+        successor_generator = mm.LiftedApplicableActionGenerator(problem, factories)
+        state_repository = mm.StateRepository(successor_generator)
+        current_state = state_repository.get_or_create_initial_state()
+        while (not is_goal_state(current_state)) and (len(solution) < max_plan_length):
+            applicable_actions = successor_generator.compute_applicable_actions(current_state)
+            successor_states = [state_repository.get_or_create_successor_state(current_state, action)[0] for action in applicable_actions]
+            relations, sizes = create_input(problem, successor_states, factories, device)
+            values, deadends = model.forward(relations, sizes)
+            # TODO: Take deadends into account.
+            min_index = values.argmin()
+            min_value = values[min_index]
+            min_action = applicable_actions[min_index]
+            min_successor = successor_states[min_index]
+            current_state = min_successor
+            solution.append(min_action)
+            #print(f'{min_value.item():.3f}: {min_action.to_string_for_plan(factories)}')
+    return solution if is_goal_state(current_state) else None
+
+
+def _main(args: argparse.Namespace) -> None:
+    print(f'Torch: {torch.__version__}')
+    device = create_device()
+    parser = _create_parser(args.input)
+    print(f'Loading model... ({args.model})')
+    model, _ = load_checkpoint(args.model, device)
+    factories = parser.get_pddl_repositories()
+    solution = _plan(parser.get_problem(), factories, model, device)
+    if solution is None:
+        print('Failed to find a solution!')
+    else:
+        print(f'Found a solution of length {len(solution)}!')
+        for index, action in enumerate(solution):
+            print(f'{index + 1}: {str(action.to_string_for_plan(factories))}')
+
+
+if __name__ == '__main__':
+    _main(_parse_arguments())

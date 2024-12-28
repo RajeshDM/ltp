@@ -32,7 +32,7 @@ from ploi.datautils_ltp import (
     TorchGraphDictDataset,
     graph_dataset_to_pyg_dataset,
 )
-from ploi.run_planner_with_ltp import (
+from ploi.run_planner_with_ltp_v1 import (
     run_planner_with_gnn_ltp,
     _create_planner,
 )
@@ -42,7 +42,7 @@ from ploi.test_utils import (
     compute_metrics,
     compute_combined_metrics,
 )
-from ploi.run_planner_with_ltp_2 import PlannerTester, PlannerConfig, PlannerType
+from ploi.run_planner_with_ltp_v2 import PlannerTester, PlannerConfig, PlannerType
 from ploi.test_utils import format_metrics, log_model_metrics 
 from ploi.guiders import HierarchicalGuidance, PLOIGuidance, SceneGraphGuidance
 from ploi.modelutils import (
@@ -63,9 +63,12 @@ from ploi.traineval import (
     train_model_graphnetwork_ltp_batch,
     train_model_hierarchical,
 )
+from ploi.baselines.utils import load_checkpoint 
 
 #import ploi.constants as constants
 from icecream import ic
+
+baselines = [PlannerType.EXP_BASELINE] 
 
 
 def set_seed(args):
@@ -113,7 +116,8 @@ def run_tests(
              tested_epoch_numbers: Set[int] = None,
              num_models_to_test: int = 2,
              starting_model_num: int = 0,
-             planner_types = [PlannerType.LEARNED_MODEL]
+             planner_types = [PlannerType.LEARNED_MODEL],
+             baseline_models = None
              ) -> List[Dict]:
     """
     Run tests on best models for a specific configuration
@@ -138,6 +142,7 @@ def run_tests(
         for model_info in best_models[::-1][starting_model_num:starting_model_num+num_models_to_test]:
             # Create fresh model instance
             #model = model_class()
+            curr_models = {}
             curr_model = initialize_model(model_class, args, action_space)
             
             # Load model state
@@ -154,10 +159,12 @@ def run_tests(
             if args.epoch_number != -1 : 
                 if model_info['epoch'] != args.epoch_number :
                     continue
-            
+
+            curr_models[PlannerType.LEARNED_MODEL] = (curr_model,model_info['epoch'])
+
             # Run tests
             print ("Testing model from epoch ",model_info['epoch'])
-            test_results, run_metrics = test_function(curr_model)
+            test_results, run_metrics = test_function(curr_models)
             results.append({
                 'epoch': model_info['epoch'],
                 'validation_loss': model_info['validation_loss'],
@@ -171,11 +178,21 @@ def run_tests(
             _ = format_metrics(results[-1]['test_results'][PlannerType.LEARNED_MODEL], model_info['epoch'])
             #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
 
-            if PlannerType.NON_OPTIMAL in planner_types : 
-                combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'])
-                #print (f"Combined Metrics for {model_type} : ", combnined_metrics)
-                print ("Plan Quality : ", combnined_metrics.plan_quality)
+            #if PlannerType.NON_OPTIMAL in planner_types : 
+            combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'], PlannerType.LEARNED_MODEL)
+            #print (f"Combined Metrics for {model_type} : ", combnined_metrics)
+            print ("Plan Quality : ", combnined_metrics.plan_quality)
 
+    for baseline in baselines:
+        curr_models = {}
+        if baseline in planner_types:
+            curr_models[baseline],_ = (load_checkpoint(baseline_models[baseline], device),-1)
+            test_results, run_metrics = test_function(curr_models)
+            combnined_metrics = compute_combined_metrics(test_results, baseline)
+            #print (f"Combined Metrics for {model_type} : ", combnined_metrics)
+            print ("Baseline : ",baseline)
+            _ = format_metrics(run_metrics[baseline], None )
+            print ("Plan Quality : ", combnined_metrics.plan_quality)
 
     return results
 
@@ -618,14 +635,23 @@ if __name__ == "__main__":
            exit() 
 
         planner_types = [] 
+        baseline_models = {}
 
-        if args.run_learned_model == True :
+        if args.run_learned_model is True :
             planner_types.append(PlannerType.LEARNED_MODEL)
 
-        if args.run_non_optimal == True :
+        if args.run_non_optimal is True :
             planner_types.append(PlannerType.NON_OPTIMAL)
-        if args.run_optimal == True :
+            
+        if args.run_optimal is True :
             planner_types.append(PlannerType.OPTIMAL)
+
+        if args.exp_baseline is True:
+            planner_types.append(PlannerType.EXP_BASELINE)
+            folder = os.path.join(Path.cwd(),"models")
+            folder = os.path.join(folder,args.domain+"_exp_baseline")
+            file = os.path.join(folder,"best.pth")
+            baseline_models[PlannerType.EXP_BASELINE] = file
 
         #ONLY DONE FOR FINALY DAY TESTING - REMOVE LATER
         #planner_types = [PlannerType.LEARNED_MODEL,PlannerType.NON_OPTIMAL]
@@ -643,26 +669,21 @@ if __name__ == "__main__":
             problems_per_division=args.problems_per_division,
             eval_planner_name = args.eval_planner_name,
             train_planner_name = args.train_planner_name,
+            model_hyperparameters = training_hyperparameters,
         )
 
         tester = PlannerTester(config)
         problems_to_solve = list(range(args.starting_test_number, args.starting_test_number + args.num_test_problems))
 
-        def test_function_v2(curr_model):
+        def test_function_v2(curr_models):
             return tester.test_planners(problems_to_solve=problems_to_solve,
-                                        model=curr_model, 
+                                        models=curr_models, 
                                         graph_metadata=graph_metadata)
 
-        def test_function(curr_model):
-            #return run_planner_with_gnn_ltp(args, curr_model, graph_metadata)
-            return run_planner_with_gnn_ltp(test_planner, train_planner, 
-                                            args, curr_model, graph_metadata,
-                                            current_problems_to_solve=problems_to_solve)
-
-        all_model_types = ['validation','training','combined']
+        #all_model_types = ['validation','training','combined']
         #all_model_types = ['validation','training']
         #all_model_types = ['validation']#,'training']
-        #all_model_types = ['training' ]
+        all_model_types = ['training' ]
 
         #curr_test_function = test_function
         curr_test_function = test_function_v2
@@ -684,6 +705,7 @@ if __name__ == "__main__":
                 num_models_to_test=num_models_to_test,
                 starting_model_num=starting_model_num,
                 planner_types=planner_types,
+                baseline_models=baseline_models,
             )
 
         tested_epoch_numbers = set()
@@ -692,7 +714,6 @@ if __name__ == "__main__":
         for model_type in all_model_types:
             results = run_tests_model_type(model_type, tested_epoch_numbers)
             all_results[model_type] = results
-
 
         # Log all results and get best model info
         best_model_type, best_epoch, best_success_rate = log_model_metrics(all_results, args)

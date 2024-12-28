@@ -56,14 +56,13 @@
             "--use-global-node", "True",
         ],
         },
-
         {
             "name": "Test blocks",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
-            "justMyCode": true,
+            "justMyCode": false,
             "args" :["--domain", "ManyBlocks_ipcc_big",
                 "--all-problems",
                 "--lr", "0.0005",
@@ -74,19 +73,20 @@
                 "--wandb", "False",
                 "--mode", "test",
                 "--starting-test-number", "0",
-                "--num-test-problems", "220",
+                "--num-test-problems", "290",
                 "--num-train-problems", "200",
                 "--epochs" , "80",
                 "--gnn-rounds" , "9",
                 "--batch-size", "16",
                 "--mode", "test",
-                "--max-plan-length", "200",
+                "--max-plan-length", "800",
                 "--problems-per-division", "10",
                 "--run-learned-model" , "True",
-                //"--run-non-optimal" , "False",
+                "--run-non-optimal" , "True",
                 //"--run-optimal" , "False",
                 //"--monitor", "False",
                 "--use-global-node", "True",
+                "--exp-baseline","True" ,
             ],
         },
         {
@@ -113,7 +113,6 @@
                 "--batch-size", "16",
                 "--mode", "test",
                 "--max-plan-length", "200",
-                //"--monitor", "False",
             ],
         },
         {
@@ -262,6 +261,24 @@
                 "--run-optimal" , "False",
                 //"--monitor", "False",
         ],
+        },
+        {
+            "name": "exp_baseline_train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/ploi/baselines/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args" :["--input", "/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big",]
+        },
+        {
+            "name": "exp_baseline_test",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/ploi/baselines/plan.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args" :["--model","/home", "--input", "/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big_test/blocks70_task40.pddl",]
         },
     ]
 }

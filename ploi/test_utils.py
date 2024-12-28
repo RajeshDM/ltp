@@ -12,6 +12,7 @@ class PlannerType(Enum):
     LEARNED_MODEL = auto()
     NON_OPTIMAL = auto()
     OPTIMAL = auto()
+    EXP_BASELINE = auto()
 
 @dataclass
 class PlannerConfig:
@@ -26,6 +27,7 @@ class PlannerConfig:
     enable_state_monitor: bool = False
     eval_planner_name :str = ""
     train_planner_name :str = "" 
+    model_hyperparameters: Dict[str, float] = None
 
 @dataclass
 class PlannerMetrics:
@@ -91,10 +93,10 @@ def compute_metrics(problems_per_division,
     
     return metrics
 
-def compute_combined_metrics(results):
+def compute_combined_metrics(results, curr_learned_model):
 
     non_optimal_results = results[PlannerType.NON_OPTIMAL]
-    learned_model_results = results[PlannerType.LEARNED_MODEL]
+    learned_model_results = results[curr_learned_model]
 
     num_problems = len(non_optimal_results)
 
@@ -108,7 +110,8 @@ def compute_combined_metrics(results):
         avg_time = np.mean([r[1].time_taken for r in successful_results_with_monitor])
         max_plan_length = max(r[1].plan_length for r in successful_results_with_monitor)
         max_time_taken = max(r[1].time_taken for r in successful_results_with_monitor)
-        plan_quality = total_plan_len_learned / total_plan_len_non_opt
+        #plan_quality = total_plan_len_learned / total_plan_len_non_opt
+        plan_quality = total_plan_len_non_opt / total_plan_len_learned
 
     else:
         avg_plan_length = 0
@@ -154,7 +157,7 @@ def compute_failures(problems_per_division,
             
     return failure_dict
 
-def format_metrics(metrics, epoch):
+def format_metrics(metrics, epoch=None):
     """
     Formats and displays model metrics with clean formatting.
     
@@ -180,7 +183,8 @@ def format_metrics(metrics, epoch):
     }
     
     # Print header
-    print(f"\nModel Metrics - Epoch {epoch}")
+    if epoch is not None:
+        print(f"\nModel Metrics - Epoch {epoch}")
     print("-" * 30)
     
     # Print metrics in aligned format

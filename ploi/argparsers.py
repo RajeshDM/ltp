@@ -330,4 +330,10 @@ def get_ploi_argument_parser():
         default=True,
         help="Whether to use the global node for the learning method")
 
+    parser.add_argument(
+        "--exp-baseline", 
+        type=str2bool,
+        default=True,
+        help="Whether to run the exp baseline model")
+
     return parser
