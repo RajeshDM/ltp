@@ -19,6 +19,7 @@ from ploi.datautils import (
     create_graph_dataset_hierarchical,
     GraphDictDataset,
 )
+from ploi.baselines.exp_1.train import exp_baseline_train
 import logging
 from datetime import datetime
 logging.basicConfig(level=logging.INFO)
@@ -63,7 +64,7 @@ from ploi.traineval import (
     train_model_graphnetwork_ltp_batch,
     train_model_hierarchical,
 )
-from ploi.baselines.utils import load_checkpoint 
+from ploi.baselines.exp_1.utils import load_checkpoint 
 
 #import ploi.constants as constants
 from icecream import ic
@@ -480,6 +481,7 @@ if __name__ == "__main__":
                 with open(globalstatsfile, "w") as fp:
                     json.dump(global_stats, fp, indent=4, sort_keys=True)
 
+
     elif args.method == "ploi":
         # PLOI training / testing
 
@@ -561,6 +563,9 @@ if __name__ == "__main__":
             )
             with open(globalstatsfile, "w") as fp:
                 json.dump(global_stats, fp, indent=4, sort_keys=True)
+
+    elif args.method == "exp_baseline":
+        exp_baseline_train(args)
 
     elif args.method == 'ltp' :
         ic ("LTP start")
@@ -717,16 +722,6 @@ if __name__ == "__main__":
 
         # Log all results and get best model info
         best_model_type, best_epoch, best_success_rate = log_model_metrics(all_results, args)
-
-        '''
-        curr_model = None
-        if PlannerType.NON_OPTIMAL in planner_types : 
-            test_results, run_metrics = curr_test_function(curr_model)
-            _ = format_metrics(run_metrics[PlannerType.NON_OPTIMAL],"NON OPTIMAL") 
-        if PlannerType.OPTIMAL in planner_types : 
-            test_results, run_metrics = curr_test_function(curr_model)
-            _ = format_metrics(run_metrics[PlannerType.OPTIMAL],"NON OPTIMAL") 
-        '''
 
         # Print best model info
         if best_model_type is not None:

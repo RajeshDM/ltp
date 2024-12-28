@@ -4,9 +4,8 @@ import torch
 
 from pathlib import Path
 from typing import List, Union
-from ploi.baselines.relnn_max import SmoothmaxRelationalNeuralNetwork
-from ploi.baselines.utils import create_device, load_checkpoint, create_input
-
+from ploi.baselines.exp_1.relnn_max import SmoothmaxRelationalNeuralNetwork
+from ploi.baselines.exp_1.utils import create_device, load_checkpoint, create_input
 
 def _parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Settings for testing')
@@ -14,7 +13,6 @@ def _parse_arguments() -> argparse.Namespace:
     parser.add_argument('--model', required=True, type=Path, help='Path to a pre-trained model')
     args = parser.parse_args()
     return args
-
 
 def _create_parser(input: Path) -> mm.PDDLParser:
     print('Creating parser...')

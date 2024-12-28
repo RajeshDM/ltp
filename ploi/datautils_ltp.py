@@ -16,7 +16,6 @@ import pickle
 
 import ploi.constants as constants
 
-
 from .planning import PlanningFailure, PlanningTimeout
 
 class TorchGraphDictDataset(Dataset):
@@ -1119,7 +1118,7 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
                         str_plan = True
                 else :
                     _planner.reset_statistics()
-                    plan = _planner(env.domain, state, timeout=120)
+                    plan = _planner(env.domain, state, timeout=240)
                     #ic (plan)
 
             except (PlanningTimeout, PlanningFailure):
@@ -1144,10 +1143,9 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
             #continue
 
             in_grounding = True
-
             all_sub_plans = generate_repeated_sub_plans(env,plan,curr_idx)
 
-            for action in plan:
+            for action_idx, action in enumerate(plan[:-1]):
                 #ic (action)
                 if str_plan == True :
                     action = convert_str_action_to_pddlgym_action(action,state_grounding[-1])

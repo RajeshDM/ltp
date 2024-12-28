@@ -1,0 +1,2 @@
+from .max_base import MaxModelBase, RelationMessagePassingModel as MaxRelationMessagePassingModel
+from .add_base import AddModelBase, RelationMessagePassingModel as AddRelationMessagePassingModel

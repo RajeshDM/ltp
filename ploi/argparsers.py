@@ -333,7 +333,14 @@ def get_ploi_argument_parser():
     parser.add_argument(
         "--exp-baseline", 
         type=str2bool,
-        default=True,
+        default=False,
         help="Whether to run the exp baseline model")
+
+    parser.add_argument(
+        "--exp-train_model", 
+        type=str,
+        default=None,
+        help="Location of model to continue training from")
+
 
     return parser

@@ -42,7 +42,7 @@ if not sys.warnoptions:
     import warnings
     warnings.simplefilter("ignore")
 
-from ploi.baselines.plan import _plan
+from ploi.baselines.exp_1.plan import _plan
 import pymimir as mm
 
 # New class to add

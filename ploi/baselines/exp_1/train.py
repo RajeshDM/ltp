@@ -6,10 +6,9 @@ import torch.nn as nn
 import torch.optim as optim
 
 from pathlib import Path
-from relnn_max import SmoothmaxRelationalNeuralNetwork
 from typing import Dict, List, Tuple
-from utils import create_device, get_atom_name, get_atoms, get_goal, get_predicate_name, relations_to_tensors, save_checkpoint, load_checkpoint
-
+from ploi.baselines.exp_1.relnn_max import SmoothmaxRelationalNeuralNetwork
+from ploi.baselines.exp_1.utils import create_device, get_atom_name, get_atoms, get_goal, get_predicate_name, relations_to_tensors, save_checkpoint, load_checkpoint
 
 class StateSampler:
     def __init__(self, state_spaces: List[mm.StateSpace]) -> None:
@@ -121,7 +120,6 @@ def _sample_state_to_batch(relations: Dict[str, List[int]], sizes: List[int], ta
     sizes.append(len(state_space.get_problem().get_objects()))
     targets.append(target)
 
-
 def _sample_batch(states: StateSampler, batch_size: int, device: torch.device) -> Tuple[Dict[str, torch.Tensor], torch.Tensor, torch.Tensor]:
     relations = {}
     sizes = []
@@ -195,9 +193,14 @@ def _train(model: SmoothmaxRelationalNeuralNetwork,
             absolute_error = absolute_error / total_samples
             deadend_error = deadend_error / total_samples
             print(f'[{epoch + 1}/{num_epochs}] Absolute error: {absolute_error.item():.4f}; Deadend error: {deadend_error.item():.4f}')
+
+            #Model save path update needs to be done here
+
             save_checkpoint(model, optimizer, 'latest.pth')
             if (best_absolute_error is None) or (absolute_error < best_absolute_error):
                 best_absolute_error = absolute_error
+
+                #Update needs to be done here as well
                 save_checkpoint(model, optimizer, 'best.pth')
                 print(f'[{epoch + 1}/{num_epochs}] Saved new best model')
 
@@ -218,6 +221,20 @@ def _main(args: argparse.Namespace) -> None:
         model, optimizer = load_checkpoint(args.model, device)
     _train(model, optimizer, train_dataset, validation_dataset, args.num_epochs, args.batch_size, device)
 
+def exp_baseline_train(args):
+    device = create_device()
+    domain_path, problem_paths = _parse_instances(args.input)
+    state_spaces = _generate_state_spaces(domain_path, problem_paths)
+    train_dataset, validation_dataset = _create_state_samplers(state_spaces)
+    domain = state_spaces[0].get_problem().get_domain()
+    if args.exp_train_model is None:
+        print('Creating a new model and optimizer...')
+        model = _create_model(domain, args.representation_size, args.gnn_rounds, device)
+        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+    else:
+        print(f'Loading an existing model and optimizer... ({args.exp_train_model})')
+        model, optimizer = load_checkpoint(args.exp_train_model, device)
+    _train(model, optimizer, train_dataset, validation_dataset, args.epochs, args.batch_size, device)
 
 if __name__ == "__main__":
     _main(_parse_arguments())
