@@ -1118,7 +1118,7 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
                         str_plan = True
                 else :
                     _planner.reset_statistics()
-                    plan = _planner(env.domain, state, timeout=240)
+                    plan = _planner(env.domain, state, timeout=360)
                     #ic (plan)
 
             except (PlanningTimeout, PlanningFailure):

@@ -685,10 +685,10 @@ if __name__ == "__main__":
                                         models=curr_models, 
                                         graph_metadata=graph_metadata)
 
-        #all_model_types = ['validation','training','combined']
+        all_model_types = ['validation','training','combined']
         #all_model_types = ['validation','training']
         #all_model_types = ['validation']#,'training']
-        all_model_types = ['training' ]
+        #all_model_types = ['training' ]
 
         #curr_test_function = test_function
         curr_test_function = test_function_v2
