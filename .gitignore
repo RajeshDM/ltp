@@ -159,4 +159,7 @@ models/*
 *.txt
 *.json
 
+#Server information
+ploi/server_information.py
+
 !cache/results/planner_data/*optimal.json
