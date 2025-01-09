@@ -158,3 +158,5 @@ models/*
 #result files
 *.txt
 *.json
+
+!cache/results/*optimal.json
