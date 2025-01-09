@@ -80,7 +80,7 @@ class GraphAttentionV2Layer(nn.Module):
         g_l = self.linear_l(h).view(n_nodes, self.n_heads, self.n_hidden_1)
         g_r = self.linear_r(e).view(n_edges, self.n_heads, self.n_hidden_2)
         unique_info = torch.unique(receivers, return_counts=True, sorted=True,return_inverse=True)
-        receiver_counts = torch.zeros(n_nodes,dtype=torch.long).cuda()
+        receiver_counts = torch.zeros(n_nodes,dtype=torch.long,device=g_l.device)
         receiver_counts[unique_info[0]] = unique_info[2]
 
         g_l_repeat = torch.repeat_interleave(g_l,receiver_counts,dim=0)
@@ -93,7 +93,7 @@ class GraphAttentionV2Layer(nn.Module):
 
         g_r_with_attn = g_r * attn_softmax
 
-        aggregated_effects = torch.zeros((n_nodes,self.n_heads,self.n_hidden_2)).cuda()
+        aggregated_effects = torch.zeros((n_nodes,self.n_heads,self.n_hidden_2),device=g_l.device)
         aggregated_effects[torch.arange(torch.max(receivers)+1)] = scatter(g_r_with_attn, receivers, dim=0, reduce='add')
 
         if u is not None:

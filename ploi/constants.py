@@ -101,6 +101,8 @@ NUM_TRAIN_PROBLEMS = 200
 NUM_TEST_PROBLEMS = 200
 EXPID = "blocks"
 MODE = "train_test"
+OBJECT_OPTIONS=3
+ACTION_OPTIONS=2
 
 '''
 Debug level information:

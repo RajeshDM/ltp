@@ -342,5 +342,17 @@ def get_ploi_argument_parser():
         default=None,
         help="Location of model to continue training from")
 
+    parser.add_argument(
+        "--object-options",
+        type=int,
+        default=constants.OBJECT_OPTIONS,
+        help="Number of object options to consider during testing at each step")
+
+    parser.add_argument(
+        "--action-options",
+        type=int,
+        default=constants.ACTION_OPTIONS,
+        help="Number of actions to consider")
+
 
     return parser

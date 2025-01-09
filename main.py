@@ -87,6 +87,11 @@ def set_seed(args):
         torch.cuda.manual_seed_all(seed)
 
 def initialize_model(model_class, args, action_space):
+    if args.use_gpu:
+        device = "cuda:0"
+    else:
+        device = "cpu"
+
     return model_class(
         n_features=args.num_node_features,
         n_edge_features=args.num_edge_features,
@@ -100,6 +105,9 @@ def initialize_model(model_class, args, action_space):
         batch_size=args.batch_size,
         n_heads = args.n_heads,
         g_node = args.use_global_node,
+        device=device,
+        action_options=args.action_options,
+        object_options=args.object_options,
     )
 
 
