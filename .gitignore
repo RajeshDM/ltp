@@ -159,4 +159,4 @@ models/*
 *.txt
 *.json
 
-!cache/results/*optimal.json
+!cache/results/planner_data/*optimal.json
