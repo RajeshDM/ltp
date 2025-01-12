@@ -10,12 +10,10 @@ def get_atom_name(atom: Union[mm.StaticAtom, mm.FluentAtom, mm.DerivedAtom], sta
     if is_goal_atom: return get_predicate_name(atom.get_predicate(), True, state.contains(atom))
     else: return get_predicate_name(atom.get_predicate(), False, True)
 
-
 def get_predicate_name(predicate: Union[mm.StaticPredicate, mm.FluentPredicate, mm.DerivedPredicate], is_goal_predicate: bool, is_true: bool):
     assert (not is_goal_predicate and is_true) or (is_goal_predicate)
     if is_goal_predicate: return ('relation_' + predicate.get_name() + '_goal') + ('_true' if is_true else '_false')
     else: return 'relation_' + predicate.get_name()
-
 
 def create_device():
     if torch.cuda.is_available():

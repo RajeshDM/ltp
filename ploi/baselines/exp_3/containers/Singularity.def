@@ -1,0 +1,20 @@
+Bootstrap: docker
+From: pytorch/pytorch
+Stage: spython-base
+
+%files
+. /container
+%post
+
+# Copy source files
+
+# Setup extra dependencies
+pip3 install pytorch-lightning
+pip3 install tarski
+apt-get update
+apt-get -y install gringo
+
+%runscript
+exec python3 /container/train.py "$@"
+%startscript
+exec python3 /container/train.py "$@"

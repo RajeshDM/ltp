@@ -37,7 +37,7 @@ if __name__ == "__main__":
     print('Initializing model...')
     device = torch.cuda.current_device() if torch.cuda.is_available() else None
     model = Model.load_from_checkpoint(checkpoint_path=str(args.model), strict=False).to(device)
-    dataset = _load_dataset()
+    dataset = _load_dataset(args)
 
     print('Begin testing...')
     model.eval()

@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dataset.protobuf;
+
+message Object {
+    int32 Id = 1;
+    string Name = 2;
+}
+
+message Predicate {
+    int32 Id = 1;
+    int32 Arity = 2;
+    string Name = 3;
+}
+
+message Atom {
+    int32 PredicateId = 1;
+    repeated int32 ObjectIds = 2;
+}
+
+message State {
+    repeated Atom Atoms = 1;
+}
+
+message LabeledState {
+    int32 Label = 1;
+    State State = 2;
+    repeated State SuccessorStates = 3;
+}
+
+message LabeledProblem {
+    repeated Object Objects = 1;
+    repeated Predicate Predicates = 2;
+    repeated Atom Facts = 3;
+    repeated Atom Goals = 4;
+    repeated LabeledState LabeledStates = 5;
+}

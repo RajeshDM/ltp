@@ -148,6 +148,7 @@ model/
 
 #All files and folders in model directory
 models/*
+**/models
 
 #Model files
 *.pt
