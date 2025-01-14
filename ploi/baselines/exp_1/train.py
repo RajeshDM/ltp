@@ -7,10 +7,11 @@ import torch.optim as optim
 
 from pathlib import Path
 from typing import Dict, List, Tuple
-#from ploi.baselines.exp_1.relnn_max import SmoothmaxRelationalNeuralNetwork
+from ploi.baselines.exp_1.relnn_max import SmoothmaxRelationalNeuralNetwork
+from ploi.baselines.exp_1.utils import create_device, get_atom_name, get_atoms, get_goal, get_predicate_name, relations_to_tensors, save_checkpoint, load_checkpoint
 #from ploi.baselines.exp_1.
-from utils import create_device, get_atom_name, get_atoms, get_goal, get_predicate_name, relations_to_tensors, save_checkpoint, load_checkpoint
-from relnn_max import SmoothmaxRelationalNeuralNetwork
+#from utils 
+#from relnn_max import SmoothmaxRelationalNeuralNetwork
 
 class StateSampler:
     def __init__(self, state_spaces: List[mm.StateSpace]) -> None:

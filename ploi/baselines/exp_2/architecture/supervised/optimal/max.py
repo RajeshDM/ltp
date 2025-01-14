@@ -1,6 +1,7 @@
 import torch
 
-from architecture import MaxModelBase
+#from architecture import MaxModelBase
+from ploi.baselines.exp_2.architecture import MaxModelBase
 from torch.nn.functional import l1_loss
 
 

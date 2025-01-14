@@ -9,9 +9,12 @@ import torch
 import pymimir as mm
 from typing import Dict, List, Tuple,Union
 import random
+import os
 import time
 from datetime import timedelta
 from torch.nn.functional import l1_loss
+#from architecture.supervised.optimal import MaxModel, AddModel
+from ploi.baselines.exp_2.architecture.supervised.optimal import MaxModel
 
 def _generate_state_spaces(domain_path: str, problem_paths: List[str]) -> List[mm.StateSpace]:
     print('Generating state spaces...')
@@ -104,6 +107,8 @@ def _parse_arguments():
     parser.add_argument('--profiler', default=None, type=str, help='"simple", "advanced" or "pytorch"')
     parser.add_argument('--verbose', action='store_true', help='Print additional information during training')
     parser.add_argument('--max-epochs', default=1000, help='Max epochs for training')
+    parser.add_argument('--domain', required=True,  help='domain being trained')
+
     args = parser.parse_args()
     return args
 
@@ -264,12 +269,13 @@ def train_model(model, train_states, validation_states, args):
 
     print('Creating datasets...')
     train_dataset = [_sample_batch(train_states, args.batch_size, device) for _ in range(10_000)]
+    #train_dataset = [_sample_batch(train_states, args.batch_size, device) for _ in range(1_000)]
     validation_dataset = [_sample_batch(validation_states, args.batch_size, device) for _ in range(1_000)]
 
     start_time = time.time()
     epoch_start_time = None
     
-    for epoch in range(args.max_epochs):
+    for epoch in range(int(args.max_epochs)):
         epoch_start_time = time.time()
         
         # Training phase
@@ -303,7 +309,7 @@ def train_model(model, train_states, validation_states, args):
                 optimizer.step()
                 optimizer.zero_grad()
             
-            if args.verbose and batch_idx % 100 == 0:
+            if args.verbose and batch_idx % 1000 == 0:
                 elapsed = time.time() - start_time
                 print(f'Epoch {epoch}, Batch {batch_idx}, Loss: {loss.item():.4f} | '
                       f'Time elapsed: {timedelta(seconds=int(elapsed))}')
@@ -324,6 +330,7 @@ def train_model(model, train_states, validation_states, args):
             best_val_loss = avg_val_loss
             best_model_state = model.state_dict().copy()
             patience_counter = 0
+            save_model(model, optimizer, epoch, args)
         else:
             patience_counter += 1
         
@@ -340,6 +347,7 @@ def train_model(model, train_states, validation_states, args):
                   f'Total Training Time: {timedelta(seconds=int(time.time() - start_time))}')
             break
 
+
     total_training_time = time.time() - start_time
     print(f'\nTraining completed in {timedelta(seconds=int(total_training_time))}')
     print(f'Best validation loss: {best_val_loss:.4f}')
@@ -348,7 +356,7 @@ def train_model(model, train_states, validation_states, args):
     if best_model_state is not None:
         model.load_state_dict(best_model_state)
     
-    return model
+    return model, optimizer
 
 def train(args):
 
@@ -356,9 +364,94 @@ def train(args):
     model = _load_model(args, predicates)
 
     # Train the model
-    trained_model = train_model(model, train_loader, validation_loader, args)
+    trained_model, optimizer = train_model(model, train_loader, validation_loader, args)
+
+    # Save the trained model
+
+    save_model(trained_model, optimizer, "best", args)
     return trained_model
+
+
+def save_model(model, optimizer, epoch, args ):
+    """Save model checkpoint with additional training info."""
+    checkpoint = {
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'epoch': epoch,
+    }
+
+    # Get current directory
+    current_dir = os.getcwd()
+
+    # Create models directory path
+    models_dir = os.path.join(current_dir, 'models')
+    curr_domain_dir = os.path.join(models_dir, args.domain + "_exp_2")
+
+    # Create the models directory if it doesn't exist
+    os.makedirs(curr_domain_dir, exist_ok=True)
+    model_path = os.path.join(curr_domain_dir, 'model_' + str(epoch) + '.pth')
+
+    torch.save(checkpoint, model_path)
+
+def load_model(model, optimizer, path):
+    """Load model checkpoint with additional training info."""
+    checkpoint = torch.load(path)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    hparams_dict = checkpoint['hparams']
+    #model = SmoothmaxRelationalNeuralNetwork(hparams_dict['predicates'], hparams_dict['embedding_size'], hparams_dict['num_layers'])
+    optimizer = torch.optim.Adam(model.parameters(), 
+                               lr=model.learning_rate, 
+                               weight_decay=model.weight_decay)
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    epoch = checkpoint['epoch']
+    return model, optimizer, epoch
+
+def _plan_exp_2(problem: mm.Problem, factories: mm.PDDLRepositories, 
+          model: MaxModel, device: torch.device,
+          max_plan_length = 1000) -> Union[None, List[mm.GroundAction]]:
+    solution = []
+    # Helper function for testing is a state is a goal state.
+    def is_goal_state(state: mm.State) -> bool:
+        return state.literals_hold(problem.get_fluent_goal_condition()) and state.literals_hold(problem.get_derived_goal_condition())
+    # Disable gradient as we are not optimizing.
+    with torch.no_grad():
+        successor_generator = mm.LiftedApplicableActionGenerator(problem, factories)
+        state_repository = mm.StateRepository(successor_generator)
+        current_state = state_repository.get_or_create_initial_state()
+        while (not is_goal_state(current_state)) and (len(solution) < max_plan_length):
+            applicable_actions = successor_generator.compute_applicable_actions(current_state)
+            successor_states = [state_repository.get_or_create_successor_state(current_state, action)[0] for action in applicable_actions]
+            relations, sizes = create_input(problem, successor_states, factories, device)
+            values = model.forward((relations, sizes))
+            # TODO: Take deadends into account.
+            min_index = values.argmin()
+            min_value = values[min_index]
+            min_action = applicable_actions[min_index]
+            min_successor = successor_states[min_index]
+            current_state = min_successor
+            solution.append(min_action)
+            #print(f'{min_value.item():.3f}: {min_action.to_string_for_plan(factories)}')
+    return solution if is_goal_state(current_state) else None
+
+def create_input(problem: mm.Problem, states: List[mm.State], factories: mm.PDDLRepositories, device: torch.device):
+    relations = {}
+    sizes = []
+    # Helper function for populating relations and sizes.
+    def add_relations(atom, offset, is_goal_atom):
+        predicate_name = get_atom_name(atom, state, is_goal_atom)
+        term_ids = [term.get_index() + offset for term in atom.get_objects()]
+        if predicate_name not in relations: relations[predicate_name] = term_ids
+        else: relations[predicate_name].extend(term_ids)
+    # Add all states to relations and sizes, together with the goal.
+    for state in states:
+        offset = sum(sizes)
+        for atom in get_atoms(state, problem, factories): add_relations(atom, offset, False)
+        for atom in get_goal(problem): add_relations(atom, offset, True)
+        sizes.append(len(problem.get_objects()))
+    # Move all lists to the GPU as tensors.
+    return relations_to_tensors(relations, device), torch.tensor(sizes, dtype=torch.int, device=device, requires_grad=False)
+
 
 if __name__ == "__main__":
     args = _parse_arguments()
-    train(args)
+    model = train(args)

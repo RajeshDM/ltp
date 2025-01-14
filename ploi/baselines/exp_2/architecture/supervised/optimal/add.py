@@ -1,6 +1,7 @@
 import torch
 
-from architecture import AddModelBase
+#from architecture import AddModelBase
+from ploi.baselines.exp_2.architecture import AddModelBase
 from torch.nn.functional import l1_loss
 
 

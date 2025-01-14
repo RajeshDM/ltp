@@ -13,6 +13,7 @@ class PlannerType(Enum):
     NON_OPTIMAL = auto()
     OPTIMAL = auto()
     EXP_BASELINE = auto()
+    EXP_BASELINE_2 = auto()
 
 @dataclass
 class PlannerConfig:

@@ -42,7 +42,8 @@ if not sys.warnoptions:
     import warnings
     warnings.simplefilter("ignore")
 
-from ploi.baselines.exp_1.plan import _plan
+from ploi.baselines.exp_1.plan import _plan as exp_1_learned_planner
+from ploi.baselines.exp_2.train import _plan_exp_2 as exp_2_learned_planner
 import pymimir as mm
 
 # New class to add
@@ -473,12 +474,12 @@ class PlannerTester:
         problem = parser.get_problem()
         return problem, factories
 
-    def _run_exp_baseline(self, env, problem_idx, model):
+    def _run_exp_baseline(self, env, problem_idx, model, plan_function, planner_type):
         result = PlanningResult()
         result.problem_idx = problem_idx
         problem_file = env.problems[problem_idx].problem_fname
         domain_file = env.domain.domain_fname
-        planner_data = self.planner_data[PlannerType.EXP_BASELINE]
+        planner_data = self.planner_data[planner_type]
         fname = env.problems[problem_idx].problem_fname
         fname = "/".join(fname.split("/")[-2:])
 
@@ -487,17 +488,12 @@ class PlannerTester:
             result.success = True
             return result 
 
-        #parser = mm.PDDLParser(domain_file, problem_file)
-        #factories = parser.get_pddl_repositories()
         problem, factories = self.create_baseline_parser(domain_file, problem_file)
         start_time = time.time()
-        solution = _plan(problem, factories, model, self.config.device, self.config.max_plan_length)
+        solution = plan_function(problem, factories, model, self.config.device, self.config.max_plan_length)
         time_taken = time.time() - start_time
 
         if solution is not None:
-            #print(f'Found a solution of length {len(solution)}!')
-            #for index, action in enumerate(solution):
-            #    print(f'{index + 1}: {str(action.to_string_for_plan(factories))}')
             planner_data[fname] = (len(solution), time_taken)
             result.success = True
             result.plan_length =len(solution) 
@@ -523,11 +519,15 @@ class PlannerTester:
                 if planner_type == PlannerType.LEARNED_MODEL and PlannerType.LEARNED_MODEL in models:
                     result = self._run_learned_model(problem_idx, action_space, models[planner_type], graph_metadata, use_monitor=self.config.enable_state_monitor)
 
-                if planner_type == PlannerType.EXP_BASELINE and PlannerType.EXP_BASELINE in models:
-                    result = self._run_exp_baseline(self.env, problem_idx, models[planner_type][0])
+                elif planner_type == PlannerType.EXP_BASELINE and PlannerType.EXP_BASELINE in models:
+                    result = self._run_exp_baseline(self.env, problem_idx, models[planner_type][0], exp_1_learned_planner, planner_type)
+
+                elif planner_type == PlannerType.EXP_BASELINE_2 and PlannerType.EXP_BASELINE_2 in models:
+                    result = self._run_exp_baseline(self.env, problem_idx, models[planner_type][0], exp_2_learned_planner, planner_type)
 
                 elif planner_type == PlannerType.NON_OPTIMAL:
                     result = self._run_external_planner(self.env, problem_idx, action_space, self.config.timeout, optimal=False)
+
                 elif planner_type == PlannerType.OPTIMAL:
                     result = self._run_external_planner(self.env, problem_idx, action_space, self.config.timeout, optimal=True)
                     

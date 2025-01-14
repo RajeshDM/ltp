@@ -2,8 +2,8 @@ import pymimir as mm
 import torch
 import torch.optim as optim
 
-#from ploi.baselines.exp_1.relnn_max import SmoothmaxRelationalNeuralNetwork
-from relnn_max import SmoothmaxRelationalNeuralNetwork
+from ploi.baselines.exp_1.relnn_max import SmoothmaxRelationalNeuralNetwork
+#from relnn_max import SmoothmaxRelationalNeuralNetwork
 from typing import Dict, List, Union
 
 

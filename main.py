@@ -65,11 +65,12 @@ from ploi.traineval import (
     train_model_hierarchical,
 )
 from ploi.baselines.exp_1.utils import load_checkpoint 
+from ploi.baselines.exp_2.train import load_model
 
 #import ploi.constants as constants
 from icecream import ic
 
-baselines = [PlannerType.EXP_BASELINE] 
+baselines = [PlannerType.EXP_BASELINE, PlannerType.EXP_BASELINE_2] 
 
 
 def set_seed(args):
@@ -195,7 +196,8 @@ def run_tests(
     for baseline in baselines:
         curr_models = {}
         if baseline in planner_types:
-            curr_models[baseline],_ = (load_checkpoint(baseline_models[baseline], device),-1)
+            #curr_models[baseline],_ = (load_checkpoint(baseline_models[baseline], device),-1)
+            curr_models[baseline],_, _ = load_model(baseline_models[baseline], device)#(load_checkpoint(baseline_models[baseline], device),-1)
             test_results, run_metrics = test_function(curr_models)
             combnined_metrics = compute_combined_metrics(test_results, baseline)
             #print (f"Combined Metrics for {model_type} : ", combnined_metrics)
@@ -666,6 +668,13 @@ if __name__ == "__main__":
             file = os.path.join(folder,"best.pth")
             baseline_models[PlannerType.EXP_BASELINE] = file
 
+        if args.exp_baseline_2 is True:
+            planner_types.append(PlannerType.EXP_BASELINE_2)
+            folder = os.path.join(Path.cwd(),"models")
+            folder = os.path.join(folder,args.domain+"_exp_2")
+            file = os.path.join(folder,"model_best.pth")
+            baseline_models[PlannerType.EXP_BASELINE_2] = file
+
         #ONLY DONE FOR FINALY DAY TESTING - REMOVE LATER
         #planner_types = [PlannerType.LEARNED_MODEL,PlannerType.NON_OPTIMAL]
 
@@ -693,10 +702,10 @@ if __name__ == "__main__":
                                         models=curr_models, 
                                         graph_metadata=graph_metadata)
 
-        all_model_types = ['validation','training','combined']
+        #all_model_types = ['validation','training','combined']
         #all_model_types = ['validation','training']
         #all_model_types = ['validation']#,'training']
-        #all_model_types = ['training' ]
+        all_model_types = ['training' ]
 
         #curr_test_function = test_function
         curr_test_function = test_function_v2
