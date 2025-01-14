@@ -7,8 +7,10 @@ import torch.optim as optim
 
 from pathlib import Path
 from typing import Dict, List, Tuple
-from ploi.baselines.exp_1.relnn_max import SmoothmaxRelationalNeuralNetwork
-from ploi.baselines.exp_1.utils import create_device, get_atom_name, get_atoms, get_goal, get_predicate_name, relations_to_tensors, save_checkpoint, load_checkpoint
+#from ploi.baselines.exp_1.relnn_max import SmoothmaxRelationalNeuralNetwork
+#from ploi.baselines.exp_1.
+from utils import create_device, get_atom_name, get_atoms, get_goal, get_predicate_name, relations_to_tensors, save_checkpoint, load_checkpoint
+from relnn_max import SmoothmaxRelationalNeuralNetwork
 
 class StateSampler:
     def __init__(self, state_spaces: List[mm.StateSpace]) -> None:
@@ -55,7 +57,7 @@ def _parse_arguments() -> argparse.Namespace:
     args = parser.parse_args()
     return args
 
-
+'''
 def _parse_instances(input: Path) -> Tuple[str, List[str]]:
     print('Parsing files...')
     if input.is_file():
@@ -66,12 +68,29 @@ def _parse_instances(input: Path) -> Tuple[str, List[str]]:
         problem_files = [str(file) for file in input.glob('*.pddl') if file.name != 'domain.pddl']
         problem_files.sort()
     return domain_file, problem_files
+'''
 
+def _parse_instances(input: Path) -> Tuple[str, List[str]]:
+    print('Parsing files...')
+    if input.is_file():
+        #domain_file = str(input.parent / 'domain.pddl')
+        #CHECK - NOT TESTED 
+        domain_filename = str(input).split("/")[-2][:-1] + ".pddl"
+        domain_file = Path("/".join(str(input).split("/")[:-2]) + "/" +domain_filename)
+        problem_files = [str(input)]
+    else:
+        #domain_file = str(input / 'domain.pddl')
+        domain_filename = str(input).split("/")[-1] + ".pddl"
+        domain_file = "/".join(str(input).split("/")[:-1]) + "/" + domain_filename
+        problem_files = [str(file) for file in input.glob('*.pddl') if file.name != 'domain.pddl']
+        problem_files.sort()
+    return domain_file, problem_files
 
 def _generate_state_spaces(domain_path: str, problem_paths: List[str]) -> List[mm.StateSpace]:
     print('Generating state spaces...')
     state_spaces: List[mm.StateSpace] = []
-    for problem_path in problem_paths:
+    #for problem_path in problem_paths:
+    for problem_path in problem_paths[:3]:
         print(f'> Expanding: {problem_path}')
         state_space = mm.StateSpace.create(domain_path, problem_path, mm.StateSpaceOptions(max_num_states=1_000_000, timeout_ms=60_000))
         if state_space is not None:

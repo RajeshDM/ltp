@@ -11,16 +11,17 @@ class RelationMessagePassing(nn.Module):
     def __init__(self, relations: List[Tuple[int, int]], hidden_size: int):
         super().__init__()
         self.hidden_size = hidden_size
-        self.relation_modules = nn.ModuleList()
-        for relation, arity in relations:
-            assert relation == len(self.relation_modules)
+        self.relation_modules = nn.ModuleDict()
+        for relation_name, arity in relations:
+            #assert relation == len(self.relation_modules)
             input_size = arity * hidden_size
             output_size = arity * hidden_size
             if (input_size > 0) and (output_size > 0):
                 mlp = nn.Sequential(nn.Linear(input_size, input_size, True), nn.ReLU(), nn.Linear(input_size, output_size, True))
             else:
                 mlp = None
-            self.relation_modules.append(mlp)
+            #self.relation_modules.append(mlp)
+            self.relation_modules[relation_name] = mlp
         self.update = nn.Sequential(nn.Linear(2 * hidden_size, 2 * hidden_size, True), nn.ReLU(), nn.Linear(2 * hidden_size, hidden_size, True))
         self.dummy = nn.Parameter(torch.empty(0))
 
@@ -31,13 +32,15 @@ class RelationMessagePassing(nn.Module):
         # Compute an aggregated message for each recipient
         max_outputs = []
         outputs = []
-        for relation, module in enumerate(self.relation_modules):
+        #for relation, module in enumerate(self.relation_modules):
+        for relation, module in self.relation_modules.items():
             if (module is not None) and (relation in relations):
                 values = relations[relation]
                 input = torch.index_select(node_states, 0, values).view(-1, module[0].in_features)
                 output = module(input).view(-1, self.hidden_size)
                 max_outputs.append(torch.max(output))
-                node_indices = values.view(-1, 1).repeat(1, self.hidden_size)
+                #node_indices = values.view(-1, 1).repeat(1, self.hidden_size)
+                node_indices = values.view(-1, 1).repeat(1, self.hidden_size).to(torch.int64)
                 outputs.append((output, node_indices))
 
         max_offset = torch.max(torch.stack(max_outputs))

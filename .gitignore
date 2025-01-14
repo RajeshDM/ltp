@@ -152,13 +152,17 @@ models/*
 
 #Model files
 *.pt
+*.pth
 
 #Data files
 *.pkl
+*.states
 
 #result files
 *.txt
 *.json
+*.pddl
+*.zip
 
 #Server information
 ploi/server_information.py

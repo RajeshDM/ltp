@@ -187,6 +187,49 @@ class ValueDataset(Dataset):
             target = torch.tensor([float(cost)])
         return (input, target)
 
+class ValueDataset_mimir(Dataset):
+    """State value dataset."""
+
+    def __init__(self, state_space: Path, min_cost: float = None, max_cost: float = None, decode: bool = False):
+        #self._decoded = decode
+        #data = _load_file(file, decode)
+        data = {}
+        data['objs'] = state_space.get_problem().get_objects() 
+        data['facts'] = state_space.get_problem().get_facts()
+        data['goals'] = state_space.get_problem().get_goals()
+
+        initial_preds = [(predicate, _arity_of(predicate, data['facts'], data['goals'], data['states'])) for predicate in data['preds']]
+        goal_predicate_offset = '_G' if decode else len(initial_preds)
+        goal_preds = [(predicate + goal_predicate_offset, arity) for predicate, arity in initial_preds]
+        preds = initial_preds + goal_preds
+
+        #self.file = file
+        self.objects = data['objs']
+        self.facts = data['facts']
+        self.goals = [(predicate + goal_predicate_offset, arguments) for predicate, arguments in data['goals']]
+        if min_cost is not None and max_cost is not None:
+            self.states = [state for state in data['states'] if (float(state[0]) >= min_cost) and (float(state[0]) <= max_cost)]
+        elif min_cost is not None:
+            self.states = [state for state in data['states'] if float(state[0]) >= min_cost]
+        elif max_cost is not None:
+            self.states = [state for state in data['states'] if float(state[0]) <= max_cost]
+        else:
+            self.states = data['states']
+        self.predicates = preds
+        self.predicates.sort()
+
+    def __len__(self):
+        return len(self.states)
+
+    def __getitem__(self, idx):
+        (cost, state) = self.states[idx]
+        if self._decoded:
+            input = _pack_by_predicate(self.facts + self.goals + state, False)
+            target = float(cost)
+        else:
+            input = _pack_by_predicate(self.facts + self.goals + state, True)
+            target = torch.tensor([float(cost)])
+        return (input, target)
 
 class LimitedDataset(Dataset):
     def __init__(self, dataset, max_samples_per_value) -> None:
@@ -227,8 +270,13 @@ class ExtendedDataset(Dataset):
 
 
 def load_dataset(path: Path, max_samples_per_value: int):
-    datasets = [LimitedDataset(ValueDataset(d, max_cost=None, decode=False), max_samples_per_value) for d in path.glob('*states.txt')]
+    #datasets = [LimitedDataset(ValueDataset(d, max_cost=None, decode=False), max_samples_per_value) for d in path.glob('*states.txt')]
+    datasets = [LimitedDataset(ValueDataset(d, max_cost=None, decode=False), max_samples_per_value) for d in path.glob('*.states')]
     predicates = datasets[0].predicates
+    return (ExtendedDataset(datasets, 1), predicates)
+
+def create_loader_from_dataset(dataset, max_samples_per_value):
+    datasets = [LimitedDataset(ValueDataset(d, max_cost=None, decode=False), max_samples_per_value) for d in path.glob('*.states')]
     return (ExtendedDataset(datasets, 1), predicates)
 
 

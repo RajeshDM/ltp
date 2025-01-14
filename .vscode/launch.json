@@ -299,8 +299,10 @@
             "request": "launch",
             "program": "${workspaceFolder}/ploi/baselines/exp_1/train.py",
             "console": "integratedTerminal",
-            "justMyCode": true,
-            "args" :["--input", "/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big",]
+            "justMyCode": false,
+            "args" :["--input", 
+            "/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big",
+            ]
         },
         {
             "name": "exp_baseline_test",
@@ -309,7 +311,10 @@
             "program": "${workspaceFolder}/ploi/baselines/exp_1/plan.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args" :["--model","/home", "--input", "/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big_test/blocks70_task40.pddl",]
+            "args" :["--model",
+            //"/home/rajesh/rajesh/ploi/full_repo/2_full_repo/ltp/models/Manyblocks_ipcc_exp_baseline/best.pth",
+            "/home/rajesh/rajesh/ploi/full_repo/2_full_repo/ltp/models/Manyblocks_ipcc_big_exp_baseline/best.pth",
+             "--input", "/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big_test/blocks70_task40.pddl",]
         },
         {
             "name": "exp_baseline_2_train",
@@ -318,8 +323,20 @@
             "program": "${workspaceFolder}/ploi/baselines/exp_2/train.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args" :["--input", 
-            "${workspaceFolder}/ploi/baselines/exp_2/models/supervised/optimal/add/miconic/checkpoints/epoch=208-step=152778.ckpt",]
+            "args" :[
+                "--train", 
+            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big",
+            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/gripper_ipcc", //DID NOT TRAIN
+            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/miconic_ipcc", // DID NOT TRAIN
+            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/logistics_ipcc",
+            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/visitall_ipcc",
+            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/grid_ipcc",
+            "/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/spanner_ipcc",
+                "--validation", 
+            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big",
+            "--verbose",
+            //"$/ploi/baselines/exp_2/models/supervised/optimal/add/miconic/checkpoints/epoch=208-step=152778.ckpt",
+            ]
         },
         {
             "name": "exp_baseline_2_test",

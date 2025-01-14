@@ -1,1 +1,1 @@
-from .dataset import ValueDataset, LimitedDataset, ExtendedDataset, load_dataset, collate
+from .dataset import ValueDataset, LimitedDataset, ExtendedDataset, load_dataset, collate, create_loader_from_dataset

@@ -4,8 +4,10 @@ import torch
 
 from pathlib import Path
 from typing import List, Union
-from ploi.baselines.exp_1.relnn_max import SmoothmaxRelationalNeuralNetwork
-from ploi.baselines.exp_1.utils import create_device, load_checkpoint, create_input
+#from ploi.baselines.exp_1.relnn_max import SmoothmaxRelationalNeuralNetwork
+#from ploi.baselines.exp_1.utils import create_device, load_checkpoint, create_input
+from relnn_max import SmoothmaxRelationalNeuralNetwork
+from utils import create_device, load_checkpoint, create_input
 
 def _parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Settings for testing')
@@ -17,7 +19,9 @@ def _parse_arguments() -> argparse.Namespace:
 def _create_parser(input: Path) -> mm.PDDLParser:
     print('Creating parser...')
     if input.is_file():
-        domain_file = str(input.parent / 'domain.pddl')
+        #domain_file = str(input.parent / 'domain.pddl')
+        domain_filename = str(input).split("/")[-2][:-5] + ".pddl"
+        domain_file = "/".join(str(input).split("/")[:-2]) + "/" + domain_filename
         problem_file = str(input)
     else:
         raise Exception('input is not a file')
