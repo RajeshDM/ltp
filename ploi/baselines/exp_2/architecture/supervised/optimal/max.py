@@ -9,6 +9,9 @@ class MaxModel(MaxModelBase):
     def __init__(self, predicates: list, hidden_size: int, iterations: int, learning_rate: float, l1_factor: float, weight_decay: float):
         super().__init__(predicates, hidden_size, iterations)
         self.save_hyperparameters('learning_rate', 'l1_factor', 'weight_decay')
+        self._predicates = predicates
+        self._hidden_size = hidden_size
+        self._iterations = iterations
         self.learning_rate = learning_rate
         self.l1_factor = l1_factor
         self.weight_decay = weight_decay
@@ -36,3 +39,11 @@ class MaxModel(MaxModelBase):
         output = self(states)
         loss = l1_loss(output, target)
         self.log('validation_loss', loss)
+
+    def get_hparams_dict(self):
+        return { 'predicates': self._predicates, 
+                'hidden_size': self._hidden_size, 
+                'iterations': self._iterations, 
+                'learning_rate': self.learning_rate, 
+                'l1_factor': self.l1_factor, 
+                'weight_decay': self.weight_decay }

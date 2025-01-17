@@ -30,10 +30,7 @@ def _load_dataset(args):
     loader = DataLoader(dataset, **loader_params)
     return loader
 
-
-if __name__ == "__main__":
-    args = _parse_arguments()
-
+def test_model(args):
     print('Initializing model...')
     device = torch.cuda.current_device() if torch.cuda.is_available() else None
     model = Model.load_from_checkpoint(checkpoint_path=str(args.model), strict=False).to(device)
@@ -55,3 +52,7 @@ if __name__ == "__main__":
             total = torch.add(total, label.nelement())
 
     print("{} ({} / {})".format(float(sum / total), int(sum), int(total)))
+
+if __name__ == "__main__":
+    args = _parse_arguments()
+    test_model(args)

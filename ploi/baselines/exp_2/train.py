@@ -14,7 +14,8 @@ import time
 from datetime import timedelta
 from torch.nn.functional import l1_loss
 #from architecture.supervised.optimal import MaxModel, AddModel
-from ploi.baselines.exp_2.architecture.supervised.optimal import MaxModel
+from ploi.baselines.exp_2.architecture.supervised.optimal import MaxModel, AddModel
+from ploi.baselines.exp_2.test import test_model
 
 def _generate_state_spaces(domain_path: str, problem_paths: List[str]) -> List[mm.StateSpace]:
     print('Generating state spaces...')
@@ -73,6 +74,13 @@ def _create_state_samplers(state_spaces: List[mm.StateSpace]) -> Tuple[StateSamp
     validation_dataset = StateSampler(validation_state_spaces)
     return train_dataset, validation_dataset
 
+def create_state_samplers_separate(train_state_spaces: List[mm.StateSpace],
+                                   val_state_spaces: List[mm.StateSpace],
+                                   ) -> Tuple[StateSampler, StateSampler]:
+    train_dataset = StateSampler(train_state_spaces)
+    validation_dataset = StateSampler(val_state_spaces)
+    return train_dataset, validation_dataset
+
 def _parse_instances(input: Path) -> Tuple[str, List[str]]:
     print('Parsing files...')
     if input.is_file():
@@ -106,6 +114,10 @@ def _parse_arguments():
     parser.add_argument('--gradient_clip', default=0.1, type=float, help='Gradient clip value')
     parser.add_argument('--profiler', default=None, type=str, help='"simple", "advanced" or "pytorch"')
     parser.add_argument('--verbose', action='store_true', help='Print additional information during training')
+    parser.add_argument('--separate_train_val', action='store_true', help='If training and validation datasets are from different folders')
+    parser.add_argument('--train_only', action='store_true', help='Train only')
+    parser.add_argument('--test_only', action='store_true', help='Test only')
+    parser.add_argument('--train_test', action='store_true', help='run both testing and training')
     parser.add_argument('--max-epochs', default=1000, help='Max epochs for training')
     parser.add_argument('--domain', required=True,  help='domain being trained')
 
@@ -130,7 +142,7 @@ def get_predicates(domain):
 
 def _load_datasets(args):
     print('Loading datasets...')
-    from datasets.supervised.optimal import load_dataset, collate
+    from ploi.baselines.exp_2.datasets.supervised.optimal import load_dataset, collate
     (train_dataset, predicates) = load_dataset(args.train, args.max_samples_per_value)
     (validation_dataset, _) = load_dataset(args.validation, args.max_samples_per_value)
     loader_params = {
@@ -144,10 +156,17 @@ def _load_datasets(args):
     return predicates, train_loader, validation_loader
 
 def _load_datasets_v2(args):
-    from datasets.supervised.optimal import create_loader_from_dataset, collate
+    from ploi.baselines.exp_2.datasets.supervised.optimal import create_loader_from_dataset, collate
     domain_path, problem_paths = _parse_instances(args.train)
     state_spaces = _generate_state_spaces(domain_path, problem_paths)
-    train_dataset, validation_dataset = _create_state_samplers(state_spaces)
+
+    if args.separate_train_val is True :
+        domain_path_val, problem_paths_val = _parse_instances(args.validation)
+        val_state_spaces = _generate_state_spaces(domain_path_val, problem_paths_val)
+        train_dataset, validation_dataset = create_state_samplers_separate(state_spaces, val_state_spaces)
+    else :
+        train_dataset, validation_dataset = _create_state_samplers(state_spaces)
+
     domain = state_spaces[0].get_problem().get_domain()
 
     #train_loader = create_loader_from_dataset(train_dataset, args.max_samples_per_value)
@@ -170,7 +189,7 @@ def _load_datasets_v2(args):
     #train_loader, validation_loader = create_loaders_from_datasets(train_dataset, validation_dataset)
     return predicates, train_dataset, validation_dataset
 
-def _load_model(args, predicates):
+def _initialize_model(args, predicates):
     print('Loading model...')
     model_params = {
         "predicates": predicates,
@@ -180,7 +199,7 @@ def _load_model(args, predicates):
         "l1_factor": args.l1,
         "weight_decay": args.weight_decay,
     }
-    from architecture.supervised.optimal import MaxModel as Model
+    from ploi.baselines.exp_2.architecture.supervised.optimal import MaxModel as Model
     model = Model(**model_params)
     return model
 
@@ -361,13 +380,17 @@ def train_model(model, train_states, validation_states, args):
 def train(args):
 
     predicates, train_loader, validation_loader = _load_datasets_v2(args)
-    model = _load_model(args, predicates)
+    model = _initialize_model(args, predicates)
+
+    #loaded_model = load_model(model, "models/Manyblocks_ipcc_big_exp_2/model_best.pth", MaxModel)
 
     # Train the model
     trained_model, optimizer = train_model(model, train_loader, validation_loader, args)
 
     # Save the trained model
 
+    #trained_model = None
+    #optimizer = None
     save_model(trained_model, optimizer, "best", args)
     return trained_model
 
@@ -377,6 +400,7 @@ def save_model(model, optimizer, epoch, args ):
     checkpoint = {
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
+        'hparams' : model.get_hparams_dict(),
         'epoch': epoch,
     }
 
@@ -393,23 +417,24 @@ def save_model(model, optimizer, epoch, args ):
 
     torch.save(checkpoint, model_path)
 
-def load_model(model, optimizer, path):
+def load_model(path, device, model_class):
     """Load model checkpoint with additional training info."""
-    checkpoint = torch.load(path)
-    model.load_state_dict(checkpoint['model_state_dict'])
+    checkpoint = torch.load(path, map_location=device, weights_only=False)
     hparams_dict = checkpoint['hparams']
-    #model = SmoothmaxRelationalNeuralNetwork(hparams_dict['predicates'], hparams_dict['embedding_size'], hparams_dict['num_layers'])
+    model = model_class(**hparams_dict)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), 
                                lr=model.learning_rate, 
                                weight_decay=model.weight_decay)
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    epoch = checkpoint['epoch']
-    return model, optimizer, epoch
+    return model, optimizer 
 
 def _plan_exp_2(problem: mm.Problem, factories: mm.PDDLRepositories, 
           model: MaxModel, device: torch.device,
           max_plan_length = 1000) -> Union[None, List[mm.GroundAction]]:
     solution = []
+    visited_states = []
     # Helper function for testing is a state is a goal state.
     def is_goal_state(state: mm.State) -> bool:
         return state.literals_hold(problem.get_fluent_goal_condition()) and state.literals_hold(problem.get_derived_goal_condition())
@@ -418,20 +443,53 @@ def _plan_exp_2(problem: mm.Problem, factories: mm.PDDLRepositories,
         successor_generator = mm.LiftedApplicableActionGenerator(problem, factories)
         state_repository = mm.StateRepository(successor_generator)
         current_state = state_repository.get_or_create_initial_state()
+        visited_states.append(current_state)
         while (not is_goal_state(current_state)) and (len(solution) < max_plan_length):
-            applicable_actions = successor_generator.compute_applicable_actions(current_state)
+            applicable_actions = list(successor_generator.compute_applicable_actions(current_state))
             successor_states = [state_repository.get_or_create_successor_state(current_state, action)[0] for action in applicable_actions]
             relations, sizes = create_input(problem, successor_states, factories, device)
             values = model.forward((relations, sizes))
             # TODO: Take deadends into account.
-            min_index = values.argmin()
-            min_value = values[min_index]
-            min_action = applicable_actions[min_index]
-            min_successor = successor_states[min_index]
-            current_state = min_successor
+
+            min_successor = None 
+            min_index = -1
+            while len(successor_states) > 0 :
+                min_index = values.argmin()
+                min_action = applicable_actions[min_index]
+                min_successor = successor_states[min_index]
+                current_state = min_successor
+
+                if min_successor in visited_states:
+                    values = torch.cat([values[:min_index], values[min_index+1:]])
+                    applicable_actions = applicable_actions[:min_index] + applicable_actions[min_index+1:]
+                    successor_states = successor_states[:min_index] + successor_states[min_index+1:]
+                else :
+                    break
+
+            if len(successor_states) == 0:
+                return None
+
             solution.append(min_action)
+            visited_states.append(current_state)
             #print(f'{min_value.item():.3f}: {min_action.to_string_for_plan(factories)}')
-    return solution if is_goal_state(current_state) else None
+    return solution if is_goal_state(current_state) else None 
+
+def test_model(args):
+    #path = "models/" + args.domain + "_exp_2/model_best.pth"
+
+    if args.model_type == "max":
+        model_class = MaxModel
+    else :
+        model_class = AddModel
+
+    if args.test_train is True :
+        test_path = "models/" + args.domain + "_exp_2/model_best.pth"
+    else :
+        test_path = args.model_path
+
+    device = torch.device("cuda" if torch.cuda.is_available() and args.gpus > 0 else "cpu")
+    model = load_model(test_path, device, model_class)
+
 
 def create_input(problem: mm.Problem, states: List[mm.State], factories: mm.PDDLRepositories, device: torch.device):
     relations = {}
@@ -451,7 +509,19 @@ def create_input(problem: mm.Problem, states: List[mm.State], factories: mm.PDDL
     # Move all lists to the GPU as tensors.
     return relations_to_tensors(relations, device), torch.tensor(sizes, dtype=torch.int, device=device, requires_grad=False)
 
-
 if __name__ == "__main__":
     args = _parse_arguments()
-    model = train(args)
+    args.domain = args.domain.capitalize()
+
+    if args.train_only is True:
+        train(args)
+        exit()
+
+    if args.test_only is True:
+        test_model(args)
+        exit()
+
+    if args.train_test is True :
+        model = train(args)
+        test_model(args)
+        exit()

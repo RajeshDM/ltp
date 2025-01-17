@@ -270,15 +270,9 @@ class ExtendedDataset(Dataset):
 
 
 def load_dataset(path: Path, max_samples_per_value: int):
-    #datasets = [LimitedDataset(ValueDataset(d, max_cost=None, decode=False), max_samples_per_value) for d in path.glob('*states.txt')]
-    datasets = [LimitedDataset(ValueDataset(d, max_cost=None, decode=False), max_samples_per_value) for d in path.glob('*.states')]
+    datasets = [LimitedDataset(ValueDataset(d, max_cost=None, decode=False), max_samples_per_value) for d in path.glob('*states.txt')]
     predicates = datasets[0].predicates
     return (ExtendedDataset(datasets, 1), predicates)
-
-def create_loader_from_dataset(dataset, max_samples_per_value):
-    datasets = [LimitedDataset(ValueDataset(d, max_cost=None, decode=False), max_samples_per_value) for d in path.glob('*.states')]
-    return (ExtendedDataset(datasets, 1), predicates)
-
 
 def collate(batch: List[Tuple[Dict[int, Tensor], int]]):
     """

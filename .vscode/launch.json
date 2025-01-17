@@ -323,13 +323,14 @@
             "name": "exp_baseline_2_train",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/ploi/baselines/exp_2/train.py",
+            //"program": "${workspaceFolder}/ploi/baselines/exp_2/train.py",
+            "module" :  "ploi.baselines.exp_2.train",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args" :[
                 "--domain", "ManyBlocks_ipcc_big",
                 "--train", 
-            "/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big",
+            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big",
             //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/gripper_ipcc", //DID NOT TRAIN
             //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/miconic_ipcc", // DID NOT TRAIN
             //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/logistics_ipcc",
@@ -337,8 +338,11 @@
             //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/grid_ipcc",
             //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/spanner_ipcc",
                 "--validation", 
-            "/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big",
+            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big",
             "--verbose",
+            "--separate_train_val",
+            "--train_test",
+            "--model_type", "max",
             //"$/ploi/baselines/exp_2/models/supervised/optimal/add/miconic/checkpoints/epoch=208-step=152778.ckpt",
             "--max-epochs", "800",
             ]
@@ -354,6 +358,23 @@
             "${workspaceFolder}/ploi/baselines/exp_2/models/supervised/optimal/add/miconic/checkpoints/epoch=208-step=152778.ckpt",
             "--test",
             "/Users/rajesh/rajesh/research/learning_for_planning/full_repo/pddlgym/pddlgym/pddl/miconic_ipcc_test",
+            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big_test/blocks70_task40.pddl",]
+            ]
+        },
+        {
+            "name": "exp_baseline_3_train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/ploi/baselines/exp_3/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args" :["--train",
+            "--",
+            "--validation",
+            
+            "--loss",
+            "selfsupervised_optimal",
+            //"/Users/rajesh/rajesh/research/learning_for_planning/full_repo/pddlgym/pddlgym/pddl/miconic_ipcc_test",
             //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big_test/blocks70_task40.pddl",]
             ]
         },

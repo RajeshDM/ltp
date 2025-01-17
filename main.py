@@ -66,6 +66,7 @@ from ploi.traineval import (
 )
 from ploi.baselines.exp_1.utils import load_checkpoint 
 from ploi.baselines.exp_2.train import load_model
+from ploi.baselines.exp_2.architecture.supervised.optimal import MaxModel, AddModel
 
 #import ploi.constants as constants
 from icecream import ic
@@ -197,7 +198,9 @@ def run_tests(
         curr_models = {}
         if baseline in planner_types:
             #curr_models[baseline],_ = (load_checkpoint(baseline_models[baseline], device),-1)
-            curr_models[baseline],_, _ = load_model(baseline_models[baseline], device)#(load_checkpoint(baseline_models[baseline], device),-1)
+            #curr_models[baseline],_ = load_model(baseline_models[baseline], device, MaxModel)#(load_checkpoint(baseline_models[baseline], device),-1)
+            loaded_model, _  = load_model(baseline_models[baseline], device, MaxModel)
+            curr_models[baseline] = (loaded_model,-1)
             test_results, run_metrics = test_function(curr_models)
             combnined_metrics = compute_combined_metrics(test_results, baseline)
             #print (f"Combined Metrics for {model_type} : ", combnined_metrics)
