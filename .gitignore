@@ -149,6 +149,8 @@ model/
 #All files and folders in model directory
 models/*
 **/models
+data/*
+lightning_logs/*
 
 #Model files
 *.pt

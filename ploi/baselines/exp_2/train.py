@@ -15,7 +15,7 @@ from datetime import timedelta
 from torch.nn.functional import l1_loss
 #from architecture.supervised.optimal import MaxModel, AddModel
 from ploi.baselines.exp_2.architecture.supervised.optimal import MaxModel, AddModel
-from ploi.baselines.exp_2.test import test_model
+#from ploi.baselines.exp_2.test import test_model
 
 def _generate_state_spaces(domain_path: str, problem_paths: List[str]) -> List[mm.StateSpace]:
     print('Generating state spaces...')
@@ -23,8 +23,8 @@ def _generate_state_spaces(domain_path: str, problem_paths: List[str]) -> List[m
     #for problem_path in problem_paths:
     for problem_path in problem_paths:
         print(f'> Expanding: {problem_path}')
-        #state_space = mm.StateSpace.create(domain_path, problem_path, mm.StateSpaceOptions(max_num_states=1_000_000, timeout_ms=60_000))
-        state_space = mm.StateSpace.create(domain_path, problem_path, mm.StateSpaceOptions(max_num_states=5_000_000, timeout_ms=300_000))
+        state_space = mm.StateSpace.create(domain_path, problem_path, mm.StateSpaceOptions(max_num_states=1_000_000, timeout_ms=60_000))
+        #state_space = mm.StateSpace.create(domain_path, problem_path, mm.StateSpaceOptions(max_num_states=5_000_000, timeout_ms=300_000))
         if state_space is not None:
             state_spaces.append(state_space)
             print(f'- # States: {state_space.get_num_vertices()}')
@@ -93,6 +93,8 @@ def _parse_instances(input: Path) -> Tuple[str, List[str]]:
         #domain_file = str(input / 'domain.pddl')
         domain_filename = str(input).split("/")[-1] + ".pddl"
         domain_file = "/".join(str(input).split("/")[:-1]) + "/" + domain_filename
+        if Path(domain_file).exists() is False :
+            domain_file = str(input / 'domain.pddl')
         problem_files = [str(file) for file in input.glob('*.pddl') if file.name != 'domain.pddl']
         problem_files.sort()
     return domain_file, problem_files
@@ -118,8 +120,10 @@ def _parse_arguments():
     parser.add_argument('--train_only', action='store_true', help='Train only')
     parser.add_argument('--test_only', action='store_true', help='Test only')
     parser.add_argument('--train_test', action='store_true', help='run both testing and training')
-    parser.add_argument('--max-epochs', default=1000, help='Max epochs for training')
+    parser.add_argument('--run_original', action='store_true', help='run original setting')
+    parser.add_argument('--max_epochs', default=1000, help='Max epochs for training')
     parser.add_argument('--domain', required=True,  help='domain being trained')
+    parser.add_argument('--model_type', default="max", help='model type being trained')
 
     args = parser.parse_args()
     return args
@@ -136,7 +140,7 @@ def get_predicates(domain):
     predicates.extend(domain.get_derived_predicates())
     relation_name_arities = [(get_predicate_name(predicate, False, True), len(predicate.get_parameters())) for predicate in predicates]
     relation_name_arities.extend([(get_predicate_name(predicate, True, True), len(predicate.get_parameters())) for predicate in predicates])
-    relation_name_arities.extend([(get_predicate_name(predicate, True, False), len(predicate.get_parameters())) for predicate in predicates])
+    #relation_name_arities.extend([(get_predicate_name(predicate, True, False), len(predicate.get_parameters())) for predicate in predicates])
 
     return relation_name_arities 
 
@@ -156,7 +160,7 @@ def _load_datasets(args):
     return predicates, train_loader, validation_loader
 
 def _load_datasets_v2(args):
-    from ploi.baselines.exp_2.datasets.supervised.optimal import create_loader_from_dataset, collate
+    from ploi.baselines.exp_2.datasets.supervised.optimal import collate
     domain_path, problem_paths = _parse_instances(args.train)
     state_spaces = _generate_state_spaces(domain_path, problem_paths)
 
@@ -210,16 +214,21 @@ def _load_trainer(args):
     checkpoint = ModelCheckpoint(save_top_k=1, monitor='validation_loss')
     trainer_params = {
         "num_sanity_val_steps": 0,
-        "progress_bar_refresh_rate": 30 if args.verbose else 0,
+        #"progress_bar_refresh_rate": 30 if args.verbose else 0,
         "callbacks": [early_stopping, checkpoint],
-        "weights_summary": None,
-        "auto_lr_find": True,
+        #"weights_summary": None,
+        #"auto_lr_find": True,
         "profiler": args.profiler,
         "accumulate_grad_batches": args.gradient_accumulation,
         "gradient_clip_val": args.gradient_clip,
     }
-    if args.gpus > 0: trainer = pl.Trainer(gpus=args.gpus, auto_select_gpus=True, **trainer_params)
-    else: trainer = pl.Trainer(**trainer_params)
+    #if args.gpus > 0: trainer = pl.Trainer(gpus=args.gpus, auto_select_gpus=True, **trainer_params)
+    #else: trainer = pl.Trainer(**trainer_params)
+    if args.gpus > 0:
+        trainer = pl.Trainer(accelerator="gpu",devices=args.gpus,
+            **trainer_params)
+    else:
+        trainer = pl.Trainer(accelerator="cpu", **trainer_params)
     return trainer
 
 def get_atoms(state: mm.State, problem: mm.Problem, factories: mm.PDDLRepositories) -> List[Union[mm.StaticGroundAtom, mm.FluentGroundAtom, mm.DerivedGroundAtom]]:
@@ -394,6 +403,30 @@ def train(args):
     save_model(trained_model, optimizer, "best", args)
     return trained_model
 
+def train_original(args):
+    predicates, train_loader, validation_loader = _load_datasets(args)
+    model = _initialize_model(args, predicates)
+
+    # Train the model
+    model = _load_model_original(args, predicates)
+    trainer = _load_trainer(args)
+    print('Training model...')
+    trainer.fit(model, train_loader, validation_loader)
+
+def _load_model_original(args, predicates):
+    print('Loading model...')
+    model_params = {
+        "predicates": predicates,
+        "hidden_size": args.size,
+        "iterations": args.iterations,
+        "learning_rate": args.learning_rate,
+        "l1_factor": args.l1,
+        "weight_decay": args.weight_decay,
+    }
+    from ploi.baselines.exp_2.architecture.supervised.optimal import MaxModel as Model
+    model = Model(**model_params)
+    return model
+
 
 def save_model(model, optimizer, epoch, args ):
     """Save model checkpoint with additional training info."""
@@ -512,6 +545,10 @@ def create_input(problem: mm.Problem, states: List[mm.State], factories: mm.PDDL
 if __name__ == "__main__":
     args = _parse_arguments()
     args.domain = args.domain.capitalize()
+
+    if args.run_original is True:
+        train_original(args)
+        exit()
 
     if args.train_only is True:
         train(args)

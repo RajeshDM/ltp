@@ -1,7 +1,7 @@
 import torch
 
 from collections import defaultdict
-from datasets import load_directory, load_file_spanner
+from ploi.baselines.exp_3.datasets import load_directory, load_file_spanner
 from pathlib import Path
 from random import shuffle
 from torch.functional import Tensor

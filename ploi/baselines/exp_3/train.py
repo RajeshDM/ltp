@@ -3,16 +3,16 @@ from termcolor import colored
 import pytorch_lightning as pl
 import torch
 
-from architecture import set_suboptimal_factor, set_loss_constants
-from helpers import ValidationLossLogging
 from pathlib import Path
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from torch.utils.data.dataloader import DataLoader
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from datasets     import g_dataset_methods
-from architecture import g_model_classes
+from ploi.baselines.exp_3.datasets     import g_dataset_methods
+from ploi.baselines.exp_3.architecture import g_model_classes
+from ploi.baselines.exp_3.architecture import set_suboptimal_factor, set_loss_constants
+from ploi.baselines.exp_3.helpers import ValidationLossLogging
 
 
 def _parse_arguments():
@@ -150,10 +150,10 @@ def _load_trainer(args):
     callbacks.append(ModelCheckpoint(save_top_k=args.save_top_k, monitor='validation_loss', filename='{epoch}-{step}-{validation_loss}'))
     trainer_params = {
         "num_sanity_val_steps": 0,
-        "progress_bar_refresh_rate": 30 if args.verbose else 0,
+        #"progress_bar_refresh_rate": 30 if args.verbose else 0,
         "callbacks": callbacks,
-        "weights_summary": None,
-        "auto_lr_find": True,
+        #"weights_summary": None,
+        #"auto_lr_find": True,
         "profiler": args.profiler,
         "accumulate_grad_batches": args.gradient_accumulation,
         "gradient_clip_val": args.gradient_clip,
@@ -162,8 +162,13 @@ def _load_trainer(args):
     if args.logdir or args.logname:
         logdir = args.logdir if args.logdir else 'lightning_logs'
         trainer_params['logger'] = TensorBoardLogger(logdir, name=args.logname)
-    if args.gpus > 0: trainer = pl.Trainer(gpus=args.gpus, auto_select_gpus=True, **trainer_params)
-    else: trainer = pl.Trainer(**trainer_params)
+    #if args.gpus > 0: trainer = pl.Trainer(gpus=args.gpus, auto_select_gpus=True, **trainer_params)
+    #else: trainer = pl.Trainer(**trainer_params)
+    if args.gpus > 0:
+        trainer = pl.Trainer(accelerator="gpu",devices=args.gpus,
+            **trainer_params)
+    else:
+        trainer = pl.Trainer(accelerator="cpu", **trainer_params)
     return trainer
 
 def _main(args):

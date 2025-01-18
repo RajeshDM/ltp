@@ -1,6 +1,6 @@
 import torch
 
-from datasets import load_directory, load_file_spanner
+from ploi.baselines.exp_3.datasets import load_directory, load_file_spanner
 from pathlib import Path
 from torch.functional import Tensor
 from torch.utils.data.dataset import Dataset

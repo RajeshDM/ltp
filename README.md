@@ -5,10 +5,14 @@ pip install numpy==1.26.0
 pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2
 pip install torch-geometric==2.3.1
 pip install torch-scatter==2.1.1 torch-sparse==0.6.17 torch-cluster==1.6.1 torchviz==0.0.2
+pip install pytorch-lightning==2.0.1
 pip install wandb
 pip install icecream
 pip install pymimir
 pip install pyperplan==2.1
+#for running baselines
+pip intsall termcolor
+pip install tarski
 ```
 
 For use with pddlgym, we require our fork of [pddlgym](https://github.com/taskography/pddlgym), which houses our custom domains and problems.

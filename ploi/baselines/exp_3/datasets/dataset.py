@@ -1,6 +1,6 @@
 import torch
 
-from datasets.protobuf import LabeledProblem
+from ploi.baselines.exp_3.datasets.protobuf import LabeledProblem
 from pathlib import Path
 from random import shuffle
 from timeit import default_timer as timer

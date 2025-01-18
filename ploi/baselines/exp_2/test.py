@@ -3,8 +3,8 @@ import torch
 
 from pathlib import Path
 from torch.utils.data.dataloader import DataLoader
-from architecture import MaxModelBase as Model
-from datasets.supervised.optimal import load_dataset, collate
+from ploi.baselines.exp_2.architecture import MaxModelBase as Model
+from ploi.baselines.exp_2.datasets.supervised.optimal import load_dataset, collate
 
 
 def _parse_arguments():

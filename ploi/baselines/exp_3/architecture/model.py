@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 
-from architecture import AddModelBase, MaxModelBase, MaxReadoutModelBase, AddMaxModelBase
-from architecture import supervised_optimal_loss, selfsupervised_optimal_loss, selfsupervised_suboptimal_loss, selfsupervised_suboptimal2_loss, unsupervised_optimal_loss, unsupervised_suboptimal_loss, l1_regularization
-from architecture.attention_base import AttentionModelBase
-from generators.plan import policy_search
+from ploi.baselines.exp_3.architecture import AddModelBase, MaxModelBase, MaxReadoutModelBase, AddMaxModelBase
+from ploi.baselines.exp_3.architecture import supervised_optimal_loss, selfsupervised_optimal_loss, selfsupervised_suboptimal_loss, selfsupervised_suboptimal2_loss, unsupervised_optimal_loss, unsupervised_suboptimal_loss, l1_regularization
+from ploi.baselines.exp_3.architecture.attention_base import AttentionModelBase
+from ploi.baselines.exp_3.generators.plan import policy_search
 
 _max_trace_length = 4
 
