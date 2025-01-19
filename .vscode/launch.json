@@ -396,7 +396,7 @@
             ]
         },
         {
-            "name": "exp_baseline_3_train",
+            "name": "exp_baseline_3_train_pddl",
             "type": "python",
             "request": "launch",
             "module": "ploi.baselines.exp_3.train",
@@ -408,8 +408,38 @@
             "${workspaceFolder}/data/data_exp_1/pddl/blocks-clear/validation",
             "--loss",
             "online_optimal",
-            //"/Users/rajesh/rajesh/research/learning_for_planning/full_repo/pddlgym/pddlgym/pddl/miconic_ipcc_test",
-            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big_test/blocks70_task40.pddl",]
+            ]
+        },
+        {
+            "name": "exp_baseline_3_train_states",
+            "type": "python",
+            "request": "launch",
+            "module": "ploi.baselines.exp_3.train",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args" :["--train",
+            "${workspaceFolder}/data/data_exp_2/states/train/blocks",
+                "--validation", 
+            "${workspaceFolder}/data/data_exp_2/states/validation/blocks",
+            "--loss",
+            "selfsupervised_optimal",
+            "--readout",
+            ]
+        },
+        {
+            "name": "exp_baseline_3_test_states",
+            "type": "python",
+            "request": "launch",
+            "module": "ploi.baselines.exp_3.plan",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args" :["--train",
+            "${workspaceFolder}/data/data_exp_2/states/train/blocks",
+                "--validation", 
+            "${workspaceFolder}/data/data_exp_2/states/validation/blocks",
+            "--loss",
+            "selfsupervised_optimal",
+            "--readout",
             ]
         },
     ]

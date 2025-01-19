@@ -5,8 +5,8 @@ from timeit import default_timer as timer
 import argparse, logging
 import torch
 
-from generators import compute_traces_with_augmented_states, load_pddl_problem_with_augmented_states
-from architecture import g_model_classes
+from ploi.baselines.exp_3.generators import compute_traces_with_augmented_states, load_pddl_problem_with_augmented_states
+from ploi.baselines.exp_3.architecture import g_model_classes
 
 def _get_logger(name : str, logfile : Path, level = logging.INFO):
     logger = logging.getLogger(name)
