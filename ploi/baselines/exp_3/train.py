@@ -14,6 +14,8 @@ from ploi.baselines.exp_3.architecture import g_model_classes
 from ploi.baselines.exp_3.architecture import set_suboptimal_factor, set_loss_constants
 from ploi.baselines.exp_3.helpers import ValidationLossLogging
 
+from pytorch_lightning.tuner import Tuner
+
 
 def _parse_arguments():
     parser = argparse.ArgumentParser()
@@ -169,6 +171,9 @@ def _load_trainer(args):
             **trainer_params)
     else:
         trainer = pl.Trainer(accelerator="cpu", **trainer_params)
+
+
+
     return trainer
 
 def _main(args):
@@ -176,6 +181,22 @@ def _main(args):
     predicates, train_loader, validation_loader = _load_datasets(args)
     model = _load_model(args, predicates)
     trainer = _load_trainer(args)
+
+
+    # Create a Tuner
+    tuner = Tuner(trainer)
+
+    # finds learning rate automatically
+    # sets hparams.lr or hparams.learning_rate to that learning rate
+    lr_finder = tuner.lr_find(model)
+
+    # Results can be found in
+    print(lr_finder.results)
+
+    # Plot with
+    fig = lr_finder.plot(suggest=True)
+    fig.show()
+
     print(colored('Training model...', 'green', attrs = [ 'bold' ]))
     trainer.fit(model, train_loader, validation_loader)
 

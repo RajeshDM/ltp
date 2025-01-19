@@ -229,6 +229,9 @@ def load_directory(path: Path, max_samples_per_file: int, max_samples: int, filt
     solvable_labels = []
     files = list(path.glob('*.states'))
     print(f'{len(files)} file(s) to load from {path}')
+
+    assert len(files) > 0, f'No files found in {path}'
+
     load_file_fn_aux = load_file if load_file_fn is None else load_file_fn
     for i, file in enumerate(files):
         print(f'({1+i}/{len(files)}) ', end='')
