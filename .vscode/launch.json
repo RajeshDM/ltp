@@ -438,8 +438,8 @@
                 "${workspaceFolder}/data/data_exp_2/pddl/blocks/test/domain.pddl",
                 "--model", 
             "${workspaceFolder}/lightning_logs/version_6/checkpoints/epoch=0-step=141-validation_loss=8.95077896118164.ckpt",
-            "--problem",
-            "${workspaceFolder}/data/data_exp_2/pddl//blocks/test/probBLOCKS-9-0.pddl",
+            "--problems",
+            "${workspaceFolder}/data/data_exp_2/pddl//blocks/test",
             "--readout",
             ]
         },
