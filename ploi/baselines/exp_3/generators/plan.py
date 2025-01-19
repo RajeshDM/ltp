@@ -40,7 +40,6 @@ def load_pddl_problem_with_augmented_states(domain: Path, problem: Path, registr
 
     from sys import path as sys_path
     sys_path.append('../DerivedPredicates')
-    from augmentation import load_registry, get_registry_record, update_registry_record, construct_augmentation_function_simple
 
     parser = PDDLReader(raise_on_error=True)
     parser.parse_domain(str(domain))
@@ -62,6 +61,7 @@ def load_pddl_problem_with_augmented_states(domain: Path, problem: Path, registr
     # set augmentation function if registry file and proper key found
     augment_fn = None
     if registry_filename is not None:
+        from augmentation import load_registry, get_registry_record, update_registry_record, construct_augmentation_function_simple
         # calculate registry_key from domain path if needed
         if not registry_key:
             known_domains = set([ dname.name for dname in Path('../Data/pddl').glob('*') if dname.is_dir() ])
