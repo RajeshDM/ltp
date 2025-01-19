@@ -159,6 +159,7 @@ lightning_logs/*
 #Data files
 *.pkl
 *.states
+*.ckpt
 
 #result files
 *.txt

@@ -2,10 +2,13 @@ import argparse
 from termcolor import colored
 import pytorch_lightning as pl
 import torch
+import platform
 
 from pathlib import Path
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
+from pytorch_lightning.callbacks import LearningRateFinder
+import torch.backends
 from torch.utils.data.dataloader import DataLoader
 from pytorch_lightning.loggers import TensorBoardLogger
 
@@ -81,7 +84,6 @@ def _parse_arguments():
 def _process_args(args):
     if (not hasattr(args, 'readout')) or (args.readout is None): args.readout = False
     if (not hasattr(args, 'verbose')) or (args.verbose is None): args.verbose = False
-    if not torch.cuda.is_available(): args.gpus = 0  # Ignore GPUs if there is no CUDA capable device.
     if args.max_samples_per_file <= 0: args.max_samples_per_file = None
     set_suboptimal_factor(args.suboptimal_factor)
 
@@ -150,11 +152,13 @@ def _load_trainer(args):
     if not args.verbose: callbacks.append(ValidationLossLogging())
     callbacks.append(EarlyStopping(monitor='validation_loss', patience=args.patience))
     callbacks.append(ModelCheckpoint(save_top_k=args.save_top_k, monitor='validation_loss', filename='{epoch}-{step}-{validation_loss}'))
+    callbacks.append(LearningRateFinder())
     trainer_params = {
         "num_sanity_val_steps": 0,
         #"progress_bar_refresh_rate": 30 if args.verbose else 0,
         "callbacks": callbacks,
         #"weights_summary": None,
+        #BELOW IMPLEMENTED USING CALLBACKS
         #"auto_lr_find": True,
         "profiler": args.profiler,
         "accumulate_grad_batches": args.gradient_accumulation,
@@ -166,13 +170,19 @@ def _load_trainer(args):
         trainer_params['logger'] = TensorBoardLogger(logdir, name=args.logname)
     #if args.gpus > 0: trainer = pl.Trainer(gpus=args.gpus, auto_select_gpus=True, **trainer_params)
     #else: trainer = pl.Trainer(**trainer_params)
-    if args.gpus > 0:
-        trainer = pl.Trainer(accelerator="gpu",devices=args.gpus,
-            **trainer_params)
-    else:
-        trainer = pl.Trainer(accelerator="cpu", **trainer_params)
 
+    #if platform.system() == "Darwin":
+    #    trainer_params['accelerator'] = 'mps'
+    #    trainer_params['devices'] = 1
+    #else :
+    if not torch.cuda.is_available(): 
+        # Ignore GPUs if there is no CUDA capable device.
+        trainer_params['accelerator'] ='cpu'
+    else :
+        trainer_params['accelerator'] = 'gpu'
+        trainer_params['devices'] = args.gpus
 
+    trainer = pl.Trainer(**trainer_params)
 
     return trainer
 
@@ -181,21 +191,6 @@ def _main(args):
     predicates, train_loader, validation_loader = _load_datasets(args)
     model = _load_model(args, predicates)
     trainer = _load_trainer(args)
-
-
-    # Create a Tuner
-    tuner = Tuner(trainer)
-
-    # finds learning rate automatically
-    # sets hparams.lr or hparams.learning_rate to that learning rate
-    lr_finder = tuner.lr_find(model)
-
-    # Results can be found in
-    print(lr_finder.results)
-
-    # Plot with
-    fig = lr_finder.plot(suggest=True)
-    fig.show()
 
     print(colored('Training model...', 'green', attrs = [ 'bold' ]))
     trainer.fit(model, train_loader, validation_loader)
