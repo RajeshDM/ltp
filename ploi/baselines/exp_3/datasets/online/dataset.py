@@ -9,7 +9,8 @@ from ploi.baselines.exp_3.generators.plan import load_pddl_problem
 def _parse_problem_file(problem_file: str):
     domain_file = list(Path(problem_file).parent.glob('*domain*'))[0]
     problem = load_pddl_problem(domain_file, problem_file)
-    object_encoding = create_object_encoding(problem['objects'])
+    #object_encoding = create_object_encoding(problem['objects'])
+    object_encoding = create_object_encoding(problem['language'].constants())
     #object_encoding = None
     return (problem, object_encoding)
 

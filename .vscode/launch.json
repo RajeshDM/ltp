@@ -320,7 +320,7 @@
              "--input", "/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big_test/blocks70_task40.pddl",]
         },
         {
-            "name": "exp_baseline_2_train",
+            "name": "exp_baseline_2_states",
             "type": "python",
             "request": "launch",
             //"program": "${workspaceFolder}/ploi/baselines/exp_2/train.py",
@@ -328,7 +328,7 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args" :[
-                "--domain", "ManyBlocks_ipcc_big",
+                "--domain", "blocks-clear",
                 "--train", 
             //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big",
             //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/gripper_ipcc", //DID NOT TRAIN
@@ -337,9 +337,9 @@
             //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/visitall_ipcc",
             //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/grid_ipcc",
             //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/spanner_ipcc",
-            "${workspaceFolder}/data/data_exp_1/supervised/optimal/train/blocks-clear/blocks-clear",
+            "${workspaceFolder}/data/data_exp_1/supervised/optimal/train/blocks-clear",
                 "--validation", 
-            "${workspaceFolder}/data/data_exp_1/supervised/optimal/validation/blocks-clear/blocks-clear",
+            "${workspaceFolder}/data/data_exp_1/supervised/optimal/validation/blocks-clear",
             //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big",
             "--verbose",
             "--separate_train_val",
@@ -351,7 +351,7 @@
             ]
         },
         {
-            "name": "exp_baseline_2_train_new",
+            "name": "exp_baseline_2_train_pddl",
             "type": "python",
             "request": "launch",
             //"program": "${workspaceFolder}/ploi/baselines/exp_2/train.py",
@@ -404,8 +404,10 @@
             "justMyCode": false,
             "args" :["--train",
             "${workspaceFolder}/data/data_exp_1/pddl/blocks-clear/train",
+            //"${workspaceFolder}/../../pddlgym/pddlgym/pddl/Manyblocks_ipcc_big",
                 "--validation", 
             "${workspaceFolder}/data/data_exp_1/pddl/blocks-clear/validation",
+            //"${workspaceFolder}/../../pddlgym/pddlgym/pddl/Manyblocks_ipcc_big_val",
             "--loss",
             "online_optimal",
             ]
@@ -422,7 +424,8 @@
                 "--validation", 
             "${workspaceFolder}/data/data_exp_2/states/validation/blocks",
             "--loss",
-            "selfsupervised_optimal",
+            //"unsupervised_optimal",
+            "supervised_optimal",
             ]
         },
         {

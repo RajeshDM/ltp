@@ -207,7 +207,6 @@ def _initialize_model(args, predicates):
     model = Model(**model_params)
     return model
 
-
 def _load_trainer(args):
     print('Initializing trainer...')
     early_stopping = EarlyStopping(monitor='validation_loss', patience=args.patience)

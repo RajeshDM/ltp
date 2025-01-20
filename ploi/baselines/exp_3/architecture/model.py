@@ -96,7 +96,7 @@ def _create_online_model_class(base: pl.LightningModule, loss):
         def training_step(self, train_batch, batch_index):
             train = 0.0
             for problem, encoding in train_batch:
-                action_trace, state_trace, value_trace, is_solution = policy_search(problem['actions'], problem['initial'], problem['goal'], encoding, self, _max_trace_length)
+                action_trace, state_trace, value_trace, is_solution, num_evaluations = policy_search(problem['actions'], problem['initial'], problem['goal'], encoding, self, _max_trace_length)
                 values = []
                 goals = []
                 counts = []
@@ -109,7 +109,7 @@ def _create_online_model_class(base: pl.LightningModule, loss):
                     values.append(value_trace[-1])
                     goals.append(True)
                     counts.append(1)
-                train += loss(torch.stack(values), goals, counts, self.device)
+                train += loss(torch.stack(values), goals, None, counts, self.device)
             train /= len(train_batch)
             self.log('train_loss', train)
             l1 = l1_regularization(self, self.l1_factor)
@@ -121,7 +121,7 @@ def _create_online_model_class(base: pl.LightningModule, loss):
         def validation_step(self, validation_batch, batch_index):
             validation = 0.0
             for problem, encoding in validation_batch:
-                action_trace, state_trace, value_trace, is_solution = policy_search(problem['actions'], problem['initial'], problem['goal'], encoding, self, _max_trace_length)
+                action_trace, state_trace, value_trace, is_solution, num_evaluations = policy_search(problem['actions'], problem['initial'], problem['goal'], encoding, self, _max_trace_length)
                 values = []
                 goals = []
                 counts = []
@@ -134,7 +134,7 @@ def _create_online_model_class(base: pl.LightningModule, loss):
                     values.append(value_trace[-1])
                     goals.append(True)
                     counts.append(1)
-                validation += loss(torch.stack(values), goals, counts, self.device)
+                validation += loss(torch.stack(values), goals, None, counts, self.device)
             validation /= len(validation_batch)
             self.log('validation_loss', validation)
 

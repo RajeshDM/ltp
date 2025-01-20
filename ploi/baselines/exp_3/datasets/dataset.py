@@ -261,4 +261,3 @@ def load_directory(path: Path, max_samples_per_file: int, max_samples: int, filt
 
     predicates_with_goals = predicates + [(predicate + '_goal', arity) for predicate, arity in predicates]
     return (labeled_states, solvable_labels, predicates_with_goals)
-

@@ -158,7 +158,7 @@ def _load_trainer(args):
         #"progress_bar_refresh_rate": 30 if args.verbose else 0,
         "callbacks": callbacks,
         #"weights_summary": None,
-        #BELOW IMPLEMENTED USING CALLBACKS
+        #BELOW IMPLEMENTED USING CALLBACKS, REMOVED FOR NOW
         #"auto_lr_find": True,
         "profiler": args.profiler,
         "accumulate_grad_batches": args.gradient_accumulation,
