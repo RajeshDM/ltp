@@ -7,6 +7,7 @@ from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from torch.utils.data.dataloader import DataLoader
 import torch
 import pymimir as mm
+import multiprocessing as mp
 from typing import Dict, List, Tuple,Union
 import random
 import os
@@ -149,11 +150,13 @@ def _load_datasets(args):
     from ploi.baselines.exp_2.datasets.supervised.optimal import load_dataset, collate
     (train_dataset, predicates) = load_dataset(args.train, args.max_samples_per_value)
     (validation_dataset, _) = load_dataset(args.validation, args.max_samples_per_value)
+    num_workers = mp.cpu_count() - 2
     loader_params = {
         "batch_size": args.batch_size,
         "drop_last": False,
         "collate_fn": collate,
-        "pin_memory": True
+        "pin_memory": True,
+        "num_workers": num_workers
     }
     train_loader = DataLoader(train_dataset, shuffle=True, **loader_params)
     validation_loader = DataLoader(validation_dataset, shuffle=False, **loader_params)

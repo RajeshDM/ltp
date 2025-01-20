@@ -320,7 +320,7 @@
              "--input", "/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big_test/blocks70_task40.pddl",]
         },
         {
-            "name": "exp_baseline_2_states",
+            "name": "exp_baseline_2_train_states",
             "type": "python",
             "request": "launch",
             //"program": "${workspaceFolder}/ploi/baselines/exp_2/train.py",
@@ -330,13 +330,6 @@
             "args" :[
                 "--domain", "blocks-clear",
                 "--train", 
-            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big",
-            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/gripper_ipcc", //DID NOT TRAIN
-            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/miconic_ipcc", // DID NOT TRAIN
-            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/logistics_ipcc",
-            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/visitall_ipcc",
-            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/grid_ipcc",
-            //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/spanner_ipcc",
             "${workspaceFolder}/data/data_exp_1/supervised/optimal/train/blocks-clear",
                 "--validation", 
             "${workspaceFolder}/data/data_exp_1/supervised/optimal/validation/blocks-clear",
