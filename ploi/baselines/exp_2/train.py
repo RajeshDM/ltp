@@ -16,6 +16,8 @@ from datetime import timedelta
 from torch.nn.functional import l1_loss
 #from architecture.supervised.optimal import MaxModel, AddModel
 from ploi.baselines.exp_2.architecture.supervised.optimal import MaxModel, AddModel
+from ploi.baselines.exp_3.helpers import ValidationLossLogging
+
 #from ploi.baselines.exp_2.test import test_model
 
 def _generate_state_spaces(domain_path: str, problem_paths: List[str]) -> List[mm.StateSpace]:
@@ -212,12 +214,16 @@ def _initialize_model(args, predicates):
 
 def _load_trainer(args):
     print('Initializing trainer...')
+    callbacks = []
+    if not args.verbose: callbacks.append(ValidationLossLogging())
     early_stopping = EarlyStopping(monitor='validation_loss', patience=args.patience)
     checkpoint = ModelCheckpoint(save_top_k=1, monitor='validation_loss')
+    callabcks.append(early_stopping)
+    callabcks.append(checkpoint)
     trainer_params = {
         "num_sanity_val_steps": 0,
         #"progress_bar_refresh_rate": 30 if args.verbose else 0,
-        "callbacks": [early_stopping, checkpoint],
+        "callbacks": callbacks,
         #"weights_summary": None,
         #"auto_lr_find": True,
         "profiler": args.profiler,

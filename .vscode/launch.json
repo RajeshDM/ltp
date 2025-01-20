@@ -417,8 +417,8 @@
                 "--validation", 
             "${workspaceFolder}/data/data_exp_2/states/validation/blocks",
             "--loss",
-            //"unsupervised_optimal",
-            "supervised_optimal",
+            "selfsupervised_suboptimal",
+            //"supervised_optimal",
             ]
         },
         {
