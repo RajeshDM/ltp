@@ -175,7 +175,7 @@ def selfsupervised_suboptimal_loss(output, labels, solvable_labels, state_counts
         offset += state_count
     return loss / len(state_counts)
 
-def unsupervised_suboptimal_loss(output, labels, state_counts, device):
+def unsupervised_suboptimal_loss(output, labels, solvable_labels, state_counts, device):
     global g_suboptimal_factor
     loss = 0.0
     offset = 0

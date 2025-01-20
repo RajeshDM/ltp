@@ -99,7 +99,12 @@ def _main(args):
         start_time = timer()
         is_spanner = args.spanner and 'spanner' in str(args.domain)
         unsolvable_weight = 0.0 if args.ignore_unsolvable else 100000.0
-        action_trace, state_trace, value_trace, is_solution, num_evaluations = compute_traces_with_augmented_states(model=model, cycles=args.cycles, max_trace_length=args.max_length, unsolvable_weight=unsolvable_weight, logger=logger, is_spanner=is_spanner, **pddl_problem)
+        action_trace, state_trace, value_trace, is_solution, num_evaluations =  \
+                compute_traces_with_augmented_states(model=model, 
+                                                     cycles=args.cycles, 
+                                                     max_trace_length=args.max_length, 
+                                                     unsolvable_weight=unsolvable_weight, 
+                                                     logger=logger, is_spanner=is_spanner, **pddl_problem)
         elapsed_time = timer() - start_time
         logger.info(f'{len(action_trace)} executed action(s) and {num_evaluations} state evaluations(s) in {elapsed_time:.3f} second(s)')
 

@@ -152,7 +152,7 @@ def _load_trainer(args):
     if not args.verbose: callbacks.append(ValidationLossLogging())
     callbacks.append(EarlyStopping(monitor='validation_loss', patience=args.patience))
     callbacks.append(ModelCheckpoint(save_top_k=args.save_top_k, monitor='validation_loss', filename='{epoch}-{step}-{validation_loss}'))
-    callbacks.append(LearningRateFinder())
+    #callbacks.append(LearningRateFinder())
     trainer_params = {
         "num_sanity_val_steps": 0,
         #"progress_bar_refresh_rate": 30 if args.verbose else 0,
@@ -168,8 +168,6 @@ def _load_trainer(args):
     if args.logdir or args.logname:
         logdir = args.logdir if args.logdir else 'lightning_logs'
         trainer_params['logger'] = TensorBoardLogger(logdir, name=args.logname)
-    #if args.gpus > 0: trainer = pl.Trainer(gpus=args.gpus, auto_select_gpus=True, **trainer_params)
-    #else: trainer = pl.Trainer(**trainer_params)
 
     #if platform.system() == "Darwin":
     #    trainer_params['accelerator'] = 'mps'

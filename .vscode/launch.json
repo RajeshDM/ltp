@@ -423,7 +423,6 @@
             "${workspaceFolder}/data/data_exp_2/states/validation/blocks",
             "--loss",
             "selfsupervised_optimal",
-            "--readout",
             ]
         },
         {
@@ -435,12 +434,17 @@
             "justMyCode": false,
             "args" :[
                 "--domain",
-                "${workspaceFolder}/data/data_exp_2/pddl/blocks/test/domain.pddl",
-                "--model", 
-            "${workspaceFolder}/lightning_logs/version_6/checkpoints/epoch=0-step=141-validation_loss=8.95077896118164.ckpt",
+                "${workspaceFolder}/../../pddlgym/pddlgym/pddl/Manyblocks_ipcc_big_v2.pddl",
+                //"${workspaceFolder}/data/data_exp_2/pddl/blocks/test/domain.pddl",
+            //"${workspaceFolder}/lightning_logs/version_6/checkpoints/epoch=0-step=141-validation_loss=8.95077896118164.ckpt",
+            "--model",
+            "${workspaceFolder}/ploi/baselines/exp_3/models/blocks/epoch=112-step=98083.ckpt",
             "--problems",
-            "${workspaceFolder}/data/data_exp_2/pddl//blocks/test",
-            "--readout",
+            //"${workspaceFolder}/data/data_exp_2/pddl/blocks/test",
+            "${workspaceFolder}/../../pddlgym/pddlgym/pddl/Manyblocks_ipcc_big_v2_test",
+            //"--ignore_unsolvable",
+            //"--cpu",
+            //"--readout",
             ]
         },
     ]
