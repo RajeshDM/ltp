@@ -218,8 +218,8 @@ def _load_trainer(args):
     if not args.verbose: callbacks.append(ValidationLossLogging())
     early_stopping = EarlyStopping(monitor='validation_loss', patience=args.patience)
     checkpoint = ModelCheckpoint(save_top_k=1, monitor='validation_loss')
-    callabcks.append(early_stopping)
-    callabcks.append(checkpoint)
+    callbacks.append(early_stopping)
+    callbacks.append(checkpoint)
     trainer_params = {
         "num_sanity_val_steps": 0,
         #"progress_bar_refresh_rate": 30 if args.verbose else 0,
