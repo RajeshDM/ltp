@@ -6,13 +6,19 @@ import pytorch_lightning as pl
 from typing import List, Dict, Tuple
 from torch.nn.functional import Tensor
 
-
 class RelationMessagePassing(nn.Module):
     def __init__(self, relations: List[Tuple[int, int]], hidden_size: int):
         super().__init__()
         self.hidden_size = hidden_size
-        #self.relation_modules = nn.ModuleDict()
-        self.relation_modules = nn.ModuleList()
+        self.pddl_input = False
+        if type(relations[0][0]) is str:
+            self.pddl_input = True 
+        
+        if self.pddl_input:
+            self.relation_modules = nn.ModuleDict()
+        else :
+            self.relation_modules = nn.ModuleList()
+
         for relation_name, arity in relations:
             #assert relation_name == len(self.relation_modules)
             input_size = arity * hidden_size
@@ -21,8 +27,11 @@ class RelationMessagePassing(nn.Module):
                 mlp = nn.Sequential(nn.Linear(input_size, input_size, True), nn.ReLU(), nn.Linear(input_size, output_size, True))
             else:
                 mlp = None
-            self.relation_modules.append(mlp)
-            #self.relation_modules[relation_name] = mlp
+
+            if self.pddl_input:
+                self.relation_modules[relation_name] = mlp
+            else :
+                self.relation_modules.append(mlp)
         self.update = nn.Sequential(nn.Linear(2 * hidden_size, 2 * hidden_size, True), nn.ReLU(), nn.Linear(2 * hidden_size, hidden_size, True))
         self.dummy = nn.Parameter(torch.empty(0))
 
@@ -33,8 +42,12 @@ class RelationMessagePassing(nn.Module):
         # Compute an aggregated message for each recipient
         max_outputs = []
         outputs = []
-        for relation, module in enumerate(self.relation_modules):
+
+        items = self.relation_modules.items() if self.pddl_input else enumerate(self.relation_modules)
+
+        #for relation, module in enumerate(self.relation_modules):
         #for relation, module in self.relation_modules.items():
+        for relation, module in items:
             if (module is not None) and (relation in relations):
                 values = relations[relation]
                 input = torch.index_select(node_states, 0, values).view(-1, module[0].in_features)

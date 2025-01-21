@@ -16,6 +16,7 @@ from datetime import timedelta
 from torch.nn.functional import l1_loss
 #from architecture.supervised.optimal import MaxModel, AddModel
 from ploi.baselines.exp_2.architecture.supervised.optimal import MaxModel, AddModel
+from ploi.baselines.exp_2.datasets.supervised.optimal.dataset import create_dataset_from_state_spaces
 from ploi.baselines.exp_3.helpers import ValidationLossLogging
 
 #from ploi.baselines.exp_2.test import test_model
@@ -27,7 +28,7 @@ def _generate_state_spaces(domain_path: str, problem_paths: List[str]) -> List[m
     for problem_path in problem_paths:
         print(f'> Expanding: {problem_path}')
         state_space = mm.StateSpace.create(domain_path, problem_path, mm.StateSpaceOptions(max_num_states=1_000_000, timeout_ms=60_000))
-        #state_space = mm.StateSpace.create(domain_path, problem_path, mm.StateSpaceOptions(max_num_states=5_000_000, timeout_ms=300_000))
+        #state_space = mm.StateSpace.create(domain_path, problem_path, mm.StateSpaceOptions(max_num_states=10_000_000, timeout_ms=300_000))
         if state_space is not None:
             state_spaces.append(state_space)
             print(f'- # States: {state_space.get_num_vertices()}')
@@ -172,27 +173,34 @@ def _load_datasets_v2(args):
     if args.separate_train_val is True :
         domain_path_val, problem_paths_val = _parse_instances(args.validation)
         val_state_spaces = _generate_state_spaces(domain_path_val, problem_paths_val)
+        #train_dataset = create_dataset_from_state_spaces(state_spaces)
+        #validation_dataset = create_dataset_from_state_spaces(val_state_spaces) 
         train_dataset, validation_dataset = create_state_samplers_separate(state_spaces, val_state_spaces)
     else :
         train_dataset, validation_dataset = _create_state_samplers(state_spaces)
+        #train_size = int(len(state_spaces) * 0.8)
+        #train_state_spaces = state_spaces[:train_size]
+        #val_state_spaces = state_spaces[train_size:]
+
+        #train_dataset = create_dataset_from_state_spaces(train_state_spaces, args.max_samples_per_value)
+        #validation_dataset = create_dataset_from_state_spaces(val_state_spaces, args.max_samples_per_value) 
 
     domain = state_spaces[0].get_problem().get_domain()
-
-    #train_loader = create_loader_from_dataset(train_dataset, args.max_samples_per_value)
-    #validation_loader = create_loader_from_dataset(validation_dataset, args.max_samples_per_value)
-
     predicates = get_predicates(domain)
 
     '''
+    num_workers = mp.cpu_count() - 2
+
     loader_params = {
         "batch_size": args.batch_size,
         "drop_last": False,
         "collate_fn": collate,
-        "pin_memory": True
+        "pin_memory": True,
+        "num_workers": num_workers
     }
+    train_loader = DataLoader(train_dataset, shuffle=True, **loader_params)
+    validation_loader = DataLoader(validation_dataset, shuffle=False, **loader_params)
     '''
-    #train_loader = DataLoader(train_dataset, shuffle=True, **loader_params)
-    #validation_loader = DataLoader(validation_dataset, shuffle=False, **loader_params)
 
     #return predicates, train_loader, validation_loader
     #train_loader, validation_loader = create_loaders_from_datasets(train_dataset, validation_dataset)

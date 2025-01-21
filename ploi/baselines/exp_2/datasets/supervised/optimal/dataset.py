@@ -1,10 +1,10 @@
 import torch
 
 from pathlib import Path
+import pymimir as mm
 from torch.functional import Tensor
 from torch.utils.data.dataset import Dataset
 from typing import Dict, List, Tuple
-
 
 def _split(tokens: list) -> list:
     return [token.split(' ') for token in tokens]
@@ -190,10 +190,11 @@ class ValueDataset(Dataset):
 class ValueDataset_mimir(Dataset):
     """State value dataset."""
 
-    def __init__(self, state_space: Path, min_cost: float = None, max_cost: float = None, decode: bool = False):
+    def __init__(self, state_space: mm.StateSpace, min_cost: float = None, max_cost: float = None, decode: bool = False):
         #self._decoded = decode
         #data = _load_file(file, decode)
         data = {}
+        '''
         data['objs'] = state_space.get_problem().get_objects() 
         data['facts'] = state_space.get_problem().get_facts()
         data['goals'] = state_space.get_problem().get_goals()
@@ -217,12 +218,18 @@ class ValueDataset_mimir(Dataset):
             self.states = data['states']
         self.predicates = preds
         self.predicates.sort()
+        '''
+        #self.states = state_space.get_problem().get_states()
+        self.states = state_space.get_vertices()
+        self.targets = state_space.get_goal_distances()
+        self.goals = state_space.get_goals()
 
     def __len__(self):
         return len(self.states)
 
     def __getitem__(self, idx):
-        (cost, state) = self.states[idx]
+        #(cost, state) = self.states[idx]
+        (cost, state) = self.targets[idx], self.states[idx].get_state()
         if self._decoded:
             input = _pack_by_predicate(self.facts + self.goals + state, False)
             target = float(cost)
@@ -230,6 +237,13 @@ class ValueDataset_mimir(Dataset):
             input = _pack_by_predicate(self.facts + self.goals + state, True)
             target = torch.tensor([float(cost)])
         return (input, target)
+
+def create_dataset_from_state_spaces(state_spaces, max_samples_per_value):
+    datasets = []
+    for state_space in state_spaces:
+        datasets.append((LimitedDataset(ValueDataset_mimir(state_space)), max_samples_per_value))
+
+    return ExtendedDataset(datasets, 1)
 
 class LimitedDataset(Dataset):
     def __init__(self, dataset, max_samples_per_value) -> None:

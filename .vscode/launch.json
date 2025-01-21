@@ -366,7 +366,7 @@
             "${workspaceFolder}/data/data_exp_1/pddl/blocks-clear/validation",
             //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big",
             "--verbose",
-            //"--separate_train_val",
+            "--separate_train_val",
             "--train_test",
             //"--run_original",
             "--model_type", "max",

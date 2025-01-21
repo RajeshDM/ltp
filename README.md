@@ -9,7 +9,7 @@ pip install torch-scatter==2.1.1 torch-sparse==0.6.17 torch-cluster==1.6.1 torch
 pip install pytorch-lightning==2.0.1
 pip install wandb
 pip install icecream
-pip install pymimir
+pip install pymimir==0.9.71
 pip install pyperplan==2.1
 #for running baselines
 pip intsall termcolor

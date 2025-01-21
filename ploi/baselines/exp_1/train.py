@@ -151,7 +151,6 @@ def _sample_batch(states: StateSampler, batch_size: int, device: torch.device) -
     target_tensor = torch.tensor(targets, dtype=torch.float, device=device, requires_grad=False)
     return relation_tensors, size_tensor, target_tensor
 
-
 def _train(model: SmoothmaxRelationalNeuralNetwork,
            optimizer: optim.Adam,
            train_states: StateSampler,
