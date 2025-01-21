@@ -53,8 +53,12 @@ class RelationMessagePassing(nn.Module):
                 input = torch.index_select(node_states, 0, values).view(-1, module[0].in_features)
                 output = module(input).view(-1, self.hidden_size)
                 max_outputs.append(torch.max(output))
-                node_indices = values.view(-1, 1).repeat(1, self.hidden_size)
-                #node_indices = values.view(-1, 1).repeat(1, self.hidden_size).to(torch.int64)
+
+                if self.pddl_input:
+                    node_indices = values.view(-1, 1).repeat(1, self.hidden_size).to(torch.int64)
+                else:       
+                    node_indices = values.view(-1, 1).repeat(1, self.hidden_size)
+
                 outputs.append((output, node_indices))
 
         max_offset = torch.max(torch.stack(max_outputs))

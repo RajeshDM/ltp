@@ -334,7 +334,7 @@
                 "--validation", 
             "${workspaceFolder}/data/data_exp_1/supervised/optimal/validation/blocks-clear",
             //"/home/rajesh/rajesh/ploi/full_repo/pddlgym/pddlgym/pddl/manyblocks_ipcc_big",
-            "--verbose",
+            //"--verbose",
             "--separate_train_val",
             "--train_test",
             "--run_original",

@@ -8,7 +8,8 @@ from torch.utils.data.dataloader import DataLoader
 import torch
 import pymimir as mm
 import multiprocessing as mp
-from typing import Dict, List, Tuple,Union
+from typing import Dict, List, Tuple,Union, Optional
+from collections import defaultdict
 import random
 import os
 import time
@@ -38,11 +39,21 @@ def _generate_state_spaces(domain_path: str, problem_paths: List[str]) -> List[m
     return state_spaces
 
 class StateSampler:
-    def __init__(self, state_spaces: List[mm.StateSpace]) -> None:
+    def __init__(self, state_spaces: List[mm.StateSpace], max_samples_per_cost: int = 100) -> None:
         self._state_spaces = state_spaces
         self._max_distances = []
         self._has_deadends = []
         self._deadend_distance = float('inf')
+        self._max_samples_per_cost = max_samples_per_cost
+
+        # Initialize tracking structures
+        self._samples_per_cost = defaultdict(int)  # Track number of samples per cost
+        self._sampled_states = defaultdict(set)    # Track unique states per cost
+
+        # Track total available states
+        self._total_states = self._count_total_states()
+        self._total_sampled_states = 0
+
         for state_space in state_spaces:
             max_goal_distance = 0
             has_deadend = False
@@ -54,7 +65,7 @@ class StateSampler:
             self._max_distances.append(max_goal_distance)
             self._has_deadends.append(has_deadend)
 
-    def sample(self) -> Tuple[mm.State, mm.StateSpace, int]:
+    def sample_old(self) -> Tuple[mm.State, mm.StateSpace, int]:
         # To achieve an even distribution, we uniformly sample a state space and select a valid goal-distance within that space.
         # Finally, we randomly sample a state from the selected state space and with the goal-distance.
         state_space_index = random.randint(0, len(self._state_spaces) - 1)
@@ -68,6 +79,142 @@ class StateSampler:
             sampled_state_index = sampled_state_space.sample_vertex_index_with_goal_distance(goal_distance)
         sampled_state = sampled_state_space.get_vertex(sampled_state_index)
         return (sampled_state.get_state(), sampled_state_space, goal_distance)
+
+    def sample(self) -> Tuple[mm.State, mm.StateSpace, int]:
+        """
+        Sample a state while respecting the maximum samples per cost constraint.
+        
+        Returns:
+            Tuple of (State, StateSpace, goal_distance)
+            
+        Raises:
+            RuntimeError: If unable to find a valid sample after max attempts
+        """
+        max_attempts = 1000  # Prevent infinite loops
+        attempts = 0
+        
+        while attempts < max_attempts:
+            # Sample state space and cost
+            state_space_index = random.randint(0, len(self._state_spaces) - 1)
+            sampled_state_space = self._state_spaces[state_space_index]
+            max_goal_distance = self._max_distances[state_space_index]
+            has_deadends = self._has_deadends[state_space_index]
+            
+            # Sample goal distance
+            goal_distance = random.randint(-1 if has_deadends else 0, max_goal_distance)
+            
+            # Check if we've reached the maximum samples for this cost
+            if self._samples_per_cost[goal_distance] >= self._max_samples_per_cost:
+                attempts += 1
+                continue
+                
+            # Sample state
+            if goal_distance < 0:
+                sampled_state_index = sampled_state_space.sample_vertex_index_with_goal_distance(
+                    self._deadend_distance
+                )
+            else:
+                sampled_state_index = sampled_state_space.sample_vertex_index_with_goal_distance(
+                    goal_distance
+                )
+                
+            sampled_state = sampled_state_space.get_vertex(sampled_state_index)
+            state = sampled_state.get_state()
+            
+            # Check if this exact state was already sampled for this cost
+            state_hash = hash(state)  # Create a hashable representation of the state
+            if state_hash in self._sampled_states[goal_distance]:
+                attempts += 1
+                continue
+                
+            # Update tracking structures
+            self._samples_per_cost[goal_distance] += 1
+            self._sampled_states[goal_distance].add(state_hash)
+            
+            return (state, sampled_state_space, goal_distance)
+            
+        raise RuntimeError(
+            f"Unable to find valid sample after {max_attempts} attempts. "
+            "Consider increasing max_samples_per_cost or checking state space coverage."
+        )
+
+    def _count_total_states(self) -> int:
+        """Count total unique states across all state spaces."""
+        return sum(space.get_num_vertices() for space in self._state_spaces)
+
+    def is_sampling_complete(self) -> bool:
+        """
+        Check if sampling is complete based on either condition:
+        1. All unique states have been sampled
+        2. All costs have reached their maximum samples
+        """
+        if self._total_sampled_states >= self._total_states:
+            return True
+
+        # First check if we've sampled anything at all
+        if not self._samples_per_cost:
+            return False
+            
+        return all(count >= self._max_samples_per_cost 
+                  for count in self._samples_per_cost.values())
+
+    def sample_batch(self, batch_size: int, device: torch.device) -> Optional[Tuple[Dict[str, torch.Tensor], torch.Tensor, torch.Tensor]]:
+        if self.is_sampling_complete():
+            return None
+            
+        relations = {}
+        sizes = []
+        targets = []
+        
+        successful_samples = 0
+        max_attempts = batch_size * 10
+        attempts = 0
+        
+        while successful_samples < batch_size and attempts < max_attempts:
+            try:
+                state, state_space, target = self.sample()
+                self._sample_state_to_batch(state, state_space, target, relations, sizes, targets)
+                successful_samples += 1
+            except RuntimeError:
+                attempts += 1
+                if attempts >= max_attempts:
+                    if successful_samples == 0:
+                        return None
+                    break
+        
+        relation_tensors = relations_to_tensors(relations, device)
+        size_tensor = torch.tensor(sizes, dtype=torch.int, device=device, requires_grad=False)
+        target_tensor = torch.tensor(targets, dtype=torch.float, device=device, requires_grad=False)
+        
+        return relation_tensors, size_tensor, target_tensor
+
+    def _sample_state_to_batch(
+        self,
+        state: mm.State,
+        state_space: mm.StateSpace,
+        target: int,
+        relations: Dict[str, List[int]],
+        sizes: List[int],
+        targets: List[int]
+    ) -> None:
+        offset = sum(sizes)
+
+        def add_relations(atom, is_goal_atom):
+            predicate_name = get_atom_name(atom, state, is_goal_atom)
+            term_ids = [term.get_index() + offset for term in atom.get_objects()]
+            if predicate_name not in relations:
+                relations[predicate_name] = term_ids
+            else:
+                relations[predicate_name].extend(term_ids)
+
+        for atom in get_atoms(state, state_space.get_problem(), state_space.get_pddl_repositories()):
+            add_relations(atom, False)
+        
+        for atom in get_goal(state_space.get_problem()):
+            add_relations(atom, True)
+
+        sizes.append(len(state_space.get_problem().get_objects()))
+        targets.append(target)
 
 def _create_state_samplers(state_spaces: List[mm.StateSpace]) -> Tuple[StateSampler, StateSampler]:
     print('Creating state samplers...')
@@ -312,9 +459,21 @@ def train_model(model, train_states, validation_states, args):
     best_model_state = None
 
     print('Creating datasets...')
-    train_dataset = [_sample_batch(train_states, args.batch_size, device) for _ in range(10_000)]
+    #train_dataset = [_sample_batch(train_states, args.batch_size, device) for _ in range(10_000)]
     #train_dataset = [_sample_batch(train_states, args.batch_size, device) for _ in range(1_000)]
-    validation_dataset = [_sample_batch(validation_states, args.batch_size, device) for _ in range(1_000)]
+    #validation_dataset = [_sample_batch(validation_states, args.batch_size, device) for _ in range(1_000)]
+    # Create the dataset
+    train_dataset = create_batch_dataset(
+        sampler=train_states,
+        batch_size=args.batch_size,
+        device=device
+    )
+
+    validation_dataset = create_batch_dataset(
+        sampler=validation_states,
+        batch_size=args.batch_size,
+        device=device
+    )
 
     start_time = time.time()
     epoch_start_time = None
@@ -401,6 +560,33 @@ def train_model(model, train_states, validation_states, args):
         model.load_state_dict(best_model_state)
     
     return model, optimizer
+
+def create_batch_dataset(sampler: StateSampler, batch_size: int, device: str) -> List:
+    """
+    Create training dataset by sampling until completion.
+    
+    Args:
+        sampler: Initialized BalancedStateSampler
+        batch_size: Size of each batch
+        device: Device to put the tensors on
+        
+    Returns:
+        List of all valid batches
+    """
+    batch_dataset = []
+    
+    while True:
+        batch = sampler.sample_batch(batch_size, device)
+        if batch is None:
+            break
+        batch_dataset.append(batch)
+        
+        # Optional: Print progress
+        if len(batch_dataset) % 100 == 0:
+            print(f"Collected {len(batch_dataset)} batches")
+            print(f"Samples per cost: {sampler.get_samples_distribution()}")
+    
+    return batch_dataset
 
 def train(args):
 
