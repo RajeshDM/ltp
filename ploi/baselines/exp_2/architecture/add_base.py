@@ -12,7 +12,15 @@ class RelationMessagePassing(nn.Module):
     def __init__(self, relations: List[Tuple[int, int]], hidden_size: int):
         super().__init__()
         self.hidden_size = hidden_size
-        self.relation_modules = nn.ModuleList()
+        self.pddl_input = False
+        if type(relations[0][0]) is str:
+            self.pddl_input = True 
+        
+        if self.pddl_input:
+            self.relation_modules = nn.ModuleDict()
+        else :
+            self.relation_modules = nn.ModuleList()
+
         for relation, arity in relations:
             assert relation == len(self.relation_modules)
             input_size = arity * hidden_size
@@ -31,7 +39,10 @@ class RelationMessagePassing(nn.Module):
     def forward(self, node_states: Tensor, relations: Dict[int, Tensor]) -> Tuple[Tensor, Tensor]:
         # Compute an aggregated message for each recipient
         sum_msg = torch.zeros_like(node_states, dtype=torch.float, device=self.get_device())
-        for relation, module in enumerate(self.relation_modules):
+        items = self.relation_modules.items() if self.pddl_input else enumerate(self.relation_modules)
+
+        #for relation, module in enumerate(self.relation_modules):
+        for relation, module in items:
             if (module is not None) and (relation in relations):
                 values = relations[relation]
                 input = torch.index_select(node_states, 0, values).view(-1, module[0].in_features)
