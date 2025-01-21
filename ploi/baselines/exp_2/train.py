@@ -28,8 +28,8 @@ def _generate_state_spaces(domain_path: str, problem_paths: List[str]) -> List[m
     #for problem_path in problem_paths:
     for problem_path in problem_paths:
         print(f'> Expanding: {problem_path}')
-        state_space = mm.StateSpace.create(domain_path, problem_path, mm.StateSpaceOptions(max_num_states=1_000_000, timeout_ms=60_000))
-        #state_space = mm.StateSpace.create(domain_path, problem_path, mm.StateSpaceOptions(max_num_states=10_000_000, timeout_ms=300_000))
+        #state_space = mm.StateSpace.create(domain_path, problem_path, mm.StateSpaceOptions(max_num_states=1_000_000, timeout_ms=60_000))
+        state_space = mm.StateSpace.create(domain_path, problem_path, mm.StateSpaceOptions(max_num_states=10_000_000, timeout_ms=300_000))
         if state_space is not None:
             state_spaces.append(state_space)
             print(f'- # States: {state_space.get_num_vertices()}')
@@ -215,6 +215,16 @@ class StateSampler:
 
         sizes.append(len(state_space.get_problem().get_objects()))
         targets.append(target)
+
+    def get_samples_distribution(self) -> Dict[int, int]:
+        """Get the current distribution of samples across costs."""
+        return dict(self._samples_per_cost)
+
+    def reset_sampling(self) -> None:
+        """Reset all sampling counters and stored states."""
+        self._samples_per_cost.clear()
+        self._sampled_states.clear()
+        self._total_sampled_states = 0
 
 def _create_state_samplers(state_spaces: List[mm.StateSpace]) -> Tuple[StateSampler, StateSampler]:
     print('Creating state samplers...')
