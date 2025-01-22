@@ -227,7 +227,7 @@ def load_directory(path: Path, max_samples_per_file: int, max_samples: int, filt
 
     labeled_states = []
     solvable_labels = []
-    files = list(path.glob('*.states'))
+    files = list(path.glob('*.states*'))
     print(f'{len(files)} file(s) to load from {path}')
 
     assert len(files) > 0, f'No files found in {path}'
