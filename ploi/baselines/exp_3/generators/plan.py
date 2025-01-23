@@ -438,7 +438,11 @@ def policy_search_with_augmented_states(actions, initial, goals, obj_encoding: D
     if logger: logger.debug(f'status={1 if reached_goal else 0}')
     return action_trace, state_trace, value_trace, reached_goal, num_evaluations
 
-def compute_traces_with_augmented_states(actions, initial, goal, language, model: pl.LightningModule, augment_fn = None, cycles: str = 'avoid', max_trace_length: int = 500, unsolvable_weight: float = 100000.0, logger = None, is_spanner = False):
+def compute_traces_with_augmented_states(actions, initial, goal, language,
+                                          model: pl.LightningModule, augment_fn = None, 
+                                          cycles: str = 'avoid', max_trace_length: int = 500, 
+                                          unsolvable_weight: float = 100000.0, 
+                                          logger = None, is_spanner = False):
     objects = language.constants()
     obj_encoding = create_object_encoding(objects)
     if logger: logger.info(f'{len(objects)} object(s), obj_encoding={obj_encoding}')

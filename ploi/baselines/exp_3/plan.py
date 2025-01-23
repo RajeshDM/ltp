@@ -68,6 +68,41 @@ def _load_model(args):
         raise NotImplementedError(f"No model found for {(args.aggregation, args.readout, 'base')} combination")
     return Model
 
+def _plan_exp_3(domain_file, problem_file, model, device, max_length, 
+                registry_filename=None, registry_key=None):
+    pddl_problem = load_pddl_problem_with_augmented_states(domain_file, problem_file,
+                                                            registry_filename, 
+                                                            registry_key, 
+                                                            logger=None)
+    del pddl_problem['predicates'] #  Why?
+
+    cycles = 'avoid'
+    #logger.info(f'Executing policy (max_length={max_length})')
+    #start_time = timer()
+    #is_spanner = args.spanner and 'spanner' in str(args.domain)
+    #unsolvable_weight = 0.0 if args.ignore_unsolvable else 100000.0
+    action_trace, state_trace, value_trace, is_solution, num_evaluations =  \
+            compute_traces_with_augmented_states(model=model, 
+                                                    cycles=cycles, 
+                                                    max_trace_length=max_length, 
+                                                    is_spanner=False, **pddl_problem)
+    #elapsed_time = timer() - start_time
+    #logger.info(f'{len(action_trace)} executed action(s) and {num_evaluations} state evaluations(s) in {elapsed_time:.3f} second(s)')
+
+    if is_solution:
+        #logger.info(colored(f'Found valid plan with {len(action_trace)} action(s) for {args.problem}', 'green', attrs=[ 'bold' ]))
+        return action_trace 
+    else:
+        return None
+        #logger.info(colored(f'Failed to find a plan for {args.problem}', 'red', attrs=[ 'bold' ]))
+
+    print_trace = True
+    if print_trace:
+        for index, action in enumerate(action_trace):
+            value_from = value_trace[index]
+            value_to = value_trace[index + 1]
+            logger.info('{}: {} (value change: {:.2f} -> {:.2f} {})'.format(index + 1, action.name, float(value_from), float(value_to), 'D' if float(value_from) > float(value_to) else 'I'))
+
 def _main(args):
     global logger
     start_time = timer()
@@ -92,35 +127,19 @@ def _main(args):
 
         logger.info(f"Loading PDDL files: domain='{args.domain}', problem='{args.problem}'")
         registry_filename = args.registry_filename if args.augment else None
-        pddl_problem = load_pddl_problem_with_augmented_states(args.domain, args.problem, registry_filename, args.registry_key, logger)
-        del pddl_problem['predicates'] #  Why?
 
-        logger.info(f'Executing policy (max_length={args.max_length})')
-        start_time = timer()
-        is_spanner = args.spanner and 'spanner' in str(args.domain)
-        unsolvable_weight = 0.0 if args.ignore_unsolvable else 100000.0
-        action_trace, state_trace, value_trace, is_solution, num_evaluations =  \
-                compute_traces_with_augmented_states(model=model, 
-                                                     cycles=args.cycles, 
-                                                     max_trace_length=args.max_length, 
-                                                     unsolvable_weight=unsolvable_weight, 
-                                                     logger=logger, is_spanner=is_spanner, **pddl_problem)
-        elapsed_time = timer() - start_time
-        logger.info(f'{len(action_trace)} executed action(s) and {num_evaluations} state evaluations(s) in {elapsed_time:.3f} second(s)')
+        action_trace = _plan_exp_3(args.domain, args.problem, model, device, args.max_length,
+                    registry_filename=registry_filename, registry_key=args.registry_key)
 
-        if is_solution:
+        if action_trace is not None:
             success += 1
-            logger.info(colored(f'Found valid plan with {len(action_trace)} action(s) for {args.problem}', 'green', attrs=[ 'bold' ]))
-        else:
+            logger.info(colored(f'Found valid plan with {len(action_trace)} action(s) for {args.problem}', 'green', attrs=[ 'bold' ])) 
+        else :
             logger.info(colored(f'Failed to find a plan for {args.problem}', 'red', attrs=[ 'bold' ]))
 
-        if args.print_trace:
-            for index, action in enumerate(action_trace):
-                value_from = value_trace[index]
-                value_to = value_trace[index + 1]
-                logger.info('{}: {} (value change: {:.2f} -> {:.2f} {})'.format(index + 1, action.name, float(value_from), float(value_to), 'D' if float(value_from) > float(value_to) else 'I'))
-
     print (f"Success rate: {success}/{total}")
+
+
 
 if __name__ == "__main__":
     # setup timer and exec name

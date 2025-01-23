@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
+from typing import Any, Dict
 
 from ploi.baselines.exp_3.architecture import AddModelBase, MaxModelBase, MaxReadoutModelBase, AddMaxModelBase
 from ploi.baselines.exp_3.architecture import supervised_optimal_loss, selfsupervised_optimal_loss, selfsupervised_suboptimal_loss, selfsupervised_suboptimal2_loss, unsupervised_optimal_loss, unsupervised_suboptimal_loss, l1_regularization
@@ -46,6 +47,7 @@ def _create_supervised_model_class(base: pl.LightningModule, loss):
             validation = loss(output, target)
             self.log('validation_loss', validation)
 
+
     return Model
 
 def _create_unsupervised_model_class(base: pl.LightningModule, loss):
@@ -59,7 +61,8 @@ def _create_unsupervised_model_class(base: pl.LightningModule, loss):
             self.weight_decay = weight_decay
 
         def configure_optimizers(self):
-            return _create_optimizer(self, self.learning_rate, self.weight_decay)
+            self.optimizer =  _create_optimizer(self, self.learning_rate, self.weight_decay)
+            return self.optimizer
 
         def training_step(self, train_batch, batch_index):
             labels, collated_states_with_object_counts, solvable_labels, state_counts = train_batch
@@ -77,6 +80,35 @@ def _create_unsupervised_model_class(base: pl.LightningModule, loss):
             output = self(collated_states_with_object_counts)
             validation = loss(output, labels, solvable_labels, state_counts, self.device)
             self.log('validation_loss', validation)
+
+        def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+            """
+            Customize the checkpoint saving to include required information.
+            
+            Args:
+                checkpoint (Dict[str, Any]): Checkpoint dictionary
+            """
+            # Add model state dict explicitly
+            checkpoint['model_state_dict'] = self.state_dict()
+            
+            # Add optimizer state dict
+            checkpoint['optimizer_state_dict'] = self.optimizer.state_dict()
+            
+            # Add hyperparameters dictionary
+            checkpoint['hparams'] = dict(self.hparams)
+
+        def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+            """
+            Customize checkpoint loading process.
+            
+            Args:
+                checkpoint (Dict[str, Any]): Checkpoint dictionary
+            """
+            # Verify all required keys are present
+            required_keys = ['model_state_dict', 'optimizer_state_dict', 'hparams']
+            missing_keys = [key for key in required_keys if key not in checkpoint]
+            if missing_keys:
+                raise KeyError(f"Checkpoint missing required keys: {missing_keys}")
 
     return Model
 

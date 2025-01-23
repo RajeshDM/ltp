@@ -44,6 +44,7 @@ if not sys.warnoptions:
 
 from ploi.baselines.exp_1.plan import _plan as exp_1_learned_planner
 from ploi.baselines.exp_2.train import _plan_exp_2 as exp_2_learned_planner
+from ploi.baselines.exp_3.plan import _plan_exp_3 as exp_3_learned_planner
 import pymimir as mm
 
 # New class to add
@@ -474,14 +475,44 @@ class PlannerTester:
         problem = parser.get_problem()
         return problem, factories
 
+    def _run_exp_baseline_3(self, env, problem_idx, model, plan_function, planner_type):
+        result = PlanningResult()
+        result.problem_idx = problem_idx
+
+        domain_file, fname, problem_file = self.get_domain_name_fname_from_env(env, problem_idx)
+        planner_data = self.planner_data[planner_type]
+
+        if fname in planner_data:
+            result.plan_length, result.time_taken = planner_data[fname]
+            result.success = True
+            return result 
+
+        start_time = time.time()
+        solution = plan_function(domain_file, problem_file, model, self.config.device, self.config.max_plan_length)
+        time_taken = time.time() - start_time
+
+        if solution is not None:
+            planner_data[fname] = (len(solution), time_taken)
+            result.success = True
+            result.plan_length =len(solution) 
+
+        result.time_taken = time_taken
+        return result
+
+
+    def get_domain_name_fname_from_env(self, env, problem_idx):
+        problem_file = env.problems[problem_idx].problem_fname
+        domain_file = env.domain.domain_fname
+        fname = env.problems[problem_idx].problem_fname
+        fname = "/".join(fname.split("/")[-2:])
+        return domain_file, fname, problem_file 
+
     def _run_exp_baseline(self, env, problem_idx, model, plan_function, planner_type):
         result = PlanningResult()
         result.problem_idx = problem_idx
-        problem_file = env.problems[problem_idx].problem_fname
-        domain_file = env.domain.domain_fname
+
+        domain_file, fname, problem_file = self.get_domain_name_fname_from_env(env, problem_idx)
         planner_data = self.planner_data[planner_type]
-        fname = env.problems[problem_idx].problem_fname
-        fname = "/".join(fname.split("/")[-2:])
 
         if fname in planner_data:
             result.plan_length, result.time_taken = planner_data[fname]
@@ -524,6 +555,12 @@ class PlannerTester:
 
                 elif planner_type == PlannerType.EXP_BASELINE_2 and PlannerType.EXP_BASELINE_2 in models:
                     result = self._run_exp_baseline(self.env, problem_idx, models[planner_type][0], exp_2_learned_planner, planner_type)
+
+                elif planner_type == PlannerType.EXP_BASELINE_2 and PlannerType.EXP_BASELINE_2 in models:
+                    result = self._run_exp_baseline(self.env, problem_idx, models[planner_type][0], exp_2_learned_planner, planner_type)
+
+                elif planner_type == PlannerType.EXP_BASELINE_3 and PlannerType.EXP_BASELINE_3 in models:
+                    result = self._run_exp_baseline_3(self.env, problem_idx, models[planner_type][0], exp_3_learned_planner, planner_type)
 
                 elif planner_type == PlannerType.NON_OPTIMAL:
                     result = self._run_external_planner(self.env, problem_idx, action_space, self.config.timeout, optimal=False)

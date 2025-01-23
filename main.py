@@ -67,11 +67,14 @@ from ploi.traineval import (
 from ploi.baselines.exp_1.utils import load_checkpoint 
 from ploi.baselines.exp_2.train import load_model
 from ploi.baselines.exp_2.architecture.supervised.optimal import MaxModel, AddModel
+from ploi.baselines.exp_3.architecture import g_model_classes
 
 #import ploi.constants as constants
 from icecream import ic
 
-baselines = [PlannerType.EXP_BASELINE, PlannerType.EXP_BASELINE_2] 
+baselines = [PlannerType.EXP_BASELINE, 
+             PlannerType.EXP_BASELINE_2, 
+             PlannerType.EXP_BASELINE_3] 
 
 
 def set_seed(args):
@@ -195,18 +198,24 @@ def run_tests(
             print ("Plan Quality : ", combnined_metrics.plan_quality)
 
     for baseline in baselines:
-        curr_models = {}
         if baseline in planner_types:
             #curr_models[baseline],_ = (load_checkpoint(baseline_models[baseline], device),-1)
             #curr_models[baseline],_ = load_model(baseline_models[baseline], device, MaxModel)#(load_checkpoint(baseline_models[baseline], device),-1)
-            loaded_model, _  = load_model(baseline_models[baseline], device, MaxModel)
-            curr_models[baseline] = (loaded_model,-1)
-            test_results, run_metrics = test_function(curr_models)
-            combnined_metrics = compute_combined_metrics(test_results, baseline)
-            #print (f"Combined Metrics for {model_type} : ", combnined_metrics)
             print ("Baseline : ",baseline)
-            _ = format_metrics(run_metrics[baseline], None )
-            print ("Plan Quality : ", combnined_metrics.plan_quality)
+            curr_models = {}
+            for model_path in baseline_models[baseline]:
+                model_filename = str(model_path).split("/")[-1]
+                aggregation = model_filename.split("_")[1]
+                loss_fn = model_filename.split("_")[2] + "_" + model_filename.split("_")[3]
+                baseline_model_class = g_model_classes[(aggregation, False, loss_fn)]
+                loaded_model, _  = load_model(model_path, device, baseline_model_class)
+                curr_models[baseline] = (loaded_model,-1)
+                test_results, run_metrics = test_function(curr_models)
+                combnined_metrics = compute_combined_metrics(test_results, baseline)
+                #print (f"Combined Metrics for {model_type} : ", combnined_metrics)
+                print ("Model : ",model_path.split("/")[-1])
+                _ = format_metrics(run_metrics[baseline], None )
+                print ("Plan Quality : ", combnined_metrics.plan_quality)
 
     return results
 
@@ -669,14 +678,21 @@ if __name__ == "__main__":
             folder = os.path.join(Path.cwd(),"models")
             folder = os.path.join(folder,args.domain+"_exp_baseline")
             file = os.path.join(folder,"best.pth")
-            baseline_models[PlannerType.EXP_BASELINE] = file
+            baseline_models[PlannerType.EXP_BASELINE] = [file]
 
         if args.exp_baseline_2 is True:
             planner_types.append(PlannerType.EXP_BASELINE_2)
             folder = os.path.join(Path.cwd(),"models")
             folder = os.path.join(folder,args.domain+"_exp_2")
             file = os.path.join(folder,"model_best.pth")
-            baseline_models[PlannerType.EXP_BASELINE_2] = file
+            baseline_models[PlannerType.EXP_BASELINE_2] = [file]
+
+        if args.exp_baseline_3 is True:
+            planner_types.append(PlannerType.EXP_BASELINE_3)
+            folder = os.path.join(Path.cwd(),"models")
+            folder = os.path.join(folder,args.domain+"_exp_3")
+            files = list(Path(folder).glob("*.ckpt")) #os.path.join(folder,"model_best.pth")
+            baseline_models[PlannerType.EXP_BASELINE_3] = files[:]
 
         #ONLY DONE FOR FINALY DAY TESTING - REMOVE LATER
         #planner_types = [PlannerType.LEARNED_MODEL,PlannerType.NON_OPTIMAL]

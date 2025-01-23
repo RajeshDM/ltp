@@ -3,6 +3,8 @@ from termcolor import colored
 import pytorch_lightning as pl
 import torch
 import platform
+import os
+import multiprocessing as mp
 
 from pathlib import Path
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
@@ -38,7 +40,7 @@ def _parse_arguments():
     default_gradient_accumulation = 1
     default_max_samples_per_file = 1000
     default_max_samples = None
-    default_patience = 50
+    default_patience = 500
     default_gradient_clip = 0.1
     default_profiler = None
     default_validation_frequency = 1
@@ -49,6 +51,7 @@ def _parse_arguments():
     parser.add_argument('--validation', required=True, type=Path, help='path to validation dataset')
     parser.add_argument('--loss', required=True, nargs='?', choices=['supervised_optimal', 'selfsupervised_optimal', 'selfsupervised_suboptimal', 'selfsupervised_suboptimal2', 'unsupervised_optimal', 'unsupervised_suboptimal', 'online_optimal'])
     parser.add_argument('--resume', default=None, type=Path, help='path to model (.ckpt) for resuming training')
+    parser.add_argument('--domain', required=True, type=str, help='domain name')
 
     # arguments with meaningful default values
     parser.add_argument('--aggregation', default=default_aggregation, nargs='?', choices=['add', 'max', 'addmax', 'attention'], help=f'readout aggregation function (default={default_aggregation})')
@@ -102,19 +105,61 @@ def _load_datasets(args):
         load_dataset, collate = g_dataset_methods[args.loss]
     except KeyError:
         raise NotImplementedError(f"Loss function '{args.loss}'")
+
     (train_dataset, predicates) = load_dataset(args.train, args.max_samples_per_file, args.max_samples, args.verify_datasets)
     (validation_dataset, _) = load_dataset(args.validation, args.max_samples_per_file, args.max_samples, args.verify_datasets)
+    num_workers = mp.cpu_count() - 2
     loader_params = {
         "batch_size": args.batch_size,
         "drop_last": False,
         "collate_fn": collate,
         "pin_memory": True,
-        "num_workers": args.num_workers,  # Use 0 on Windows, doesn't work with > 0 for some reason.
+        "num_workers": num_workers,  # Use 0 on Windows, doesn't work with > 0 for some reason.
     }
     train_loader = DataLoader(train_dataset, shuffle=True, **loader_params)
     validation_loader = DataLoader(validation_dataset, shuffle=False, **loader_params)
     print(f'{len(predicates)} predicate(s) in dataset; predicates=[ {", ".join([ f"{name}/{arity}" for name, arity in predicates ])} ]')
+    #print ("comparing data in dataloaders ...", compare_shuffled_dataloaders(train_loader, validation_loader))
+    #print ("comparing data in dataloaders ...", compare_shuffled_dataloaders(validation_loader, train_loader))
+    #exit()
     return predicates, train_loader, validation_loader
+
+def compare_shuffled_dataloaders(dataloader1, dataloader2):
+    set1 = set()
+    set2 = set()
+    
+    def tensor_to_tuple(item):
+        if isinstance(item, dict):
+            # Sort dictionary items and convert each value
+            return tuple((k, tensor_to_tuple(v)) for k, v in sorted(item.items()))
+        elif hasattr(item, 'cpu'):  # For tensors
+            return tuple(item.cpu().numpy().flatten())
+        elif isinstance(item, (list, tuple)):
+            # Convert each element in the list/tuple
+            return tuple(tensor_to_tuple(x) for x in item)
+        else:
+            return item
+            
+    for batch in dataloader1:
+        sample = tuple(tensor_to_tuple(x) for x in batch)
+        set1.add(sample)
+    
+    for batch in dataloader2:
+        sample = tuple(tensor_to_tuple(x) for x in batch)
+        set2.add(sample)
+        
+    # Compare results
+    if len(set1) != len(set2):
+        print(f"Different number of unique samples: {len(set1)} vs {len(set2)}")
+        return False
+        
+    diff = set1 - set2
+    if diff:
+        print(f"Found {len(diff)} samples in first dataset that are not in second")
+        return False
+        
+    print("Datasets contain the same elements (ignoring order)")
+    return True
 
 def _load_model(args, predicates):
     print(colored('Loading model...', 'green', attrs = [ 'bold' ]))
@@ -149,9 +194,17 @@ def _load_model(args, predicates):
 def _load_trainer(args):
     print(colored('Initializing trainer...', 'green', attrs = [ 'bold' ]))
     callbacks = []
+    base_dir = os.getcwd()
+    folder_name = "models/" + str(args.domain) + "_exp_3"
+    filename = "model_" + str(args.aggregation) + "_" + str(args.loss) + "_" + str(args.patience)
+    model_dir = os.path.join(base_dir, folder_name)
+
     if not args.verbose: callbacks.append(ValidationLossLogging())
     callbacks.append(EarlyStopping(monitor='validation_loss', patience=args.patience))
-    callbacks.append(ModelCheckpoint(save_top_k=args.save_top_k, monitor='validation_loss', filename='{epoch}-{step}-{validation_loss}'))
+    callbacks.append(ModelCheckpoint(save_top_k=args.save_top_k, 
+                                    dirpath=model_dir, 
+                                     monitor='validation_loss', 
+                                     filename=filename))
     #callbacks.append(LearningRateFinder())
     trainer_params = {
         "num_sanity_val_steps": 0,

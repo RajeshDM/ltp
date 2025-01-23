@@ -14,6 +14,7 @@ class PlannerType(Enum):
     OPTIMAL = auto()
     EXP_BASELINE = auto()
     EXP_BASELINE_2 = auto()
+    EXP_BASELINE_3 = auto()
 
 @dataclass
 class PlannerConfig:
