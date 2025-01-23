@@ -41,11 +41,11 @@ NUM_TEST=$(echo "$CONFIG" | grep -o 'test=[^;]*' | cut -d'=' -f2)
 workspace="$(pwd)/../../pddlgym/pddlgym/pddl/${FULL_DOMAIN_NAME}"
 
 
-loss_functions=("selfsupervised_optimal" "supervised_optimal")
+loss_functions=("selfsupervised_optimal" "selfsupervised_suboptimal")
 aggregations=("max" "add")
 #The actual values of the patience don't matter too much - it's just to ensure we run 2 models of each config (and maybe in some cases the actual value matters) 
 patience_values=(100 300)
-max_epochs=1
+max_epochs=2
 
 run_training() {
     local domain=$1
@@ -67,6 +67,8 @@ run_training() {
 
 run_testing() {
     local domain=$1
+    local num_train=$2
+    local num_test=$3
 
     echo "Running testing: Domain=${domain}" 
     python main.py \
@@ -80,8 +82,8 @@ run_testing() {
         --wandb False \
         --mode test \
         --starting-test-number 0 \
-        --num-test-problems 20 \
-        --num-train-problems 200 \
+        --num-test-problems ${num_test} \
+        --num-train-problems ${num_train} \
         --epochs 700 \
         --gnn-rounds 9 \
         --batch-size 16 \
@@ -98,9 +100,9 @@ for loss in "${loss_functions[@]}"; do
     for agg in "${aggregations[@]}"; do
         for patience in "${patience_values[@]}"; do
             if [ "$MODE" = "train" ]; then
-                run_training "$DOMAIN" "$workspace" "$loss" "$agg" "$patience"
+                run_training "$FULL_DOMAIN_NAME" "$workspace" "$loss" "$agg" "$patience"
             fi
         done
     done
 done
-run_testing "$DOMAIN" 
+run_testing "$FULL_DOMAIN_NAME" "$NUM_TRAIN" "$NUM_TEST" 

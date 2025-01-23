@@ -119,7 +119,7 @@ def _load_datasets(args):
     }
     train_loader = DataLoader(train_dataset, shuffle=True, **loader_params)
     validation_loader = DataLoader(validation_dataset, shuffle=False, **loader_params)
-    print(f'{len(predicates)} predicate(s) in dataset; predicates=[ {", ".join([ f"{name}/{arity}" for name, arity in predicates ])} ]')
+    #print(f'{len(predicates)} predicate(s) in dataset; predicates=[ {", ".join([ f"{name}/{arity}" for name, arity in predicates ])} ]')
     #print ("comparing data in dataloaders ...", compare_shuffled_dataloaders(train_loader, validation_loader))
     #print ("comparing data in dataloaders ...", compare_shuffled_dataloaders(validation_loader, train_loader))
     #exit()

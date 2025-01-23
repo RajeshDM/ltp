@@ -5,6 +5,8 @@ from pathlib import Path
 from random import shuffle
 from timeit import default_timer as timer
 from termcolor import colored
+from tqdm import tqdm
+
 
 def collate_no_label(batch, device):
     """
@@ -82,12 +84,12 @@ def _verify_states(labeled_problem, to_predicate):
 
 def load_file(file: Path, max_samples_per_file: int, verify_states: bool = False):
     start_time = timer()
-    print(f'Loading {file} ... ', end='', flush=True)
+    #print(f'Loading {file} ... ', end='', flush=True)
 
     # load protobuf structure containing problem with labeled states
     labeled_problem = load_problem(file)
     number_states = len(labeled_problem.LabeledStates)
-    print(f'{number_states} state(s) ', end='', flush=True)
+    #print(f'{number_states} state(s) ', end='', flush=True)
 
     # get predicates, facts and goal_predicates
     to_predicate = dict([(predicate.Id, predicate.Name) for predicate in labeled_problem.Predicates])
@@ -104,7 +106,7 @@ def load_file(file: Path, max_samples_per_file: int, verify_states: bool = False
     if max_samples_per_file is not None and max_samples_per_file < number_states:
         shuffle(indices_selected_states)
         indices_selected_states = indices_selected_states[:max_samples_per_file]
-        print(f'({max_samples_per_file} sampled) ', end='', flush=True)
+        #print(f'({max_samples_per_file} sampled) ', end='', flush=True)
 
     # parse selected states and its successors
     num_states = len(indices_selected_states)
@@ -117,7 +119,7 @@ def load_file(file: Path, max_samples_per_file: int, verify_states: bool = False
     labeled_states_with_successors = [ labeled_states[i] + (successor_lists[i],) for i in range(num_states) ]
     elapsed_time = timer() - start_time
 
-    print(f'{elapsed_time:.3f} second(s)')
+    #print(f'{elapsed_time:.3f} second(s)')
     return (predicates, labeled_states_with_successors, solvable_labels)
 
 # Returns 1 (resp. 0) iff state for Spanner is solvable (resp. unsolvable)
@@ -228,13 +230,13 @@ def load_directory(path: Path, max_samples_per_file: int, max_samples: int, filt
     labeled_states = []
     solvable_labels = []
     files = list(path.glob('*.states*'))
-    print(f'{len(files)} file(s) to load from {path}')
+    #print(f'{len(files)} file(s) to load from {path}')
 
     assert len(files) > 0, f'No files found in {path}'
 
     load_file_fn_aux = load_file if load_file_fn is None else load_file_fn
-    for i, file in enumerate(files):
-        print(f'({1+i}/{len(files)}) ', end='')
+    for i, file in enumerate(tqdm(files)):
+        #print(f'({1+i}/{len(files)}) ', end='')
         predicates, states, _solvable_labels = load_file_fn_aux(file, max_samples_per_file, verify_states)
         assert len(states) == len(_solvable_labels)
         assert max_samples_per_file is None or len(states) <= max_samples_per_file
@@ -257,7 +259,7 @@ def load_directory(path: Path, max_samples_per_file: int, max_samples: int, filt
         if label not in histogram:
             histogram[label] = 0
         histogram[label] += 1
-    print(f'dataset labels: total={len(labeled_states)}, histogram={histogram}')
+    #print(f'dataset labels: total={len(labeled_states)}, histogram={histogram}')
 
     predicates_with_goals = predicates + [(predicate + '_goal', arity) for predicate, arity in predicates]
     return (labeled_states, solvable_labels, predicates_with_goals)
