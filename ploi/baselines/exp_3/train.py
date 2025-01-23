@@ -196,7 +196,7 @@ def _load_trainer(args):
     print(colored('Initializing trainer...', 'green', attrs = [ 'bold' ]))
     callbacks = []
     base_dir = os.getcwd()
-    folder_name = "models/" + str(args.domain) + "_exp_3"
+    folder_name = "models/" + str(args.domain.capitalize()) + "_exp_3"
     filename = "model_" + str(args.aggregation) + "_" + str(args.loss) + "_" + str(args.patience)
     model_dir = os.path.join(base_dir, folder_name)
 

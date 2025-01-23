@@ -209,7 +209,7 @@ def run_tests(
                 loss_fn = model_filename.split("_")[2] + "_" + model_filename.split("_")[3]
                 baseline_model_class = g_model_classes[(aggregation, False, loss_fn)]
                 loaded_model, _  = load_model(model_path, device, baseline_model_class)
-                curr_models[baseline] = (loaded_model,-1)
+                curr_models[baseline] = (loaded_model,-1, {'aggregation': aggregation,'loss_fn' : loss_fn})
                 test_results, run_metrics = test_function(curr_models)
                 combnined_metrics = compute_combined_metrics(test_results, baseline)
                 #print (f"Combined Metrics for {model_type} : ", combnined_metrics)

@@ -475,12 +475,16 @@ class PlannerTester:
         problem = parser.get_problem()
         return problem, factories
 
-    def _run_exp_baseline_3(self, env, problem_idx, model, plan_function, planner_type):
+    def _run_exp_baseline_3(self, env, problem_idx, model, 
+                            plan_function, planner_type,
+                            hyperparams):
         result = PlanningResult()
         result.problem_idx = problem_idx
 
         domain_file, fname, problem_file = self.get_domain_name_fname_from_env(env, problem_idx)
         planner_data = self.planner_data[planner_type]
+
+        fname = fname + "_" + str(hyperparams['aggregation']) + "_" + str(hyperparams['loss_fn'])
 
         if fname in planner_data:
             result.plan_length, result.time_taken = planner_data[fname]
@@ -560,7 +564,7 @@ class PlannerTester:
                     result = self._run_exp_baseline(self.env, problem_idx, models[planner_type][0], exp_2_learned_planner, planner_type)
 
                 elif planner_type == PlannerType.EXP_BASELINE_3 and PlannerType.EXP_BASELINE_3 in models:
-                    result = self._run_exp_baseline_3(self.env, problem_idx, models[planner_type][0], exp_3_learned_planner, planner_type)
+                    result = self._run_exp_baseline_3(self.env, problem_idx, models[planner_type][0], exp_3_learned_planner, planner_type, models[planner_type][2])
 
                 elif planner_type == PlannerType.NON_OPTIMAL:
                     result = self._run_external_planner(self.env, problem_idx, action_space, self.config.timeout, optimal=False)
