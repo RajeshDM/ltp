@@ -69,6 +69,7 @@ def _parse_arguments():
     parser.add_argument('--gradient_accumulation', default=default_gradient_accumulation, type=int, help=f'number of gradients to accumulate before step (default={default_gradient_accumulation})')
     parser.add_argument('--max_samples_per_file', default=default_max_samples_per_file, type=int, help=f'maximum number of states per dataset (default={default_max_samples_per_file})')
     parser.add_argument('--max_samples', default=default_max_samples, type=int, help=f'maximum number of states in total (default={default_max_samples})')
+    parser.add_argument('--max_epochs', default=None, type=int, help='maximum number of epochs to train')
     parser.add_argument('--patience', default=default_patience, type=int, help=f'patience for early stopping (default={default_patience})')
     parser.add_argument('--gradient_clip', default=default_gradient_clip, type=float, help=f'gradient clip value (default={default_gradient_clip})')
     parser.add_argument('--profiler', default=default_profiler, type=str, help=f'"simple", "advanced" or "pytorch" (default={default_profiler})')
@@ -217,6 +218,7 @@ def _load_trainer(args):
         "accumulate_grad_batches": args.gradient_accumulation,
         "gradient_clip_val": args.gradient_clip,
         "check_val_every_n_epoch": args.validation_frequency,
+        "max_epochs": args.max_epochs,
     }
     if args.logdir or args.logname:
         logdir = args.logdir if args.logdir else 'lightning_logs'

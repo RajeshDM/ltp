@@ -202,8 +202,8 @@ def run_tests(
             #curr_models[baseline],_ = (load_checkpoint(baseline_models[baseline], device),-1)
             #curr_models[baseline],_ = load_model(baseline_models[baseline], device, MaxModel)#(load_checkpoint(baseline_models[baseline], device),-1)
             print ("Baseline : ",baseline)
-            curr_models = {}
             for model_path in baseline_models[baseline]:
+                curr_models = {}
                 model_filename = str(model_path).split("/")[-1]
                 aggregation = model_filename.split("_")[1]
                 loss_fn = model_filename.split("_")[2] + "_" + model_filename.split("_")[3]
@@ -213,7 +213,7 @@ def run_tests(
                 test_results, run_metrics = test_function(curr_models)
                 combnined_metrics = compute_combined_metrics(test_results, baseline)
                 #print (f"Combined Metrics for {model_type} : ", combnined_metrics)
-                print ("Model : ",model_path.split("/")[-1])
+                print ("Model : ",model_filename)
                 _ = format_metrics(run_metrics[baseline], None )
                 print ("Plan Quality : ", combnined_metrics.plan_quality)
 

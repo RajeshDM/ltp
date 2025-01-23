@@ -403,8 +403,9 @@ def policy_search_with_augmented_states(actions, initial, goals, obj_encoding: D
             successor_candidates = [ transition for transition in successor_candidates if transition[1] not in closed_states ]
 
         if len(successor_candidates) == 0:
-            logger.info(f'No applicable action that yields unvisited state for current_state={current_state}')
-            logger.info(f'Applicable actions = {_get_applicable_actions(current_state, actions)}')
+            if logger :
+                logger.info(f'No applicable action that yields unvisited state for current_state={current_state}')
+                logger.info(f'Applicable actions = {_get_applicable_actions(current_state, actions)}')
             break
 
         successor_actions = [ candidate[0] for candidate in successor_candidates ]
