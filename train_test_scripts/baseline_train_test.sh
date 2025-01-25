@@ -9,6 +9,7 @@ fi
 
 SIMPLE_DOMAIN=$1
 MODE=$2
+MAX_SAMPLES=${3:-1000}  # Default to 1000 if not provided
 
 if [[ "$MODE" != "train" && "$MODE" != "test" ]]; then
     echo "Error: Mode must be either 'train' or 'test'"
@@ -53,6 +54,7 @@ run_training() {
     local loss=$3
     local agg=$4
     local patience=$5
+    local max_samples=$6
 
     echo "Running training: Domain=${domain}, Loss=${loss}, Aggregation=${agg}, Patience=${patience}"
     python -m ploi.baselines.exp_3.train \
@@ -62,7 +64,8 @@ run_training() {
         --loss "${loss}" \
         --aggregation "${agg}" \
         --patience "${patience}" \
-	--max_epochs "${max_epochs}"
+	--max_epochs "${max_epochs}" \
+	--max_samples_per_file "${max_samples}"
 }
 
 run_testing() {
@@ -100,7 +103,7 @@ for loss in "${loss_functions[@]}"; do
     for agg in "${aggregations[@]}"; do
         for patience in "${patience_values[@]}"; do
             if [ "$MODE" = "train" ]; then
-                run_training "$FULL_DOMAIN_NAME" "$workspace" "$loss" "$agg" "$patience"
+                run_training "$FULL_DOMAIN_NAME" "$workspace" "$loss" "$agg" "$patience" "$MAX_SAMPLES"
             fi
         done
     done
