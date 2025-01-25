@@ -486,10 +486,12 @@ class PlannerTester:
 
         fname = fname + "_" + str(hyperparams['aggregation']) + "_" + str(hyperparams['loss_fn'])
 
+        '''
         if fname in planner_data:
             result.plan_length, result.time_taken = planner_data[fname]
             result.success = True
             return result 
+        '''
 
         start_time = time.time()
         solution = plan_function(domain_file, problem_file, model, self.config.device, self.config.max_plan_length)

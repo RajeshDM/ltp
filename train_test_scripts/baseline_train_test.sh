@@ -44,8 +44,8 @@ workspace="$(pwd)/../../pddlgym/pddlgym/pddl/${FULL_DOMAIN_NAME}"
 loss_functions=("selfsupervised_optimal" "selfsupervised_suboptimal")
 aggregations=("max" "add")
 #The actual values of the patience don't matter too much - it's just to ensure we run 2 models of each config (and maybe in some cases the actual value matters) 
-patience_values=(100 300)
-max_epochs=2
+patience_values=(100)
+max_epochs=500
 
 run_training() {
     local domain=$1

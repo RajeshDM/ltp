@@ -148,7 +148,12 @@ def run_tests(
     
     if not best_models:
         logger.warning("No models found to test")
-        return []
+        planner_types_copy = planner_types[:]
+        if PlannerType.LEARNED_MODEL in planner_types_copy:
+            planner_types.remove(PlannerType.LEARNED_MODEL)
+
+        if len(planner_types_copy) == 0:  
+            return []
     
     results = []
     curr_model = None
