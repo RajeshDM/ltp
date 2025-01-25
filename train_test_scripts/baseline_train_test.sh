@@ -90,7 +90,7 @@ run_testing() {
         --epochs 700 \
         --gnn-rounds 9 \
         --batch-size 16 \
-        --max-plan-length 200 \
+        --max-plan-length 500 \
         --problems-per-division 10 \
         --run-learned-model False \
         --run-non-optimal True \

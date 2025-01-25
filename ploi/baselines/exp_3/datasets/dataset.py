@@ -176,12 +176,12 @@ def _spanner_solvable(state):
 
 def load_file_spanner(file: Path, max_samples_per_file: int, verify_states: bool = False):
     start_time = timer()
-    print(f'Loading {file} ... ', end='', flush=True)
+    #print(f'Loading {file} ... ', end='', flush=True)
 
     # load protobuf structure containing problem with labeled states
     labeled_problem = load_problem(file)
     number_states = len(labeled_problem.LabeledStates)
-    print(f'{number_states} state(s) ', end='', flush=True)
+    #print(f'{number_states} state(s) ', end='', flush=True)
 
     # get predicates, facts and goal_predicates
     to_predicate = dict([(predicate.Id, predicate.Name) for predicate in labeled_problem.Predicates])
@@ -198,7 +198,7 @@ def load_file_spanner(file: Path, max_samples_per_file: int, verify_states: bool
     shuffle(indices_selected_states)
     if max_samples_per_file is not None and max_samples_per_file < number_states:
         indices_selected_states = indices_selected_states[:max_samples_per_file]
-        print(f'({max_samples_per_file} sampled) ', end='', flush=True)
+        #print(f'({max_samples_per_file} sampled) ', end='', flush=True)
 
     # parse selected states and its successors
     num_states = len(indices_selected_states)
@@ -218,7 +218,7 @@ def load_file_spanner(file: Path, max_samples_per_file: int, verify_states: bool
         assert labels_sum > 0 or (len(solvable_labels[i]) == 0 and label == 0) or label > 2000000000, f'labels={solvable_labels[i]}, label={label}, state={labeled_states[i][1]}, solvable={_spanner_solvable(labeled_states[i][1])}'
         #if labels_sum > 0 and labels_sum < len(solvable_labels[i]): print(f'XXXX={solvable_labels[i]}')
 
-    print(f'{elapsed_time:.3f} second(s)')
+    #print(f'{elapsed_time:.3f} second(s)')
     return (predicates, labeled_states_with_successors, solvable_labels)
 
 def load_directory(path: Path, max_samples_per_file: int, max_samples: int, filtering_fn = None, load_file_fn = None, verify_states: bool = False):
