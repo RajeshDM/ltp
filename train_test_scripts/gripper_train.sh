@@ -1,9 +1,9 @@
 #!/bin/bash
 
-heads=(4)
+heads=(1 2 4 8)
 lrs=(0.0005)
 decays=(0.000)
-attn_drops=(0.2)
+attn_drops=(0.1 0.2 0.3 0.4)
 other_drops=(0)
 expid="gripper"
 domain="gripper_ipcc"
@@ -11,12 +11,12 @@ gnn_rounds=(9)
 epochs=630
 num_test_problems=128
 num_train_problems=147
-mode="train_test"
+mode="train"
 #mode="test"
 wandb="True"
 timestamp=$(date +"%Y_%m_%d_%H_%M")
 max_plan_length=400
-g_node="False"
+g_node="True"
 non_opt="True"
 
 #:'

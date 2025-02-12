@@ -1,9 +1,9 @@
 #!/bin/bash
 
-heads=(4)
+heads=(1 2 4 8)
 lrs=(0.0005)
 decays=(0.000)
-attn_drops=(0.1)
+attn_drops=(0.3)
 other_drops=(0)
 expid="blocks"
 domain="ManyBlocks_ipcc_big"
@@ -11,8 +11,8 @@ gnn_rounds=(9)
 epochs=800
 num_test_problems=290
 num_train_problems=200
-#mode="train_test"
-mode="test"
+mode="train_test"
+#mode="test"
 wandb="True"
 timestamp=$(date +"%Y_%m_%d_%H_%M")
 max_plan_length=800
@@ -44,6 +44,7 @@ do
 done
 #'
 mode="test"
+attn_drops=(0.1 0.2 0.3 0.4)
 wandb="False"
 for head in ${heads[@]};
 do

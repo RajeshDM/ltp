@@ -3,24 +3,26 @@
 ```sh
 pip install numpy==1.26.0
 pip install protobuf==3.20.0
-pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu118
-pip install torch-geometric==2.3.1
-pip install torch-scatter torch-sparse torch-cluster -f https://data.pyg.org/whl/torch-2.0.1+cu118.html
+#pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu118
+#pip install torch-geometric==2.3.1
+#pip install torch-scatter torch-sparse torch-cluster -f https://data.pyg.org/whl/torch-2.0.1+cu118.html
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
+pip install torch-geometric==2.6.1
+pip install torch-scatter torch-sparse torch-cluster -f https://data.pyg.org/whl/torch-2.6.0+cu126.html
 pip install torchviz==0.0.2
 pip install pytorch-lightning==2.0.1
 pip install wandb
 pip install icecream
 pip install pymimir==0.9.71
 pip install pyperplan==2.1
+pip install pandas
 #for running baselines
 pip install termcolor
 pip install tarski
 pip install clingo
 ```
 
-For use with pddlgym, we require our fork of [pddlgym](https://github.com/taskography/pddlgym), which houses our custom domains and problems.
-
-Another essential requirement is `torch_geometric`, which is best installed by following [these instructions](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html).
+For use with pddlgym, we require our fork of [pddlgym](https://github.com/RajeshDM/pddlgym.git), which houses our custom domains and problems.
 
 Download and build the plan validation tool available at https://github.com/KCL-Planning/VAL, then make a symlink called validate on your path that points to the build/Validate binary, e.g. `ln -s <path to VAL>/build/Validate /usr/local/bin/validate`. If done successfully, running validate on your command line should give an output that starts with the line: `VAL: The PDDL+ plan validation tool`.
 

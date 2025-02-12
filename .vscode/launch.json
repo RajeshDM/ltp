@@ -494,5 +494,18 @@
             //"--readout",
             ]
         },
+        {
+            "name": "analyse_results",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/analyse_domain_results.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args" :[
+                "cache/results/blocks",
+                "-o" , "../output.csv"
+
+            ]
+        },
     ]
 }
