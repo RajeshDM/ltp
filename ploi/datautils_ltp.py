@@ -1283,7 +1283,6 @@ def convert_str_action_to_pddlgym_action(action_str,groundings):
                 return grounding
     return None
 
-
 def get_plan_file_loc(env,curr_idx):
     location = env.problems[curr_idx].problem_fname.split("/")
     filename = location[-1]
