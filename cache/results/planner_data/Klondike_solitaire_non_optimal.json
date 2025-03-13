@@ -1,0 +1,1058 @@
+{
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_2.pddl": [
+        29,
+        0.13235783576965332
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_20.pddl": [
+        21,
+        0.1344308853149414
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_21.pddl": [
+        25,
+        0.12285399436950684
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_22.pddl": [
+        24,
+        0.12270522117614746
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_23.pddl": [
+        27,
+        0.12578892707824707
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_24.pddl": [
+        23,
+        0.1259768009185791
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_25.pddl": [
+        23,
+        0.1254439353942871
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_26.pddl": [
+        28,
+        0.12494015693664551
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_27.pddl": [
+        22,
+        0.12889456748962402
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_28.pddl": [
+        25,
+        0.12196612358093262
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_29.pddl": [
+        21,
+        0.12759160995483398
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_2.pddl": [
+        34,
+        0.12965798377990723
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_20.pddl": [
+        28,
+        0.1296377182006836
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_21.pddl": [
+        32,
+        0.13126707077026367
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_22.pddl": [
+        34,
+        0.13035058975219727
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_23.pddl": [
+        29,
+        0.12984538078308105
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_24.pddl": [
+        38,
+        0.13774538040161133
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_25.pddl": [
+        29,
+        0.13296294212341309
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_26.pddl": [
+        30,
+        0.13119745254516602
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_27.pddl": [
+        31,
+        0.13253450393676758
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_28.pddl": [
+        31,
+        0.13107585906982422
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_29.pddl": [
+        36,
+        0.13223958015441895
+    ],
+    "klondike_solitaire_test/aces_to_eight_stack_klondike_solitaire_face_up_9.pddl": [
+        43,
+        0.14176654815673828
+    ],
+    "klondike_solitaire_test/aces_to_eight_stack_klondike_solitaire_face_up_90.pddl": [
+        57,
+        0.1668241024017334
+    ],
+    "klondike_solitaire_test/aces_to_eight_stack_klondike_solitaire_face_up_91.pddl": [
+        43,
+        0.14533615112304688
+    ],
+    "klondike_solitaire_test/aces_to_eight_stack_klondike_solitaire_face_up_92.pddl": [
+        45,
+        0.14237189292907715
+    ],
+    "klondike_solitaire_test/aces_to_eight_stack_klondike_solitaire_face_up_93.pddl": [
+        56,
+        0.17845797538757324
+    ],
+    "klondike_solitaire_test/aces_to_eight_stack_klondike_solitaire_face_up_94.pddl": [
+        46,
+        0.2892599105834961
+    ],
+    "klondike_solitaire_test/aces_to_eight_stack_klondike_solitaire_face_up_95.pddl": [
+        45,
+        0.14268755912780762
+    ],
+    "klondike_solitaire_test/aces_to_eight_stack_klondike_solitaire_face_up_96.pddl": [
+        45,
+        0.14479827880859375
+    ],
+    "klondike_solitaire_test/aces_to_eight_stack_klondike_solitaire_face_up_97.pddl": [
+        57,
+        0.16636133193969727
+    ],
+    "klondike_solitaire_test/aces_to_eight_stack_klondike_solitaire_face_up_98.pddl": [
+        45,
+        0.14497661590576172
+    ],
+    "klondike_solitaire_test/aces_to_eight_stack_klondike_solitaire_face_up_99.pddl": [
+        47,
+        0.14244890213012695
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_9.pddl": [
+        26,
+        0.12100958824157715
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_90.pddl": [
+        23,
+        0.12135052680969238
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_91.pddl": [
+        25,
+        0.12087750434875488
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_92.pddl": [
+        31,
+        0.12552165985107422
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_93.pddl": [
+        22,
+        0.12232661247253418
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_94.pddl": [
+        24,
+        0.12653589248657227
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_95.pddl": [
+        23,
+        0.11952900886535645
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_96.pddl": [
+        24,
+        0.12128281593322754
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_97.pddl": [
+        23,
+        0.12037086486816406
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_98.pddl": [
+        24,
+        0.1249849796295166
+    ],
+    "klondike_solitaire_test/aces_to_five_stack_klondike_solitaire_face_up_99.pddl": [
+        23,
+        0.12076425552368164
+    ],
+    "klondike_solitaire_test/aces_to_jack_stack_klondike_solitaire_face_up_9.pddl": [
+        68,
+        0.17589068412780762
+    ],
+    "klondike_solitaire_test/aces_to_jack_stack_klondike_solitaire_face_up_90.pddl": [
+        62,
+        0.1766033172607422
+    ],
+    "klondike_solitaire_test/aces_to_jack_stack_klondike_solitaire_face_up_91.pddl": [
+        61,
+        0.17618870735168457
+    ],
+    "klondike_solitaire_test/aces_to_jack_stack_klondike_solitaire_face_up_92.pddl": [
+        67,
+        0.1762843132019043
+    ],
+    "klondike_solitaire_test/aces_to_jack_stack_klondike_solitaire_face_up_93.pddl": [
+        71,
+        0.1814124584197998
+    ],
+    "klondike_solitaire_test/aces_to_jack_stack_klondike_solitaire_face_up_94.pddl": [
+        77,
+        0.23917651176452637
+    ],
+    "klondike_solitaire_test/aces_to_jack_stack_klondike_solitaire_face_up_95.pddl": [
+        70,
+        0.2700810432434082
+    ],
+    "klondike_solitaire_test/aces_to_jack_stack_klondike_solitaire_face_up_96.pddl": [
+        71,
+        0.18158578872680664
+    ],
+    "klondike_solitaire_test/aces_to_jack_stack_klondike_solitaire_face_up_97.pddl": [
+        62,
+        0.17584753036499023
+    ],
+    "klondike_solitaire_test/aces_to_jack_stack_klondike_solitaire_face_up_98.pddl": [
+        71,
+        0.19072675704956055
+    ],
+    "klondike_solitaire_test/aces_to_jack_stack_klondike_solitaire_face_up_99.pddl": [
+        69,
+        0.17014241218566895
+    ],
+    "klondike_solitaire_test/aces_to_king_stack_klondike_solitaire_face_up_9.pddl": [
+        77,
+        0.1998276710510254
+    ],
+    "klondike_solitaire_test/aces_to_king_stack_klondike_solitaire_face_up_90.pddl": [
+        78,
+        0.20402789115905762
+    ],
+    "klondike_solitaire_test/aces_to_king_stack_klondike_solitaire_face_up_91.pddl": [
+        81,
+        0.20388245582580566
+    ],
+    "klondike_solitaire_test/aces_to_king_stack_klondike_solitaire_face_up_92.pddl": [
+        83,
+        0.19124937057495117
+    ],
+    "klondike_solitaire_test/aces_to_king_stack_klondike_solitaire_face_up_93.pddl": [
+        67,
+        0.18706536293029785
+    ],
+    "klondike_solitaire_test/aces_to_king_stack_klondike_solitaire_face_up_94.pddl": [
+        89,
+        0.21601581573486328
+    ],
+    "klondike_solitaire_test/aces_to_king_stack_klondike_solitaire_face_up_95.pddl": [
+        76,
+        0.21106934547424316
+    ],
+    "klondike_solitaire_test/aces_to_king_stack_klondike_solitaire_face_up_96.pddl": [
+        118,
+        0.2942006587982178
+    ],
+    "klondike_solitaire_test/aces_to_king_stack_klondike_solitaire_face_up_97.pddl": [
+        79,
+        0.19986438751220703
+    ],
+    "klondike_solitaire_test/aces_to_king_stack_klondike_solitaire_face_up_98.pddl": [
+        80,
+        0.1964588165283203
+    ],
+    "klondike_solitaire_test/aces_to_king_stack_klondike_solitaire_face_up_99.pddl": [
+        109,
+        0.221405029296875
+    ],
+    "klondike_solitaire_test/aces_to_nine_stack_klondike_solitaire_face_up_9.pddl": [
+        60,
+        0.18645954132080078
+    ],
+    "klondike_solitaire_test/aces_to_nine_stack_klondike_solitaire_face_up_90.pddl": [
+        54,
+        0.1563572883605957
+    ],
+    "klondike_solitaire_test/aces_to_nine_stack_klondike_solitaire_face_up_91.pddl": [
+        58,
+        0.15431833267211914
+    ],
+    "klondike_solitaire_test/aces_to_nine_stack_klondike_solitaire_face_up_92.pddl": [
+        59,
+        0.1584775447845459
+    ],
+    "klondike_solitaire_test/aces_to_nine_stack_klondike_solitaire_face_up_93.pddl": [
+        53,
+        0.15443730354309082
+    ],
+    "klondike_solitaire_test/aces_to_nine_stack_klondike_solitaire_face_up_94.pddl": [
+        73,
+        0.6345105171203613
+    ],
+    "klondike_solitaire_test/aces_to_nine_stack_klondike_solitaire_face_up_95.pddl": [
+        75,
+        0.24677586555480957
+    ],
+    "klondike_solitaire_test/aces_to_nine_stack_klondike_solitaire_face_up_96.pddl": [
+        52,
+        0.15693926811218262
+    ],
+    "klondike_solitaire_test/aces_to_nine_stack_klondike_solitaire_face_up_97.pddl": [
+        54,
+        0.15673112869262695
+    ],
+    "klondike_solitaire_test/aces_to_nine_stack_klondike_solitaire_face_up_98.pddl": [
+        52,
+        0.15772533416748047
+    ],
+    "klondike_solitaire_test/aces_to_nine_stack_klondike_solitaire_face_up_99.pddl": [
+        47,
+        0.15503501892089844
+    ],
+    "klondike_solitaire_test/aces_to_queen_stack_klondike_solitaire_face_up_9.pddl": [
+        70,
+        0.18371009826660156
+    ],
+    "klondike_solitaire_test/aces_to_queen_stack_klondike_solitaire_face_up_90.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/aces_to_queen_stack_klondike_solitaire_face_up_91.pddl": [
+        66,
+        0.18891668319702148
+    ],
+    "klondike_solitaire_test/aces_to_queen_stack_klondike_solitaire_face_up_92.pddl": [
+        92,
+        0.2218327522277832
+    ],
+    "klondike_solitaire_test/aces_to_queen_stack_klondike_solitaire_face_up_93.pddl": [
+        63,
+        0.18193936347961426
+    ],
+    "klondike_solitaire_test/aces_to_queen_stack_klondike_solitaire_face_up_94.pddl": [
+        80,
+        0.18959259986877441
+    ],
+    "klondike_solitaire_test/aces_to_queen_stack_klondike_solitaire_face_up_95.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/aces_to_queen_stack_klondike_solitaire_face_up_96.pddl": [
+        74,
+        0.1861417293548584
+    ],
+    "klondike_solitaire_test/aces_to_queen_stack_klondike_solitaire_face_up_97.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/aces_to_queen_stack_klondike_solitaire_face_up_98.pddl": [
+        73,
+        0.18729948997497559
+    ],
+    "klondike_solitaire_test/aces_to_queen_stack_klondike_solitaire_face_up_99.pddl": [
+        65,
+        0.18506526947021484
+    ],
+    "klondike_solitaire_test/aces_to_seven_stack_klondike_solitaire_face_up_9.pddl": [
+        42,
+        0.1425619125366211
+    ],
+    "klondike_solitaire_test/aces_to_seven_stack_klondike_solitaire_face_up_90.pddl": [
+        36,
+        0.13915109634399414
+    ],
+    "klondike_solitaire_test/aces_to_seven_stack_klondike_solitaire_face_up_91.pddl": [
+        45,
+        0.14578914642333984
+    ],
+    "klondike_solitaire_test/aces_to_seven_stack_klondike_solitaire_face_up_92.pddl": [
+        37,
+        0.14319753646850586
+    ],
+    "klondike_solitaire_test/aces_to_seven_stack_klondike_solitaire_face_up_93.pddl": [
+        56,
+        0.15305542945861816
+    ],
+    "klondike_solitaire_test/aces_to_seven_stack_klondike_solitaire_face_up_94.pddl": [
+        36,
+        0.1439211368560791
+    ],
+    "klondike_solitaire_test/aces_to_seven_stack_klondike_solitaire_face_up_95.pddl": [
+        33,
+        0.13793039321899414
+    ],
+    "klondike_solitaire_test/aces_to_seven_stack_klondike_solitaire_face_up_96.pddl": [
+        37,
+        0.1443948745727539
+    ],
+    "klondike_solitaire_test/aces_to_seven_stack_klondike_solitaire_face_up_97.pddl": [
+        36,
+        0.1379408836364746
+    ],
+    "klondike_solitaire_test/aces_to_seven_stack_klondike_solitaire_face_up_98.pddl": [
+        37,
+        0.14389514923095703
+    ],
+    "klondike_solitaire_test/aces_to_seven_stack_klondike_solitaire_face_up_99.pddl": [
+        37,
+        0.14110183715820312
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_9.pddl": [
+        29,
+        0.13165950775146484
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_90.pddl": [
+        30,
+        0.13588690757751465
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_91.pddl": [
+        32,
+        0.12894916534423828
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_92.pddl": [
+        29,
+        0.13179826736450195
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_93.pddl": [
+        36,
+        0.13188838958740234
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_94.pddl": [
+        34,
+        0.13211989402770996
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_95.pddl": [
+        28,
+        0.13856291770935059
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_96.pddl": [
+        30,
+        0.1350421905517578
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_97.pddl": [
+        30,
+        0.1353590488433838
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_98.pddl": [
+        30,
+        0.1336216926574707
+    ],
+    "klondike_solitaire_test/aces_to_six_stack_klondike_solitaire_face_up_99.pddl": [
+        29,
+        0.1330263614654541
+    ],
+    "klondike_solitaire_test/aces_to_ten_stack_klondike_solitaire_face_up_9.pddl": [
+        66,
+        0.1686251163482666
+    ],
+    "klondike_solitaire_test/aces_to_ten_stack_klondike_solitaire_face_up_90.pddl": [
+        55,
+        0.15983128547668457
+    ],
+    "klondike_solitaire_test/aces_to_ten_stack_klondike_solitaire_face_up_91.pddl": [
+        58,
+        0.16464018821716309
+    ],
+    "klondike_solitaire_test/aces_to_ten_stack_klondike_solitaire_face_up_92.pddl": [
+        62,
+        0.18113136291503906
+    ],
+    "klondike_solitaire_test/aces_to_ten_stack_klondike_solitaire_face_up_93.pddl": [
+        64,
+        0.36593008041381836
+    ],
+    "klondike_solitaire_test/aces_to_ten_stack_klondike_solitaire_face_up_94.pddl": [
+        86,
+        25.3676860332489
+    ],
+    "klondike_solitaire_test/aces_to_ten_stack_klondike_solitaire_face_up_95.pddl": [
+        69,
+        0.1733992099761963
+    ],
+    "klondike_solitaire_test/aces_to_ten_stack_klondike_solitaire_face_up_96.pddl": [
+        58,
+        0.16374683380126953
+    ],
+    "klondike_solitaire_test/aces_to_ten_stack_klondike_solitaire_face_up_97.pddl": [
+        55,
+        0.161879301071167
+    ],
+    "klondike_solitaire_test/aces_to_ten_stack_klondike_solitaire_face_up_98.pddl": [
+        59,
+        0.16383838653564453
+    ],
+    "klondike_solitaire_test/aces_to_ten_stack_klondike_solitaire_face_up_99.pddl": [
+        64,
+        0.18582797050476074
+    ],
+    "klondike_solitaire_test/aces_to_05_stack_klondike_solitaire_face_up_9.pddl": [
+        26,
+        0.1280043125152588
+    ],
+    "klondike_solitaire_test/aces_to_05_stack_klondike_solitaire_face_up_90.pddl": [
+        23,
+        0.12532424926757812
+    ],
+    "klondike_solitaire_test/aces_to_05_stack_klondike_solitaire_face_up_91.pddl": [
+        25,
+        0.12610149383544922
+    ],
+    "klondike_solitaire_test/aces_to_05_stack_klondike_solitaire_face_up_92.pddl": [
+        31,
+        0.13062500953674316
+    ],
+    "klondike_solitaire_test/aces_to_05_stack_klondike_solitaire_face_up_93.pddl": [
+        22,
+        0.1262509822845459
+    ],
+    "klondike_solitaire_test/aces_to_05_stack_klondike_solitaire_face_up_94.pddl": [
+        24,
+        0.1303856372833252
+    ],
+    "klondike_solitaire_test/aces_to_05_stack_klondike_solitaire_face_up_95.pddl": [
+        23,
+        0.1251392364501953
+    ],
+    "klondike_solitaire_test/aces_to_05_stack_klondike_solitaire_face_up_96.pddl": [
+        24,
+        0.12822508811950684
+    ],
+    "klondike_solitaire_test/aces_to_05_stack_klondike_solitaire_face_up_97.pddl": [
+        23,
+        0.12601804733276367
+    ],
+    "klondike_solitaire_test/aces_to_05_stack_klondike_solitaire_face_up_98.pddl": [
+        24,
+        0.12551641464233398
+    ],
+    "klondike_solitaire_test/aces_to_05_stack_klondike_solitaire_face_up_99.pddl": [
+        23,
+        0.12634634971618652
+    ],
+    "klondike_solitaire_test/aces_to_06_stack_klondike_solitaire_face_up_9.pddl": [
+        29,
+        0.1352369785308838
+    ],
+    "klondike_solitaire_test/aces_to_06_stack_klondike_solitaire_face_up_90.pddl": [
+        30,
+        0.14105939865112305
+    ],
+    "klondike_solitaire_test/aces_to_06_stack_klondike_solitaire_face_up_91.pddl": [
+        32,
+        0.13402986526489258
+    ],
+    "klondike_solitaire_test/aces_to_06_stack_klondike_solitaire_face_up_92.pddl": [
+        29,
+        0.13075518608093262
+    ],
+    "klondike_solitaire_test/aces_to_06_stack_klondike_solitaire_face_up_93.pddl": [
+        36,
+        0.1329503059387207
+    ],
+    "klondike_solitaire_test/aces_to_06_stack_klondike_solitaire_face_up_94.pddl": [
+        34,
+        0.13431692123413086
+    ],
+    "klondike_solitaire_test/aces_to_06_stack_klondike_solitaire_face_up_95.pddl": [
+        28,
+        0.13619542121887207
+    ],
+    "klondike_solitaire_test/aces_to_06_stack_klondike_solitaire_face_up_96.pddl": [
+        30,
+        0.13253450393676758
+    ],
+    "klondike_solitaire_test/aces_to_06_stack_klondike_solitaire_face_up_97.pddl": [
+        30,
+        0.13816452026367188
+    ],
+    "klondike_solitaire_test/aces_to_06_stack_klondike_solitaire_face_up_98.pddl": [
+        30,
+        0.13450288772583008
+    ],
+    "klondike_solitaire_test/aces_to_06_stack_klondike_solitaire_face_up_99.pddl": [
+        29,
+        0.13157987594604492
+    ],
+    "klondike_solitaire_test/aces_to_07_stack_klondike_solitaire_face_up_9.pddl": [
+        42,
+        0.1419675350189209
+    ],
+    "klondike_solitaire_test/aces_to_07_stack_klondike_solitaire_face_up_90.pddl": [
+        36,
+        0.1402277946472168
+    ],
+    "klondike_solitaire_test/aces_to_07_stack_klondike_solitaire_face_up_91.pddl": [
+        45,
+        0.14595985412597656
+    ],
+    "klondike_solitaire_test/aces_to_07_stack_klondike_solitaire_face_up_92.pddl": [
+        37,
+        0.14902138710021973
+    ],
+    "klondike_solitaire_test/aces_to_07_stack_klondike_solitaire_face_up_93.pddl": [
+        56,
+        0.1541004180908203
+    ],
+    "klondike_solitaire_test/aces_to_07_stack_klondike_solitaire_face_up_94.pddl": [
+        36,
+        0.14455223083496094
+    ],
+    "klondike_solitaire_test/aces_to_07_stack_klondike_solitaire_face_up_95.pddl": [
+        33,
+        0.140486478805542
+    ],
+    "klondike_solitaire_test/aces_to_07_stack_klondike_solitaire_face_up_96.pddl": [
+        37,
+        0.14603853225708008
+    ],
+    "klondike_solitaire_test/aces_to_07_stack_klondike_solitaire_face_up_97.pddl": [
+        36,
+        0.13857579231262207
+    ],
+    "klondike_solitaire_test/aces_to_07_stack_klondike_solitaire_face_up_98.pddl": [
+        37,
+        0.14554047584533691
+    ],
+    "klondike_solitaire_test/aces_to_07_stack_klondike_solitaire_face_up_99.pddl": [
+        37,
+        0.1415114402770996
+    ],
+    "klondike_solitaire_test/aces_to_08_stack_klondike_solitaire_face_up_9.pddl": [
+        43,
+        0.14717578887939453
+    ],
+    "klondike_solitaire_test/aces_to_08_stack_klondike_solitaire_face_up_90.pddl": [
+        57,
+        0.1716444492340088
+    ],
+    "klondike_solitaire_test/aces_to_08_stack_klondike_solitaire_face_up_91.pddl": [
+        43,
+        0.14762449264526367
+    ],
+    "klondike_solitaire_test/aces_to_08_stack_klondike_solitaire_face_up_92.pddl": [
+        45,
+        0.14855074882507324
+    ],
+    "klondike_solitaire_test/aces_to_08_stack_klondike_solitaire_face_up_93.pddl": [
+        56,
+        0.18222689628601074
+    ],
+    "klondike_solitaire_test/aces_to_08_stack_klondike_solitaire_face_up_94.pddl": [
+        46,
+        0.2943227291107178
+    ],
+    "klondike_solitaire_test/aces_to_08_stack_klondike_solitaire_face_up_95.pddl": [
+        45,
+        0.14781904220581055
+    ],
+    "klondike_solitaire_test/aces_to_08_stack_klondike_solitaire_face_up_96.pddl": [
+        45,
+        0.14996671676635742
+    ],
+    "klondike_solitaire_test/aces_to_08_stack_klondike_solitaire_face_up_97.pddl": [
+        57,
+        0.17087888717651367
+    ],
+    "klondike_solitaire_test/aces_to_08_stack_klondike_solitaire_face_up_98.pddl": [
+        45,
+        0.1488645076751709
+    ],
+    "klondike_solitaire_test/aces_to_08_stack_klondike_solitaire_face_up_99.pddl": [
+        47,
+        0.14675569534301758
+    ],
+    "klondike_solitaire_test/aces_to_09_stack_klondike_solitaire_face_up_9.pddl": [
+        60,
+        0.18791460990905762
+    ],
+    "klondike_solitaire_test/aces_to_09_stack_klondike_solitaire_face_up_90.pddl": [
+        54,
+        0.1586441993713379
+    ],
+    "klondike_solitaire_test/aces_to_09_stack_klondike_solitaire_face_up_91.pddl": [
+        58,
+        0.15747547149658203
+    ],
+    "klondike_solitaire_test/aces_to_09_stack_klondike_solitaire_face_up_92.pddl": [
+        59,
+        0.16179633140563965
+    ],
+    "klondike_solitaire_test/aces_to_09_stack_klondike_solitaire_face_up_93.pddl": [
+        53,
+        0.15630793571472168
+    ],
+    "klondike_solitaire_test/aces_to_09_stack_klondike_solitaire_face_up_94.pddl": [
+        73,
+        0.6262905597686768
+    ],
+    "klondike_solitaire_test/aces_to_09_stack_klondike_solitaire_face_up_95.pddl": [
+        75,
+        0.2516295909881592
+    ],
+    "klondike_solitaire_test/aces_to_09_stack_klondike_solitaire_face_up_96.pddl": [
+        52,
+        0.1571354866027832
+    ],
+    "klondike_solitaire_test/aces_to_09_stack_klondike_solitaire_face_up_97.pddl": [
+        54,
+        0.15751433372497559
+    ],
+    "klondike_solitaire_test/aces_to_09_stack_klondike_solitaire_face_up_98.pddl": [
+        52,
+        0.15933609008789062
+    ],
+    "klondike_solitaire_test/aces_to_09_stack_klondike_solitaire_face_up_99.pddl": [
+        47,
+        0.1576378345489502
+    ],
+    "klondike_solitaire_test/aces_to_10_stack_klondike_solitaire_face_up_9.pddl": [
+        66,
+        0.16761517524719238
+    ],
+    "klondike_solitaire_test/aces_to_10_stack_klondike_solitaire_face_up_90.pddl": [
+        55,
+        0.1612715721130371
+    ],
+    "klondike_solitaire_test/aces_to_10_stack_klondike_solitaire_face_up_91.pddl": [
+        58,
+        0.16429376602172852
+    ],
+    "klondike_solitaire_test/aces_to_10_stack_klondike_solitaire_face_up_92.pddl": [
+        62,
+        0.18149161338806152
+    ],
+    "klondike_solitaire_test/aces_to_10_stack_klondike_solitaire_face_up_93.pddl": [
+        64,
+        0.36234045028686523
+    ],
+    "klondike_solitaire_test/aces_to_10_stack_klondike_solitaire_face_up_94.pddl": [
+        86,
+        25.683631658554077
+    ],
+    "klondike_solitaire_test/aces_to_10_stack_klondike_solitaire_face_up_95.pddl": [
+        69,
+        0.17533612251281738
+    ],
+    "klondike_solitaire_test/aces_to_10_stack_klondike_solitaire_face_up_96.pddl": [
+        58,
+        0.16412353515625
+    ],
+    "klondike_solitaire_test/aces_to_10_stack_klondike_solitaire_face_up_97.pddl": [
+        55,
+        0.16121196746826172
+    ],
+    "klondike_solitaire_test/aces_to_10_stack_klondike_solitaire_face_up_98.pddl": [
+        59,
+        0.16527819633483887
+    ],
+    "klondike_solitaire_test/aces_to_10_stack_klondike_solitaire_face_up_99.pddl": [
+        64,
+        0.1868124008178711
+    ],
+    "klondike_solitaire_test/aces_to_11_stack_klondike_solitaire_face_up_9.pddl": [
+        68,
+        0.1786496639251709
+    ],
+    "klondike_solitaire_test/aces_to_11_stack_klondike_solitaire_face_up_90.pddl": [
+        62,
+        0.17598176002502441
+    ],
+    "klondike_solitaire_test/aces_to_11_stack_klondike_solitaire_face_up_91.pddl": [
+        61,
+        0.1707911491394043
+    ],
+    "klondike_solitaire_test/aces_to_11_stack_klondike_solitaire_face_up_92.pddl": [
+        67,
+        0.1809699535369873
+    ],
+    "klondike_solitaire_test/aces_to_11_stack_klondike_solitaire_face_up_93.pddl": [
+        71,
+        0.1816549301147461
+    ],
+    "klondike_solitaire_test/aces_to_11_stack_klondike_solitaire_face_up_94.pddl": [
+        77,
+        0.2393176555633545
+    ],
+    "klondike_solitaire_test/aces_to_11_stack_klondike_solitaire_face_up_95.pddl": [
+        70,
+        0.27008962631225586
+    ],
+    "klondike_solitaire_test/aces_to_11_stack_klondike_solitaire_face_up_96.pddl": [
+        71,
+        0.18011832237243652
+    ],
+    "klondike_solitaire_test/aces_to_11_stack_klondike_solitaire_face_up_97.pddl": [
+        62,
+        0.17676401138305664
+    ],
+    "klondike_solitaire_test/aces_to_11_stack_klondike_solitaire_face_up_98.pddl": [
+        71,
+        0.19321060180664062
+    ],
+    "klondike_solitaire_test/aces_to_11_stack_klondike_solitaire_face_up_99.pddl": [
+        69,
+        0.17225384712219238
+    ],
+    "klondike_solitaire_test/aces_to_12_stack_klondike_solitaire_face_up_9.pddl": [
+        70,
+        0.18729281425476074
+    ],
+    "klondike_solitaire_test/aces_to_12_stack_klondike_solitaire_face_up_90.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/aces_to_12_stack_klondike_solitaire_face_up_91.pddl": [
+        66,
+        0.18574261665344238
+    ],
+    "klondike_solitaire_test/aces_to_12_stack_klondike_solitaire_face_up_92.pddl": [
+        92,
+        0.22467732429504395
+    ],
+    "klondike_solitaire_test/aces_to_12_stack_klondike_solitaire_face_up_93.pddl": [
+        63,
+        0.18434476852416992
+    ],
+    "klondike_solitaire_test/aces_to_12_stack_klondike_solitaire_face_up_94.pddl": [
+        80,
+        0.1904585361480713
+    ],
+    "klondike_solitaire_test/aces_to_12_stack_klondike_solitaire_face_up_95.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/aces_to_12_stack_klondike_solitaire_face_up_96.pddl": [
+        74,
+        0.1872696876525879
+    ],
+    "klondike_solitaire_test/aces_to_12_stack_klondike_solitaire_face_up_97.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/aces_to_12_stack_klondike_solitaire_face_up_98.pddl": [
+        73,
+        0.18695402145385742
+    ],
+    "klondike_solitaire_test/aces_to_12_stack_klondike_solitaire_face_up_99.pddl": [
+        65,
+        0.18743395805358887
+    ],
+    "klondike_solitaire_test/aces_to_13_stack_klondike_solitaire_face_up_9.pddl": [
+        77,
+        0.19828271865844727
+    ],
+    "klondike_solitaire_test/aces_to_13_stack_klondike_solitaire_face_up_90.pddl": [
+        78,
+        0.2044668197631836
+    ],
+    "klondike_solitaire_test/aces_to_13_stack_klondike_solitaire_face_up_91.pddl": [
+        81,
+        0.2062690258026123
+    ],
+    "klondike_solitaire_test/aces_to_13_stack_klondike_solitaire_face_up_92.pddl": [
+        83,
+        0.191117525100708
+    ],
+    "klondike_solitaire_test/aces_to_13_stack_klondike_solitaire_face_up_93.pddl": [
+        67,
+        0.19037580490112305
+    ],
+    "klondike_solitaire_test/aces_to_13_stack_klondike_solitaire_face_up_94.pddl": [
+        89,
+        0.21312499046325684
+    ],
+    "klondike_solitaire_test/aces_to_13_stack_klondike_solitaire_face_up_95.pddl": [
+        76,
+        0.20543837547302246
+    ],
+    "klondike_solitaire_test/aces_to_13_stack_klondike_solitaire_face_up_96.pddl": [
+        118,
+        0.29676032066345215
+    ],
+    "klondike_solitaire_test/aces_to_13_stack_klondike_solitaire_face_up_97.pddl": [
+        79,
+        0.20138311386108398
+    ],
+    "klondike_solitaire_test/aces_to_13_stack_klondike_solitaire_face_up_98.pddl": [
+        80,
+        0.20156550407409668
+    ],
+    "klondike_solitaire_test/aces_to_13_stack_klondike_solitaire_face_up_99.pddl": [
+        109,
+        0.22707056999206543
+    ],
+    "klondike_solitaire_test/aces_to_01_stack_klondike_solitaire_face_up_9.pddl": [
+        4,
+        0.10369086265563965
+    ],
+    "klondike_solitaire_test/aces_to_01_stack_klondike_solitaire_face_up_90.pddl": [
+        4,
+        0.10046601295471191
+    ],
+    "klondike_solitaire_test/aces_to_01_stack_klondike_solitaire_face_up_91.pddl": [
+        4,
+        0.1019906997680664
+    ],
+    "klondike_solitaire_test/aces_to_01_stack_klondike_solitaire_face_up_92.pddl": [
+        4,
+        0.11099672317504883
+    ],
+    "klondike_solitaire_test/aces_to_01_stack_klondike_solitaire_face_up_93.pddl": [
+        4,
+        0.10095810890197754
+    ],
+    "klondike_solitaire_test/aces_to_01_stack_klondike_solitaire_face_up_94.pddl": [
+        4,
+        0.10219764709472656
+    ],
+    "klondike_solitaire_test/aces_to_01_stack_klondike_solitaire_face_up_95.pddl": [
+        4,
+        0.10447525978088379
+    ],
+    "klondike_solitaire_test/aces_to_01_stack_klondike_solitaire_face_up_96.pddl": [
+        4,
+        0.10105586051940918
+    ],
+    "klondike_solitaire_test/aces_to_01_stack_klondike_solitaire_face_up_97.pddl": [
+        4,
+        0.10104680061340332
+    ],
+    "klondike_solitaire_test/aces_to_01_stack_klondike_solitaire_face_up_98.pddl": [
+        4,
+        0.10329675674438477
+    ],
+    "klondike_solitaire_test/aces_to_01_stack_klondike_solitaire_face_up_99.pddl": [
+        4,
+        0.10315060615539551
+    ],
+    "klondike_solitaire_test/aces_to_02_stack_klondike_solitaire_face_up_9.pddl": [
+        8,
+        0.10830020904541016
+    ],
+    "klondike_solitaire_test/aces_to_02_stack_klondike_solitaire_face_up_90.pddl": [
+        10,
+        0.1141507625579834
+    ],
+    "klondike_solitaire_test/aces_to_02_stack_klondike_solitaire_face_up_91.pddl": [
+        9,
+        0.10848593711853027
+    ],
+    "klondike_solitaire_test/aces_to_02_stack_klondike_solitaire_face_up_92.pddl": [
+        8,
+        0.10944890975952148
+    ],
+    "klondike_solitaire_test/aces_to_02_stack_klondike_solitaire_face_up_93.pddl": [
+        9,
+        0.10873174667358398
+    ],
+    "klondike_solitaire_test/aces_to_02_stack_klondike_solitaire_face_up_94.pddl": [
+        8,
+        0.11138558387756348
+    ],
+    "klondike_solitaire_test/aces_to_02_stack_klondike_solitaire_face_up_95.pddl": [
+        8,
+        0.1093301773071289
+    ],
+    "klondike_solitaire_test/aces_to_02_stack_klondike_solitaire_face_up_96.pddl": [
+        8,
+        0.11344647407531738
+    ],
+    "klondike_solitaire_test/aces_to_02_stack_klondike_solitaire_face_up_97.pddl": [
+        10,
+        0.10839509963989258
+    ],
+    "klondike_solitaire_test/aces_to_02_stack_klondike_solitaire_face_up_98.pddl": [
+        8,
+        0.10841178894042969
+    ],
+    "klondike_solitaire_test/aces_to_02_stack_klondike_solitaire_face_up_99.pddl": [
+        8,
+        0.11116361618041992
+    ],
+    "klondike_solitaire_test/aces_to_03_stack_klondike_solitaire_face_up_9.pddl": [
+        13,
+        0.1156611442565918
+    ],
+    "klondike_solitaire_test/aces_to_03_stack_klondike_solitaire_face_up_90.pddl": [
+        14,
+        0.11876869201660156
+    ],
+    "klondike_solitaire_test/aces_to_03_stack_klondike_solitaire_face_up_91.pddl": [
+        14,
+        0.11840009689331055
+    ],
+    "klondike_solitaire_test/aces_to_03_stack_klondike_solitaire_face_up_92.pddl": [
+        13,
+        0.1201772689819336
+    ],
+    "klondike_solitaire_test/aces_to_03_stack_klondike_solitaire_face_up_93.pddl": [
+        13,
+        0.1326584815979004
+    ],
+    "klondike_solitaire_test/aces_to_03_stack_klondike_solitaire_face_up_94.pddl": [
+        12,
+        0.12013435363769531
+    ],
+    "klondike_solitaire_test/aces_to_03_stack_klondike_solitaire_face_up_95.pddl": [
+        12,
+        0.12990188598632812
+    ],
+    "klondike_solitaire_test/aces_to_03_stack_klondike_solitaire_face_up_96.pddl": [
+        12,
+        0.11759829521179199
+    ],
+    "klondike_solitaire_test/aces_to_03_stack_klondike_solitaire_face_up_97.pddl": [
+        14,
+        0.11882710456848145
+    ],
+    "klondike_solitaire_test/aces_to_03_stack_klondike_solitaire_face_up_98.pddl": [
+        12,
+        0.11869263648986816
+    ],
+    "klondike_solitaire_test/aces_to_03_stack_klondike_solitaire_face_up_99.pddl": [
+        13,
+        0.1156320571899414
+    ],
+    "klondike_solitaire_test/aces_to_04_stack_klondike_solitaire_face_up_9.pddl": [
+        19,
+        0.1229712963104248
+    ],
+    "klondike_solitaire_test/aces_to_04_stack_klondike_solitaire_face_up_90.pddl": [
+        20,
+        0.12221741676330566
+    ],
+    "klondike_solitaire_test/aces_to_04_stack_klondike_solitaire_face_up_91.pddl": [
+        26,
+        0.12305641174316406
+    ],
+    "klondike_solitaire_test/aces_to_04_stack_klondike_solitaire_face_up_92.pddl": [
+        21,
+        0.12240862846374512
+    ],
+    "klondike_solitaire_test/aces_to_04_stack_klondike_solitaire_face_up_93.pddl": [
+        19,
+        0.12361884117126465
+    ],
+    "klondike_solitaire_test/aces_to_04_stack_klondike_solitaire_face_up_94.pddl": [
+        19,
+        0.12447547912597656
+    ],
+    "klondike_solitaire_test/aces_to_04_stack_klondike_solitaire_face_up_95.pddl": [
+        20,
+        0.1255507469177246
+    ],
+    "klondike_solitaire_test/aces_to_04_stack_klondike_solitaire_face_up_96.pddl": [
+        19,
+        0.12224173545837402
+    ],
+    "klondike_solitaire_test/aces_to_04_stack_klondike_solitaire_face_up_97.pddl": [
+        20,
+        0.12153053283691406
+    ],
+    "klondike_solitaire_test/aces_to_04_stack_klondike_solitaire_face_up_98.pddl": [
+        19,
+        0.13324451446533203
+    ],
+    "klondike_solitaire_test/aces_to_04_stack_klondike_solitaire_face_up_99.pddl": [
+        21,
+        0.12148356437683105
+    ]
+}

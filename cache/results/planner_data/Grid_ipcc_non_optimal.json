@@ -1,0 +1,194 @@
+{
+    "grid_ipcc_test/pfile_x-11_y-11_t-2_k-3_l-3_s-4.pddl": [
+        82,
+        0.16018152236938477
+    ],
+    "grid_ipcc_test/pfile_x-11_y-11_t-2_k-5_l-3_s-4.pddl": [
+        78,
+        0.24595403671264648
+    ],
+    "grid_ipcc_test/pfile_x-11_y-11_t-3_k-3_l-3_s-4.pddl": [
+        82,
+        0.16237807273864746
+    ],
+    "grid_ipcc_test/pfile_x-11_y-11_t-3_k-5_l-3_s-4.pddl": [
+        78,
+        0.2446424961090088
+    ],
+    "grid_ipcc_test/pfile_x-11_y-14_t-2_k-3_l-3_s-4.pddl": [
+        42,
+        0.1808032989501953
+    ],
+    "grid_ipcc_test/pfile_x-11_y-14_t-2_k-5_l-3_s-4.pddl": [
+        111,
+        0.3034050464630127
+    ],
+    "grid_ipcc_test/pfile_x-11_y-14_t-3_k-3_l-3_s-4.pddl": [
+        42,
+        0.1795051097869873
+    ],
+    "grid_ipcc_test/pfile_x-11_y-14_t-3_k-5_l-3_s-4.pddl": [
+        111,
+        0.30457115173339844
+    ],
+    "grid_ipcc_test/pfile_x-11_y-5_t-2_k-3_l-3_s-4.pddl": [
+        47,
+        0.11879134178161621
+    ],
+    "grid_ipcc_test/pfile_x-11_y-5_t-2_k-5_l-3_s-4.pddl": [
+        66,
+        0.15514564514160156
+    ],
+    "grid_ipcc_test/pfile_x-11_y-5_t-3_k-3_l-3_s-4.pddl": [
+        47,
+        0.1152808666229248
+    ],
+    "grid_ipcc_test/pfile_x-11_y-5_t-3_k-5_l-3_s-4.pddl": [
+        66,
+        0.15357708930969238
+    ],
+    "grid_ipcc_test/pfile_x-11_y-8_t-2_k-3_l-3_s-4.pddl": [
+        54,
+        0.18895626068115234
+    ],
+    "grid_ipcc_test/pfile_x-11_y-8_t-2_k-5_l-3_s-4.pddl": [
+        62,
+        0.19378328323364258
+    ],
+    "grid_ipcc_test/pfile_x-11_y-8_t-3_k-3_l-3_s-4.pddl": [
+        54,
+        0.18720269203186035
+    ],
+    "grid_ipcc_test/pfile_x-11_y-8_t-3_k-5_l-3_s-4.pddl": [
+        62,
+        0.1920626163482666
+    ],
+    "grid_ipcc_test/pfile_x-5_y-11_t-2_k-3_l-3_s-4.pddl": [
+        49,
+        0.1144402027130127
+    ],
+    "grid_ipcc_test/pfile_x-5_y-11_t-2_k-5_l-3_s-4.pddl": [
+        73,
+        0.15346074104309082
+    ],
+    "grid_ipcc_test/pfile_x-5_y-11_t-3_k-3_l-3_s-4.pddl": [
+        49,
+        0.12045836448669434
+    ],
+    "grid_ipcc_test/pfile_x-5_y-11_t-3_k-5_l-3_s-4.pddl": [
+        73,
+        0.15932106971740723
+    ],
+    "grid_ipcc_test/pfile_x-5_y-14_t-2_k-3_l-3_s-4.pddl": [
+        30,
+        0.12257218360900879
+    ],
+    "grid_ipcc_test/pfile_x-5_y-14_t-2_k-5_l-3_s-4.pddl": [
+        83,
+        0.17553257942199707
+    ],
+    "grid_ipcc_test/pfile_x-5_y-14_t-3_k-3_l-3_s-4.pddl": [
+        30,
+        0.12291264533996582
+    ],
+    "grid_ipcc_test/pfile_x-5_y-14_t-3_k-5_l-3_s-4.pddl": [
+        83,
+        0.17274880409240723
+    ],
+    "grid_ipcc_test/pfile_x-5_y-5_t-2_k-3_l-3_s-4.pddl": [
+        27,
+        0.09498310089111328
+    ],
+    "grid_ipcc_test/pfile_x-5_y-5_t-2_k-5_l-3_s-4.pddl": [
+        48,
+        0.1220242977142334
+    ],
+    "grid_ipcc_test/pfile_x-5_y-5_t-3_k-3_l-3_s-4.pddl": [
+        27,
+        0.09747171401977539
+    ],
+    "grid_ipcc_test/pfile_x-5_y-5_t-3_k-5_l-3_s-4.pddl": [
+        48,
+        0.1488025188446045
+    ],
+    "grid_ipcc_test/pfile_x-5_y-8_t-2_k-3_l-3_s-4.pddl": [
+        41,
+        0.10751962661743164
+    ],
+    "grid_ipcc_test/pfile_x-5_y-8_t-2_k-5_l-3_s-4.pddl": [
+        56,
+        0.1352236270904541
+    ],
+    "grid_ipcc_test/pfile_x-5_y-8_t-3_k-3_l-3_s-4.pddl": [
+        41,
+        0.10653901100158691
+    ],
+    "grid_ipcc_test/pfile_x-5_y-8_t-3_k-5_l-3_s-4.pddl": [
+        56,
+        0.13138341903686523
+    ],
+    "grid_ipcc_test/pfile_x-8_y-11_t-2_k-3_l-3_s-4.pddl": [
+        52,
+        0.14102864265441895
+    ],
+    "grid_ipcc_test/pfile_x-8_y-11_t-2_k-5_l-3_s-4.pddl": [
+        102,
+        0.20177912712097168
+    ],
+    "grid_ipcc_test/pfile_x-8_y-11_t-3_k-3_l-3_s-4.pddl": [
+        52,
+        0.1418004035949707
+    ],
+    "grid_ipcc_test/pfile_x-8_y-11_t-3_k-5_l-3_s-4.pddl": [
+        102,
+        0.20220398902893066
+    ],
+    "grid_ipcc_test/pfile_x-8_y-14_t-2_k-3_l-3_s-4.pddl": [
+        34,
+        0.1592237949371338
+    ],
+    "grid_ipcc_test/pfile_x-8_y-14_t-2_k-5_l-3_s-4.pddl": [
+        83,
+        0.23531103134155273
+    ],
+    "grid_ipcc_test/pfile_x-8_y-14_t-3_k-3_l-3_s-4.pddl": [
+        34,
+        0.15631508827209473
+    ],
+    "grid_ipcc_test/pfile_x-8_y-14_t-3_k-5_l-3_s-4.pddl": [
+        83,
+        0.23547005653381348
+    ],
+    "grid_ipcc_test/pfile_x-8_y-5_t-2_k-3_l-3_s-4.pddl": [
+        36,
+        0.10329413414001465
+    ],
+    "grid_ipcc_test/pfile_x-8_y-5_t-2_k-5_l-3_s-4.pddl": [
+        69,
+        0.13165855407714844
+    ],
+    "grid_ipcc_test/pfile_x-8_y-5_t-3_k-3_l-3_s-4.pddl": [
+        36,
+        0.10296010971069336
+    ],
+    "grid_ipcc_test/pfile_x-8_y-5_t-3_k-5_l-3_s-4.pddl": [
+        69,
+        0.13264060020446777
+    ],
+    "grid_ipcc_test/pfile_x-8_y-8_t-2_k-3_l-3_s-4.pddl": [
+        47,
+        0.12723684310913086
+    ],
+    "grid_ipcc_test/pfile_x-8_y-8_t-2_k-5_l-3_s-4.pddl": [
+        62,
+        0.16378140449523926
+    ],
+    "grid_ipcc_test/pfile_x-8_y-8_t-3_k-3_l-3_s-4.pddl": [
+        47,
+        0.1180722713470459
+    ],
+    "grid_ipcc_test/pfile_x-8_y-8_t-3_k-5_l-3_s-4.pddl": [
+        62,
+        0.16713738441467285
+    ]
+}

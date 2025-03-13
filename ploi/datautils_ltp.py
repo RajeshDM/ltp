@@ -1070,7 +1070,7 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
     ic (load_existing_and_add_plans)
     _load_dataset_from_file = True
     env = pddlgym.make("PDDLEnv{}-v0".format(train_env_name))
-    use_existing_plans = False
+    use_existing_plans = True
     _debug_level = -1
     training_plan_lenghts = {}
     #outfile = "/"
@@ -1112,9 +1112,11 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
             #ic (env.action_space.all_ground_literals(state))
             try:
                 if os.path.exists(plan_file_loc) and use_existing_plans:
-                    with open(plan_file_loc, "rb") as f:
-                        plan = pickle.load(f)
+                    with open(plan_file_loc, "r") as f:
+                        #plan = pickle.load(f)
                         #ic (plan)
+                        plan = f.read()
+                        plan = plan.split("\n")
                         str_plan = True
                 else :
                     _planner.reset_statistics()
@@ -1134,13 +1136,12 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
             else:
                 training_plan_lenghts[len(plan)] = 1
             state_sequence.append(state)
-            groundings = env.action_space.all_ground_literals(state)
+            groundings = env.action_space.all_ground_literals(state, reground=True)
             state_grounding.append(groundings)
             #state_grounding.append(env.action_space.all_ground_literals(state))
             new_plan = []
             #ic (groundings)
             #ic (plan)
-            #continue
 
             in_grounding = True
             all_sub_plans = generate_repeated_sub_plans(env,plan,curr_idx)
@@ -1148,7 +1149,7 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
             for action_idx, action in enumerate(plan[:-1]):
                 #ic (action)
                 if str_plan == True :
-                    action = convert_str_action_to_pddlgym_action(action,state_grounding[-1])
+                    action = convert_str_action_to_pddlgym_action_v2(action,state_grounding[-1])
                     new_plan.append(action)
                 #ic (action)
                 new_state = env.step(action)
@@ -1223,7 +1224,7 @@ def _collect_training_data_ltp(train_env_name,_planner,_num_train_problems,outfi
             training_data_from_file = pickle.load(f)
     else :
         training_data_from_file = ([],[],[],[],[])
-    if len(training_data_from_file[2]) < _num_train_problems:
+    if len(training_data_from_file[2]) < _num_train_problems and len(training_data_from_file[2]) < 0.9 * _num_train_problems:
         if _num_train_problems > _max_file_open :
             #ic (math.ceil(self._num_train_problems/self._max_file_open))
             #starting = int(len(training_data_from_file[2])/self._max_file_open)
@@ -1283,14 +1284,31 @@ def convert_str_action_to_pddlgym_action(action_str,groundings):
                 return grounding
     return None
 
+def convert_str_action_to_pddlgym_action_v2(action_str,groundings):
+    #action_str = action_str.split(",")
+    full_action_info = action_str.split(":")
+    action = full_action_info[0]
+    action_str = full_action_info[1].split(",")
+    objects = [object_in_action[1:] for object_in_action in action_str ]
+    action_objects = [None, None]
+    action_objects[0] = action
+    action_objects[1] = objects[:]
+
+    return convert_str_action_to_pddlgym_action(action_objects, groundings)
+
 def get_plan_file_loc(env,curr_idx):
     location = env.problems[curr_idx].problem_fname.split("/")
     filename = location[-1]
-    filename_components = filename.split("_")
-    plan_file_name = "plan"
+    filename_components = filename.split(".")
+    #plan_file_name = "plan"
+    plan_file_name = ""
     plan_file_loc = ""
-    for component in filename_components[1:]:
-        plan_file_name += "_" + component
+    for component in filename_components[:1]:
+        #plan_file_name += "_" + component
+        plan_file_name +=  component
+        
+
+    plan_file_name += ".plan"
     for loc in location[:-1]:
         plan_file_loc += loc + "/"
     plan_file_loc += "plans/" + plan_file_name

@@ -174,14 +174,14 @@ def format_metrics(metrics, epoch=None):
     
     # Format numeric values
     formatted_metrics = {
-        'Success with monitor': f"{metrics.success_rate_with_monitor :.2%}",
+        'Success': f"{metrics.success_rate_with_monitor :.2%}",
         'Success without monitor': f"{metrics.success_rate_without_monitor :.2%}",
         'Plan Length': f"{metrics.avg_plan_length:.1f}",
         'Time (sec)': f"{metrics.avg_time_taken:.2f}",
         'MAx Plan Length': f"{metrics.max_plan_length}",
         'Max Time (sec)': f"{metrics.max_time_taken:.2f}",
         'Median Plan Length': f"{metrics.median_plan_length:.1f}",
-        #'Impossible Actions': f"{metrics.impossible_actions:,d}"
+        'Impossible Actions': f"{metrics.impossible_actions:,d}"
     }
     
     # Print header
@@ -194,6 +194,32 @@ def format_metrics(metrics, epoch=None):
         print(f"{key:<25} {value:>8}")
     
     return formatted_metrics
+
+def format_metrics_non_opt(metrics, epoch=None):
+    """
+    Formats and displays model metrics with clean formatting.
+    
+    Args:
+        result (dict): Dictionary containing model results and metrics
+        
+    Returns:
+        dict: Formatted metrics for potential further use
+    """
+    # Extract metrics for cleaner access
+    #metrics = result['test_results'][PlannerType.LEARNED_MODEL]
+    
+    # Format numeric values
+    formatted_metrics = {
+        'Success ': f"{metrics.success_rate_with_monitor :.2%}",
+        #'Success without monitor': f"{metrics.success_rate_without_monitor :.2%}",
+        'Plan Length': f"{metrics.avg_plan_length:.1f}",
+        'Time (sec)': f"{metrics.avg_time_taken:.2f}",
+        'MAx Plan Length': f"{metrics.max_plan_length}",
+        'Max Time (sec)': f"{metrics.max_time_taken:.2f}",
+        'Median Plan Length': f"{metrics.median_plan_length:.1f}",
+        #'Impossible Actions': f"{metrics.impossible_actions:,d}"
+    }
+    
 
 def log_model_metrics(all_results_dict, args):
     """

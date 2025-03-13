@@ -357,13 +357,14 @@ class PlannerTester:
         # Initialize state
         self.env.fix_problem_index(problem_idx)
         state, _ = self.env.reset()
+        groundings = list(self.env.action_space.all_ground_literals(state, reground=True))
         fname = self.env.problems[problem_idx].problem_fname
         fname = "/".join(fname.split("/")[-2:]) 
         fname = fname + "_" + str(epoch)
 
         planner_data = self.planner_data[PlannerType.LEARNED_MODEL]
 
-        if fname in planner_data:
+        if fname in planner_data and False:
             result.success = True
             result.plan_length, result.time_taken = planner_data[fname]
             return result 
@@ -383,6 +384,8 @@ class PlannerTester:
             # If no valid actions at all, exit
             if not valid_actions:
                 result.time_taken = time.time() - start_time
+
+                groundings = list(self.env.action_space.all_ground_literals(state))
                 return result
                 
             # Try each valid action until we find one that doesn't lead to a repeated state
