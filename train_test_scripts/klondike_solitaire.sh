@@ -1,7 +1,7 @@
 #!/bin/bash
 
-heads=(1 2 4 8)
-lrs=(0.0005)
+heads=(8)
+lrs=(0.0004 0.00045)
 decays=(0.000)
 attn_drops=(0.1)
 other_drops=(0)
@@ -15,7 +15,7 @@ mode="train_test"
 #mode="test"
 wandb="True"
 timestamp=$(date +"%Y_%m_%d_%H_%M")
-max_plan_length=200
+max_plan_length=500
 g_node="True"
 non_opt="True"
 
@@ -27,9 +27,9 @@ do
       for attn_drop in ${attn_drops[@]};
       do
          # Skip when head=1 and attn_drop=0.1
-         if [ "$head" = "1" ] && [ "$attn_drop" = "0.2" ]; then
-            continue
-         fi
+        # if [ "$head" = "1" ] && [ "$attn_drop" = "0.2" ]; then
+         #   continue
+         #fi
          for other_drop in ${other_drops[@]}; 
 	 do
              for lr in ${lrs[@]}; 

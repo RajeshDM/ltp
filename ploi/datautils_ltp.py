@@ -13,10 +13,15 @@ import time
 import os
 import math
 import pickle
+import logging
 
 import ploi.constants as constants
 
 from .planning import PlanningFailure, PlanningTimeout
+# Set up logging
+logging.basicConfig(level=logging.INFO, 
+                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class TorchGraphDictDataset(Dataset):
     def __init__(self, graph_dicts_input, graph_dicts_target,pyg_inputs,pyg_outputs):
@@ -437,7 +442,6 @@ def _get_precondition_satisfaction_position(curr_action, all_literals, all_objec
                 # action_obj_inversion
                 all_edge_features[object_index, action_index, precondition_index] = 1
             break
-
 
 def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent=None,args=None):
     graph_metadata, action_space = _create_graph_structure_ltp(training_data,dom_file,domain_name,agent,args)
@@ -1101,15 +1105,7 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
             env.fix_problem_index(curr_idx)
             ic (env.problems[curr_idx].problem_fname)
             state, _ = env.reset()
-            #ic (state)
-            #for literal in state.literals:
-            #    #ic (literal.__dict__)
-            #    if literal.predicate.name == "motion" :
-            #        #ic(literal.variables[0].__dict__)
-            #        if literal.variables[0].name == 'q_1_0':
-            #            ic (literal.__dict__)
             str_plan = False
-            #ic (env.action_space.all_ground_literals(state))
             try:
                 if os.path.exists(plan_file_loc) and use_existing_plans:
                     with open(plan_file_loc, "r") as f:
@@ -1127,8 +1123,6 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
                 print("Warning: planning failed, skipping: {}".format(
                     env.problems[curr_idx].problem_fname))
                 continue
-            #ic (plan[0])
-            #ic (type(plan[0]))
             state_grounding = []
 
             if len(plan) in training_plan_lenghts:
@@ -1365,3 +1359,662 @@ def get_filenames(dataset_size,train_env_name,epochs,_model_version,
                                       + str(epochs) + "_" + message_string + ".pt")
 
     return model_outfile,message_string,save_folder
+
+
+def collect_training_data(train_env_name, planner, num_train_problems, args=None, unified_cache=None):
+    """
+    Collects training data for a specific batch of PDDL problems.
+    
+    Args:
+        train_env_name: Name of the training environment
+        planner: Planner to use for generating plans
+        num_train_problems: Number of problems to process
+        args: Configuration arguments
+        unified_cache: Reference to the unified cache dictionary
+        
+    Returns:
+        Tuple of (training_data, domain_file, domain_name, modified_cache, processed_problems)
+    """
+    # Get batch information from args
+    batch_start = getattr(args, 'problem_start_idx', 0)
+    batch_end = getattr(args, 'problem_end_idx', batch_start + num_train_problems)
+    batch_size = batch_end - batch_start
+    
+    logger.info(f"Collecting data for problems {batch_start} to {batch_end-1}")
+    
+    # Initialize environment
+    env = pddlgym.make(f"PDDLEnv{train_env_name}-v0")
+    action_space = env.action_space
+    domain_name = env.domain.domain_name
+    
+    # Initialize data containers
+    inputs = []         # List of state sequences
+    outputs = []        # List of object sets in plans
+    plans = []          # List of action plans
+    all_groundings = [] # List of action groundings
+    cache_modified = False
+    
+    # Keep track of which problems were actually processed
+    processed_problems = []
+    
+    # Process each problem in the batch
+    for problem_idx in range(batch_start, batch_end):
+        # Generate a problem key for the cache
+        problem_key = f"problem_{problem_idx}"
+        
+        # Check if this problem is already in the cache
+        if (unified_cache and 
+            'problems' in unified_cache and 
+            problem_key in unified_cache['problems'] and
+            'training_data' in unified_cache['problems'][problem_key]):
+            
+            logger.info(f"Problem {problem_idx} found in cache, loading...")
+            problem_data = unified_cache['problems'][problem_key]['training_data']
+            
+            # Extract data for this problem
+            inputs.append(problem_data[0])
+            outputs.append(problem_data[1])
+            plans.append(problem_data[2])
+            all_groundings.append(problem_data[3])
+            
+            # Add to processed problems list to track which problems we have data for
+            processed_problems.append(problem_idx)
+            continue
+        
+        logger.info(f"Processing problem {problem_idx}")
+        
+        try:
+            # Set up the environment for this problem
+            env.fix_problem_index(problem_idx)
+            state, _ = env.reset()
+            plan_file_loc = get_plan_file_loc(env, problem_idx)
+            
+            # Get plan either from file or by planning
+            str_plan = False
+            try:
+                if os.path.exists(plan_file_loc):
+                    with open(plan_file_loc, "r") as f:
+                        plan = f.read().split("\n")
+                        str_plan = True
+                else:
+                    planner.reset_statistics()
+                    plan = planner(env.domain, state, timeout=360)
+            except (PlanningTimeout, PlanningFailure):
+                logger.warning(f"Planning failed for problem {problem_idx}")
+                continue
+                
+            # Skip empty plans
+            if not plan or len(plan) <= 1:
+                logger.warning(f"Empty plan for problem {problem_idx}")
+                continue
+            
+            # Process the plan
+            state_sequence = [state]
+            state_grounding = []
+            
+            # Get initial groundings
+            groundings = env.action_space.all_ground_literals(state, reground=True)
+            state_grounding.append(groundings)
+            
+            # Create new plan list for string plans
+            new_plan = []
+            in_grounding = True
+            
+            # Execute each action in the plan
+            for action_idx, action in enumerate(plan[:-1]):
+                # Convert string action to PDDLGym action if needed
+                if str_plan:
+                    action = convert_str_action_to_pddlgym_action_v2(action, state_grounding[-1])
+                    new_plan.append(action)
+                
+                # Execute the action
+                new_state = env.step(action)
+                state_sequence.append(new_state[0])
+                
+                # Get groundings for the new state
+                groundings = env.action_space.all_ground_literals(new_state[0])
+                if len(groundings) == 0:
+                    logger.warning(f"Grounding failure for problem {problem_idx}")
+                    in_grounding = False
+                    break
+                
+                state_grounding.append(groundings)
+            
+            # Skip if there was a grounding failure
+            if not in_grounding:
+                continue
+            
+            # Store the appropriate plan and extract objects
+            if str_plan:
+                objects_in_plan = {o for act in new_plan for o in act.variables}
+                current_plan = new_plan
+            else:
+                objects_in_plan = {o for act in plan for o in act.variables}
+                current_plan = plan
+            
+            # Add to result collections
+            inputs.append(state_sequence)
+            outputs.append(objects_in_plan)
+            plans.append(current_plan)
+            all_groundings.append(state_grounding)
+            
+            # Add to processed problems list
+            processed_problems.append(problem_idx)
+            
+            # Store in cache if provided
+            if unified_cache is not None:
+                # Ensure problems structure exists
+                if 'problems' not in unified_cache:
+                    unified_cache['problems'] = {}
+                
+                # Store problem data
+                unified_cache['problems'][problem_key] = {
+                    'training_data': (
+                        state_sequence,     # inputs
+                        objects_in_plan,    # outputs
+                        current_plan,       # plans
+                        state_grounding     # all_groundings
+                    ),
+                    'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
+                }
+                cache_modified = True
+            
+        except Exception as e:
+            logger.error(f"Error processing problem {problem_idx}: {e}")
+            continue
+    
+    # Combine the data
+    training_data = (inputs, outputs, plans, action_space._action_predicate_to_operators, all_groundings)
+    
+    return training_data, None, domain_name, cache_modified, processed_problems
+
+
+def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, create_graph_dataset_func):
+    """
+    Process PDDL files to graphs with per-problem caching using a unified cache file.
+    Ensures all graphs are properly accumulated and returned, even when restarting.
+    
+    Args:
+        train_env_name: Name of the training environment
+        planner: Planner to use
+        num_train_problems: Total number of problems to process
+        args: Arguments object with necessary parameters
+        create_graph_dataset_func: Function to create graphs from training data
+        
+    Returns:
+        Tuple of (input_graphs, target_graphs, graph_metadata)
+    """
+    import os
+    import time
+    import pickle
+    import math
+    
+    # Initialize parameters
+    max_files_per_batch = getattr(args, 'max_file_open', 50)
+    
+    # Set up the cache directory and file path in the working directory
+    cache_dir = os.path.join(os.getcwd(), "cache", "results")
+    
+    # Ensure the cache directory exists
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+
+    env = pddlgym.make(f"PDDLEnv{train_env_name}-v0")
+    action_space = env.action_space._action_predicate_to_operators
+    
+    # Path to the unified cache file
+    unified_cache_file = os.path.join(cache_dir, f"{train_env_name}_unified_cache_{0}_{num_train_problems}.pkl")
+    
+    # Initialize or load the unified cache
+    unified_cache = {'metadata': {'completed_problems': []}, 'problems': {}, 'all_graphs': None}
+    if os.path.exists(unified_cache_file):
+        try:
+            with open(unified_cache_file, 'rb') as f:
+                unified_cache = pickle.load(f)
+            # Ensure we have all required structure
+            if 'metadata' not in unified_cache:
+                unified_cache['metadata'] = {'completed_problems': []}
+            elif 'completed_problems' not in unified_cache['metadata']:
+                unified_cache['metadata']['completed_problems'] = []
+            if 'all_graphs' not in unified_cache:
+                unified_cache['all_graphs'] = None
+                
+            logger.info(f"Loaded unified cache from {unified_cache_file}")
+            logger.info(f"Cache contains data for {len(unified_cache['problems'])} problems")
+            logger.info(f"Completed problems: {len(unified_cache['metadata']['completed_problems'])}")
+            
+            # Check if we already have final results in the cache
+            if unified_cache['all_graphs'] is not None:
+                all_graphs = unified_cache['all_graphs']
+                logger.info(f"Found complete graph data in cache with {len(all_graphs[0])} graphs")
+                
+                # Check if the graph count looks correct (significantly more than problem count)
+                expected_min_graphs = num_train_problems  # At minimum, one graph per problem
+                if len(all_graphs[0]) >= expected_min_graphs and unified_cache['metadata'].get('all_complete', False):
+                    logger.info(f"All graphs are already processed, returning from cache")
+                    return all_graphs[0], all_graphs[1], all_graphs[2],action_space
+        except Exception as e:
+            logger.error(f"Error loading unified cache: {e}, creating new cache")
+            unified_cache = {'metadata': {'completed_problems': []}, 'problems': {}, 'all_graphs': None}
+    
+    # Get domain name from metadata if available
+    domain_name = unified_cache['metadata'].get('domain_name', train_env_name)
+    
+    # Calculate number of batches for processing efficiency
+    num_batches = math.ceil(num_train_problems / max_files_per_batch)
+    cache_modified = False
+    
+    # Get the list of completed problems
+    completed_problems = set(unified_cache['metadata']['completed_problems'])
+    
+    # Initialize empty containers for graph data and metadata
+    all_input_graphs = []
+    all_target_graphs = []
+    graph_metadata = None
+    
+    # Load any existing graph metadata
+    if 'graph_metadata' in unified_cache and unified_cache['graph_metadata'] is not None:
+        graph_metadata = unified_cache['graph_metadata']
+    
+    # Process each batch
+    for batch_idx in range(num_batches):
+        # Calculate batch range
+        batch_start = batch_idx * max_files_per_batch
+        batch_end = min((batch_idx + 1) * max_files_per_batch, num_train_problems)
+        batch_size = batch_end - batch_start
+        
+        # Check if all problems in this batch are already complete
+        batch_problems = set(range(batch_start, batch_end))
+        batch_all_complete = batch_problems.issubset(completed_problems)
+        
+        # Even if all problems are complete, we need to load their graphs
+        # This ensures we handle the case where one problem generates multiple graphs
+        
+        # First, check if we can load cached graph data for this batch
+        batch_graphs_loaded = False
+        batch_key = f"batch_{batch_start}_{batch_end}"
+        
+        if 'batch_graphs' in unified_cache and batch_key in unified_cache['batch_graphs']:
+            try:
+                logger.info(f"Loading cached graph data for batch {batch_idx+1}")
+                batch_data = unified_cache['batch_graphs'][batch_key]
+                batch_input_graphs = batch_data['input_graphs']
+                batch_target_graphs = batch_data['target_graphs']
+                if graph_metadata is None and 'metadata' in batch_data:
+                    graph_metadata = batch_data['metadata']
+                
+                # Add these graphs to our results
+                all_input_graphs.extend(batch_input_graphs)
+                all_target_graphs.extend(batch_target_graphs)
+                
+                batch_graphs_loaded = True
+                logger.info(f"Loaded {len(batch_input_graphs)} graphs for batch {batch_idx+1}")
+                
+                # If all problems in this batch are complete, we can skip processing
+                if batch_all_complete:
+                    logger.info(f"Skipping processing for batch {batch_idx+1} - all problems complete")
+                    continue
+            except Exception as e:
+                logger.error(f"Error loading cached graph data for batch {batch_idx+1}: {e}")
+                batch_graphs_loaded = False
+        
+        # If we didn't load graphs or not all problems are complete, process this batch
+        if not batch_graphs_loaded or not batch_all_complete:
+            logger.info(f"Processing batch {batch_idx+1}/{num_batches}, problems {batch_start}-{batch_end-1}")
+            
+            # Set up batch-specific args
+            batch_args = type('BatchArgs', (), {})
+            for attr_name in dir(args):
+                if not attr_name.startswith('__') and not callable(getattr(args, attr_name, None)):
+                    try:
+                        setattr(batch_args, attr_name, getattr(args, attr_name))
+                    except:
+                        pass
+            
+            # Set specific batch parameters
+            batch_args.problem_start_idx = batch_start
+            batch_args.problem_end_idx = batch_end
+            batch_args.max_file_open = batch_size
+            
+            # Collect training data for this batch (only for problems not already processed)
+            batch_training_data, dom_file, this_domain_name, cache_changed, processed_problems = collect_training_data(
+                train_env_name=train_env_name,
+                planner=planner,
+                num_train_problems=batch_size,
+                args=batch_args,
+                unified_cache=unified_cache
+            )
+            
+            if cache_changed:
+                cache_modified = True
+            
+            # Set domain name if we didn't have it before
+            if domain_name == train_env_name and this_domain_name:
+                domain_name = this_domain_name
+                unified_cache['metadata']['domain_name'] = domain_name
+                cache_modified = True
+            
+            # Check if we have data
+            if not batch_training_data or len(batch_training_data[0]) == 0:
+                logger.warning(f"No training data collected for batch {batch_idx+1}")
+                continue
+            
+            # Create graphs for this batch
+            logger.info(f"Creating graphs for batch {batch_idx+1}")
+            try:
+                batch_input_graphs, batch_target_graphs, batch_metadata = create_graph_dataset_func(
+                    batch_training_data, dom_file, domain_name, None, args)
+                
+                # If this is the first valid batch with metadata, store it
+                if graph_metadata is None:
+                    graph_metadata = batch_metadata
+                    unified_cache['graph_metadata'] = batch_metadata
+                    cache_modified = True
+                
+                # Log the number of graphs generated
+                logger.info(f"Generated {len(batch_input_graphs)} graphs for batch {batch_idx+1}")
+                
+                # Store the graphs for this batch in the cache
+                if 'batch_graphs' not in unified_cache:
+                    unified_cache['batch_graphs'] = {}
+                
+                unified_cache['batch_graphs'][batch_key] = {
+                    'input_graphs': batch_input_graphs,
+                    'target_graphs': batch_target_graphs,
+                    'metadata': batch_metadata,
+                    'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
+                }
+                cache_modified = True
+                
+                # Mark all problems in this batch as processed
+                for problem_idx in processed_problems:
+                    if problem_idx not in completed_problems:
+                        completed_problems.add(problem_idx)
+                        unified_cache['metadata']['completed_problems'].append(problem_idx)
+                        cache_modified = True
+                
+                # Add these graphs to our overall results
+                all_input_graphs.extend(batch_input_graphs)
+                all_target_graphs.extend(batch_target_graphs)
+                
+            except Exception as e:
+                logger.error(f"Error creating graphs for batch {batch_idx+1}: {e}")
+                continue
+        
+        # Save the cache if modified
+        if cache_modified:
+            try:
+                # Store current complete graph data in the cache
+                unified_cache['all_graphs'] = (all_input_graphs, all_target_graphs, graph_metadata)
+                
+                with open(unified_cache_file, 'wb') as f:
+                    pickle.dump(unified_cache, f)
+                logger.info(f"Updated unified cache at {unified_cache_file}")
+                cache_modified = False
+            except Exception as e:
+                logger.error(f"Error saving unified cache: {e}")
+        
+        logger.info(f"Completed batch {batch_idx+1}, total graphs so far: {len(all_input_graphs)}")
+    
+    # Check if we processed all problems
+    all_problems_complete = len(completed_problems) >= num_train_problems
+    
+    # Update the final results in metadata section
+    unified_cache['metadata']['total_problems'] = num_train_problems
+    unified_cache['metadata']['problems_processed'] = len(completed_problems)
+    unified_cache['metadata']['total_graphs'] = len(all_input_graphs)
+    unified_cache['metadata']['all_complete'] = all_problems_complete
+    unified_cache['metadata']['last_updated'] = time.strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Store final graph data in the cache
+    unified_cache['all_graphs'] = (all_input_graphs, all_target_graphs, graph_metadata)
+    
+    # Save the final cache
+    try:
+        with open(unified_cache_file, 'wb') as f:
+            pickle.dump(unified_cache, f)
+        logger.info(f"Saved final unified cache to {unified_cache_file}")
+    except Exception as e:
+        logger.error(f"Error saving final unified cache: {e}")
+    
+    # Return the combined results
+    logger.info(f"Completed all problems, total graphs: {len(all_input_graphs)}")
+    return all_input_graphs, all_target_graphs, graph_metadata, action_space
+
+def compare_graph_lists(old_graphs, new_graphs):
+    """
+    Compare two lists of graphs to ensure they are identical.
+    
+    Args:
+        old_graphs: List of graphs from the old method
+        new_graphs: List of graphs from the new method
+        
+    Returns:
+        True if all graphs match, False otherwise
+    """
+    # Check if counts match
+    print(f"Old method: {len(old_graphs)} graphs")
+    print(f"New method: {len(new_graphs)} graphs")
+    
+    if len(old_graphs) != len(new_graphs):
+        print(f"Graph count mismatch: {len(old_graphs)} vs {len(new_graphs)}")
+        return False
+    
+    # Dictionary to track which graph keys we'll check
+    # Note: Some graph attributes might be in different order or have floating point differences
+    # so we only check structural properties that should be identical
+    check_keys = [
+        'n_node', 'n_edge', 'n_parameters', 'n_action', 'n_object', 'n_non_action_nodes'
+    ]
+    
+    # Check if arrays match
+    match_count = 0
+    mismatch_count = 0
+    mismatch_details = []
+    
+    # First pass: try to find exact matches
+    unmatched_old_indices = set(range(len(old_graphs)))
+    matched_new_indices = set()
+    
+    print("Starting first pass comparison (exact matches)...")
+    
+    # First do a quick check using hash comparisons to find exact matches
+    for i, old_graph in enumerate(tqdm(old_graphs, desc="Checking exact matches")):
+        for j, new_graph in enumerate(new_graphs):
+            if j in matched_new_indices:
+                continue
+                
+            exact_match = True
+            for key in check_keys:
+                if key in old_graph and key in new_graph:
+                    if not np.array_equal(old_graph[key], new_graph[key]):
+                        exact_match = False
+                        break
+            
+            if exact_match:
+                match_count += 1
+                unmatched_old_indices.remove(i)
+                matched_new_indices.add(j)
+                break
+    
+    print(f"Found {match_count} exact matches out of {len(old_graphs)} graphs")
+    
+    # If we have unmatched graphs, do a second pass with more detailed comparison
+    if unmatched_old_indices:
+        print(f"Starting second pass comparison for {len(unmatched_old_indices)} unmatched graphs...")
+        
+        for i in tqdm(unmatched_old_indices, desc="Checking remaining graphs"):
+            old_graph = old_graphs[i]
+            best_match_score = 0
+            best_match_idx = -1
+            
+            for j, new_graph in enumerate(new_graphs):
+                if j in matched_new_indices:
+                    continue
+                
+                # Calculate a match score (number of matching properties)
+                match_score = 0
+                for key in check_keys:
+                    if key in old_graph and key in new_graph:
+                        if np.array_equal(old_graph[key], new_graph[key]):
+                            match_score += 1
+                
+                if match_score > best_match_score:
+                    best_match_score = match_score
+                    best_match_idx = j
+            
+            if best_match_idx >= 0:
+                # If we found a partial match, count it
+                new_graph = new_graphs[best_match_idx]
+                match_count += 1
+                matched_new_indices.add(best_match_idx)
+                
+                # Record which properties didn't match
+                mismatched_props = []
+                for key in check_keys:
+                    if key in old_graph and key in new_graph:
+                        if not np.array_equal(old_graph[key], new_graph[key]):
+                            mismatched_props.append(key)
+                
+                mismatch_details.append({
+                    'old_idx': i,
+                    'new_idx': best_match_idx,
+                    'match_score': best_match_score,
+                    'total_props': len(check_keys),
+                    'mismatched_props': mismatched_props
+                })
+            else:
+                mismatch_count += 1
+    
+    # Final report
+    print(f"Total graphs: {len(old_graphs)}")
+    print(f"Exact matches: {match_count - len(mismatch_details)}")
+    print(f"Partial matches: {len(mismatch_details)}")
+    print(f"Complete mismatches: {mismatch_count}")
+    
+    match_percentage = (match_count / len(old_graphs)) * 100
+    print(f"Overall match percentage: {match_percentage:.2f}%")
+    
+    if mismatch_details:
+        print("Details of partial matches:")
+        for detail in mismatch_details[:10]:  # Show first 10 details
+            print(f"  Old graph {detail['old_idx']} ~ New graph {detail['new_idx']}: " + 
+                  f"Matched {detail['match_score']}/{detail['total_props']} properties. " +
+                  f"Mismatched: {detail['mismatched_props']}")
+        
+        if len(mismatch_details) > 10:
+            print(f"  ... and {len(mismatch_details) - 10} more partial matches")
+    
+    return match_count == len(old_graphs)
+
+
+def compare_graph_counts_by_property(old_graphs, new_graphs):
+    """
+    Compare distribution of graph properties between two sets of graphs.
+    This can help identify if the overall statistics match even if individual graphs don't.
+    
+    Args:
+        old_graphs: List of graphs from the old method
+        new_graphs: List of graphs from the new method
+    """
+    property_keys = [
+        'n_node', 'n_edge', 'n_parameters', 'n_action', 'n_object', 'n_non_action_nodes'
+    ]
+    
+    print("\nComparing property distributions:")
+    print("=================================")
+    
+    for key in property_keys:
+        old_counts = {}
+        new_counts = {}
+        
+        # Count occurrences of each value in old graphs
+        for graph in old_graphs:
+            if key in graph:
+                val = tuple(graph[key].flatten())  # Convert to tuple for hashability
+                old_counts[val] = old_counts.get(val, 0) + 1
+        
+        # Count occurrences of each value in new graphs
+        for graph in new_graphs:
+            if key in graph:
+                val = tuple(graph[key].flatten())  # Convert to tuple for hashability
+                new_counts[val] = new_counts.get(val, 0) + 1
+        
+        # Compare the distributions
+        all_values = set(old_counts.keys()).union(set(new_counts.keys()))
+        print(f"\nProperty: {key}")
+        print(f"  Unique values: Old={len(old_counts)}, New={len(new_counts)}")
+        
+        # Check if distributions match
+        distributions_match = True
+        for val in all_values:
+            old_count = old_counts.get(val, 0)
+            new_count = new_counts.get(val, 0)
+            if old_count != new_count:
+                distributions_match = False
+                if len(all_values) < 20:  # Only show details for properties with few unique values
+                    print(f"  Value {val}: Old={old_count}, New={new_count}")
+        
+        if distributions_match:
+            print("  ✅ Distributions match exactly")
+        else:
+            print("  ❌ Distributions differ")
+            # For properties with many values, just show some statistics
+            if len(all_values) >= 20:
+                old_total = sum(old_counts.values())
+                new_total = sum(new_counts.values())
+                mismatch_count = sum(1 for v in all_values if old_counts.get(v, 0) != new_counts.get(v, 0))
+                print(f"  {mismatch_count} out of {len(all_values)} values have different counts")
+
+
+def check_for_duplicates(graphs):
+    """
+    Check if a list of graphs contains duplicates.
+    
+    Args:
+        graphs: List of graphs to check
+        
+    Returns:
+        Dictionary with duplicate info
+    """
+    print("\nChecking for duplicates...")
+    
+    # Dictionary to track which graph keys we'll check
+    check_keys = [
+        'n_node', 'n_edge', 'n_parameters', 'n_action', 'n_object', 'n_non_action_nodes'
+    ]
+    
+    duplicate_groups = {}
+    seen_graphs = {}
+    
+    for i, graph in enumerate(tqdm(graphs, desc="Checking duplicates")):
+        # Create a hash for this graph using its key properties
+        hash_components = []
+        for key in check_keys:
+            if key in graph:
+                hash_components.append(f"{key}:{tuple(graph[key].flatten())}")
+        
+        graph_hash = "|".join(hash_components)
+        
+        if graph_hash in seen_graphs:
+            seen_graphs[graph_hash].append(i)
+        else:
+            seen_graphs[graph_hash] = [i]
+    
+    # Filter to only include hashes with multiple graphs
+    duplicate_groups = {k: v for k, v in seen_graphs.items() if len(v) > 1}
+    
+    # Report results
+    if duplicate_groups:
+        print(f"Found {len(duplicate_groups)} groups of duplicate graphs")
+        print(f"Total of {sum(len(v) - 1 for v in duplicate_groups.values())} duplicate graphs")
+        
+        # Show some examples
+        if len(duplicate_groups) > 0:
+            print("\nExample duplicate groups:")
+            for i, (hash_val, indices) in enumerate(list(duplicate_groups.items())[:5]):
+                print(f"Group {i+1}: Indices {indices}")
+    else:
+        print("No duplicates found in the graph list")
+    
+    return duplicate_groups

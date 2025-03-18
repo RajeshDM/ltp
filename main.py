@@ -6,6 +6,7 @@ import pickle
 import warnings
 import torch
 import wandb
+import time
 #from torch.utils.data import DataLoader
 from torch_geometric.loader import DataLoader as pyg_dataloader
 from ploi.model_checkpointing import ModelManager 
@@ -27,11 +28,13 @@ logger = logging.getLogger(__name__)
 
 from ploi.datautils_ltp import (
     _collect_training_data_ltp,
+    _collect_training_data,
     _create_graph_dataset_ltp,
     _state_to_graph_ltp,
     get_filenames,
     TorchGraphDictDataset,
     graph_dataset_to_pyg_dataset,
+    process_pddl_to_graphs,
 )
 from ploi.run_planner_with_ltp_v1 import (
     run_planner_with_gnn_ltp,
@@ -80,6 +83,7 @@ baselines = [PlannerType.EXP_BASELINE,
 def set_seed(args):
     seed = args.seed
     torch.manual_seed(seed)
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
     if args.server == True:
         os.environ["CUBLAS_WORKSPACE_CONFIG"]=":16:8"
         torch.use_deterministic_algorithms(True)
@@ -306,12 +310,18 @@ if __name__ == "__main__":
 
     training_data = None
     print("Collecting training data")
+    graphs_inp, graphs_tgt, graph_metadata = None, None, None
     if not os.path.exists(args.datafile) or args.force_collect_data:
         if args.method == 'ltp' :
             args.datafile = _dataset_file_prefix + "_{}.pkl".format(args.domain)
-            training_data,_,_ = _collect_training_data_ltp(
-                args.domain, train_planner, _num_train_problems=args.num_train_problems,
-                outfile=args.datafile,args=args)
+            graphs_inp , graphs_tgt, graph_metadata,action_space =  process_pddl_to_graphs(
+                args.domain,
+                train_planner,
+                args.num_train_problems,
+                args,
+                _create_graph_dataset_ltp, 
+            )
+            ic(f"Processed {len(graphs_inp)} training examples")
         else :
             training_data = collect_training_data(
                 args.domain, train_planner, num_train_problems=args.num_train_problems
@@ -328,13 +338,12 @@ if __name__ == "__main__":
             print("Loading training data from file")
             training_data = pickle.load(f)
 
-    graphs_inp, graphs_tgt, graph_metadata = None, None, None
     if args.method in ["hierarchical"]:
         graphs_inp, graphs_tgt, graph_metadata = create_graph_dataset_hierarchical(
             training_data
         )
     elif args.method in ["ltp"]:
-        graphs_inp, graphs_tgt, graph_metadata = _create_graph_dataset_ltp(training_data,args=args)
+        pass
     else:
         graphs_inp, graphs_tgt, graph_metadata = create_graph_dataset(training_data)
 
@@ -601,7 +610,7 @@ if __name__ == "__main__":
         representation_size = args.representation_size
         gnn_rounds = args.gnn_rounds
         n_heads = args.n_heads
-        action_space = training_data[3]
+        #action_space = training_data[3]
 
         _model = initialize_model(GNN_GRU, args, action_space)
 
@@ -619,7 +628,7 @@ if __name__ == "__main__":
         train_env_name = args.domain
         save_model_prefix=os.path.join(
             model_dir, "bce10_model_seed{}".format(args.seed)),
-        dataset_size = len(training_data[0])
+        dataset_size = len(graphs_inp)#len(training_data[0])
         save_folder = os.path.join(Path.cwd(),"models")
         manager = ModelManager(save_folder, hyperparameters=training_hyperparameters,
                                train_env_name=train_env_name,seed=args.seed)
