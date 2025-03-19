@@ -3,7 +3,7 @@
 heads=(8)
 lrs=(0.0005)
 decays=(0.000)
-attn_drops=(0.1)
+attn_drops=(0)
 other_drops=(0)
 expid="solitaire"
 domain="klondike_solitaire"

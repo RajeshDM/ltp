@@ -175,6 +175,13 @@ def get_ploi_argument_parser():
         default=constants.BATCH_SIZE,
         help="Batch size for training",
     )
+    
+    parser.add_argument(
+        "--num-workers",
+        type=int,
+        default=constants.NUM_WORKERS,
+        help="num workers for data loaders",
+    )
 
     parser.add_argument(
         "--representation-size",

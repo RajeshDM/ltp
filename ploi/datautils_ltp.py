@@ -1639,7 +1639,7 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
                 expected_min_graphs = num_train_problems  # At minimum, one graph per problem
                 if len(all_graphs[0]) >= expected_min_graphs and unified_cache['metadata'].get('all_complete', False):
                     logger.info(f"All graphs are already processed, returning from cache")
-                    return all_graphs[0], all_graphs[1], all_graphs[2],action_space
+                    return all_graphs[0], all_graphs[1], action_space
         except Exception as e:
             logger.error(f"Error loading unified cache: {e}, creating new cache")
             unified_cache = {'metadata': {'completed_problems': []}, 'problems': {}, 'all_graphs': None}
@@ -1664,6 +1664,7 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
         graph_metadata = unified_cache['graph_metadata']
     
     # Process each batch
+    batch_training_data_full = []
     for batch_idx in range(num_batches):
         # Calculate batch range
         batch_start = batch_idx * max_files_per_batch
@@ -1686,13 +1687,13 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
                 logger.info(f"Loading cached graph data for batch {batch_idx+1}")
                 batch_data = unified_cache['batch_graphs'][batch_key]
                 batch_input_graphs = batch_data['input_graphs']
-                batch_target_graphs = batch_data['target_graphs']
+                #batch_target_graphs = batch_data['target_graphs']
                 if graph_metadata is None and 'metadata' in batch_data:
                     graph_metadata = batch_data['metadata']
                 
                 # Add these graphs to our results
                 all_input_graphs.extend(batch_input_graphs)
-                all_target_graphs.extend(batch_target_graphs)
+                #all_target_graphs.extend(batch_target_graphs)
                 
                 batch_graphs_loaded = True
                 logger.info(f"Loaded {len(batch_input_graphs)} graphs for batch {batch_idx+1}")
@@ -1745,64 +1746,78 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
             if not batch_training_data or len(batch_training_data[0]) == 0:
                 logger.warning(f"No training data collected for batch {batch_idx+1}")
                 continue
+
+            batch_training_data_full.append(batch_training_data)
             
-            # Create graphs for this batch
-            logger.info(f"Creating graphs for batch {batch_idx+1}")
-            try:
-                batch_input_graphs, batch_target_graphs, batch_metadata = create_graph_dataset_func(
-                    batch_training_data, dom_file, domain_name, None, args)
-                
-                # If this is the first valid batch with metadata, store it
-                if graph_metadata is None:
-                    graph_metadata = batch_metadata
-                    unified_cache['graph_metadata'] = batch_metadata
-                    cache_modified = True
-                
-                # Log the number of graphs generated
-                logger.info(f"Generated {len(batch_input_graphs)} graphs for batch {batch_idx+1}")
-                
-                # Store the graphs for this batch in the cache
-                if 'batch_graphs' not in unified_cache:
-                    unified_cache['batch_graphs'] = {}
-                
-                unified_cache['batch_graphs'][batch_key] = {
-                    'input_graphs': batch_input_graphs,
-                    'target_graphs': batch_target_graphs,
-                    'metadata': batch_metadata,
-                    'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
-                }
-                cache_modified = True
-                
-                # Mark all problems in this batch as processed
-                for problem_idx in processed_problems:
-                    if problem_idx not in completed_problems:
-                        completed_problems.add(problem_idx)
-                        unified_cache['metadata']['completed_problems'].append(problem_idx)
-                        cache_modified = True
-                
-                # Add these graphs to our overall results
-                all_input_graphs.extend(batch_input_graphs)
-                all_target_graphs.extend(batch_target_graphs)
-                
-            except Exception as e:
-                logger.error(f"Error creating graphs for batch {batch_idx+1}: {e}")
-                continue
-        
-        # Save the cache if modified
-        if cache_modified:
-            try:
-                # Store current complete graph data in the cache
-                unified_cache['all_graphs'] = (all_input_graphs, all_target_graphs, graph_metadata)
-                
-                with open(unified_cache_file, 'wb') as f:
-                    pickle.dump(unified_cache, f)
-                logger.info(f"Updated unified cache at {unified_cache_file}")
-                cache_modified = False
-            except Exception as e:
-                logger.error(f"Error saving unified cache: {e}")
-        
-        logger.info(f"Completed batch {batch_idx+1}, total graphs so far: {len(all_input_graphs)}")
+    batch_training_data_full_formatted = [[],[],[],None,[]]
+
+    for batch_data in batch_training_data_full :
+        for i, elem in enumerate(batch_data):
+            if i != 3 :
+                batch_training_data_full_formatted[i].extend(elem)
+            else :
+                batch_training_data_full_formatted[i] = elem
+
+    batch_input_graphs, batch_target_graphs, batch_metadata = create_graph_dataset_func(
+        batch_training_data_full_formatted, dom_file, domain_name, None, args)
     
+    # If this is the first valid batch with metadata, store it
+    if graph_metadata is None:
+        graph_metadata = batch_metadata
+        unified_cache['graph_metadata'] = batch_metadata
+        cache_modified = True
+
+    else :
+        for key, value in graph_metadata.items() :
+            if type(value) is int : 
+                graph_metadata[key] = max(value, batch_metadata[key])
+    
+    # Log the number of graphs generated
+    logger.info(f"Generated {len(batch_input_graphs)} graphs for batch {batch_idx+1}")
+    
+    # Store the graphs for this batch in the cache
+    if 'batch_graphs' not in unified_cache:
+        unified_cache['batch_graphs'] = {}
+    
+    unified_cache['batch_graphs'][batch_key] = {
+        'input_graphs': batch_input_graphs,
+        #'target_graphs': batch_target_graphs,
+        'metadata': batch_metadata,
+        'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
+    }
+    cache_modified = True
+    
+    # Mark all problems in this batch as processed
+    for problem_idx in processed_problems:
+        if problem_idx not in completed_problems:
+            completed_problems.add(problem_idx)
+            unified_cache['metadata']['completed_problems'].append(problem_idx)
+            cache_modified = True
+
+    input_graphs_hetero = graph_dataset_to_pyg_dataset(batch_input_graphs,
+                                                        batch_wise=False)
+
+    # Add these graphs to our overall results
+    #all_input_graphs.extend(batch_input_graphs)
+    #all_target_graphs.extend(batch_target_graphs)
+    all_input_graphs.extend(input_graphs_hetero)
+        
+        
+    # Save the cache if modified
+    if cache_modified:
+        try:
+            # Store current complete graph data in the cache
+            unified_cache['all_graphs'] = (all_input_graphs, graph_metadata)
+            
+            with open(unified_cache_file, 'wb') as f:
+                pickle.dump(unified_cache, f)
+            logger.info(f"Updated unified cache at {unified_cache_file}")
+            cache_modified = False
+        except Exception as e:
+            logger.error(f"Error saving unified cache: {e}")
+    
+    logger.info(f"Completed batch {batch_idx+1}, total graphs so far: {len(all_input_graphs)}")
+
     # Check if we processed all problems
     all_problems_complete = len(completed_problems) >= num_train_problems
     
@@ -1814,7 +1829,10 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
     unified_cache['metadata']['last_updated'] = time.strftime("%Y-%m-%d %H:%M:%S")
     
     # Store final graph data in the cache
-    unified_cache['all_graphs'] = (all_input_graphs, all_target_graphs, graph_metadata)
+    unified_cache['all_graphs'] = (all_input_graphs, graph_metadata)
+
+    if 'globals' in batch_input_graphs[0] :
+        graph_metadata['num_global_features'] =  batch_input_graphs[0]['globals'][0].shape[-1]
     
     # Save the final cache
     try:
@@ -1824,9 +1842,11 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
     except Exception as e:
         logger.error(f"Error saving final unified cache: {e}")
     
+
     # Return the combined results
     logger.info(f"Completed all problems, total graphs: {len(all_input_graphs)}")
-    return all_input_graphs, all_target_graphs, graph_metadata, action_space
+    return all_input_graphs, graph_metadata, action_space
+    #return input_graphs_hetero_all, val_graphs_hetero_all, graph_metadata, action_space
 
 def compare_graph_lists(old_graphs, new_graphs):
     """

@@ -20,6 +20,7 @@ from ploi.datautils import (
     create_graph_dataset_hierarchical,
     GraphDictDataset,
 )
+from torch_geometric.loader import DataLoader as PyGDataLoader
 import gc
 from ploi.baselines.exp_1.train import exp_baseline_train
 import logging
@@ -84,7 +85,6 @@ baselines = [PlannerType.EXP_BASELINE,
 def set_seed(args):
     seed = args.seed
     torch.manual_seed(seed)
-    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
     if args.server == True:
         os.environ["CUBLAS_WORKSPACE_CONFIG"]=":16:8"
         torch.use_deterministic_algorithms(True)
@@ -95,6 +95,8 @@ def set_seed(args):
         #np.random.seed(seed)
         #random.seed(seed)
         torch.cuda.manual_seed_all(seed)
+    else :
+        os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 def initialize_model(model_class, args, action_space):
     if args.use_gpu:
@@ -315,14 +317,18 @@ if __name__ == "__main__":
     if not os.path.exists(args.datafile) or args.force_collect_data:
         if args.method == 'ltp' :
             args.datafile = _dataset_file_prefix + "_{}.pkl".format(args.domain)
-            graphs_inp , graphs_tgt, graph_metadata,action_space =  process_pddl_to_graphs(
+            #graphs_inp , graphs_tgt, graph_metadata,action_space =  process_pddl_to_graphs(
+            all_input_graphs , graph_metadata,action_space =  process_pddl_to_graphs(
                 args.domain,
                 train_planner,
                 args.num_train_problems,
                 args,
                 _create_graph_dataset_ltp, 
             )
-            ic(f"Processed {len(graphs_inp)} training examples")
+            num_validation = max(1, int(len(all_input_graphs) * 0.1))
+            input_hetero_graphs = all_input_graphs[num_validation:] 
+            val_hetero_graphs = all_input_graphs[:num_validation]
+            #ic(f"Processed {len(graphs_inp)} training examples")
         else :
             training_data = collect_training_data(
                 args.domain, train_planner, num_train_problems=args.num_train_problems
@@ -349,22 +355,28 @@ if __name__ == "__main__":
         graphs_inp, graphs_tgt, graph_metadata = create_graph_dataset(training_data)
 
     # Use 10% for validation
+    '''
     num_validation = max(1, int(len(graphs_inp) * 0.1))
     train_graphs_input = graphs_inp[num_validation:]
     train_graphs_target = graphs_tgt[num_validation:]
     valid_graphs_input = graphs_inp[:num_validation]
     valid_graphs_target = graphs_tgt[:num_validation]
+    '''
 
     pyg = args.pyg
     batch_size = args.batch_size
 
-    args.num_node_features_object = train_graphs_input[0]['nodes'][0].shape[-1]
-    args.num_edge_features_object = train_graphs_input[0]['edges'][0].shape[-1]
+    #args.num_node_features_object = train_graphs_input[0]['nodes'][0].shape[-1]
+    #args.num_edge_features_object = train_graphs_input[0]['edges'][0].shape[-1]
 
+    #if 'globals' in train_graphs_input[0]:
+    #    args.num_global_features = train_graphs_input[0]['globals'][0].shape[-1]
+    args.num_node_features_object = graph_metadata['num_node_features']
+    args.num_edge_features_object = graph_metadata['num_edge_features']
     args.num_node_features = args.num_node_features_object
     args.num_edge_features = args.num_edge_features_object
-    if 'globals' in train_graphs_input[0]:
-        args.num_global_features = train_graphs_input[0]['globals'][0].shape[-1]
+    if 'num_global_features' in graph_metadata :
+        args.num_global_features = graph_metadata['num_global_features']
 
     if pyg == False:
         # Set up dataloaders
@@ -372,7 +384,7 @@ if __name__ == "__main__":
         graph_dataset_val = GraphDictDataset(valid_graphs_input, valid_graphs_target)
 
     else :
-        print ("Size of dataset : ",len(graphs_inp))
+        print ("Size of dataset : ",len(input_hetero_graphs) + len(val_hetero_graphs))
         #train_graphs_pyg = graph_dataset_to_pyg_dataset(train_graphs_input)
         #train_graphs_target_pyg = graph_dataset_to_pyg_dataset(train_graphs_target)
 
@@ -381,7 +393,24 @@ if __name__ == "__main__":
 
         #graph_dataset = pyg_dataloader(train_graphs_pyg, batch_size=batch_size,shuffle=True)
         #graph_dataset_val = pyg_dataloader(val_graphs_pyg,batch_size=batch_size,shuffle=True)
-        num_workers = 4
+        num_workers = args.num_workers
+        shuffle = True
+        graph_dataset = PyGDataLoader(
+            input_hetero_graphs,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            num_workers=num_workers,
+            pin_memory=True
+        )
+        graph_dataset_val =  PyGDataLoader(
+            val_hetero_graphs,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            num_workers=num_workers,
+            pin_memory=True
+        )
+
+        '''
         graph_dataset = graph_dataset_to_pyg_dataset(
             train_graphs_input, 
             batch_wise=True, 
@@ -397,6 +426,7 @@ if __name__ == "__main__":
             shuffle=False,
             num_workers=num_workers
         )
+        '''
 
     datasets = {"train": graph_dataset, "val": graph_dataset_val}
     #dataloaders = {"train": dataloader, "val": dataloader_val}
@@ -645,7 +675,7 @@ if __name__ == "__main__":
         train_env_name = args.domain
         save_model_prefix=os.path.join(
             model_dir, "bce10_model_seed{}".format(args.seed)),
-        dataset_size = len(graphs_inp)#len(training_data[0])
+        dataset_size = len(input_hetero_graphs) + len(val_hetero_graphs)#len(training_data[0])
         save_folder = os.path.join(Path.cwd(),"models")
         manager = ModelManager(save_folder, hyperparameters=training_hyperparameters,
                                train_env_name=train_env_name,seed=args.seed)
