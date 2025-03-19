@@ -1665,6 +1665,7 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
     
     # Process each batch
     batch_training_data_full = []
+    processed_problems_full = []
     for batch_idx in range(num_batches):
         # Calculate batch range
         batch_start = batch_idx * max_files_per_batch
@@ -1748,6 +1749,7 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
                 continue
 
             batch_training_data_full.append(batch_training_data)
+            processed_problems_full.extend(processed_problems)
             
     batch_training_data_full_formatted = [[],[],[],None,[]]
 
@@ -1788,7 +1790,7 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
     cache_modified = True
     
     # Mark all problems in this batch as processed
-    for problem_idx in processed_problems:
+    for problem_idx in processed_problems_full:
         if problem_idx not in completed_problems:
             completed_problems.add(problem_idx)
             unified_cache['metadata']['completed_problems'].append(problem_idx)
