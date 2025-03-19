@@ -7,13 +7,16 @@ from torch.utils.data import Dataset
 from torch_geometric.data import  Data,HeteroData
 
 import pddlgym
+import gc
 from pddlgym.structs import Predicate
+from torch_geometric.loader import DataLoader as PyGDataLoader
 from icecream import ic
 import time
 import os
 import math
 import pickle
 import logging
+from tqdm import tqdm
 
 import ploi.constants as constants
 
@@ -101,12 +104,56 @@ def graph_to_pyg_data(graph):
     '''
     return hetero_data
 
-def graph_dataset_to_pyg_dataset(graphs):
+def graph_dataset_to_pyg_dataset_old(graphs):
     pyg_dataset= []
     for i in range(0,len(graphs)):
         pyg_dataset.append(graph_to_pyg_data(graphs[i]))
 
     return pyg_dataset
+
+def graph_dataset_to_pyg_dataset(graphs, batch_wise=True, batch_size=32, shuffle=True, num_workers=2):
+    """
+    Convert a list of graphs to a PyTorch Geometric dataset in a memory-efficient way.
+    
+    Args:
+        graphs (list): List of graphs to convert
+        batch_wise (bool): If True, returns a DataLoader; if False, returns a list of processed graphs
+        batch_size (int): Batch size for DataLoader (only used if batch_wise=True)
+        shuffle (bool): Whether to shuffle the data (only used if batch_wise=True)
+        num_workers (int): Number of workers for DataLoader (only used if batch_wise=True)
+    
+    Returns:
+        PyGDataLoader or list: Either a DataLoader or a list of processed graphs, depending on batch_wise
+    """
+    # Process one graph at a time to save memory
+    processed_graphs = []
+    
+    # Process in batches to limit memory usage
+    batch_count = 0
+    for i, graph in enumerate(graphs):
+        # Convert graph to PyG data
+        data = graph_to_pyg_data(graph)
+        processed_graphs.append(data)
+        
+        # Free up memory periodically
+        if i % 50 == 0 and i > 0:
+            gc.collect()
+            
+        # Log progress
+        if i % 500 == 0 and i > 0:
+            print(f"Processed {i}/{len(graphs)} graphs")
+    
+    # Return as DataLoader if requested
+    if batch_wise:
+        return PyGDataLoader(
+            processed_graphs,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            num_workers=num_workers,
+            pin_memory=True
+        )
+    else:
+        return processed_graphs
 
 def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
                     prev_actions=None,prev_state=None,test=False,

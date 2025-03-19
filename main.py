@@ -20,6 +20,7 @@ from ploi.datautils import (
     create_graph_dataset_hierarchical,
     GraphDictDataset,
 )
+import gc
 from ploi.baselines.exp_1.train import exp_baseline_train
 import logging
 from datetime import datetime
@@ -372,14 +373,30 @@ if __name__ == "__main__":
 
     else :
         print ("Size of dataset : ",len(graphs_inp))
-        train_graphs_pyg = graph_dataset_to_pyg_dataset(train_graphs_input)
+        #train_graphs_pyg = graph_dataset_to_pyg_dataset(train_graphs_input)
         #train_graphs_target_pyg = graph_dataset_to_pyg_dataset(train_graphs_target)
 
-        val_graphs_pyg = graph_dataset_to_pyg_dataset(valid_graphs_input)
+        #val_graphs_pyg = graph_dataset_to_pyg_dataset(valid_graphs_input)
         #val_graphs_target_pyg = graph_dataset_to_pyg_dataset(valid_graphs_target)
 
-        graph_dataset = pyg_dataloader(train_graphs_pyg, batch_size=batch_size,shuffle=True)
-        graph_dataset_val = pyg_dataloader(val_graphs_pyg,batch_size=batch_size,shuffle=True)
+        #graph_dataset = pyg_dataloader(train_graphs_pyg, batch_size=batch_size,shuffle=True)
+        #graph_dataset_val = pyg_dataloader(val_graphs_pyg,batch_size=batch_size,shuffle=True)
+        num_workers = 4
+        graph_dataset = graph_dataset_to_pyg_dataset(
+            train_graphs_input, 
+            batch_wise=True, 
+            batch_size=batch_size, 
+            shuffle=True,
+            num_workers=num_workers
+        )
+        gc.collect()
+        graph_dataset_val = graph_dataset_to_pyg_dataset(
+            valid_graphs_input, 
+            batch_wise=True, 
+            batch_size=batch_size, 
+            shuffle=False,
+            num_workers=num_workers
+        )
 
     datasets = {"train": graph_dataset, "val": graph_dataset_val}
     #dataloaders = {"train": dataloader, "val": dataloader_val}
