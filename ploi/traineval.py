@@ -10,13 +10,13 @@ import pddlgym
 import torch
 import torch.nn as nn
 
+from torch.profiler import profile, record_function, ProfilerActivity
 import ploi.constants as constants
 import matplotlib.pyplot as plt
 from icecream import ic
 from torchviz import make_dot
 
-import os
-import sys
+from datetime import datetime
 
 from .planning import PlanningFailure, PlanningTimeout, validate_strips_plan
 
@@ -42,6 +42,311 @@ def save_model_graphnetwork(model, save_folder, epoch, optimizer,train_env_name,
         print("Saved model checkpoint {}, Time : {}".format(save_path,time.time()-time_taken_for_save_iter))
 
     return best_seen_running_validation_loss,best_validation_loss_epoch, best_seen_model_weights
+
+
+class ProfilerManager:
+    def __init__(self, 
+                 log_dir='./profile_logs',
+                 activities=None,
+                 profile_steps=5,
+                 profile_memory=True,
+                 record_shapes=True,
+                 with_stack=True):
+        
+        self.log_dir = log_dir
+        self.activities = activities or [ProfilerActivity.CPU, ProfilerActivity.CUDA]
+        self.profile_steps = profile_steps
+        self.profile_memory = profile_memory
+        self.record_shapes = record_shapes
+        self.with_stack = with_stack
+        self.active_profiler = None
+        self.is_profiling = False
+        self.step_count = 0
+        self.trace_exported = False  # Add this flag to track if trace was exported
+        
+        # Ensure log directory exists
+        os.makedirs(log_dir, exist_ok=True)
+    
+    def start_profiling_session(self, epoch):
+        """Start a new profiling session"""
+        if self.is_profiling:
+            return
+            
+        # Create a unique directory for this epoch's profile
+        epoch_log_dir = os.path.join(self.log_dir, f'epoch_{epoch}_{datetime.now().strftime("%Y%m%d_%H%M%S")}')
+        os.makedirs(epoch_log_dir, exist_ok=True)
+        
+        self.active_profiler = torch.profiler.profile(
+            activities=self.activities,
+            schedule=torch.profiler.schedule(
+                wait=1,
+                warmup=1,
+                active=self.profile_steps,
+                repeat=1),
+            on_trace_ready=torch.profiler.tensorboard_trace_handler(epoch_log_dir),
+            record_shapes=self.record_shapes,
+            profile_memory=self.profile_memory,
+            with_stack=self.with_stack
+        )
+        
+        self.active_profiler.start()
+        self.is_profiling = True
+        self.step_count = 0
+        self.current_epoch = epoch
+        self.epoch_log_dir = epoch_log_dir
+        self.trace_exported = False  # Reset trace export flag
+        
+        print(f"Profiling started for epoch {epoch}")
+    
+    def step(self):
+        """Record a profiler step if profiling is active"""
+        if not self.is_profiling:
+            return
+            
+        self.active_profiler.step()
+        self.step_count += 1
+        
+        # End profiling after the scheduled steps
+        if self.step_count >= 2 + self.profile_steps:  # wait(1) + warmup(1) + active(profile_steps)
+            self.end_profiling_session()
+    
+    def end_profiling_session(self):
+        """End the current profiling session and print results"""
+        if not self.is_profiling:
+            return
+            
+        self.active_profiler.stop()
+        
+        # Print profile results
+        print(f"\n--- Profile results for epoch {self.current_epoch} ---")
+        print(self.active_profiler.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+        
+        # Export trace file for manual inspection - only if not already exported
+        if not self.trace_exported:
+            try:
+                self.active_profiler.export_chrome_trace(os.path.join(self.epoch_log_dir, "trace.json"))
+                self.trace_exported = True
+            except RuntimeError as e:
+                # Handle the case where trace is already saved
+                if "Trace is already saved" in str(e):
+                    print("Note: Trace was already exported automatically.")
+                else:
+                    # Re-raise if it's a different error
+                    raise
+        
+        # Print forward/backward analysis
+        #self.print_forward_backward_analysis()
+        
+        self.is_profiling = False
+        self.active_profiler = None
+
+    def print_forward_backward_analysis(self):
+        """Print analysis of forward vs backward pass times"""
+        if not self.active_profiler:
+            return
+            
+        forward_time = sum(evt.cuda_time_total for evt in self.active_profiler.key_averages() 
+                        if "forward" in evt.key.lower())
+        backward_time = sum(evt.cuda_time_total for evt in self.active_profiler.key_averages() 
+                        if "backward" in evt.key.lower())
+        
+        print(f"Forward time: {forward_time/1000:.2f}ms")
+        print(f"Backward time: {backward_time/1000:.2f}ms")
+        if forward_time > 0:
+            print(f"Backward/Forward ratio: {backward_time/forward_time:.2f}x")
+        
+        # Print memory analysis if available
+        if self.profile_memory:
+            print("\nMemory Usage (Top 5):")
+            print(self.active_profiler.key_averages().table(
+                sort_by="self_cuda_memory_usage", row_limit=5))
+
+# Add this context manager for conditional profiling
+class ConditionalRecordFunction:
+    def __init__(self, name, enable=True):
+        self.name = name
+        self.enable = enable
+        
+    def __enter__(self):
+        if self.enable:
+            self.record_ctx = record_function(self.name)
+            self.record_ctx.__enter__()
+        return self
+        
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.enable:
+            self.record_ctx.__exit__(exc_type, exc_val, exc_tb)
+
+# Modified training function with minimal code duplication
+def train_model_graphnetwork_ltp_batch_profiling(model, datasets,
+                                criterion, optimizer, use_gpu, print_iter=10, 
+                                save_iter=100, save_folder='/tmp', starting_epoch=0, final_epoch=1000, 
+                                global_criterion=None, return_last_model_weights=True, dagger_train=False,
+                                train_env_name=None, seed=None, message_string='',
+                                log_wandb=False, chpkt_manager=None, 
+                                # New profiler parameters
+                                enable_profiling=True, 
+                                profile_log_dir='./profile_logs'):
+
+    since = time.time()
+    min_save_epoch = 0
+    
+    # Initialize the profiler manager if profiling is enabled
+    profiler = ProfilerManager(log_dir=profile_log_dir) if enable_profiling else None
+    
+    if use_gpu:
+        model = model.cuda()
+        device = "cuda:0"
+        if criterion is not None:
+            criterion = criterion.cuda()
+    else:
+        device = "cpu"
+
+    epochs = []
+    train_loss_values = []
+    val_loss_values = []
+    time_taken_for_save_iter = time.time()
+    
+    for epoch in range(starting_epoch, final_epoch+1):
+        epoch_start_time = time.time()
+        
+        # Determine if this epoch should have detailed output and profiling
+        should_detail = epoch % print_iter == 0
+        
+        # Start profiling if enabled and this is a detail epoch
+        if enable_profiling and should_detail:
+            profiler.start_profiling_session(epoch)
+        
+        if should_detail:
+            print('Epoch {}/{}'.format(epoch, final_epoch), flush=True)
+            print('-' * 10, flush=True)
+        
+        # Each epoch has a training and validation phase
+        running_num_samples = 0
+        phases = ['train', 'val'] if should_detail else ['train']
+        running_loss = {'train': 0.0, 'val': 0.0}
+
+        for phase in phases:
+            phase_start_time = time.time()
+            
+            # Set model mode based on phase
+            model.train() if phase == 'train' else model.eval()
+
+            for i, batch_data in enumerate(datasets[phase]):
+                # Process batch with optional profiling
+                with ConditionalRecordFunction(f"{phase}_batch", enable=enable_profiling and should_detail):
+                    batch_start_time = time.time()
+                    
+                    optimizer.zero_grad()
+                    batch_data = batch_data.to(device)
+                    
+                    # Forward pass
+                    with ConditionalRecordFunction("forward", enable=enable_profiling and should_detail):
+                        action_scores, action_object_scores = model(batch_data, beam_search=False)
+                    
+                    # Loss calculation
+                    with ConditionalRecordFunction("loss_calculation", enable=enable_profiling and should_detail):
+                        tgt_action_scores = batch_data['target_action_scores'].x
+                        tgt_action_object_scores = batch_data['target_action_object_scores'].x
+                        tgt_params = batch_data['target_n_parameters'].x
+                        
+                        loss = 0.
+                        curr_param_counter = 0
+                        required_action_object_scores = []
+                        
+                        for idx, n_params in enumerate(tgt_params):
+                            n_params = int(n_params)
+                            for correct_index in range(curr_param_counter, curr_param_counter+n_params):
+                                required_action_object_scores.append(correct_index)
+                            curr_param_counter += model.max_number_action_parameters
+                        
+                        required_action_object_scores = torch.tensor(required_action_object_scores)
+                        target_indices = tgt_action_scores.argmax(dim=1)
+                        target_indices_2 = tgt_action_object_scores[required_action_object_scores].argmax(dim=1)
+                        tgt_action_scores = tgt_action_scores.squeeze(0)
+
+                        m = torch.nn.ConstantPad2d((0, tgt_action_object_scores.shape[1]-action_object_scores.shape[1], 0, 0), 0)
+                        action_object_scores = m(action_object_scores)
+                        
+                        loss += criterion(action_scores, target_indices)
+                        loss += criterion(action_object_scores[required_action_object_scores], target_indices_2)
+
+                    # Backward pass for training
+                    if phase == 'train':
+                        with ConditionalRecordFunction("backward", enable=enable_profiling and should_detail):
+                            backward_time = time.time()
+                            loss.backward()
+                            optimizer.step()
+                            backward_duration = time.time() - backward_time
+                            
+                            if should_detail and i == 0:
+                                print(f"Backward pass time: {backward_duration:.4f}s")
+
+                    # Statistics
+                    running_loss[phase] += loss.item()
+                    running_num_samples += 1
+                    
+                    # Print batch timing info for first few batches in detail epochs
+                    if should_detail and i < 3:
+                        batch_duration = time.time() - batch_start_time
+                        print(f"  {phase} batch {i} time: {batch_duration:.4f}s")
+                
+                # Step the profiler after each batch if active
+                if enable_profiling and should_detail:
+                    profiler.step()
+            
+            # Print phase timing at detail epochs
+            if should_detail:
+                phase_duration = time.time() - phase_start_time
+                print(f"  {phase} phase completed in {phase_duration:.2f}s")
+            
+            # Log to wandb if enabled
+            if log_wandb:
+                wandb.log({f"loss_{phase}": running_loss[phase]})
+
+        # Print epoch summary at detail epochs
+        if should_detail:
+            epoch_duration = time.time() - epoch_start_time
+            print(f"Epoch {epoch} completed in {epoch_duration:.2f}s")
+            print(f"Running loss: {running_loss}", flush=True)
+            
+            epochs.append(epoch)
+            train_loss_values.append(running_loss['train'])
+            val_loss_values.append(running_loss['val'])
+            
+            # End profiling session if active
+            if enable_profiling:
+                profiler.end_profiling_session()
+    
+        # Save checkpoint at save_iter intervals
+        if epoch % save_iter == 0 and epoch >= min_save_epoch:
+            checkpoint_start_time = time.time()
+            chpkt_manager.save_checkpoint(
+                model=model,
+                optimizer=optimizer,
+                epoch=epoch,
+                train_env_name=train_env_name,
+                seed=42,
+                losses={'train': running_loss["train"], 'val': running_loss["val"]},
+            )
+            checkpoint_duration = time.time() - checkpoint_start_time
+            
+            if should_detail:
+                print(f"Checkpoint saved in {checkpoint_duration:.2f}s")
+                print(f"Time taken for {save_iter} epochs: {time.time() - time_taken_for_save_iter:.2f}s")
+            
+            time_taken_for_save_iter = time.time()
+
+    # Training complete
+    time_elapsed = time.time() - since
+    print('Training complete in {:.0f}m {:.0f}s'.format(
+        time_elapsed // 60, time_elapsed % 60), flush=True)
+    
+    # Ensure profiler is stopped if active
+    if enable_profiling and profiler and profiler.is_profiling:
+        profiler.end_profiling_session()
+        
+    return model
 
 def train_model_graphnetwork_ltp_batch(model, datasets,
                                  #dataloaders,

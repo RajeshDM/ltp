@@ -88,8 +88,8 @@ class GlobalModel(nn.Module):
         edges_agg =self.aggr(edge_attr,index=edge_index) 
 
         u = torch.cat([u, nodes_agg,edges_agg],dim=1)
-        u = self.global_mlp_2(u)
-        return u
+        #u = self.global_mlp_2(u)
+        return self.global_mlp_2(u)
 
 class NodeUpdateAttn(nn.Module):
     def __init__(self, in_channels, n_hidden, out_channels,n_heads=1):
@@ -590,17 +590,6 @@ class GNN_GRU(nn.Module):
     def compute_object_scores(self, x,n_params, n_objects , ao_scores,
                               hidden_state, object_idxs, parameter_number):
         number_objects_array = []
-        #ic (object_idxs)
-        '''
-        if len(graph['n_object'].shape)== 0:
-            elem_to_add = (0, graph['n_object'])
-            #ic (graph['n_parameters'])
-            for num_params in range(int(graph['n_parameters'])):
-                number_objects_array.append(elem_to_add)
-        else :
-            #ic (graph['n_parameters'])
-        '''
-        #for i,num_objs in enumerate(graph['n_object']):
         for i,num_objs in enumerate(n_objects):
             if len(number_objects_array) == 0 :
                 elem_to_add = (0,num_objs)
@@ -610,21 +599,16 @@ class GNN_GRU(nn.Module):
             for num_params in range(int(n_params[i])):
                 number_objects_array.append(elem_to_add)
             #number_objects_array.append(number_objects_array[-1] + num_params)
-        #ic (graph['nodes'].size)
-        #ic (number_objects_array)
-        #exit()
-        #ic (hidden_state.shape)
-
-        new_hidden_state = [None]*hidden_state.shape[0]
-
         #new_hidden_state = torch.repeat_interleave(hidden_state[0], new_tensor, dim=0)
         #ic (new_tensor)
         #mask_matrix = torch.zeros(2, ao_scores.shape[0], ao_scores.shape[1]).cuda()
-        mask_matrix = torch.zeros(2, ao_scores.shape[0], ao_scores.shape[1],device=self.device)
 
-        for j in range(0,hidden_state.shape[0]):
-            new_hidden_state[j] = torch.repeat_interleave(hidden_state[j],
-                                                           n_params, dim=0)
+        #new_hidden_state = [None]*hidden_state.shape[0]
+        #for j in range(0,hidden_state.shape[0]):
+        #    new_hidden_state[j] = torch.repeat_interleave(hidden_state[j],
+        #                                                   n_params, dim=0)
+        last_hidden = hidden_state[-1]
+        new_hidden = torch.repeat_interleave(last_hidden, n_params, dim=0)
         #ic(len(new_hidden_state))
         #ic(new_hidden_state[0].shape)
         #ic(new_hidden_state[-1].shape)
@@ -633,37 +617,33 @@ class GNN_GRU(nn.Module):
         #ic (graph['action_object_scores'])
         #k = [torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
         #              new_hidden_state[i]) for i,elem in enumerate(number_objects_array)]
-        current_parameter_indexes = []
+        '''
+        mask_matrix = torch.zeros(2, ao_scores.shape[0], ao_scores.shape[1],device=self.device)
+        current_parameter_indexes_old = []
         action_object_score_counter = 0
-        '''
-        for i in graph['n_parameters']:
-            #ic (i,action_object_score_counter)
-            #ic (parameter_number)
-            if parameter_number == 0:
-                current_parameter_indexes.append(int(action_object_score_counter))
-            elif parameter_number == 1 :
-                if i == 2 :
-                    current_parameter_indexes.append(int(action_object_score_counter)+i-1)
-            action_object_score_counter += i
-        '''
-        #ic (graph['action_object_scores'])
         for i in n_params:
             #current_parameter_indexes.append(torch.tensor(action_object_score_counter+parameter_number))
-            current_parameter_indexes.append(action_object_score_counter+parameter_number)
+            current_parameter_indexes_old.append(action_object_score_counter+parameter_number)
             action_object_score_counter += i.item()
-        #ic (current_parameter_indexes)
-        #exit()
 
-        #mask_matrix[0, current_parameter_indexes, :] = torch.ones(mask_matrix[0,current_parameter_indexes,:].shape).cuda()
-        #mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :] = torch.ones(mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :].shape).cuda()
-        mask_matrix[0, current_parameter_indexes, :] = torch.ones(mask_matrix[0,current_parameter_indexes,:].shape,device=self.device)
-        mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :] = torch.ones(mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :].shape,device=self.device)
+        mask_matrix[0, current_parameter_indexes_old, :] = torch.ones(mask_matrix[0,current_parameter_indexes_old,:].shape,device=self.device)
+        mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes_old)), :] = torch.ones(mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes_old)), :].shape,device=self.device)
+        '''
 
-        '''
-        else :
-            mask_matrix[0, current_parameter_indexes, :] = 1
-            mask_matrix[1, list(set([i for i in range(len(graph['action_object_scores']))]) - set(current_parameter_indexes)), :] = 1
-        '''
+        mask_matrix = torch.zeros(2, ao_scores.shape[0], ao_scores.shape[1],device=self.device)
+        # Step 1: Compute current_parameter_indexes directly as a tensor
+        cumulative_sum = torch.cumsum(n_params, dim=0)
+        current_parameter_indexes = (cumulative_sum - n_params + parameter_number).to(torch.long)
+
+        # Step 2: Create a mask for the first row of mask_matrix
+        mask_matrix[0, current_parameter_indexes, :] = 1
+
+        # Step 3: Create a mask for the second row of mask_matrix
+        # Create a boolean mask for complement indices
+        complement_mask = torch.ones(ao_scores.shape[0], dtype=torch.bool, device=self.device)
+        complement_mask[current_parameter_indexes] = False
+        mask_matrix[1, complement_mask, :] = 1
+
         #ic (graph['n_object'])
         #ic ([torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
         #                  new_hidden_state[i]) for i,elem in enumerate(number_objects_array)])
@@ -679,14 +659,17 @@ class GNN_GRU(nn.Module):
         #                                     new_hidden_state[i]) for i,elem in enumerate(number_objects_array)]
         #updated_action_scores =[torch.matmul(x[object_idxs[int(elem[0]):int(elem[1])]],
         #                                     new_hidden_state[-1][i]) for i,elem in enumerate(number_objects_array)]
-        updated_action_scores =[torch.matmul(x[object_idxs[int(elem[0]):int(elem[1])]],
-                                             new_hidden_state[-1][i]) for i,elem in enumerate(number_objects_array)]
+        #updated_action_scores =[torch.matmul(x[object_idxs[int(elem[0]):int(elem[1])]],
+        #                                     new_hidden_state[-1][i]) for i,elem in enumerate(number_objects_array)]
+        updated_action_scores = [torch.matmul(x[object_idxs[int(elem[0]):int(elem[1])]], 
+                                              new_hidden[i]) for i, elem in enumerate(number_objects_array)]
+        #updated_action_scores = torch.bmm(selected_x, new_hidden.unsqueeze(-1)).squeeze(-1)
+
         #updated_action_scores  = [torch.stack([torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],new_hidden_state[j][i]) for j in range(0,hidden_state.shape[0])],dim=0).sum(dim=0) for i,elem in enumerate(number_objects_array)]
         #ic (updated_action_scores)
 
         #max_length = len(graph['action_object_scores'][0])
         #ic (graph['action_object_scores'])
-
         
         max_length = ao_scores.shape[1]
         #ic (max_length)
@@ -726,17 +709,6 @@ class GNN_GRU(nn.Module):
     def compute_object_scores_ltp(self, x,n_params, n_objects , ao_scores,
                               hidden_state, object_idxs, parameter_number):
         number_objects_array = []
-        #ic (object_idxs)
-        '''
-        if len(graph['n_object'].shape)== 0:
-            elem_to_add = (0, graph['n_object'])
-            #ic (graph['n_parameters'])
-            for num_params in range(int(graph['n_parameters'])):
-                number_objects_array.append(elem_to_add)
-        else :
-            #ic (graph['n_parameters'])
-        '''
-        #for i,num_objs in enumerate(graph['n_object']):
         for i,num_objs in enumerate(n_objects):
             if len(number_objects_array) == 0 :
                 elem_to_add = (0,num_objs)
@@ -751,12 +723,12 @@ class GNN_GRU(nn.Module):
         #exit()
         #ic (hidden_state.shape)
 
-        new_hidden_state = [None]*hidden_state.shape[0]
 
         #new_hidden_state = torch.repeat_interleave(hidden_state[0], new_tensor, dim=0)
         #ic (new_tensor)
         #mask_matrix = torch.zeros(2, ao_scores.shape[0], ao_scores.shape[1]).cuda()
         mask_matrix = torch.zeros(2, ao_scores.shape[0], ao_scores.shape[1],device=self.device)
+        new_hidden_state = [None]*hidden_state.shape[0]
 
         for j in range(0,hidden_state.shape[0]):
             new_hidden_state[j] = torch.repeat_interleave(hidden_state[j],
@@ -847,52 +819,3 @@ class GNN_GRU(nn.Module):
         #new_ao_scores = torch.mul(mask_matrix[0], variable_action_object_scores) + torch.mul(mask_matrix[1], ao_scores)
 
         return torch.mul(mask_matrix[0],variable_action_object_scores)
-
-
-
-class GraphNetworkLtp(nn.Module):
-    def __init__(self, n_features, n_edge_features,n_global_features, n_hidden, dropout=0.0,gnn_rounds=3):
-        super(GraphNetworkLtp, self).__init__()
-
-        self.meta_layers = []
-
-        self.meta_layer_1 = self.build_meta_layer(
-            n_features, n_edge_features, n_global_features,n_hidden, n_hidden, dropout=dropout
-        )
-        self.meta_layers.append(self.meta_layer_1)
-
-        for i in range(1,gnn_rounds):
-            self.meta_layers.append(self.build_meta_layer(
-                n_hidden, n_hidden, n_hidden,n_hidden, n_hidden, dropout=dropout
-            )
-        )
-        self.meta_layers = nn.ModuleList(self.meta_layers)
-        self.gnn_rounds = gnn_rounds
-
-    def build_meta_layer(
-        self, n_features, n_edge_features,n_global_features, n_hidden, n_targets, dropout=0.0
-    ):
-        return MetaLayer(
-            edge_model=EdgeModelLtp(
-                n_features, n_edge_features, n_hidden, dropout=dropout
-            ),
-            node_model=NodeModelLtp(
-                n_features, n_edge_features, n_hidden, n_targets, dropout=dropout
-            ),
-            global_model=GlobalModel(
-                n_global_features, n_hidden, dropout=dropout
-            ),
-        )
-
-    #def forward(self, x, edge_idx, edge_attr, u=None, batch=None):
-    def forward(self, data, u=None, batch=None):
-        x = data.x
-        edge_idx = data.edge_index
-        edge_attr = data.edge_attr
-        for idx in range (self.gnn_rounds):
-            x, edge_attr, u = self.meta_layers[idx](x, edge_idx, edge_attr,u)
-        #ic (x.shape)
-        #ic (x.shape)
-        #ic (edge_attr.shape)
-        #ic (u.shape)
-        return x,edge_attr,u

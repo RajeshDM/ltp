@@ -55,7 +55,6 @@ from ploi.modelutils import (
     GraphNetwork,
 )
 from ploi.modelutils_ltp import (
-    GraphNetworkLtp,
     GNN_GRU,
 )
 from ploi.planning import IncrementalPlanner
@@ -67,6 +66,7 @@ from ploi.traineval import (
     test_planner,
     train_model_graphnetwork,
     train_model_graphnetwork_ltp_batch,
+    train_model_graphnetwork_ltp_batch_profiling,
     train_model_hierarchical,
 )
 from ploi.baselines.exp_1.utils import load_checkpoint 
@@ -703,6 +703,7 @@ if __name__ == "__main__":
             # Train model
             #model_dict = train_model_graphnetwork_ltp_batch(_model, 
             train_model_graphnetwork_ltp_batch(_model, 
+            #train_model_graphnetwork_ltp_batch_profiling(_model, 
                                     datasets,
                                     #dataloaders,
                                     criterion=criterion, optimizer=optimizer,
@@ -714,6 +715,7 @@ if __name__ == "__main__":
                                     message_string=message_string,
                                     log_wandb=args.wandb,
                                     chpkt_manager=manager,)
+                                    #enable_profiling=False)
             ic (args.attention_dropout)
             ic (args.dropout)
             ic (args.weight_decay)

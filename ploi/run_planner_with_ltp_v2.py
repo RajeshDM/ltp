@@ -47,7 +47,6 @@ from ploi.baselines.exp_2.train import _plan_exp_2 as exp_2_learned_planner
 from ploi.baselines.exp_3.plan import _plan_exp_3 as exp_3_learned_planner
 import pymimir as mm
 
-# New class to add
 class StateMonitor:
     def __init__(self):
         self.visited_states = set()
