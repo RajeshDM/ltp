@@ -9,6 +9,7 @@ pip install protobuf==3.20.0
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
 pip install torch-geometric==2.6.1
 pip install torch-scatter torch-sparse torch-cluster -f https://data.pyg.org/whl/torch-2.6.0+cu126.html
+pip install tensorboard
 pip install torchviz==0.0.2
 pip install pytorch-lightning==2.0.1
 pip install wandb

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-heads=(8)
+heads=(4)
 lrs=(0.0005)
 decays=(0.000)
-attn_drops=(0)
+attn_drops=(0 0.05)
 other_drops=(0)
 expid="solitaire"
 domain="klondike_solitaire"
@@ -45,6 +45,9 @@ do
       done
    done
 done
+if [ "$mode" = "test" ] ; then
+  exit 1
+fi
 #'
 mode="test"
 wandb="False"

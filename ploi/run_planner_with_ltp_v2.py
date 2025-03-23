@@ -206,7 +206,7 @@ def convert_graph_to_model_input_v1(g_inp, device):
     return nfeat, edge_indices, efeat, u, a_scores, ao_scores
 
 def convert_graph_to_model_input_v2(g_inp, device):
-    hetero_graphs = graph_dataset_to_pyg_dataset([g_inp])
+    hetero_graphs = graph_dataset_to_pyg_dataset([g_inp], batch_wise=False)
     hetero_dataset = pyg_dataloader(hetero_graphs, batch_size=1)
     return next(iter(hetero_dataset)).to(device) 
 
