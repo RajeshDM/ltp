@@ -631,7 +631,7 @@ class GNN_GRU(nn.Module):
         return required_correct_object_features
 
 
-    def get_best_object_embeddings_ltp_old(self,x,all_objects,n_node, num_graphs):
+    def get_best_object_embeddings_ltp(self,x,all_objects,n_node, num_graphs):
         current_number_nodes = 0
         #required_correct_object_features = torch.zeros((num_graphs, 1, self.representation_size),
         #                                               dtype=torch.float32).cuda()

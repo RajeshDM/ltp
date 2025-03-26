@@ -714,8 +714,9 @@ if __name__ == "__main__":
                                     train_env_name=train_env_name,seed=args.seed,
                                     message_string=message_string,
                                     log_wandb=args.wandb,
-                                    chpkt_manager=manager,)
-                                    #enable_profiling=False)
+                                    chpkt_manager=manager,
+                                    enable_profiling=False,
+                                    )
             ic (args.attention_dropout)
             ic (args.dropout)
             ic (args.weight_decay)
