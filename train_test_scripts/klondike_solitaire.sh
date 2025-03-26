@@ -1,6 +1,6 @@
 #!/bin/bash
 
-heads=(4)
+heads=(4 8)
 lrs=(0.0005)
 decays=(0.000)
 attn_drops=(0 0.05)
@@ -10,7 +10,7 @@ domain="klondike_solitaire"
 gnn_rounds=(9)
 epochs=750
 num_test_problems=99
-num_train_problems=150
+num_train_problems=100
 mode="train_test"
 #mode="test"
 wandb="True"
@@ -27,7 +27,7 @@ do
       for attn_drop in ${attn_drops[@]};
       do
          # Skip when head=1 and attn_drop=0.1
-        # if [ "$head" = "1" ] && [ "$attn_drop" = "0.2" ]; then
+        #if [ "$head" = "8" ] && [ "$attn_drop" = "0.05" ]; then
          #   continue
          #fi
          for other_drop in ${other_drops[@]}; 

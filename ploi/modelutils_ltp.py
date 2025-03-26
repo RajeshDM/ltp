@@ -329,22 +329,22 @@ class GNN_GRU(nn.Module):
 
     #def forward(self,x,edge_idx,edge_attr,u,a_scores, ao_scores, batch=None):
     def forward(self,data, beam_search = False):
-        start_time = time.time()
+        #start_time = time.time()
 
         graph_info = self.extract_graph_info_ltp(data)
         action_idxs, object_idxs, a_scores, ao_scores, n_node, n_parameters, n_actions, n_objects,number_graphs = graph_info 
         #h0 = torch.zeros(self.num_decoder_layers,number_graphs,self.representation_size).cuda()
         h0 = torch.zeros(self.num_decoder_layers,number_graphs,self.representation_size,device=self.device)
 
-        encoder_start_time = time.time()
+        #encoder_start_time = time.time()
         x,edge_attr, u = self.encoder(data)
-        encoder_time = time.time() - encoder_start_time
+        #encoder_time = time.time() - encoder_start_time
 
-        decoder_time = time.time()
+        #decoder_time = time.time()
         u = u.unsqueeze(1)
         _,hidden_state = self.decoder(u,h0)
         x = self.action_score_decoder(x)
-        decoder_total_time = time.time()-decoder_time
+        #decoder_total_time = time.time()-decoder_time
 
         #self.training_mode = False
         self.training_mode = self.training
@@ -352,7 +352,8 @@ class GNN_GRU(nn.Module):
         #if self.training_mode or number_graphs > 1 : 
         if beam_search == False :
             return self.non_beam_decode(x,hidden_state,a_scores,ao_scores,n_node,
-                                        n_parameters,n_objects,object_idxs,n_actions,action_idxs)
+                                        n_parameters,n_objects,object_idxs,n_actions,
+                                        action_idxs,number_graphs)
     
         else :
             return self.beam_search_v2(x,hidden_state,number_graphs=number_graphs,
@@ -360,23 +361,28 @@ class GNN_GRU(nn.Module):
                          n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
                          action_idxs=action_idxs)
 
-    def non_beam_decode(self,x,hidden_state,a_scores,ao_scores,n_node,n_parameters,n_objects,object_idxs,n_actions,action_idxs):
+    def non_beam_decode(self,x,hidden_state,a_scores,ao_scores,n_node,
+                        n_parameters,n_objects,object_idxs,n_actions,
+                        action_idxs,number_graphs):
         all_actions_batches,_ = self.get_best_action_scores_locations(a_scores,self.max_num_actions)
         all_objects_batches,_ = self.get_best_action_object_scores_locations(ao_scores,n_node,self.max_num_objects)
         
         #if self.training_mode :
-        all_actions = [elem[0] for elem in all_actions_batches]
-        all_objects = [elem[0] for elem in all_objects_batches]
+        #all_actions = [elem[0] for elem in all_actions_batches]
+        #all_objects = [elem[0] for elem in all_objects_batches]
+        all_actions = all_actions_batches[:, 0]
+        all_objects = all_objects_batches[:, 0]
 
-        action_scores_time = time.time()
-        a_scores_new = self.compute_action_scores(x,n_actions,hidden_state,action_idxs)
-        action_scores_total_time = time.time() - action_scores_time
+        #action_scores_time = time.time()
+        #a_scores_new = self.compute_action_scores(x,n_actions,hidden_state,action_idxs)
+        a_scores_new = self.compute_action_scores_vectorized(x,n_actions,hidden_state,action_idxs)
+        #action_scores_total_time = time.time() - action_scores_time
 
-        computing_best_action_embedding = time.time()
+        #computing_best_action_embedding = time.time()
         decoder_input = self.get_best_action_embeddings(x,all_actions,n_node,domain_number_actions=self.number_actions)
-        computing_best_action_embedding_time = time.time() - computing_best_action_embedding
+        #computing_best_action_embedding_time = time.time() - computing_best_action_embedding
 
-        decoder_time = time.time()
+        #decoder_time = time.time()
         #ao_scores_new = torch.zeros(ao_scores.shape).cuda()
         ao_scores_new = torch.zeros(ao_scores.shape,device=self.device)
         action_object_scores_0 = []
@@ -385,18 +391,18 @@ class GNN_GRU(nn.Module):
             _, hidden_state = self.decoder(decoder_input, hidden_state) 
             ao_scores_new += self.compute_object_scores(x, n_parameters,n_objects, ao_scores,hidden_state,
                                                        object_idxs,i)
-            computing_best_object_embedding = time.time()
+            #computing_best_object_embedding = time.time()
             if i == self.max_number_action_parameters-1 :
                 break
-            decoder_input = self.get_best_object_embeddings(x, all_objects, all_actions,parameter_number=i,
-                                                            n_params=n_parameters,
-                                                            n_node=n_node)    
-            computing_best_object_embedding_time = time.time() - computing_best_object_embedding
-        decoder_total_time_2 = time.time()-decoder_time
-        #return a_scores, ao_scores
+            #decoder_input = self.get_best_object_embeddings(x, all_objects, all_actions,parameter_number=i,
+            #                                                n_params=n_parameters,
+            #                                                n_node=n_node)    
+            decoder_input = self.get_best_object_embeddings_ltp(x, all_objects, 
+                                                            n_node,number_graphs)    
+            #computing_best_object_embedding_time = time.time() - computing_best_object_embedding
         return a_scores_new, ao_scores_new
 
-        end_time = time.time()
+        #end_time = time.time()
         #print ("encoder time : ", encoder_time)
         #print ("function time : ", end_time-start_time)
         '''
@@ -483,7 +489,7 @@ class GNN_GRU(nn.Module):
         results = sorted(zip(finished_scores, finished_beams), reverse=True)
         return results
 
-    def get_best_action_scores_locations(self,a_scores,k):
+    def get_best_action_scores_locations_old(self,a_scores,k):
         all_actions_batches = []
         all_actions_scores = []
         for i in range(a_scores.shape[0]):
@@ -493,7 +499,17 @@ class GNN_GRU(nn.Module):
 
         return all_actions_batches,all_actions_scores
 
-    def get_best_action_object_scores_locations(self,ao_scores,n_node,k):
+    def get_best_action_scores_locations(self, a_scores, k):
+        """
+        Get top-k action scores and their indices using tensor operations.
+        """
+        # Apply topk across all batches at once
+        # Returns (values, indices) both of shape [batch_size, k]
+        values, indices = torch.topk(a_scores, k, dim=1)
+        
+        return indices, values
+
+    def get_best_action_object_scores_locations_old(self,ao_scores,n_node,k):
         all_objects_batches = []
         all_objects_scores = []
 
@@ -506,8 +522,51 @@ class GNN_GRU(nn.Module):
 
         return all_objects_batches, all_objects_scores
 
+    def get_best_action_object_scores_locations(self, ao_scores, n_node, k):
+        """
+        Get top-k action-object scores and their indices using tensor operations.
+        Args:
+            ao_scores: Tensor of shape [batch_size * max_params, max_nodes]
+            n_node: Tensor containing total number of nodes per graph (including all node types)
+            k: Number of top objects to select
+            
+        Returns:
+            Tuple of (indices_tensor, values_tensor)
+        """
+        batch_size = ao_scores.shape[0]
+        
+        # Create a mask to ignore scores beyond valid nodes for each graph
+        max_nodes = ao_scores.shape[1]
+        
+        # Convert n_node to tensor if it's not already
+        if not isinstance(n_node, torch.Tensor):
+            n_node = torch.tensor(n_node, device=ao_scores.device)
+        
+        # Calculate which graph each row in ao_scores belongs to
+        graph_indices = torch.div(torch.arange(batch_size, device=ao_scores.device), 
+                                self.max_number_action_parameters, rounding_mode='floor').long()
+        
+        # Get number of nodes for each row in ao_scores
+        # n_node represents total nodes in the graph (including object, predicate, action nodes)
+        row_n_nodes = n_node[graph_indices]
+        
+        # Create range tensor for masking
+        node_indices = torch.arange(max_nodes, device=ao_scores.device).expand(batch_size, -1)
+        
+        # Create mask where valid nodes are True
+        # All node types are valid targets, as n_node includes all node types
+        mask = node_indices < row_n_nodes.unsqueeze(1)
+        
+        # Apply mask to scores (set invalid scores to -inf)
+        masked_scores = torch.where(mask, ao_scores, torch.tensor(float('-inf'), device=ao_scores.device))
+        
+        # Get top-k values and indices
+        values, indices = torch.topk(masked_scores, k, dim=1)
+        
+        return indices, values
+
     def extract_graph_info_ltp(self,data):
-        torch_time = time.time()
+        #torch_time = time.time()
         action_idxs = torch.where(data['node'].x[:,0] == 1)[0]
         object_idxs = torch.where(data['node'].x[:,1] == 1)[0]
 
@@ -518,10 +577,10 @@ class GNN_GRU(nn.Module):
         n_actions = data['n_action'].x
         n_objects = data['n_object'].x
         number_graphs = data['n_node'].x.shape[0]
-        torch_where_time = time.time() - torch_time
+        #torch_where_time = time.time() - torch_time
         return action_idxs, object_idxs, a_scores, ao_scores, n_node, n_parameters, n_actions, n_objects,number_graphs
 
-    def get_best_action_embeddings(self,x,all_actions,n_node,domain_number_actions):
+    def get_best_action_embeddings_old(self,x,all_actions,n_node,domain_number_actions):
         #required_correct_features = torch.zeros((len(all_actions),1,self.representation_size),dtype=torch.float32).cuda()
         required_correct_features = torch.zeros((len(all_actions),1,self.representation_size),dtype=torch.float32,device=self.device)
         current_number_nodes = 0
@@ -531,17 +590,31 @@ class GNN_GRU(nn.Module):
             current_number_nodes += n_node[a]
         return required_correct_features#,number_action_parameters
 
+    
+    def get_best_action_embeddings(self,x,all_actions,n_node,domain_number_actions):
+        # 1. Calculate the starting index of each graph in the flattened tensor `x`
+        offsets = torch.zeros_like(n_node) # Shape [num_graphs]
+        # Calculate cumulative sum of nodes *before* the current graph
+        offsets[1:] = torch.cumsum(n_node[:-1], dim=0)
+
+        action_block_starts_relative = n_node - domain_number_actions
+
+        # 3. Calculate the absolute index in `x` for the selected action in each graph
+        absolute_indices = offsets + action_block_starts_relative + all_actions
+
+        # 4. Gather the features using efficient indexing
+        selected_features = torch.index_select(x, dim=0, index=absolute_indices)
+
+        # 5. Reshape to match the original output format [num_graphs, 1, representation_size]
+        output_features = selected_features.unsqueeze(1)
+
+        return output_features
+
     def get_best_object_embeddings(self,x,all_objects,all_actions,parameter_number,n_params,n_node):
         current_number_nodes = 0
         #objects_counter = 0
         objects_counter = parameter_number
         feature_captured_object_counter = 0
-        #ic (all_objects)
-        #ic (parameter_number)
-        #ic (graph['n_parameters'])
-
-        #required_correct_object_features = torch.zeros((len(all_actions), 1, self.representation_size),
-        #                                               dtype=torch.float32).cuda()
         required_correct_object_features = torch.zeros((len(all_actions), 1, self.representation_size),
                                                        dtype=torch.float32,device=self.device)
         for a, action in enumerate(all_actions):
@@ -557,7 +630,8 @@ class GNN_GRU(nn.Module):
         #ic (required_correct_object_features)
         return required_correct_object_features
 
-    def get_best_object_embeddings_ltp(self,x,all_objects,n_node, num_graphs):
+
+    def get_best_object_embeddings_ltp_old(self,x,all_objects,n_node, num_graphs):
         current_number_nodes = 0
         #required_correct_object_features = torch.zeros((num_graphs, 1, self.representation_size),
         #                                               dtype=torch.float32).cuda()
@@ -586,6 +660,75 @@ class GNN_GRU(nn.Module):
 
         return torch.stack([torch.matmul(x[action_idxs[int(number_actions_array[i]):int(number_actions_array[i + 1])]],hidden_state[-1,i]) for i in range(len(number_actions_array)-1)])
 
+    def compute_action_scores_vectorized(self, x, n_actions, hidden_state, action_idxs):
+        """
+        Completely vectorized implementation to score all actions for each graph.
+
+        Args:
+            x (Tensor): Features tensor of shape [num_total_nodes, feature_dim]
+            n_actions (Tensor): Number of actions per graph, tensor of shape [num_graphs]
+            hidden_state (Tensor): Hidden state tensor of shape [seq_len, num_graphs, hidden_dim]
+            action_idxs (Tensor): Action indices tensor of shape [num_total_actions]
+
+        Returns:
+            Tensor: Tensor of action scores, shape [num_graphs, max_actions], padded with -inf.
+        """
+        # Ensure inputs are tensors on the correct device
+        device = x.device # Use device from input tensor x
+
+        num_graphs = hidden_state.size(1) # Get num_graphs from hidden_state dim 1
+        total_actions = action_idxs.size(0)
+
+        # --- Calculation Steps ---
+
+        # 1. Get relevant hidden state (last timestep)
+        relevant_hidden = hidden_state[-1]  # Shape: [num_graphs, hidden_dim]
+
+        # 2. Get all action features
+        action_features = x[action_idxs]  # Shape: [total_actions, feature_dim]
+
+        # 3. Create graph indices directly using repeat_interleave
+        #    This correctly maps each action in the flat list to its graph index.
+        graph_indices = torch.arange(num_graphs, device=device).repeat_interleave(n_actions)
+
+        # 4. Get the corresponding hidden state for each action's graph
+        #    Shape: [total_actions, hidden_dim]
+        hidden_for_actions = relevant_hidden[graph_indices]
+
+        # 5. Compute dot product between action features and their corresponding hidden states
+        #    Shape: [total_actions]
+        action_scores_flat = torch.sum(action_features * hidden_for_actions, dim=1)
+
+        # 6. Calculate local indices (0 to n_actions[g]-1 for each graph g)
+        #    Create cumulative sum of actions *excluding* the current graph's count
+        #    to find the starting index of each graph's actions.
+        cum_actions_start = torch.cat([
+            torch.zeros(1, device=device, dtype=torch.long),
+            torch.cumsum(n_actions[:-1], dim=0, dtype=torch.long) # Exclude last element for start indices
+        ])
+        # The starting index for each action's graph block
+        graph_start_indices = cum_actions_start[graph_indices]
+        # Create a global range for actions
+        action_range = torch.arange(total_actions, device=device)
+        # Subtract the start index to get the 0-based index within the graph
+        local_indices = action_range - graph_start_indices
+
+        # 7. Prepare output tensor
+        #    Find max number of actions for padding dimension. Handle case where n_actions is empty.
+        max_actions = torch.max(n_actions).item() if num_graphs > 0 and n_actions.numel() > 0 else 0
+        # Initialize with -inf for proper padding / softmax compatibility
+        action_scores = torch.full((num_graphs, max_actions), float('-inf'), device=device)
+
+        # 8. Use scatter or index_put_ to place scores in the correct positions
+        #    Create the 2D indices for index_put_
+        #    row indices are graph_indices, column indices are local_indices
+        indices_tuple = (graph_indices, local_indices)
+
+        # Place the computed scores into the output tensor
+        action_scores.index_put_(indices_tuple, action_scores_flat)
+
+        return action_scores
+
     #def compute_object_scores(self,graph, hidden_state,object_idxs,parameter_number):
     def compute_object_scores(self, x,n_params, n_objects , ao_scores,
                               hidden_state, object_idxs, parameter_number):
@@ -611,12 +754,6 @@ class GNN_GRU(nn.Module):
         new_hidden = torch.repeat_interleave(last_hidden, n_params, dim=0)
         #ic(len(new_hidden_state))
         #ic(new_hidden_state[0].shape)
-        #ic(new_hidden_state[-1].shape)
-        #ic(new_hidden_state[-1][0].shape)
-        #ic(new_hidden_state[-1][0])
-        #ic (graph['action_object_scores'])
-        #k = [torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
-        #              new_hidden_state[i]) for i,elem in enumerate(number_objects_array)]
         '''
         mask_matrix = torch.zeros(2, ao_scores.shape[0], ao_scores.shape[1],device=self.device)
         current_parameter_indexes_old = []
@@ -695,16 +832,6 @@ class GNN_GRU(nn.Module):
 
         return torch.mul(mask_matrix[0],variable_action_object_scores)
         #return torch.mul(mask_matrix[0], variable_action_object_scores) + torch.mul(mask_matrix[1], ao_scores)
-        #ic (replacements['action_object_scores'])
-        #exit()
-        #ic (mask_matrix.requires_grad)
-        #ic (new_tensor.requires_grad)
-        #del mask_matrix
-        #del variable_action_object_scores
-        #del new_tensor
-
-        #return new_ao_scores
-        #return replace(graph,replacements)
 
     def compute_object_scores_ltp(self, x,n_params, n_objects , ao_scores,
                               hidden_state, object_idxs, parameter_number):
@@ -718,11 +845,6 @@ class GNN_GRU(nn.Module):
             for num_params in range(int(n_params[i])):
                 number_objects_array.append(elem_to_add)
             #number_objects_array.append(number_objects_array[-1] + num_params)
-        #ic (graph['nodes'].size)
-        #ic (number_objects_array)
-        #exit()
-        #ic (hidden_state.shape)
-
 
         #new_hidden_state = torch.repeat_interleave(hidden_state[0], new_tensor, dim=0)
         #ic (new_tensor)
@@ -736,11 +858,6 @@ class GNN_GRU(nn.Module):
         #ic(len(new_hidden_state))
         #ic(new_hidden_state[0].shape)
         #ic(new_hidden_state[-1].shape)
-        #ic(new_hidden_state[-1][0].shape)
-        #ic(new_hidden_state[-1][0])
-        #ic (graph['action_object_scores'])
-        #k = [torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
-        #              new_hidden_state[i]) for i,elem in enumerate(number_objects_array)]
         current_parameter_indexes = []
         action_object_score_counter = 0
         '''

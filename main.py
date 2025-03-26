@@ -702,8 +702,8 @@ if __name__ == "__main__":
             #criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
             # Train model
             #model_dict = train_model_graphnetwork_ltp_batch(_model, 
-            train_model_graphnetwork_ltp_batch(_model, 
-            #train_model_graphnetwork_ltp_batch_profiling(_model, 
+            #train_model_graphnetwork_ltp_batch(_model, 
+            train_model_graphnetwork_ltp_batch_profiling(_model, 
                                     datasets,
                                     #dataloaders,
                                     criterion=criterion, optimizer=optimizer,
