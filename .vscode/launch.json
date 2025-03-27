@@ -64,8 +64,8 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args" :[
-                //"--method", "ltp",
-                "--method", "ltp_no_cd",
+                "--method", "ltp",
+                //"--method", "ltp_no_cd",
                 "--domain", "manyblocks_ipcc_big",
                 "--all-problems",
                 "--lr", "0.0005",

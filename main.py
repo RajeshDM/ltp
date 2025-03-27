@@ -99,7 +99,8 @@ def set_seed(args):
         #random.seed(seed)
         torch.cuda.manual_seed_all(seed)
     else :
-        os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+        pass
+        #os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 def initialize_model(model_class, args, action_space):
     if args.use_gpu:
