@@ -1,7 +1,7 @@
 import os
 import torch
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from collections import OrderedDict
 import heapq
 import hashlib
@@ -26,6 +26,7 @@ class ModelCheckpoint:
     combined_loss: float
     save_path: str
     hyperparameters: Dict
+    #ignore_defaults : Dict[str, Any] = None
 
     def to_dict(self) -> Dict:
         """Convert checkpoint to dictionary for serialization"""
@@ -35,7 +36,8 @@ class ModelCheckpoint:
             'training_loss': self.training_loss,
             'combined_loss': self.combined_loss,
             'save_path': self.save_path,
-            'hyperparameters': self.hyperparameters
+            'hyperparameters': self.hyperparameters,
+            #'ignore_defaults' : self.ignore_defaults
         }
 
     @classmethod
@@ -51,7 +53,8 @@ class ModelManager:
                  max_checkpoints_per_metric: int = 2,
                  hyperparameters: Dict = None,
                  train_env_name: str = None,
-                 seed: int = None):
+                 seed: int = None,
+                 ignore_defaults: Dict[str, Any] = None):
         """
         Initialize the model manager
         
@@ -64,22 +67,53 @@ class ModelManager:
         self.max_checkpoints = max_checkpoints_per_metric
         self.best_models: Dict[str, Dict] = {}  # config_hash -> metric_type -> checkpoints
         self.hyperparameters = hyperparameters
+        self.ignore_defaults = ignore_defaults
         #self.tracking_file = self.base_dir / "model_tracking.json"
-        self.model_dir = self._get_model_dir(train_env_name, seed, self.hyperparameters)
+        self.model_dir = self._get_model_dir(train_env_name, seed )
         self.tracking_file = self.model_dir / "model_tracking.json"
         
         # Load existing tracking data
         self._load_tracking_data()
     
     @staticmethod
-    def get_config_hash(train_env_name: str, seed: int, hyperparameters: Dict) -> str:
+    def get_config_hash_old(train_env_name: str, seed: int, hyperparameters: Dict) -> str:
         """Generate hash for internal tracking"""
         config_str = (f"{train_env_name}_{seed}_" + 
                      '_'.join(f"{k}_{v}" for k, v in sorted(hyperparameters.items()) if k != 'g_node' or k =='g_node' and v == False))
         return hashlib.md5(config_str.encode()).hexdigest()[:10]
-    
+
     @staticmethod
-    def get_readable_folder_name(train_env_name: str, seed: int, hyperparameters: Dict) -> str:
+    def get_config_hash(train_env_name: str, seed: int, hyperparameters: Dict[str, Any], 
+                   ignore_defaults: Dict[str, Any] = None) -> str:
+        """
+        Generate hash for internal tracking
+        
+        Args:
+            train_env_name: Training environment name
+            seed: Random seed
+            hyperparameters: Dictionary of hyperparameters
+            ignore_defaults: Dictionary of param_name: default_value pairs to ignore when at default
+        
+        Returns:
+            Hash string based on config
+        """
+        # Default to empty dict if None
+        ignore_defaults = ignore_defaults or {}
+        
+        # Filter out parameters that are at their default values
+        filtered_params = {
+            k: v for k, v in sorted(hyperparameters.items())
+            if k not in ignore_defaults or v != ignore_defaults[k]
+        }
+        
+        # Generate the config string
+        config_str = (f"{train_env_name}_{seed}_" +
+                    '_'.join(f"{k}_{v}" for k, v in filtered_params.items()))
+        
+        return hashlib.md5(config_str.encode()).hexdigest()[:10]
+
+    @staticmethod
+    def get_readable_folder_name_old(train_env_name: str, seed: int, hyperparameters: Dict) -> str:
         """Generate readable folder name from configuration"""
         # Start with environment and seed
         folder_name = f"{train_env_name}_seed{seed}"
@@ -103,10 +137,56 @@ class ModelManager:
         # Clean up any characters that might cause issues
         folder_name = "".join(c if c.isalnum() or c in "_-" else "_" for c in folder_name)
         return folder_name
+
+    @staticmethod
+    def get_readable_folder_name(train_env_name: str, seed: int, hyperparameters: Dict[str, Any],
+                            ignore_defaults: Dict[str, Any] = None) -> str:
+        """
+        Generate readable folder name from configuration
+        
+        Args:
+            train_env_name: Training environment name
+            seed: Random seed
+            hyperparameters: Dictionary of hyperparameters
+            ignore_defaults: Dictionary of param_name: default_value pairs to ignore when at default
+        
+        Returns:
+            Formatted folder name
+        """
+        # Default to empty dict if None
+        ignore_defaults = ignore_defaults or {}
+        
+        # Start with environment and seed
+        folder_name = f"{train_env_name}_seed{seed}"
+        
+        # Add hyperparameters, skipping those at default values
+        param_strs = []
+        for k, v in sorted(hyperparameters.items()):
+            # Skip if this parameter is at its default value
+            if k in ignore_defaults and v == ignore_defaults[k]:
+                continue
+                
+            # Format the parameter value
+            if isinstance(v, float):
+                # Format floating point numbers nicely
+                param_str = f"{k}{v:.0e}" if v < 0.01 else f"{k}{v}"
+            else:
+                param_str = f"{k}{v}"
+                
+            param_strs.append(param_str)
+        
+        # Add parameters to folder name
+        if param_strs:
+            folder_name += "_" + "_".join(param_strs)
+        
+        # Clean up any characters that might cause issues
+        folder_name = "".join(c if c.isalnum() or c in "_-" else "_" for c in folder_name)
+        
+        return folder_name
     
-    def _get_model_dir(self, train_env_name: str, seed: int, hyperparameters: Dict) -> Path:
+    def _get_model_dir(self, train_env_name: str, seed: int ) -> Path:
         """Get directory for specific configuration"""
-        folder_name = self.get_readable_folder_name(train_env_name, seed,self.hyperparameters)
+        folder_name = self.get_readable_folder_name(train_env_name, seed,self.hyperparameters, self.ignore_defaults)
         model_dir = self.base_dir / folder_name
         model_dir.mkdir(exist_ok=True)
         
@@ -122,7 +202,7 @@ class ModelManager:
             "train_env_name": train_env_name,
             "seed": seed,
             "hyperparameters": self.hyperparameters,
-            "config_hash": self.get_config_hash(train_env_name, seed, self.hyperparameters),
+            "config_hash": self.get_config_hash(train_env_name, seed, self.hyperparameters, self.ignore_defaults),
             "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         
@@ -242,7 +322,7 @@ class ModelManager:
                        losses: Dict[str, float]) -> str:
         """Save model checkpoint if it's among the best"""
         # Get config hash and model directory
-        config_hash = self.get_config_hash(train_env_name, seed, self.hyperparameters)
+        config_hash = self.get_config_hash(train_env_name, seed, self.hyperparameters, self.ignore_defaults)
         
         # Initialize tracking if needed
         self._initialize_best_models(config_hash)
@@ -286,7 +366,9 @@ class ModelManager:
     def get_best_model_info(self,
                            train_env_name: str,
                            seed: int,
-                           hyperparameters: Dict) -> Dict[str, List[Dict]]:
+                           hyperparameters: Dict,
+                           ignore_defaults: Dict[str, Any] = None 
+                           ) -> Dict[str, List[Dict]]:
         """Get information about best models for a configuration"""
         if not self.tracking_file.exists():
             logger.warning("No tracking file found")
@@ -296,7 +378,7 @@ class ModelManager:
             with open(self.tracking_file, 'r') as f:
                 tracking_data = json.load(f)
             
-            config_hash = self.get_config_hash(train_env_name, seed, hyperparameters)
+            config_hash = self.get_config_hash(train_env_name, seed, hyperparameters, ignore_defaults)
             
             if config_hash not in tracking_data:
                 logger.warning(f"No models found for configuration {config_hash}")
@@ -326,9 +408,11 @@ class ModelManager:
                         seed: int,
                         hyperparameters: Dict,
                         metric: str = 'validation',
-                        device: str = "cuda:0") -> List[Dict]:
+                        device: str = "cuda:0",
+                        ignore_defaults: Dict[str, Any] = None ,
+                        ) -> List[Dict]:
         """Load best models for a configuration"""
-        model_info = self.get_best_model_info(train_env_name, seed, hyperparameters)
+        model_info = self.get_best_model_info(train_env_name, seed, hyperparameters, ignore_defaults)
         
         if not model_info or metric not in model_info:
             return []

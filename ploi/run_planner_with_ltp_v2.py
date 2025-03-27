@@ -232,7 +232,7 @@ class PlannerTester:
             filename = self.get_planner_filename(planner_type)
             self.planner_data[planner_type] = self.load_planner_data_from_file(filename)
 
-    def get_planner_filename(self, planner_type: PlannerType) -> str:
+    def get_planner_filename_old(self, planner_type: PlannerType) -> str:
         """
         Generate filename for storing planner data based on domain and planner type.
         Args:
@@ -275,6 +275,55 @@ class PlannerTester:
         filename = f"{base_dir}/{domain_name}_{planner_type.name.lower()}.json"
         return filename
 
+    def get_planner_filename(self, planner_type: PlannerType ) -> str:
+        """
+        Generate filename for storing planner data based on domain and planner type.
+        
+        Args:
+            planner_type: Type of the planner
+            ignore_defaults: Dictionary of param_name: default_value pairs to ignore when at default
+            
+        Returns:
+            str: Full path to the planner data file
+        """
+        # Default to empty dict if None
+        
+        domain_name = self.config.domain_name
+        base_dir = "cache/results/planner_data"
+        
+        # Create base directory if it doesn't exist
+        os.makedirs(base_dir, exist_ok=True)
+
+        ignore_defaults =self.config.ignore_defaults
+        
+        if planner_type == PlannerType.LEARNED_MODEL:
+            # Generate filename based on model hyperparameters
+            param_strs = []
+            
+            for k, v in sorted(self.config.model_hyperparameters.items()):
+                # Skip if this parameter is at its default value
+                if k in ignore_defaults and v == ignore_defaults[k]:
+                    continue
+                    
+                # Format the parameter value
+                if isinstance(v, float):
+                    # Format floating point numbers nicely
+                    param_str = f"{k}{v:.0e}" if v < 0.01 else f"{k}{v}"
+                else:
+                    param_str = f"{k}{v}"
+                    
+                param_strs.append(param_str)
+            
+            # Construct filename
+            param_part = "_" + "_".join(param_strs) if param_strs else ""
+            filename = f"{base_dir}/{domain_name}{param_part}.json"
+            
+            return filename
+        
+        # Generate filename based on planner type for non-learned models
+        filename = f"{base_dir}/{domain_name}_{planner_type.name.lower()}.json"
+        return filename
+
     def load_planner_data_from_file(self, filename: str) -> Dict:
         """
         Load planner data from a JSON file if it exists.
@@ -294,7 +343,7 @@ class PlannerTester:
         Save data for all planner types to their respective files.
         """
         for planner_type in self.config.planner_types:
-            filename = self.get_planner_filename(planner_type)
+            filename = self.get_planner_filename(planner_type )
             # Create directory if it doesn't exist
             os.makedirs(os.path.dirname(filename), exist_ok=True)
 

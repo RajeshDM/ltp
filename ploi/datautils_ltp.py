@@ -19,6 +19,13 @@ import logging
 from tqdm import tqdm
 
 import ploi.constants as constants
+from ploi.ablations import (
+    GNN_non_AG_CD,
+    GNN_non_CD_decode
+)
+from ploi.modelutils_ltp import (
+    GNN_GRU
+)
 
 from .planning import PlanningFailure, PlanningTimeout
 # Set up logging
@@ -1357,7 +1364,7 @@ def get_plan_file_loc(env,curr_idx):
 
 def get_filenames(dataset_size,train_env_name,epochs,_model_version,
                        representation_size,_save_model_prefix,_seed,
-                       args):
+                       args, model_class=None):
     #_model_version = args.model_version
     #message_strings = [['','orig_v1_r7']]
     gnn_rounds = args.gnn_rounds
@@ -1367,6 +1374,7 @@ def get_filenames(dataset_size,train_env_name,epochs,_model_version,
     concept_loc = args.concept_loc
     #epoch_number = args.epoch_number
     #epoch_number = _epoch_number
+    
     if args.server == True :
         #self.save_folder = os.path.join(os.path.dirname(__file__), "model/intermediate_models")
         save_folder = os.path.join(os.path.abspath('.'),'model')
@@ -1401,9 +1409,13 @@ def get_filenames(dataset_size,train_env_name,epochs,_model_version,
         ic (_save_model_prefix)
     if epochs == None or epochs == 0 :
         model_outfile = _save_model_prefix+"_{}_{}.pt".format(train_env_name, message_string)
-    else :
+    elif model_class == GNN_GRU :
         model_outfile = os.path.join(save_folder,str(train_env_name)+ "_seed"+ str(_seed) + "_model" \
                                       + str(epochs) + "_" + message_string + ".pt")
+    else :
+        model_outfile = os.path.join(save_folder,str(model_class.__name__) + "_" + str(train_env_name)+ "_seed"+ str(_seed) + "_model" \
+                                      + str(epochs) + "_" + message_string + ".pt")
+                            
 
     return model_outfile,message_string,save_folder
 

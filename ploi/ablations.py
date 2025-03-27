@@ -1,0 +1,294 @@
+import torch
+from torch import Tensor
+import torch.nn as nn
+import torch.nn.functional as F
+from torch_scatter import scatter_mean
+from torch_geometric.nn import MetaLayer
+from icecream import ic
+from torch_geometric.nn import GATv2Conv,BatchNorm
+from torch_geometric.nn import TransformerConv
+from torch_geometric.nn import aggr
+from ploi.attention_layer import (
+ GraphAttentionV2Layer,
+ MLP,
+)
+import itertools
+import time
+from ploi.modelutils_ltp import GNN_GRU, HeteroGNN_global, HeteroGNN ,EncodeDecode
+
+class GNN_non_CD_decode(EncodeDecode):
+    def __init__(self, n_features, n_edge_features,n_global_features,
+                n_hidden, gnn_rounds,
+                 num_decoder_layers,
+                 dropout, 
+                 attn_dropout ,
+                 action_space,
+                 batch_size,
+                 n_heads,
+                 g_node,
+                 device,
+                 action_options,
+                 object_options):
+        super(GNN_non_CD_decode,self).__init__(
+            n_features, n_edge_features, n_global_features,
+                n_hidden, gnn_rounds,
+                 num_decoder_layers,
+                 dropout, 
+                 attn_dropout ,
+                 action_space,
+                 batch_size,
+                 n_heads,
+                 g_node,
+                 device,
+                 action_options,
+                 object_options,
+        )
+        self.max_num_actions = 1
+        self.max_num_objects = 1
+        self.device = device
+
+        if g_node is True :
+            self.encoder = HeteroGNN_global(n_features,n_edge_features,n_global_features\
+                                        ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads,device)
+        else :
+            self.encoder = HeteroGNN(n_features,n_edge_features,n_global_features\
+                                        ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads,device)
+        
+        self.representation_size = n_hidden
+        self.max_number_action_parameters = 0
+        self.action_parameter_number_dict = {}
+        self.number_actions = len(action_space.keys())
+        self.action_options = min(action_options, self.number_actions)
+        self.object_options = object_options
+        number_graphs = batch_size
+
+        if action_space != None:
+            i = 0
+            for key, values in action_space.items():
+                self.max_number_action_parameters = max(len(values.params),\
+                                                        self.max_number_action_parameters)
+                self.action_parameter_number_dict[i] = len(values.params)
+                i += 1
+            self.number_actions = len(action_space.keys())
+
+        #self.decoder = nn.GRU(n_hidden, hidden_size=n_hidden,\
+        #                      num_layers=num_decoder_layers,bias=False,batch_first=True)
+
+        #self.num_decoder_layers = num_decoder_layers
+        self.action_score_decoder = nn.Sequential(
+            nn.Linear(n_hidden, n_hidden),
+            nn.ReLU(),
+            #nn.Linear(n_hidden, self.number_actions),
+            nn.Linear(n_hidden, n_hidden),
+        )
+
+        self.object_score_decoder = nn.Sequential(
+            nn.Linear(n_hidden + self.max_number_action_parameters, n_hidden),
+            nn.ReLU(),
+            nn.Linear(n_hidden, n_hidden),
+            nn.LayerNorm(n_hidden),
+        )
+        self.training_mode = True
+
+    def forward(self,data, beam_search = False):
+        start_time = time.time()
+
+        graph_info = self.extract_graph_info_ltp(data)
+        action_idxs, object_idxs, a_scores, ao_scores, n_node, n_parameters, n_actions, n_objects,number_graphs = graph_info 
+
+        encoder_start_time = time.time()
+        x,edge_attr, u = self.encoder(data)
+        encoder_time = time.time() - encoder_start_time
+
+        decoder_time = time.time()
+        updated_global = self.action_score_decoder(u).unsqueeze(0)
+
+        action_scores_time = time.time()
+        a_scores_new = self.compute_action_scores(x,n_actions, updated_global,action_idxs)
+
+        if beam_search == False :
+            return self.non_beam_decode(x, u ,a_scores_new,ao_scores,n_node,
+                                        n_parameters,n_objects,
+                                        object_idxs,n_actions,action_idxs, number_graphs)
+    
+        else :
+            return self.beam_search_v2(x,u ,number_graphs=number_graphs,
+                         ao_scores=ao_scores,a_scores_new=a_scores_new,n_node=n_node,n_parameters=n_parameters,
+                         n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
+                         action_idxs=action_idxs)
+            
+
+    #U is the global value
+    def non_beam_decode(self,x, u ,a_scores_new,ao_scores,n_node,n_parameters,n_objects,object_idxs,n_actions,action_idxs, num_graphs):
+        ao_scores_new = torch.zeros(ao_scores.shape,device=self.device)
+        for parameter_num in range (self.max_number_action_parameters):
+            obj_intermediate = self.object_score_decoder(
+                                        torch.cat([u, 
+                                        F.one_hot(torch.full((num_graphs,), parameter_num, device=self.device), 
+                                                  num_classes=self.max_number_action_parameters)
+                                                  ], dim=1))
+
+            obj_intermediate = obj_intermediate.unsqueeze(0)
+            ao_scores_new += self.compute_object_scores(x, n_parameters,n_objects, ao_scores,
+                                                        obj_intermediate,
+                                                       object_idxs,parameter_num)
+        
+        return a_scores_new, ao_scores_new
+
+    def beam_search_v2(self, x, u , number_graphs,ao_scores, a_scores_new,n_node,
+                    n_parameters,n_objects,object_idxs,n_actions,
+                    action_idxs):
+        a_scores_final, ao_scores_final = self.non_beam_decode(x, u ,a_scores_new,ao_scores,n_node,
+                                    n_parameters,n_objects,object_idxs,n_actions,action_idxs,number_graphs)
+
+        self.max_num_actions = self.action_options
+        self.max_num_objects = self.object_options
+        results = []
+        
+        # Get top-k actions
+        top_action_values, top_action_indices = torch.topk(a_scores_final, min(self.max_num_actions, len(a_scores_final)))
+        
+        # Get top-k objects for each parameter position
+        max_objects_per_action = ao_scores_final.shape[0]
+        top_object_values, top_object_indices = torch.topk(ao_scores_final, min(self.max_num_objects, ao_scores_final.shape[1]), dim=1)
+        
+        # Process each top action
+        for i, action_idx in enumerate(top_action_indices):
+            action_idx = action_idx.item()
+            action_score = top_action_values[i]
+            
+            # Get number of parameters for this action
+            num_params = self.action_parameter_number_dict.get(action_idx, 0)
+            num_params = min(num_params, max_objects_per_action)
+            
+            if num_params == 0:
+                # If action requires no objects, simply add it
+                results.append((action_score, [torch.tensor(action_idx, device=self.device)]))
+                continue
+            
+            # Get all combinations of objects for this action
+            # Only consider parameters that this action needs
+            param_object_indices = [top_object_indices[j][:self.max_num_objects] for j in range(num_params)]
+            
+            # Generate all possible combinations of objects
+            object_combinations = list(itertools.product(*param_object_indices))
+            
+            # Create tuples for all combinations with this action
+            for obj_combo in object_combinations:
+                selected_indices = [torch.tensor(action_idx, device=self.device)]
+                selected_indices.extend([obj.to(self.device) for obj in obj_combo])
+                results.append((action_score, selected_indices))
+        
+        #SCORE IS NEVER USED HENCE being ignored here
+        return results
+            
+
+
+class GNN_non_AG_CD(EncodeDecode):
+    def __init__(self, n_features, n_edge_features,n_global_features,
+                n_hidden, gnn_rounds,
+                 num_decoder_layers,
+                 dropout, 
+                 attn_dropout ,
+                 action_space,
+                 batch_size,
+                 n_heads,
+                 g_node,
+                 device,
+                 action_options,
+                 object_options):
+        super(GNN_non_CD_decode,self).__init__()
+        self.max_num_actions = 1
+        self.max_num_objects = 1
+        self.device = device
+
+        if g_node is True :
+            self.encoder = HeteroGNN_global(n_features,n_edge_features,n_global_features\
+                                        ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads,device)
+        else :
+            self.encoder = HeteroGNN(n_features,n_edge_features,n_global_features\
+                                        ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads,device)
+        
+        self.representation_size = n_hidden
+        self.max_number_action_parameters = 0
+        self.action_parameter_number_dict = {}
+        self.number_actions = len(action_space.keys())
+        self.action_options = min(action_options, self.number_actions)
+        self.object_options = object_options
+        number_graphs = batch_size
+
+        if action_space != None:
+            i = 0
+            for key, values in action_space.items():
+                self.max_number_action_parameters = max(len(values.params),\
+                                                        self.max_number_action_parameters)
+                self.action_parameter_number_dict[i] = len(values.params)
+                i += 1
+            self.number_actions = len(action_space.keys())
+
+        self.decoder = nn.GRU(n_hidden, hidden_size=n_hidden,\
+                              num_layers=num_decoder_layers,bias=False,batch_first=True)
+
+        #self.num_decoder_layers = num_decoder_layers
+        self.action_score_decoder = nn.Sequential(
+            nn.Linear(n_hidden, n_hidden),
+            nn.ReLU(),
+            nn.Linear(n_hidden, self.number_actions),
+        )
+
+        self.object_score_decoder = nn.Sequential(
+            nn.Linear(n_hidden, n_hidden),
+            nn.ReLU(),
+            nn.Linear(n_hidden, n_hidden),
+            nn.LayerNorm(n_hidden),
+        )
+        self.training_mode = True
+
+    def forward(self,data, beam_search = False):
+        start_time = time.time()
+
+        graph_info = self.extract_graph_info_ltp(data)
+        action_idxs, object_idxs, a_scores, ao_scores, n_node, n_parameters, n_actions, n_objects,number_graphs = graph_info 
+        h0 = torch.zeros(self.num_decoder_layers,number_graphs,self.representation_size,device=self.device)
+
+        encoder_start_time = time.time()
+        x,edge_attr, u = self.encoder(data)
+        encoder_time = time.time() - encoder_start_time
+
+        decoder_time = time.time()
+        a_scores_new = self.action_score_decoder(u)
+        ao_scores_new = torch.zeros(ao_scores.shape,device=self.device)
+
+        if beam_search == False :
+            return self.non_beam_decode(x,hidden_state,a_scores,ao_scores,n_node,
+                                        n_parameters,n_objects,object_idxs,n_actions,action_idxs)
+    
+        else :
+            return self.beam_search_v2(x,hidden_state,number_graphs=number_graphs,
+                         ao_scores=ao_scores,n_node=n_node,n_parameters=n_parameters,
+                         n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
+                         action_idxs=action_idxs)
+
+    def non_beam_decode(self,x,hidden_state,a_scores,ao_scores,n_node,n_parameters,n_objects,object_idxs,n_actions,action_idxs):
+        all_actions_batches,_ = self.get_best_action_scores_locations(a_scores,self.max_num_actions)
+        all_objects_batches,_ = self.get_best_action_object_scores_locations(ao_scores,n_node,self.max_num_objects)
+        
+        #if self.training_mode :
+        all_actions = [elem[0] for elem in all_actions_batches]
+        all_objects = [elem[0] for elem in all_objects_batches]
+
+        for i in range(0, self.max_number_action_parameters):
+            _, hidden_state = self.decoder(decoder_input, hidden_state) 
+            ao_scores_new += self.compute_object_scores(x, n_parameters,n_objects, ao_scores,hidden_state,
+                                                       object_idxs,i)
+            computing_best_object_embedding = time.time()
+            if i == self.max_number_action_parameters-1 :
+                break
+            decoder_input = self.get_best_object_embeddings(x, all_objects, all_actions,parameter_number=i,
+                                                            n_params=n_parameters,
+                                                            n_node=n_node)    
+            computing_best_object_embedding_time = time.time() - computing_best_object_embedding
+
+        return a_scores, ao_scores_new
+
+    

@@ -11,7 +11,7 @@ import time
 from torch_geometric.loader import DataLoader as pyg_dataloader
 from ploi.model_checkpointing import ModelManager 
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Any,Set
 from torch_geometric.data import Data
 from ploi.argparsers import get_ploi_argument_parser
 from ploi.datautils import (
@@ -58,6 +58,10 @@ from ploi.modelutils_ltp import (
     GraphNetworkLtp,
     GNN_GRU,
 )
+from ploi.ablations import (
+    GNN_non_AG_CD,
+    GNN_non_CD_decode,
+)
 from ploi.planning import IncrementalPlanner
 from ploi.planning.incremental_hierarchical_planner import (
     IncrementalHierarchicalPlanner,
@@ -80,7 +84,6 @@ from icecream import ic
 baselines = [PlannerType.EXP_BASELINE, 
              PlannerType.EXP_BASELINE_2, 
              PlannerType.EXP_BASELINE_3] 
-
 
 def set_seed(args):
     seed = args.seed
@@ -138,8 +141,8 @@ def run_tests(
              num_models_to_test: int = 2,
              starting_model_num: int = 0,
              planner_types = [PlannerType.LEARNED_MODEL],
-             baseline_models = None
-             ) -> List[Dict]:
+             baseline_models = None,
+             ignore_defaults : Dict[str, Any] = None) -> List[Dict]:
     """
     Run tests on best models for a specific configuration
     """
@@ -150,6 +153,7 @@ def run_tests(
         seed=seed,
         hyperparameters=hyperparameters,
         metric=metric,
+        ignore_defaults=ignore_defaults,
         #device=device
     )
     
@@ -315,7 +319,7 @@ if __name__ == "__main__":
     print("Collecting training data")
     graphs_inp, graphs_tgt, graph_metadata = None, None, None
     if not os.path.exists(args.datafile) or args.force_collect_data:
-        if args.method == 'ltp' :
+        if 'ltp' in args.method :
             args.datafile = _dataset_file_prefix + "_{}.pkl".format(args.domain)
             #graphs_inp , graphs_tgt, graph_metadata,action_space =  process_pddl_to_graphs(
             all_input_graphs , graph_metadata,action_space =  process_pddl_to_graphs(
@@ -349,7 +353,7 @@ if __name__ == "__main__":
         graphs_inp, graphs_tgt, graph_metadata = create_graph_dataset_hierarchical(
             training_data
         )
-    elif args.method in ["ltp"]:
+    elif 'ltp' in args.method:
         pass
     else:
         graphs_inp, graphs_tgt, graph_metadata = create_graph_dataset(training_data)
@@ -652,14 +656,21 @@ if __name__ == "__main__":
     elif args.method == "exp_baseline":
         exp_baseline_train(args)
 
-    elif args.method == 'ltp' :
+    elif 'ltp' in args.method:
         ic ("LTP start")
         representation_size = args.representation_size
         gnn_rounds = args.gnn_rounds
         n_heads = args.n_heads
         #action_space = training_data[3]
 
-        _model = initialize_model(GNN_GRU, args, action_space)
+        if args.method == 'ltp':
+            model_class = GNN_GRU
+        elif args.method == 'ltp_no_cd' :
+            model_class = GNN_non_CD_decode
+        elif args.method == 'ltp_no_ag' :
+            model_class = GNN_non_AG_CD
+
+        _model = initialize_model(model_class, args, action_space)
 
         training_hyperparameters = {
             'lr': args.lr,
@@ -669,6 +680,12 @@ if __name__ == "__main__":
             'wd' : args.dropout,
             'heads' : args.n_heads,
             'g_node' : args.use_global_node,
+            'model_class' : model_class.__name__,
+        }
+
+        ignore_defaults = {
+            'g_node' : True ,
+            'model_class' : GNN_GRU.__name__
         }
 
         continue_training = args.continue_training
@@ -678,13 +695,13 @@ if __name__ == "__main__":
         dataset_size = len(input_hetero_graphs) + len(val_hetero_graphs)#len(training_data[0])
         save_folder = os.path.join(Path.cwd(),"models")
         manager = ModelManager(save_folder, hyperparameters=training_hyperparameters,
-                               train_env_name=train_env_name,seed=args.seed)
+                               train_env_name=train_env_name,seed=args.seed, ignore_defaults=ignore_defaults)
 
         model_outfile, message_string,save_folder = get_filenames(dataset_size,train_env_name,
                                                         args.epochs,args.model_version,
                                                         representation_size,
                                                         save_model_prefix,args.seed,
-                                                        args)
+                                                        args, model_class)
         
         #if args.mode == 'train' and (not os.path.exists(model_outfile) or continue_training == True):
         if args.mode == 'train'  or args.mode == 'train_test' :
@@ -774,6 +791,7 @@ if __name__ == "__main__":
             eval_planner_name = args.eval_planner_name,
             train_planner_name = args.train_planner_name,
             model_hyperparameters = training_hyperparameters,
+            ignore_defaults = ignore_defaults,
         )
 
         tester = PlannerTester(config)
@@ -798,7 +816,7 @@ if __name__ == "__main__":
         def run_tests_model_type(model_type, tested_epoch_numbers):
             return run_tests(
                 curr_manager=manager,
-                model_class=GNN_GRU,
+                model_class=model_class,
                 train_env_name=train_env_name,
                 seed=42,
                 hyperparameters=training_hyperparameters,
@@ -811,6 +829,7 @@ if __name__ == "__main__":
                 starting_model_num=starting_model_num,
                 planner_types=planner_types,
                 baseline_models=baseline_models,
+                ignore_defaults=ignore_defaults,
             )
 
         tested_epoch_numbers = set()

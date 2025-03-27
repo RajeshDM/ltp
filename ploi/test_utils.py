@@ -1,7 +1,7 @@
 #from ploi.run_planner_with_ltp_2 import PlannerTester, PlannerConfig, PlannerType
 from enum import Enum, auto
 from dataclasses import dataclass
-from typing import List, Dict 
+from typing import List, Dict, Any 
 import wandb
 import numpy as np
 import tempfile
@@ -30,6 +30,8 @@ class PlannerConfig:
     eval_planner_name :str = ""
     train_planner_name :str = "" 
     model_hyperparameters: Dict[str, float] = None
+    ignore_defaults : Dict[str, Any] = None
+
 
 @dataclass
 class PlannerMetrics:
