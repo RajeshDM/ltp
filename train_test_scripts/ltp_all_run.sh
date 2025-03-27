@@ -52,10 +52,10 @@ shift 1
 
 # Default values (from klondike_solitaire.sh)
 METHOD="ltp"
-heads=(2 4)
+heads=(1 2 4 8)
 lrs=(0.0005)
 decays=(0.000)
-attn_drops=(0.1 0.2)
+attn_drops=(0.1 0.2 0.3)
 other_drops=(0)
 gnn_rounds=(9)
 epochs=750

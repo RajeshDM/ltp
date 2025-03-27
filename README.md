@@ -6,6 +6,10 @@ pip install protobuf==3.20.0
 #pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu118
 #pip install torch-geometric==2.3.1
 #pip install torch-scatter torch-sparse torch-cluster -f https://data.pyg.org/whl/torch-2.0.1+cu118.html
+
+#pip install torch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2 --index-url https://download.pytorch.org/whl/cu118
+#pip install torch-scatter torch-sparse torch-cluster -f https://data.pyg.org/whl/torch-2.2.2+cu118.html
+
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
 pip install torch-geometric==2.6.1
 pip install torch-scatter torch-sparse torch-cluster -f https://data.pyg.org/whl/torch-2.6.0+cu126.html
