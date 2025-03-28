@@ -107,81 +107,16 @@ class GNN_non_CD_decode(EncodeDecode):
         a_scores_new = self.compute_action_scores(x,n_actions, updated_global,action_idxs)
 
         if beam_search == False :
-            return self.non_beam_decode(x, u ,a_scores_new,ao_scores,n_node,
+            return self.non_beam_decode_non_CD(x, u ,a_scores_new,ao_scores,n_node,
                                         n_parameters,n_objects,
                                         object_idxs,n_actions,action_idxs, number_graphs)
     
         else :
-            return self.beam_search_v2(x,u ,number_graphs=number_graphs,
+            return self.beam_search_non_CD(x,u ,number_graphs=number_graphs,
                          ao_scores=ao_scores,a_scores_new=a_scores_new,n_node=n_node,n_parameters=n_parameters,
                          n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
                          action_idxs=action_idxs)
             
-
-    #U is the global value
-    def non_beam_decode(self,x, u ,a_scores_new,ao_scores,n_node,n_parameters,n_objects,object_idxs,n_actions,action_idxs, num_graphs):
-        ao_scores_new = torch.zeros(ao_scores.shape,device=self.device)
-        for parameter_num in range (self.max_number_action_parameters):
-            obj_intermediate = self.object_score_decoder(
-                                        torch.cat([u, 
-                                        F.one_hot(torch.full((num_graphs,), parameter_num, device=self.device), 
-                                                  num_classes=self.max_number_action_parameters)
-                                                  ], dim=1))
-
-            obj_intermediate = obj_intermediate.unsqueeze(0)
-            ao_scores_new += self.compute_object_scores(x, n_parameters,n_objects, ao_scores,
-                                                        obj_intermediate,
-                                                       object_idxs,parameter_num)
-        
-        return a_scores_new, ao_scores_new
-
-    def beam_search_v2(self, x, u , number_graphs,ao_scores, a_scores_new,n_node,
-                    n_parameters,n_objects,object_idxs,n_actions,
-                    action_idxs):
-        a_scores_final, ao_scores_final = self.non_beam_decode(x, u ,a_scores_new,ao_scores,n_node,
-                                    n_parameters,n_objects,object_idxs,n_actions,action_idxs,number_graphs)
-
-        self.max_num_actions = self.action_options
-        self.max_num_objects = self.object_options
-        results = []
-        
-        # Get top-k actions
-        top_action_values, top_action_indices = torch.topk(a_scores_final, min(self.max_num_actions, len(a_scores_final)))
-        
-        # Get top-k objects for each parameter position
-        max_objects_per_action = ao_scores_final.shape[0]
-        top_object_values, top_object_indices = torch.topk(ao_scores_final, min(self.max_num_objects, ao_scores_final.shape[1]), dim=1)
-        
-        # Process each top action
-        for i, action_idx in enumerate(top_action_indices):
-            action_idx = action_idx.item()
-            action_score = top_action_values[i]
-            
-            # Get number of parameters for this action
-            num_params = self.action_parameter_number_dict.get(action_idx, 0)
-            num_params = min(num_params, max_objects_per_action)
-            
-            if num_params == 0:
-                # If action requires no objects, simply add it
-                results.append((action_score, [torch.tensor(action_idx, device=self.device)]))
-                continue
-            
-            # Get all combinations of objects for this action
-            # Only consider parameters that this action needs
-            param_object_indices = [top_object_indices[j][:self.max_num_objects] for j in range(num_params)]
-            
-            # Generate all possible combinations of objects
-            object_combinations = list(itertools.product(*param_object_indices))
-            
-            # Create tuples for all combinations with this action
-            for obj_combo in object_combinations:
-                selected_indices = [torch.tensor(action_idx, device=self.device)]
-                selected_indices.extend([obj.to(self.device) for obj in obj_combo])
-                results.append((action_score, selected_indices))
-        
-        #SCORE IS NEVER USED HENCE being ignored here
-        return results
-
 class GNN_non_AG_CD(EncodeDecode):
     def __init__(self, n_features, n_edge_features,n_global_features,
                 n_hidden, gnn_rounds,
@@ -404,7 +339,7 @@ class GNN_non_AG_non_CD(EncodeDecode):
                  device,
                  action_options,
                  object_options):
-        super(GNN_non_CD_decode,self).__init__(
+        super(GNN_non_AG_non_CD,self).__init__(
             n_features, n_edge_features, n_global_features,
                 n_hidden, gnn_rounds,
                  num_decoder_layers,
@@ -453,8 +388,8 @@ class GNN_non_AG_non_CD(EncodeDecode):
         self.action_score_decoder = nn.Sequential(
             nn.Linear(n_hidden, n_hidden),
             nn.ReLU(),
-            #nn.Linear(n_hidden, self.number_actions),
-            nn.Linear(n_hidden, n_hidden),
+            nn.Linear(n_hidden, self.number_actions),
+            #nn.Linear(n_hidden, n_hidden),
         )
 
         self.object_score_decoder = nn.Sequential(
@@ -476,83 +411,20 @@ class GNN_non_AG_non_CD(EncodeDecode):
         encoder_time = time.time() - encoder_start_time
 
         decoder_time = time.time()
-        updated_global = self.action_score_decoder(u).unsqueeze(0)
+        #updated_global = self.action_score_decoder(u).unsqueeze(0)
+        a_scores_new = self.action_score_decoder(u)
 
         action_scores_time = time.time()
-        a_scores_new = self.compute_action_scores(x,n_actions, updated_global,action_idxs)
+        #a_scores_new = self.compute_action_scores(x,n_actions, updated_global,action_idxs)
 
         if beam_search == False :
-            return self.non_beam_decode(x, u ,a_scores_new,ao_scores,n_node,
+            return self.non_beam_decode_non_CD(x, u ,a_scores_new,ao_scores,n_node,
                                         n_parameters,n_objects,
                                         object_idxs,n_actions,action_idxs, number_graphs)
     
         else :
-            return self.beam_search_v2(x,u ,number_graphs=number_graphs,
+            return self.beam_search_non_CD(x,u ,number_graphs=number_graphs,
                          ao_scores=ao_scores,a_scores_new=a_scores_new,n_node=n_node,n_parameters=n_parameters,
                          n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
                          action_idxs=action_idxs)
             
-
-    #U is the global value
-    def non_beam_decode(self,x, u ,a_scores_new,ao_scores,n_node,n_parameters,n_objects,object_idxs,n_actions,action_idxs, num_graphs):
-        ao_scores_new = torch.zeros(ao_scores.shape,device=self.device)
-        for parameter_num in range (self.max_number_action_parameters):
-            obj_intermediate = self.object_score_decoder(
-                                        torch.cat([u, 
-                                        F.one_hot(torch.full((num_graphs,), parameter_num, device=self.device), 
-                                                  num_classes=self.max_number_action_parameters)
-                                                  ], dim=1))
-
-            obj_intermediate = obj_intermediate.unsqueeze(0)
-            ao_scores_new += self.compute_object_scores(x, n_parameters,n_objects, ao_scores,
-                                                        obj_intermediate,
-                                                       object_idxs,parameter_num)
-        
-        return a_scores_new, ao_scores_new
-
-    def beam_search_v2(self, x, u , number_graphs,ao_scores, a_scores_new,n_node,
-                    n_parameters,n_objects,object_idxs,n_actions,
-                    action_idxs):
-        a_scores_final, ao_scores_final = self.non_beam_decode(x, u ,a_scores_new,ao_scores,n_node,
-                                    n_parameters,n_objects,object_idxs,n_actions,action_idxs,number_graphs)
-
-        self.max_num_actions = self.action_options
-        self.max_num_objects = self.object_options
-        results = []
-        
-        # Get top-k actions
-        top_action_values, top_action_indices = torch.topk(a_scores_final, min(self.max_num_actions, len(a_scores_final)))
-        
-        # Get top-k objects for each parameter position
-        max_objects_per_action = ao_scores_final.shape[0]
-        top_object_values, top_object_indices = torch.topk(ao_scores_final, min(self.max_num_objects, ao_scores_final.shape[1]), dim=1)
-        
-        # Process each top action
-        for i, action_idx in enumerate(top_action_indices):
-            action_idx = action_idx.item()
-            action_score = top_action_values[i]
-            
-            # Get number of parameters for this action
-            num_params = self.action_parameter_number_dict.get(action_idx, 0)
-            num_params = min(num_params, max_objects_per_action)
-            
-            if num_params == 0:
-                # If action requires no objects, simply add it
-                results.append((action_score, [torch.tensor(action_idx, device=self.device)]))
-                continue
-            
-            # Get all combinations of objects for this action
-            # Only consider parameters that this action needs
-            param_object_indices = [top_object_indices[j][:self.max_num_objects] for j in range(num_params)]
-            
-            # Generate all possible combinations of objects
-            object_combinations = list(itertools.product(*param_object_indices))
-            
-            # Create tuples for all combinations with this action
-            for obj_combo in object_combinations:
-                selected_indices = [torch.tensor(action_idx, device=self.device)]
-                selected_indices.extend([obj.to(self.device) for obj in obj_combo])
-                results.append((action_score, selected_indices))
-        
-        #SCORE IS NEVER USED HENCE being ignored here
-        return results

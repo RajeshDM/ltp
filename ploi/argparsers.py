@@ -23,7 +23,7 @@ def get_ploi_argument_parser():
         "--method",
         type=str,
         choices=["scenegraph", "hierarchical", "ploi", "ltp", 
-                 "ltp_no_cd", "ltp_no_ag", "ltp_val"],
+                 "ltp_no_cd", "ltp_no_ag", "ltp_val", "ltp_no_ag_no_cd"],
         default="ltp",
     )
     parser.add_argument(
