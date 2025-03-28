@@ -111,6 +111,53 @@ def graph_to_pyg_data(graph):
     '''
     return hetero_data
 
+def remove_actions_all_graphs(hetero_graphs):
+    for i,graph in enumerate(hetero_graphs):
+        hetero_graphs[i] = remove_action_info_single_graph(graph)
+
+    return hetero_graphs
+
+
+def remove_action_info_single_graph(hetero_data):
+    # Step 1: Identify nodes to keep (where first feature != 1)
+    node_features = hetero_data['node'].x
+    keep_mask = node_features[:, 0] != 1  # Boolean mask of nodes to keep
+    keep_indices = torch.where(keep_mask)[0]  # Indices of nodes to keep
+    
+    # Step 2: Create mapping from old to new node indices
+    num_nodes = node_features.shape[0]
+    new_indices = torch.full((num_nodes,), -1, dtype=torch.long)
+    new_indices[keep_indices] = torch.arange(len(keep_indices))
+    
+    # Step 3: Filter node features
+    hetero_data['node'].x = node_features[keep_mask]
+    
+    # Step 4: Filter edges
+    if ('node', 'sends', 'node') in hetero_data.edge_types:
+        edge_index = hetero_data['node', 'sends', 'node'].edge_index
+        edge_attr = hetero_data['node', 'sends', 'node'].edge_attr
+        
+        # Get senders and receivers
+        senders = edge_index[0]
+        receivers = edge_index[1]
+        
+        # Create mask for edges to keep (both ends must be in kept nodes)
+        edge_mask = keep_mask[senders] & keep_mask[receivers]
+        
+        # Filter edges
+        hetero_data['node', 'sends', 'node'].edge_index = edge_index[:, edge_mask]
+        hetero_data['node', 'sends', 'node'].edge_attr = edge_attr[edge_mask]
+
+        num_edges = edge_attr[edge_mask].shape[0]
+        
+        # Remap node indices in edge_index
+        hetero_data['node', 'sends', 'node'].edge_index = new_indices[hetero_data['node', 'sends', 'node'].edge_index]
+
+    hetero_data['n_node'].x = torch.tensor([len(keep_indices)])
+    hetero_data['n_edge'].x  = torch.tensor([num_edges])
+    
+    return hetero_data
+
 def graph_dataset_to_pyg_dataset_old(graphs):
     pyg_dataset= []
     for i in range(0,len(graphs)):
@@ -1170,7 +1217,7 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
                         str_plan = True
                 else :
                     _planner.reset_statistics()
-                    plan = _planner(env.domain, state, timeout=360)
+                    plan = _planner(env.domain, state, timeout=540)
                     #ic (plan)
 
             except (PlanningTimeout, PlanningFailure):

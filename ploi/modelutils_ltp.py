@@ -290,6 +290,29 @@ class EncodeDecode(nn.Module):
     def __str__(self):
         return f"{self.__class__.__name__}"
 
+    def get_best_action_scores_locations(self,a_scores,k):
+        all_actions_batches = []
+        all_actions_scores = []
+        for i in range(a_scores.shape[0]):
+            values , indexes = torch.topk(a_scores[i],k)
+            all_actions_batches.append(indexes)
+            all_actions_scores.append(values)
+
+        return all_actions_batches,all_actions_scores
+
+    def get_best_action_object_scores_locations(self,ao_scores,n_node,k):
+        all_objects_batches = []
+        all_objects_scores = []
+
+        for i in range(ao_scores.shape[0]) :
+            #Current graph objects is just a safety net to ensure we don't go over the number of objects in the graph
+            current_graph_objects = n_node[int(i/self.max_number_action_parameters)]
+            values , indexes = torch.topk(ao_scores[i][:current_graph_objects],k)
+            all_objects_batches.append(indexes)
+            all_objects_scores.append(values)
+
+        return all_objects_batches, all_objects_scores
+
     def compute_action_scores(self,x,n_actions,hidden_state, action_idxs):
         '''
         Computing the score for each of the actions (Updating the graph[action_scores]
@@ -384,6 +407,45 @@ class EncodeDecode(nn.Module):
         #ic (variable_action_object_scores)
 
         return torch.mul(mask_matrix[0],variable_action_object_scores)
+
+    def get_best_object_embeddings(self,x,all_objects,all_actions,parameter_number,n_params,n_node):
+        current_number_nodes = 0
+        #objects_counter = 0
+        objects_counter = parameter_number
+        feature_captured_object_counter = 0
+        #ic (all_objects)
+        #ic (parameter_number)
+        #ic (graph['n_parameters'])
+
+        #required_correct_object_features = torch.zeros((len(all_actions), 1, self.representation_size),
+        #                                               dtype=torch.float32).cuda()
+        required_correct_object_features = torch.zeros((len(all_actions), 1, self.representation_size),
+                                                       dtype=torch.float32,device=self.device)
+        for a, action in enumerate(all_actions):
+
+            object_idx = all_objects[objects_counter]
+            required_correct_object_features[feature_captured_object_counter][0] = x[
+                                                                      current_number_nodes + object_idx][:]
+
+            objects_counter += int(n_params[a])
+
+            feature_captured_object_counter += 1
+            current_number_nodes += n_node[a]
+        #ic (required_correct_object_features)
+        return required_correct_object_features
+
+    def get_best_object_embeddings_ltp(self,x,all_objects,n_node, num_graphs):
+        current_number_nodes = 0
+        #required_correct_object_features = torch.zeros((num_graphs, 1, self.representation_size),
+        #                                               dtype=torch.float32).cuda()
+        required_correct_object_features = torch.zeros((num_graphs, 1, self.representation_size),
+                                                       dtype=torch.float32,device=self.device)
+
+        for i in range(num_graphs):
+            object_idx = all_objects[i]
+            required_correct_object_features[i][0] = x[current_number_nodes+object_idx][:]
+            current_number_nodes += n_node[i]
+        return required_correct_object_features
     
 
 class GNN_GRU(nn.Module):

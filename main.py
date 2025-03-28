@@ -37,6 +37,7 @@ from ploi.datautils_ltp import (
     TorchGraphDictDataset,
     graph_dataset_to_pyg_dataset,
     process_pddl_to_graphs,
+    remove_actions_all_graphs,
 )
 from ploi.run_planner_with_ltp_v1 import (
     run_planner_with_gnn_ltp,
@@ -61,6 +62,7 @@ from ploi.modelutils_ltp import (
 from ploi.ablations import (
     GNN_non_AG_CD,
     GNN_non_CD_decode,
+    GNN_non_AG_non_CD,
 )
 from ploi.planning import IncrementalPlanner
 from ploi.planning.incremental_hierarchical_planner import (
@@ -355,7 +357,10 @@ if __name__ == "__main__":
             training_data
         )
     elif 'ltp' in args.method:
-        pass
+        if 'no_ag' in args.method :
+            input_hetero_graphs = remove_actions_all_graphs(input_hetero_graphs)
+            val_hetero_graphs = remove_actions_all_graphs(val_hetero_graphs)
+
     else:
         graphs_inp, graphs_tgt, graph_metadata = create_graph_dataset(training_data)
 
@@ -670,6 +675,8 @@ if __name__ == "__main__":
             model_class = GNN_non_CD_decode
         elif args.method == 'ltp_no_ag' :
             model_class = GNN_non_AG_CD
+        elif args.method == 'ltp_no_ag_no_cd' :
+            model_class = GNN_non_AG_non_CD
 
         _model = initialize_model(model_class, args, action_space)
 
