@@ -512,6 +512,8 @@ class EncodeDecode(nn.Module):
         #SCORE IS NEVER USED HENCE being ignored here
         return results
 
+        
+
 class GNN_GRU(nn.Module):
     def __init__(self, n_features, n_edge_features,n_global_features,
                 n_hidden, gnn_rounds,
@@ -1089,52 +1091,3 @@ class GNN_GRU(nn.Module):
         #new_ao_scores = torch.mul(mask_matrix[0], variable_action_object_scores) + torch.mul(mask_matrix[1], ao_scores)
 
         return torch.mul(mask_matrix[0],variable_action_object_scores)
-
-
-
-class GraphNetworkLtp(nn.Module):
-    def __init__(self, n_features, n_edge_features,n_global_features, n_hidden, dropout=0.0,gnn_rounds=3):
-        super(GraphNetworkLtp, self).__init__()
-
-        self.meta_layers = []
-
-        self.meta_layer_1 = self.build_meta_layer(
-            n_features, n_edge_features, n_global_features,n_hidden, n_hidden, dropout=dropout
-        )
-        self.meta_layers.append(self.meta_layer_1)
-
-        for i in range(1,gnn_rounds):
-            self.meta_layers.append(self.build_meta_layer(
-                n_hidden, n_hidden, n_hidden,n_hidden, n_hidden, dropout=dropout
-            )
-        )
-        self.meta_layers = nn.ModuleList(self.meta_layers)
-        self.gnn_rounds = gnn_rounds
-
-    def build_meta_layer(
-        self, n_features, n_edge_features,n_global_features, n_hidden, n_targets, dropout=0.0
-    ):
-        return MetaLayer(
-            edge_model=EdgeModelLtp(
-                n_features, n_edge_features, n_hidden, dropout=dropout
-            ),
-            node_model=NodeModelLtp(
-                n_features, n_edge_features, n_hidden, n_targets, dropout=dropout
-            ),
-            global_model=GlobalModel(
-                n_global_features, n_hidden, dropout=dropout
-            ),
-        )
-
-    #def forward(self, x, edge_idx, edge_attr, u=None, batch=None):
-    def forward(self, data, u=None, batch=None):
-        x = data.x
-        edge_idx = data.edge_index
-        edge_attr = data.edge_attr
-        for idx in range (self.gnn_rounds):
-            x, edge_attr, u = self.meta_layers[idx](x, edge_idx, edge_attr,u)
-        #ic (x.shape)
-        #ic (x.shape)
-        #ic (edge_attr.shape)
-        #ic (u.shape)
-        return x,edge_attr,u

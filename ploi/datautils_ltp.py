@@ -105,6 +105,9 @@ def graph_to_pyg_data(graph):
             hetero_data[key].x = torch.tensor(copy.deepcopy(items),dtype=all_dtype)
             continue
 
+        if key == 'goal_dist' : 
+            hetero_data[key].x = torch.tensor(copy.deepcopy(items),dtype=torch.float64)
+
         if key not in gnn_processing_info :
             hetero_data[key].x = torch.tensor(copy.deepcopy(items),dtype=torch.long)
     '''
@@ -211,7 +214,7 @@ def graph_dataset_to_pyg_dataset(graphs, batch_wise=True, batch_size=32, shuffle
 
 def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
                     prev_actions=None,prev_state=None,test=False,
-                    graph_metadata=None,goal_state=None):
+                    graph_metadata=None,goal_state=None, goal_dist=-1):
     """Create a graph from a State
     """
     #ic (type(state))
@@ -440,6 +443,7 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     num_objects = np.reshape(num_objects+num_agents,[1]).astype(np.int64)
     num_non_action_nodes = np.reshape(num_objects+num_agents+num_predicates,[1]).astype(np.int64)
     max_action_arity = np.reshape(max_action_arity,[1]).astype(np.int64)
+    goal_dist = np.reshape(goal_dist,[1]).astype(np.float64)
 
     '''
     graph_input["nodes"] = torch.from_numpy(input_node_features).float()
@@ -471,6 +475,7 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     graph_input["senders"] = senders
     graph_input["n_edge"] = n_edge
     graph_input["edges"] = edges
+    graph_input['goal_dist'] = goal_dist
     # Globals
     globals_array = np.zeros((1,len(input_node_features[-1])))
     graph_input["globals"] = globals_array
@@ -877,6 +882,7 @@ def _create_graph_from_state_ltp(training_data,action_space=None,graph_metadata=
             state = training_data[0][i][j]
             #grounding = training_data[3][i][j]
             grounding = training_data[4][i][j]
+            goal_dist = training_data[5][i][j]
             prev_actions = None
             if j == 1 :
                 prev_actions = [plan[j-1]]
@@ -898,7 +904,7 @@ def _create_graph_from_state_ltp(training_data,action_space=None,graph_metadata=
                 graph_input, graph_target, _ = state_to_graph_wrapper(state,action_space,grounding,
                                                                 prev_actions,prev_state,graph_metadata,
                                                                 curr_action,objects,goal_state,
-                                                                cheating_input)
+                                                                cheating_input, goal_dist)
                 all_graphs.append(graph_input)
                 graphs_input.append(graph_input)
                 graphs_target.append(graph_target)
@@ -907,9 +913,9 @@ def _create_graph_from_state_ltp(training_data,action_space=None,graph_metadata=
     return graphs_input,graphs_target 
 
 def state_to_graph_wrapper(state,action_space,grounding,prev_actions,prev_state,graph_metadata,
-                           curr_action,objects,goal_state,cheating_input=False):
+                           curr_action,objects,goal_state,cheating_input=False, goal_dist=-1):
     graph_input,node_to_objects = _state_to_graph_ltp(state,action_space,grounding,prev_actions,prev_state,
-                                                        graph_metadata=graph_metadata,goal_state=goal_state)
+                                                        graph_metadata=graph_metadata,goal_state=goal_state, goal_dist=goal_dist)
 
     all_actions = [k for k, v in action_space.items()]
     num_actions =len(all_actions)
@@ -1184,6 +1190,7 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
         outputs = []
         plans = []
         all_groundings = []
+        goal_distances = []
         action_space = env.action_space
         assert env.operators_as_actions
         plans_added_to_dataset = 0
@@ -1200,6 +1207,7 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
             plan_file_loc = get_plan_file_loc(env,curr_idx)
 
             state_sequence = []
+            goal_dist = []
             if _debug_level == constants.max_debug_level -1 :
                 print("Collecting training data problem {}".format(curr_idx),
                         flush=True)
@@ -1233,6 +1241,7 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
             state_sequence.append(state)
             groundings = env.action_space.all_ground_literals(state, reground=True)
             state_grounding.append(groundings)
+            goal_dist.append(len(plan))
             #state_grounding.append(env.action_space.all_ground_literals(state))
             new_plan = []
             #ic (groundings)
@@ -1259,12 +1268,14 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
                     #continue
                     break
                 state_grounding.append(groundings)
+                goal_dist.append(len(plan)- (action_idx+1))
                 #state_grounding.append(env.action_space.all_ground_literals(new_state[0]))
 
             if in_grounding == False:
                 continue
             #inputs.append(state)
             inputs.append(state_sequence)
+            goal_distances.append(goal_dist)
             if str_plan == False:
                 objects_in_plan = {o for act in plan for o in act.variables}
                 plans.append(plan)
@@ -1277,7 +1288,10 @@ def _collect_training_data( train_env_name,load_existing_and_add_plans=False,col
             all_groundings.append(state_grounding)
             plans_added_to_dataset += 1
         #training_data_curr = (inputs, outputs,plans,all_groundings,action_space._action_predicate_to_operators)
-        training_data_curr = (inputs, outputs,plans,action_space._action_predicate_to_operators,all_groundings)
+        #training_data_curr = (inputs, outputs,plans,action_space._action_predicate_to_operators,all_groundings)
+        training_data_curr = (inputs, outputs,plans,
+                              action_space._action_predicate_to_operators,
+                              all_groundings,goal_distances)
 
         #ic (training_plan_lenghts)
         #ic (plans_added_to_dataset)
@@ -1498,6 +1512,7 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
     outputs = []        # List of object sets in plans
     plans = []          # List of action plans
     all_groundings = [] # List of action groundings
+    goal_distances = [] #All states to goal distance as given by the planner
     cache_modified = False
     
     # Keep track of which problems were actually processed
@@ -1522,6 +1537,7 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
             outputs.append(problem_data[1])
             plans.append(problem_data[2])
             all_groundings.append(problem_data[3])
+            goal_distances.append(problem_data[4])
             
             # Add to processed problems list to track which problems we have data for
             processed_problems.append(problem_idx)
@@ -1557,6 +1573,7 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
             # Process the plan
             state_sequence = [state]
             state_grounding = []
+            goal_dist = [len(plan)]
             
             # Get initial groundings
             groundings = env.action_space.all_ground_literals(state, reground=True)
@@ -1585,6 +1602,7 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
                     break
                 
                 state_grounding.append(groundings)
+                goal_dist.append(len(plan) - (action_idx+1))
             
             # Skip if there was a grounding failure
             if not in_grounding:
@@ -1603,6 +1621,7 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
             outputs.append(objects_in_plan)
             plans.append(current_plan)
             all_groundings.append(state_grounding)
+            goal_distances.append(goal_dist)
             
             # Add to processed problems list
             processed_problems.append(problem_idx)
@@ -1630,7 +1649,7 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
             continue
     
     # Combine the data
-    training_data = (inputs, outputs, plans, action_space._action_predicate_to_operators, all_groundings)
+    training_data = (inputs, outputs, plans, action_space._action_predicate_to_operators, all_groundings, goal_distances)
     
     return training_data, None, domain_name, cache_modified, processed_problems
 
@@ -1810,7 +1829,7 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
             batch_training_data_full.append(batch_training_data)
             processed_problems_full.extend(processed_problems)
             
-    batch_training_data_full_formatted = [[],[],[],None,[]]
+    batch_training_data_full_formatted = [[],[],[],None,[],[]]
 
     for batch_data in batch_training_data_full :
         for i, elem in enumerate(batch_data):

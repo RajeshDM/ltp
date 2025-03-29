@@ -27,7 +27,9 @@ from tqdm import tqdm
 from ploi.test_utils import (
     PlannerConfig, PlannerType, PlanningResult, PlannerMetrics,
     compute_metrics,
-    validate_strips_plan
+    validate_strips_plan,
+    learned_planner_types,
+    baselines
 )
 import copy
 from ploi.run_planner_with_ltp_v1 import (
@@ -175,7 +177,7 @@ def convert_state_and_run_model(model, state, action_space , device, groundings,
     num_actions =len(all_actions)
     num_non_action_nodes = len(node_to_objects) - (num_actions) 
                                     
-    model_input = convert_graph_to_model_input_v2(g_inp,device)
+    model_input = convert_graph_to_model_input_v2([g_inp],device)
     results = model(model_input, beam_search=True)
     action_param_list = []
 
@@ -206,9 +208,26 @@ def convert_graph_to_model_input_v1(g_inp, device):
     return nfeat, edge_indices, efeat, u, a_scores, ao_scores
 
 def convert_graph_to_model_input_v2(g_inp, device):
-    hetero_graphs = graph_dataset_to_pyg_dataset([g_inp], batch_wise=False)
-    hetero_dataset = pyg_dataloader(hetero_graphs, batch_size=1)
+    hetero_graphs = graph_dataset_to_pyg_dataset(g_inp, batch_wise=False)
+    hetero_dataset = pyg_dataloader(hetero_graphs, batch_size=len(g_inp))
     return next(iter(hetero_dataset)).to(device) 
+
+def convert_state_and_run_model_val(model, states, action_space ,
+                                     device, groundings, 
+                                graph_metadata,cheating_input=None):
+    graph_inputs = []
+    for state in states :
+        g_inp , _, _= state_to_graph_wrapper(state,action_space,groundings,
+                                                        prev_actions=None,prev_state=None,
+                                                        graph_metadata=graph_metadata,
+                                                        curr_action=None,objects=None,goal_state=state.goal,
+                                                        cheating_input=cheating_input)
+        graph_inputs.append(g_inp)
+
+    model_input = convert_graph_to_model_input_v2(graph_inputs,device)
+    results = model(model_input)
+    return results
+
 
 class PlannerTester:
     def __init__(self, config: PlannerConfig):
@@ -296,7 +315,7 @@ class PlannerTester:
 
         ignore_defaults =self.config.ignore_defaults
         
-        if planner_type == PlannerType.LEARNED_MODEL:
+        if planner_type in learned_planner_types :# == PlannerType.LEARNED_MODEL:
             # Generate filename based on model hyperparameters
             param_strs = []
             
@@ -481,6 +500,90 @@ class PlannerTester:
 
         return result
 
+    def _get_successor_states(self,state, applicable_actions):
+        return [ (action, self._apply_action(state, action)) for action in applicable_actions ]
+
+    def _apply_action(self,state,action):
+        new_state = self.env.step(action)[0] 
+        self.env.set_state(state)
+        return new_state
+
+    def _run_learned_model_val(self, problem_idx: int, action_space: Any, model_epoch: Any, 
+                        graph_metadata: Any, use_monitor: bool = False) -> PlanningResult:
+
+        planner_type = PlannerType.LEARNED_MODEL_VAL
+        result = PlanningResult()
+        result.problem_idx = problem_idx
+        start_time = time.time()
+        monitor = StateMonitor() if use_monitor else None
+        model, epoch = model_epoch[0], model_epoch[1]
+        
+        # Initialize state
+        self.env.fix_problem_index(problem_idx)
+        state, _ = self.env.reset()
+        groundings = list(self.env.action_space.all_ground_literals(state, reground=True))
+        fname = self.env.problems[problem_idx].problem_fname
+        fname = "/".join(fname.split("/")[-2:]) 
+        fname = fname + "_" + str(epoch)
+
+        planner_data = self.planner_data[planner_type]
+
+        if fname in planner_data and False:
+            result.success = True
+            result.plan_length, result.time_taken = planner_data[fname]
+            return result 
+        
+        if monitor:
+            monitor.add_state(state)
+
+        while True:
+            groundings = list(self.env.action_space.all_ground_literals(state))
+            # explore current state (avoid loops by removing already visited successors)
+            successor_candidates = [ transition for transition in self._get_successor_states(state, groundings) ]
+
+            #If no successor exists, we are at a dead end - then we return 
+            if len(successor_candidates) == 0:
+                return result
+
+            if monitor :
+                successor_candidates_refined = [ transition for transition in successor_candidates
+                                         if not monitor.has_visited(transition[1]) ]
+
+                #If at least one non-visited successor exists, then that list is the possible next states
+                if len(successor_candidates_refined) != 0:
+                    successor_candidates = successor_candidates_refined[:]
+
+            successor_actions = [ candidate[0] for candidate in successor_candidates ]
+            successor_states = [ candidate[1] for candidate in successor_candidates ]
+            #collated_input, encoded_states = _to_input(successor_states, goal_denotation, obj_encoding, augment_fn, language, device, logger)
+            #output_values, output_solvables = model(collated_input)
+            output_values = convert_state_and_run_model_val(model, successor_states,
+                                                            action_space,self.config.device,
+                                                            groundings, graph_metadata)
+            best_successor_index = torch.argmin(output_values)
+            state = successor_states[best_successor_index]
+            new_action = successor_actions[best_successor_index]
+            self.env.step(new_action)
+
+            if monitor :
+                monitor.add_state(state)
+
+            result.plan.append(new_action)
+            action_taken = True
+            
+            if self._check_goal_reached(state):
+                result.success = True
+                result.time_taken = time.time() - start_time
+                result.plan_length = len(result.plan)
+                planner_data[fname] = (result.plan_length, result.time_taken)
+                return result
+
+            # Check if plan is too long
+            if len(result.plan) > self.config.max_plan_length:
+                result.time_taken = time.time() - start_time
+                return result
+
+
     def _check_goal_reached(self, state) -> bool:
         return all(goal in list(state.literals) for goal in state.goal.literals)
 
@@ -608,6 +711,9 @@ class PlannerTester:
                 if planner_type == PlannerType.LEARNED_MODEL and PlannerType.LEARNED_MODEL in models:
                     result = self._run_learned_model(problem_idx, action_space, models[planner_type], graph_metadata, use_monitor=self.config.enable_state_monitor)
 
+                if planner_type == PlannerType.LEARNED_MODEL_VAL and PlannerType.LEARNED_MODEL_VAL in models:
+                    result = self._run_learned_model_val(problem_idx, action_space, models[planner_type], graph_metadata, use_monitor=self.config.enable_state_monitor)
+                
                 elif planner_type == PlannerType.EXP_BASELINE and PlannerType.EXP_BASELINE in models:
                     result = self._run_exp_baseline(self.env, problem_idx, models[planner_type][0], exp_1_learned_planner, planner_type)
 

@@ -10,6 +10,7 @@ import subprocess
 
 class PlannerType(Enum):
     LEARNED_MODEL = auto()
+    LEARNED_MODEL_VAL = auto()
     NON_OPTIMAL = auto()
     OPTIMAL = auto()
     EXP_BASELINE = auto()
@@ -55,6 +56,15 @@ class PlanningResult:
         self.plan_length = 0
         self.repeated_states = 0 
         self.problem_idx = -1
+
+learned_planner_types = [
+    PlannerType.LEARNED_MODEL,
+    PlannerType.LEARNED_MODEL_VAL
+]
+
+baselines = [PlannerType.EXP_BASELINE, 
+             PlannerType.EXP_BASELINE_2, 
+             PlannerType.EXP_BASELINE_3] 
 
 def compute_metrics(problems_per_division, 
                     results: Dict[PlannerType, List[PlanningResult]],
@@ -223,6 +233,7 @@ def format_metrics_non_opt(metrics, epoch=None):
     }
     
 
+'''
 def log_model_metrics(all_results_dict, args):
     """
     Logs metrics to wandb and returns best model info.
@@ -270,6 +281,72 @@ def log_model_metrics(all_results_dict, args):
         })
 
     return best_model_type, best_epoch, best_success_rate
+'''
+
+def log_model_metrics(all_results_dict, args):
+    """
+    Logs metrics to wandb and returns best model info for each planner type.
+    
+    Args:
+        all_results_dict (dict): Dictionary with model types as keys and their results as values
+        args: Arguments containing wandb configuration
+        learned_planner_types (list): List of planner types to track
+        
+    Returns:
+        dict: Dictionary with planner types as keys and tuples of (best_model_type, best_epoch, best_success_rate) as values
+    """
+        
+    # Dictionary to track best results for each planner type
+    best_results = {planner_type: {"success_rate": -1, "model_type": None, "epoch": None} 
+                    for planner_type in learned_planner_types}
+    
+    # Log metrics for each model and epoch
+    for model_type, results in all_results_dict.items():
+        for result in results:
+            epoch = result['epoch']
+            
+            # Log metrics for each planner type
+            for planner_type in learned_planner_types:
+                if planner_type in result['test_results']:
+                    metrics = result['test_results'][planner_type]
+                    
+                    # Log to wandb
+                    if args.wandb:
+                        wandb.log({
+                            f"{model_type}/{planner_type}/success_rate_monitor": metrics.success_rate_with_monitor,
+                            f"{model_type}/{planner_type}/success_rate_no_monitor": metrics.success_rate_without_monitor,
+                            f"{model_type}/{planner_type}/plan_length": metrics.avg_plan_length,
+                        }, step=epoch)
+                    
+                    # Track best model for this planner type
+                    if metrics.success_rate_with_monitor > best_results[planner_type]["success_rate"]:
+                        best_results[planner_type]["success_rate"] = metrics.success_rate_with_monitor
+                        best_results[planner_type]["model_type"] = model_type
+                        best_results[planner_type]["epoch"] = epoch
+    
+    # Log best model info for each planner type
+    if args.wandb:
+        for planner_type in learned_planner_types:
+            if best_results[planner_type]["model_type"]:
+                wandb.log({
+                    f"best_model/{planner_type}/type": best_results[planner_type]["model_type"],
+                    f"best_model/{planner_type}/epoch": best_results[planner_type]["epoch"],
+                    f"best_model/{planner_type}/success_rate": best_results[planner_type]["success_rate"]
+                })
+    
+    # Print best model info for each planner type
+    for planner_type in learned_planner_types:
+        if best_results[planner_type]["model_type"] is not None:
+            print(f"\nBest Model for {planner_type} (With Monitor):")
+            print(f"Type: {best_results[planner_type]['model_type']}")
+            print(f"Epoch: {best_results[planner_type]['epoch']}")
+            print(f"Success Rate: {best_results[planner_type]['success_rate']:.2%}")
+    
+    # Return results in the format (best_model_type, best_epoch, best_success_rate) for each planner type
+    return {planner_type: (best_results[planner_type]["model_type"], 
+                           best_results[planner_type]["epoch"], 
+                           best_results[planner_type]["success_rate"])
+            for planner_type in learned_planner_types}
 
 
 """Validate plans.

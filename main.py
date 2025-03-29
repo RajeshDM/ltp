@@ -48,6 +48,8 @@ from ploi.test_utils import (
     PlannerConfig, PlannerType, PlanningResult, PlannerMetrics,
     compute_metrics,
     compute_combined_metrics,
+    learned_planner_types,
+    baselines
 )
 from ploi.run_planner_with_ltp_v2 import PlannerTester, PlannerConfig, PlannerType
 from ploi.test_utils import format_metrics, log_model_metrics ,format_metrics_non_opt
@@ -56,13 +58,13 @@ from ploi.modelutils import (
     GraphNetwork,
 )
 from ploi.modelutils_ltp import (
-    GraphNetworkLtp,
     GNN_GRU,
 )
 from ploi.ablations import (
     GNN_non_AG_CD,
     GNN_non_CD_decode,
     GNN_non_AG_non_CD,
+    GNN_Val,
 )
 from ploi.planning import IncrementalPlanner
 from ploi.planning.incremental_hierarchical_planner import (
@@ -73,6 +75,7 @@ from ploi.traineval import (
     test_planner,
     train_model_graphnetwork,
     train_model_graphnetwork_ltp_batch,
+    train_model_graphnetwork_ltp_batch_val,
     train_model_hierarchical,
 )
 from ploi.baselines.exp_1.utils import load_checkpoint 
@@ -83,9 +86,16 @@ from ploi.baselines.exp_3.architecture import g_model_classes
 #import ploi.constants as constants
 from icecream import ic
 
+'''
 baselines = [PlannerType.EXP_BASELINE, 
              PlannerType.EXP_BASELINE_2, 
              PlannerType.EXP_BASELINE_3] 
+
+learned_planner_types = [
+    PlannerType.LEARNED_MODEL,
+    PlannerType.LEARNED_MODEL_VAL
+]
+'''
 
 def set_seed(args):
     seed = args.seed
@@ -166,12 +176,19 @@ def run_tests(
         if PlannerType.LEARNED_MODEL in planner_types_copy:
             planner_types.remove(PlannerType.LEARNED_MODEL)
 
+        if PlannerType.LEARNED_MODEL_VAL in planner_types_copy:
+            planner_types.remove(PlannerType.LEARNED_MODEL_VAL)
+        
+
         if len(planner_types_copy) == 0:  
             return []
     
     results = []
     curr_model = None
-    if PlannerType.LEARNED_MODEL in planner_types : 
+    #if PlannerType.LEARNED_MODEL in planner_types or PlannerType.LEARNED_MODEL_VAL in planner_types: 
+    for planner_type in planner_types :
+        if planner_type not in learned_planner_types :
+            continue 
         for model_info in best_models[::-1][starting_model_num:starting_model_num+num_models_to_test]:
             # Create fresh model instance
             #model = model_class()
@@ -193,7 +210,8 @@ def run_tests(
                 if model_info['epoch'] != args.epoch_number :
                     continue
 
-            curr_models[PlannerType.LEARNED_MODEL] = (curr_model,model_info['epoch'])
+            #curr_models[PlannerType.LEARNED_MODEL] = (curr_model,model_info['epoch'])
+            curr_models[planner_type] = (curr_model,model_info['epoch'])
 
             # Run tests
             print ("Testing model from epoch ",model_info['epoch'])
@@ -206,15 +224,18 @@ def run_tests(
                 'test_results': run_metrics, 
                 'all_plan_results': test_results
             })
-            metrics = results[-1]['test_results'][PlannerType.LEARNED_MODEL]
+            #metrics = results[-1]['test_results'][PlannerType.LEARNED_MODEL]
+            metrics = results[-1]['test_results'][planner_type]
             print ("failed : ",metrics.failures)
-            _ = format_metrics(results[-1]['test_results'][PlannerType.LEARNED_MODEL], model_info['epoch'])
+            #_ = format_metrics(results[-1]['test_results'][PlannerType.LEARNED_MODEL], model_info['epoch'])
+            _ = format_metrics(results[-1]['test_results'][planner_type], model_info['epoch'])
             #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
 
             #if PlannerType.NON_OPTIMAL in planner_types : 
             _ = format_metrics(results[-1]['test_results'][PlannerType.NON_OPTIMAL], model_info['epoch'])
             #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
-            combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'], PlannerType.LEARNED_MODEL)
+            #combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'], PlannerType.LEARNED_MODEL)
+            combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'], planner_type)
             #print (f"Combined Metrics for {model_type} : ", combnined_metrics)
             print ("Plan Quality : ", combnined_metrics.plan_quality)
 
@@ -677,6 +698,8 @@ if __name__ == "__main__":
             model_class = GNN_non_AG_CD
         elif args.method == 'ltp_no_ag_no_cd' :
             model_class = GNN_non_AG_non_CD
+        elif args.method == 'ltp_val' :
+            model_class = GNN_Val
 
         _model = initialize_model(model_class, args, action_space)
 
@@ -714,6 +737,17 @@ if __name__ == "__main__":
         #if args.mode == 'train' and (not os.path.exists(model_outfile) or continue_training == True):
         if args.mode == 'train'  or args.mode == 'train_test' :
             optimizer = torch.optim.Adam(_model.parameters(),lr=args.lr,weight_decay=args.weight_decay) 
+
+            if 'val' not in args.method :
+                pos_weight = args.pos_weight * torch.ones([1])
+                criterion = torch.nn.CrossEntropyLoss()
+                train_func = train_model_graphnetwork_ltp_batch
+
+            else :
+                pos_weight = None 
+                criterion = None 
+                train_func = train_model_graphnetwork_ltp_batch_val
+
             #optimizer = torch.optim.AdamW(self._model.parameters(), lr=5 * 1e-4,weight_decay=0.01)
             if continue_training == True and os.path.exists(model_outfile) :
                 _model_state = torch.load(model_outfile)
@@ -721,13 +755,10 @@ if __name__ == "__main__":
                 optimizer.load_state_dict(_model_state['optimizer'])
                 _starting_epoch = _model_state['epochs'] + 1
 
-            pos_weight = args.pos_weight * torch.ones([1])
-            #pos_weight = self._bce_pos_weight*torch.ones([1])
-            criterion = torch.nn.CrossEntropyLoss()
             #criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
             # Train model
             #model_dict = train_model_graphnetwork_ltp_batch(_model, 
-            train_model_graphnetwork_ltp_batch(_model, 
+            train_func(_model, 
                                     datasets,
                                     #dataloaders,
                                     criterion=criterion, optimizer=optimizer,
@@ -753,7 +784,10 @@ if __name__ == "__main__":
         baseline_models = {}
 
         if args.run_learned_model is True :
-            planner_types.append(PlannerType.LEARNED_MODEL)
+            if 'val' in args.method :
+                planner_types.append(PlannerType.LEARNED_MODEL_VAL)
+            else :
+                planner_types.append(PlannerType.LEARNED_MODEL)
 
         if args.run_non_optimal is True :
             planner_types.append(PlannerType.NON_OPTIMAL)
@@ -847,12 +881,4 @@ if __name__ == "__main__":
             results = run_tests_model_type(model_type, tested_epoch_numbers)
             all_results[model_type] = results
 
-        # Log all results and get best model info
-        best_model_type, best_epoch, best_success_rate = log_model_metrics(all_results, args)
-
-        # Print best model info
-        if best_model_type is not None:
-            print(f"\nBest Model (With Monitor):")
-            print(f"Type: {best_model_type}")
-            print(f"Epoch: {best_epoch}")
-            print(f"Success Rate: {best_success_rate:.2%}")
+        _ = log_model_metrics(all_results,args)

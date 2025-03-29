@@ -428,3 +428,35 @@ class GNN_non_AG_non_CD(EncodeDecode):
                          n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
                          action_idxs=action_idxs)
             
+
+class GNN_Val(nn.Module):
+    def __init__(self, n_features, n_edge_features,n_global_features,
+                n_hidden, gnn_rounds,
+                 num_decoder_layers,
+                 dropout, 
+                 attn_dropout ,
+                 action_space,
+                 batch_size,
+                 n_heads,
+                 g_node,
+                 device,
+                 action_options,
+                 object_options):
+        super(GNN_Val,self).__init__()
+        if g_node is True :
+            self.encoder = HeteroGNN_global(n_features,n_edge_features,n_global_features\
+                                        ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads,device)
+        else :
+            self.encoder = HeteroGNN(n_features,n_edge_features,n_global_features\
+                                        ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads,device)
+        
+        self.output_mlp = nn.Sequential(
+            nn.Linear(n_hidden, n_hidden),
+            nn.ReLU(),
+            nn.Dropout(dropout) if dropout > 0.0 else nn.Identity(),
+            nn.Linear(n_hidden, 1),
+        )
+
+    def forward(self,data):
+        x,edge_attr, u = self.encoder(data)
+        return self.output_mlp(u)
