@@ -16,7 +16,8 @@ import itertools
 import time
 from ploi.modelutils_ltp import GNN_GRU, HeteroGNN_global, HeteroGNN ,EncodeDecode
 
-class GNN_non_CD_decode(EncodeDecode):
+#This class uses action representation from the graph to compute action scores
+class GNN_non_CD_decode_old(EncodeDecode):
     def __init__(self, n_features, n_edge_features,n_global_features,
                 n_hidden, gnn_rounds,
                  num_decoder_layers,
@@ -29,7 +30,7 @@ class GNN_non_CD_decode(EncodeDecode):
                  device,
                  action_options,
                  object_options):
-        super(GNN_non_CD_decode,self).__init__(
+        super(GNN_non_CD_decode_old,self).__init__(
             n_features, n_edge_features, n_global_features,
                 n_hidden, gnn_rounds,
                  num_decoder_layers,
@@ -117,6 +118,8 @@ class GNN_non_CD_decode(EncodeDecode):
                          n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
                          action_idxs=action_idxs)
             
+
+#this ablation is without action data in graph but still does conditional decode
 class GNN_non_AG_CD(EncodeDecode):
     def __init__(self, n_features, n_edge_features,n_global_features,
                 n_hidden, gnn_rounds,
@@ -326,7 +329,9 @@ class GNN_non_AG_CD(EncodeDecode):
         results = sorted(zip(finished_scores, finished_beams), reverse=True)
         return results
 
-class GNN_non_AG_non_CD(EncodeDecode):
+#This class does non-conditional decode. It outputs a vector for actions even when there is action information available in graph
+#Hence this non-conditional works for both with Aciton in graph or with no actions in graph
+class GNN_non_CD(EncodeDecode):
     def __init__(self, n_features, n_edge_features,n_global_features,
                 n_hidden, gnn_rounds,
                  num_decoder_layers,
@@ -339,7 +344,7 @@ class GNN_non_AG_non_CD(EncodeDecode):
                  device,
                  action_options,
                  object_options):
-        super(GNN_non_AG_non_CD,self).__init__(
+        super(GNN_non_CD,self).__init__(
             n_features, n_edge_features, n_global_features,
                 n_hidden, gnn_rounds,
                  num_decoder_layers,

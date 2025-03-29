@@ -19,10 +19,6 @@ import logging
 from tqdm import tqdm
 
 import ploi.constants as constants
-from ploi.ablations import (
-    GNN_non_AG_CD,
-    GNN_non_CD_decode
-)
 from ploi.modelutils_ltp import (
     GNN_GRU
 )
@@ -1474,7 +1470,7 @@ def get_filenames(dataset_size,train_env_name,epochs,_model_version,
         model_outfile = os.path.join(save_folder,str(train_env_name)+ "_seed"+ str(_seed) + "_model" \
                                       + str(epochs) + "_" + message_string + ".pt")
     else :
-        model_outfile = os.path.join(save_folder,str(model_class.__name__) + "_" + str(train_env_name)+ "_seed"+ str(_seed) + "_model" \
+        model_outfile = os.path.join(save_folder,str(args.ablation) + "_" + str(train_env_name)+ "_seed"+ str(_seed) + "_model" \
                                       + str(epochs) + "_" + message_string + ".pt")
                             
 

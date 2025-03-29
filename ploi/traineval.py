@@ -90,6 +90,7 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
                 model.eval()
 
             for i,batch_data in enumerate(datasets[phase]):
+                loss = 0.
                 optimizer.zero_grad()
                 batch_data = batch_data.to(device)
                 state_val =  model(batch_data)

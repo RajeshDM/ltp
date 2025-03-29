@@ -62,8 +62,7 @@ from ploi.modelutils_ltp import (
 )
 from ploi.ablations import (
     GNN_non_AG_CD,
-    GNN_non_CD_decode,
-    GNN_non_AG_non_CD,
+    GNN_non_CD,
     GNN_Val,
 )
 from ploi.planning import IncrementalPlanner
@@ -301,6 +300,7 @@ if __name__ == "__main__":
                 "augmentation" : args.data_augmentation,
                 "weight_decay" : args.weight_decay,
                 "monitor" : args.monitor,
+                "ablation" : args.ablation ,
             })
 
     mode = args.mode
@@ -378,7 +378,7 @@ if __name__ == "__main__":
             training_data
         )
     elif 'ltp' in args.method:
-        if 'no_ag' in args.method :
+        if 'no_ag' in args.ablation :
             input_hetero_graphs = remove_actions_all_graphs(input_hetero_graphs)
             val_hetero_graphs = remove_actions_all_graphs(val_hetero_graphs)
 
@@ -690,15 +690,13 @@ if __name__ == "__main__":
         n_heads = args.n_heads
         #action_space = training_data[3]
 
-        if args.method == 'ltp':
+        if args.ablation == 'main':
             model_class = GNN_GRU
-        elif args.method == 'ltp_no_cd' :
-            model_class = GNN_non_CD_decode
-        elif args.method == 'ltp_no_ag' :
+        elif 'no_cd' in  args.ablation:
+            model_class = GNN_non_CD
+        elif args.ablation == 'no_ag' :
             model_class = GNN_non_AG_CD
-        elif args.method == 'ltp_no_ag_no_cd' :
-            model_class = GNN_non_AG_non_CD
-        elif args.method == 'ltp_val' :
+        elif args.ablation == 'val' :
             model_class = GNN_Val
 
         _model = initialize_model(model_class, args, action_space)
@@ -711,12 +709,14 @@ if __name__ == "__main__":
             'wd' : args.dropout,
             'heads' : args.n_heads,
             'g_node' : args.use_global_node,
-            'model_class' : model_class.__name__,
+            #'model_class' : model_class.__name__,
+            'abl_' : args.ablation 
         }
 
         ignore_defaults = {
             'g_node' : True ,
-            'model_class' : GNN_GRU.__name__
+            #'model_class' : GNN_GRU.__name__
+            'abl_' : 'main'
         }
 
         continue_training = args.continue_training
@@ -738,7 +738,7 @@ if __name__ == "__main__":
         if args.mode == 'train'  or args.mode == 'train_test' :
             optimizer = torch.optim.Adam(_model.parameters(),lr=args.lr,weight_decay=args.weight_decay) 
 
-            if 'val' not in args.method :
+            if 'val' not in args.ablation  :
                 pos_weight = args.pos_weight * torch.ones([1])
                 criterion = torch.nn.CrossEntropyLoss()
                 train_func = train_model_graphnetwork_ltp_batch
@@ -784,7 +784,7 @@ if __name__ == "__main__":
         baseline_models = {}
 
         if args.run_learned_model is True :
-            if 'val' in args.method :
+            if 'val' in args.ablation :
                 planner_types.append(PlannerType.LEARNED_MODEL_VAL)
             else :
                 planner_types.append(PlannerType.LEARNED_MODEL)
