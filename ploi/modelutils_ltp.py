@@ -476,16 +476,16 @@ class EncodeDecode(nn.Module):
         results = []
         
         # Get top-k actions
-        top_action_values, top_action_indices = torch.topk(a_scores_final, min(self.max_num_actions, len(a_scores_final)))
+        top_action_values, top_action_indices = torch.topk(a_scores_final, min(self.max_num_actions,a_scores_final.shape[1] ))
         
         # Get top-k objects for each parameter position
         max_objects_per_action = ao_scores_final.shape[0]
         top_object_values, top_object_indices = torch.topk(ao_scores_final, min(self.max_num_objects, ao_scores_final.shape[1]), dim=1)
         
         # Process each top action
-        for i, action_idx in enumerate(top_action_indices):
+        for i, action_idx in enumerate(top_action_indices[0]):
             action_idx = action_idx.item()
-            action_score = top_action_values[i]
+            action_score = top_action_values[0][i]
             
             # Get number of parameters for this action
             num_params = self.action_parameter_number_dict.get(action_idx, 0)

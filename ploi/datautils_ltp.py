@@ -1556,7 +1556,7 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
                         str_plan = True
                 else:
                     planner.reset_statistics()
-                    plan = planner(env.domain, state, timeout=360)
+                    plan = planner(env.domain, state, timeout=900)
             except (PlanningTimeout, PlanningFailure):
                 logger.warning(f"Planning failed for problem {problem_idx}")
                 continue

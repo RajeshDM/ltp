@@ -30,7 +30,7 @@ def get_ploi_argument_parser():
         "--ablation",
         type=str,
         choices=["no_cd", "no_ag", "no_ag_no_cd", "val"] ,
-        default="ltp",
+        default="main",
     )
     parser.add_argument(
         "--num-seeds",

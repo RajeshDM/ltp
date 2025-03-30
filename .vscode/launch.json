@@ -58,7 +58,7 @@
         },
         {
             "name": "Test blocks",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
@@ -83,8 +83,8 @@
                 "--epochs" , "10",
                 "--gnn-rounds" , "9",
                 "--batch-size", "16",
-                "--mode", "train_test",
-                //"--mode", "test",
+                //"--mode", "train_test",
+                "--mode", "test",
                 "--max-plan-length", "500",
                 "--problems-per-division", "10",
                 "--run-learned-model" , "True",
@@ -93,8 +93,8 @@
                 //"--monitor", "False",
                 "--use-global-node", "True",
                 //"--exp-baseline-3" , "True",
-                //"--ablation", "no_ag_no_cd"
-                "--ablation", "val"
+                "--ablation", "no_ag_no_cd"
+                //"--ablation", "val"
             ],
         },
         {
