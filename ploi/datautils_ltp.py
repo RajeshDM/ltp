@@ -102,7 +102,8 @@ def graph_to_pyg_data(graph):
             continue
 
         if key == 'goal_dist' : 
-            hetero_data[key].x = torch.tensor(copy.deepcopy(items),dtype=torch.float64)
+            hetero_data[key].x = torch.tensor(copy.deepcopy(items),dtype=all_dtype)
+            continue
 
         if key not in gnn_processing_info :
             hetero_data[key].x = torch.tensor(copy.deepcopy(items),dtype=torch.long)

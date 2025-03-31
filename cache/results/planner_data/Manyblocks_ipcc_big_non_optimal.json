@@ -1158,5 +1158,9 @@
     "manyblocks_ipcc_big_test/blocks70_task49.pddl": [
         544,
         4.368892192840576
+    ],
+    "manyblocks_ipcc_big_test/blocks06_task01.pddl": [
+        32,
+        0.11496543884277344
     ]
 }

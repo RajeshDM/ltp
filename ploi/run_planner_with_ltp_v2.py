@@ -225,7 +225,7 @@ def convert_state_and_run_model_val(model, states, action_space ,
         graph_inputs.append(g_inp)
 
     model_input = convert_graph_to_model_input_v2(graph_inputs,device)
-    results = model(model_input)
+    results = model(model_input).squeeze(1)
     return results
 
 

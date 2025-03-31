@@ -93,9 +93,10 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
                 loss = 0.
                 optimizer.zero_grad()
                 batch_data = batch_data.to(device)
-                state_val =  model(batch_data)
-                target_state_val = batch_data['goal_dist'].x 
-                #loss += criterion(state_val ,target_state_val)
+                state_val =  model(batch_data).squeeze(1)
+                target_state_val = batch_data['goal_dist'].x/100
+                target_state_val = target_state_val.to(state_val[0].dtype)
+                #loss += criterion(target_state_val ,state_val[0])
                 loss += torch.mean(torch.abs(torch.sub(target_state_val, state_val)))
 
                 if phase == 'train':
@@ -105,6 +106,7 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
                     optimizer.step()
                     #ic ("backprop time",time.time()-backward_time)
 
+                #print (state_val)
                 # statistics
                 running_loss[phase] += loss.item()
                 running_num_samples += 1

@@ -745,7 +745,7 @@ if __name__ == "__main__":
 
             else :
                 pos_weight = None 
-                criterion = None 
+                criterion = torch.nn.MSELoss() 
                 train_func = train_model_graphnetwork_ltp_batch_val
 
             #optimizer = torch.optim.AdamW(self._model.parameters(), lr=5 * 1e-4,weight_decay=0.01)
