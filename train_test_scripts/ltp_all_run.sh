@@ -42,7 +42,7 @@ declare -A domain_configs=(
     ["miconic"]="name=miconic_ipcc;train=228;test=119"
     ["visitall"]="name=visitall_ipcc;train=125;test=50"
     ["grid"]="name=grid_ipcc;train=192;test=48"
-    ["logistics"]="name=logistics_ipcc;train=192;test=96"
+    ["logistics"]="name=logistics_ipcc;train=156;test=96"
     ["spanner"]="name=spanner_ipcc;train=234;test=96"
     ["rovers"]="name=spanner_ipcc;train=312;test=58"
     ["klondike_solitaire"]="name=klondike_solitaire;train=150;test=99"
