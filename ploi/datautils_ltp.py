@@ -1032,143 +1032,6 @@ def _expand_graph_to_max_size_features(graphs_input,graphs_target):
 def _get_action_object_from_action(action):
     return action.predicate, action.variables
 
-def get_feasible_action_param_list(self,env,state,action_space,ensemble):
-    groundings = env.action_space.all_ground_literals(state)
-    action_param_list,_ = self.get_action_object_scores_ensemble(state,action_space._action_predicate_to_operators,groundings, prev_actions=None,
-                                                                                prev_state=None, ensemble=ensemble)
-
-    groundings = list(groundings)
-    groundings_list = []
-    possible_action_param_list = []
-    for grounding in groundings:
-        grounding_action = grounding.predicate
-        objects = grounding.variables
-        groundings_list.append(pddlgym.structs.Literal(grounding_action, objects))
-
-    if len(groundings) == 0 :
-        return [-1]
-        #ic(action_param_list)
-        #ic (state.literals)
-        #ic (groundings)
-        #ic (possible_action_param_list)
-        #exit()
-    for action_data in action_param_list :
-        decoded_action, decoded_action_parameters = action_data[0], action_data[1]
-        new_action = pddlgym.structs.Literal(decoded_action, decoded_action_parameters)
-        in_grounding = False
-        for grounded_action in groundings_list:
-            in_grounding_temp = True
-            if new_action.predicate == grounded_action.predicate:
-                for grounded_var, action_var in zip(grounded_action.variables, new_action.variables):
-                    if grounded_var != action_var:
-                        in_grounding_temp = False
-                        break
-                if in_grounding_temp == True:
-                    in_grounding = True
-                    break
-        if in_grounding == False :
-            #number_impossible_actions += 1
-            continue
-        possible_action_param_list.append((new_action,action_data[2]))
-        #state = env.step(new_action)
-        #state = state[0]
-        # continue
-        #break
-    return possible_action_param_list
-
-
-def get_action_object_scores_ensemble( state, action_space,pyperplan_task ,
-                                        prev_actions=None,prev_state=None
-                                        ,correct_action_object_tuple=None,
-                                        ensemble=False):
-
-    #start_time = time.time()
-    graph, node_to_objects = _state_to_graph_ltp(state,action_space,pyperplan_task,
-                                                    prev_actions,prev_state,test=True,
-                                                    graph_metadata=graph_metadata)
-    object_idxs = []
-    action_idxs = []
-    action_param_tuples = []
-    all_model_outputs = []
-    '''
-    for i,elem in enumerate(graph['nodes'][:-1]):
-        if elem[0] == 1 :
-            action_idxs.append(i)
-        elif elem[0] == 0 :
-            object_idxs.append(i)
-    '''
-    for i,elem in enumerate(graph['nodes']):
-        if elem[0] == 1 :
-            action_idxs.append(i)
-        elif elem[0] == 0 :
-            object_idxs.append(i)
-
-    number_objects = len(object_idxs)
-
-    if ensemble == True :
-        for model in self._ensemble_models:
-            predictions = _predict_multiple_graph_from_single_output_with_model(model,graph)
-            output = _get_action_param_list_from_predictions(predictions,action_space,node_to_objects,number_objects)
-            #ic (output)
-            all_model_outputs.append(output)
-    else :
-        predictions = _predict_multiple_graph_from_single_output(graph)
-        output = _get_action_param_list_from_predictions(predictions, action_space, node_to_objects, number_objects)
-        all_model_outputs.append(output)
-
-    all_possible_actions = {}
-
-    for output in all_model_outputs:
-        current_graph_keys = []
-        for action_data in output :
-            key = str(action_data[0]) + str(action_data[1])
-            if key in current_graph_keys :
-                continue
-            current_graph_keys.append(key)
-            if key not in all_possible_actions.keys():
-                all_possible_actions[key] = [action_data,action_data[2]]
-            else :
-                current_score = all_possible_actions[key][1]
-                all_possible_actions[key] = [action_data,current_score+action_data[2]]
-
-    for key,value in all_possible_actions.items():
-        action_param_tuples.append((value[0][0],value[0][1],value[1]))
-
-    #output = sorted(action_param_tuples, key=lambda x: x[-1])
-    #return output[::-1],graph
-    return action_param_tuples,graph
-
-def _get_action_param_list_from_predictions(predictions,action_space, node_to_objects,number_objects):
-
-    action_param_tuples = []
-    #ic (len(predictions))
-    max_action_arity = 0
-    for action in action_space:
-        if action.arity > max_action_arity:
-            max_action_arity = action.arity
-
-
-    for prediction in predictions:
-        obj_idxs = []
-        action_idx = int(prediction[1][0][0])
-        for arity in range(max_action_arity):
-            obj_idxs.append(int(prediction[1][arity+1][arity]))
-        tuple_score = prediction[3][0][0].item()
-        action = node_to_objects[action_idx+number_objects]
-        number_parameters = len(action_space[action].params)
-        action_parameters = []
-        tuple_object_score = 0
-        divide_score_by = 1
-        objects_score = 0
-        for i in range(number_parameters):
-            object = node_to_objects[obj_idxs[i]]
-            action_parameters.append(object)
-            objects_score += prediction[3][i+1][i].item()
-            divide_score_by += 1
-        action_param_tuples.append((action,action_parameters,tuple_score +objects_score/divide_score_by))
-
-    return action_param_tuples
-
 def _collect_training_data( train_env_name,load_existing_and_add_plans=False,collection_cycle=0,
                            outfile=None,_planner=None,_num_train_problems=None,args=None):
     """Returns X, Y where X are States and Y are sets of objects
@@ -1473,10 +1336,8 @@ def get_filenames(dataset_size,train_env_name,epochs,_model_version,
     else :
         model_outfile = os.path.join(save_folder,str(args.ablation) + "_" + str(train_env_name)+ "_seed"+ str(_seed) + "_model" \
                                       + str(epochs) + "_" + message_string + ".pt")
-                            
 
     return model_outfile,message_string,save_folder
-
 
 def collect_training_data(train_env_name, planner, num_train_problems, args=None, unified_cache=None):
     """
