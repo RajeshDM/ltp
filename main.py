@@ -394,6 +394,8 @@ if __name__ == "__main__":
     valid_graphs_input = graphs_inp[:num_validation]
     valid_graphs_target = graphs_tgt[:num_validation]
     '''
+    print (len(input_hetero_graphs) + len(val_hetero_graphs))
+    exit()
 
     pyg = args.pyg
     batch_size = args.batch_size

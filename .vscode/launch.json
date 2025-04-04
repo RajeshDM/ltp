@@ -5,8 +5,8 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
-            "type": "python",
+            "name": "debugpy: Current File",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -140,7 +140,7 @@
         },
         {
             "name": "Test blocks s",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
@@ -166,7 +166,7 @@
         },
         {
             "name": "Test gripper",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
@@ -195,7 +195,7 @@
         },
         {
             "name": "Test logistics",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
@@ -211,7 +211,7 @@
                 "--mode", "test",
                 "--starting-test-number", "0",
                 "--num-test-problems", "96",
-                "--num-train-problems", "192",
+                "--num-train-problems", "156",
                 "--epochs" , "80",
                 "--gnn-rounds" , "9",
                 "--batch-size", "16",
@@ -318,7 +318,7 @@
         },
         {
             "name": "Test grid",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
@@ -378,7 +378,7 @@
         },
         {
             "name": "Test klondike solitaire",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
@@ -411,7 +411,7 @@
         },
         {
             "name": "exp_baseline_train",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/ploi/baselines/exp_1/train.py",
             "console": "integratedTerminal",
@@ -422,7 +422,7 @@
         },
         {
             "name": "exp_baseline_test",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/ploi/baselines/exp_1/plan.py",
             "console": "integratedTerminal",
@@ -434,7 +434,7 @@
         },
         {
             "name": "exp_baseline_2_train_states",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             //"program": "${workspaceFolder}/ploi/baselines/exp_2/train.py",
             "module" :  "ploi.baselines.exp_2.train",
@@ -458,7 +458,7 @@
         },
         {
             "name": "exp_baseline_2_train_pddl",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             //"program": "${workspaceFolder}/ploi/baselines/exp_2/train.py",
             "module" :  "ploi.baselines.exp_2.train",
@@ -489,7 +489,7 @@
         },
         {
             "name": "exp_baseline_2_test",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/ploi/baselines/exp_2/test.py",
             "console": "integratedTerminal",
@@ -503,7 +503,7 @@
         },
         {
             "name": "exp_baseline_3_train_pddl",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "ploi.baselines.exp_3.train",
             "console": "integratedTerminal",
@@ -523,7 +523,7 @@
         },
         {
             "name": "exp_baseline_3_train_states",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "ploi.baselines.exp_3.train",
             "console": "integratedTerminal",
@@ -554,7 +554,7 @@
         },
         {
             "name": "exp_baseline_3_test_states",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "ploi.baselines.exp_3.plan",
             "console": "integratedTerminal",
@@ -578,7 +578,7 @@
         },
         {
             "name": "analyse_results",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/analyse_domain_results.py",
             "console": "integratedTerminal",

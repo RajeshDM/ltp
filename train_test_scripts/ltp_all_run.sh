@@ -44,6 +44,7 @@ declare -A domain_configs=(
     ["grid"]="name=grid_ipcc;train=192;test=48"
     ["logistics"]="name=logistics_ipcc;train=192;test=96"
     ["spanner"]="name=spanner_ipcc;train=234;test=96"
+    ["rovers"]="name=spanner_ipcc;train=312;test=58"
     ["klondike_solitaire"]="name=klondike_solitaire;train=150;test=99"
 )
 
@@ -56,7 +57,7 @@ METHOD="ltp"
 heads=(2 4)
 lrs=(0.0005)
 decays=(0.000)
-attn_drops=(0.1 0.2)
+#attn_drops=(0.1 0.2)
 other_drops=(0)
 gnn_rounds=(9)
 epochs=750
@@ -96,6 +97,12 @@ while [[ $# -gt 0 ]]; do
             ;;
         --attn-drop)
             attn_drops=($2)
+            shift 2
+            ;;
+        --attn-drop-list)
+            # For comma-separated list
+            IFS=',' read -r -a CUSTOM_ATTN_DROP_LIST <<< "$2"
+            CUSTOM_ATTN_DROP="${CUSTOM_ATTN_DROP_LIST[@]}"  # Convert to space-separated
             shift 2
             ;;
         --drop)
@@ -151,6 +158,26 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Set attention dropout rates based on ablation type
+if [[ ! -z "$CUSTOM_ATTN_DROP" ]]; then
+    # If user explicitly set attn-drop, use that value
+    attn_drops=($CUSTOM_ATTN_DROP)
+    echo "Using custom attention dropout rate: ${CUSTOM_ATTN_DROP}"
+else
+    # Otherwise set based on ablation type
+    case $ablation in
+        "main")
+            attn_drops=(0.1 0.2)
+            echo "Using attention dropout rates for 'main' ablation: 0.1 0.2"
+            ;;
+        *)
+            # For all other ablation values
+            attn_drops=(0.0 0.1)
+            echo "Using attention dropout rates for non-main ablation: 0.0 0.1"
+            ;;
+    esac
+fi
 
 # Get domain configuration
 CONFIG=${domain_configs[$DOMAIN]}
