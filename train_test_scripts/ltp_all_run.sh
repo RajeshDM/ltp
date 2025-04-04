@@ -57,7 +57,6 @@ METHOD="ltp"
 heads=(2 4)
 lrs=(0.0005)
 decays=(0.000)
-#attn_drops=(0.1 0.2)
 other_drops=(0)
 gnn_rounds=(9)
 epochs=750
