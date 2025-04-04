@@ -29,7 +29,7 @@ def get_ploi_argument_parser():
     parser.add_argument(
         "--ablation",
         type=str,
-        choices=["no_cd", "no_ag", "no_ag_no_cd", "val"] ,
+        choices=["no_cd", "no_ag", "no_ag_no_cd", "val","main"] ,
         default="main",
     )
     parser.add_argument(
