@@ -55,8 +55,8 @@ def get_ploi_argument_parser():
         "--train-planner-name",
         type=str,
         choices=["fd-lama-first", "fd-opt-lmcut"],
-        #default="fd-lama-first",
-        default="fd-opt-lmcut",
+        default="fd-lama-first",
+        #default="fd-opt-lmcut",
         help="Train planner to use",
     )
     parser.add_argument(

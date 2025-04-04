@@ -345,6 +345,7 @@ if __name__ == "__main__":
     if not os.path.exists(args.datafile) or args.force_collect_data:
         if 'ltp' in args.method :
             args.datafile = _dataset_file_prefix + "_{}.pkl".format(args.domain)
+
             #graphs_inp , graphs_tgt, graph_metadata,action_space =  process_pddl_to_graphs(
             all_input_graphs , graph_metadata,action_space =  process_pddl_to_graphs(
                 args.domain,
