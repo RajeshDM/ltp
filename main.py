@@ -112,8 +112,8 @@ def get_free_gpu():
 def set_seed(args):
     seed = args.seed
     torch.manual_seed(seed)
-    #if args.server == True:
-    if True :
+    if args.server == True:
+    #if True :
         os.environ["CUBLAS_WORKSPACE_CONFIG"]=":16:8"
         torch.use_deterministic_algorithms(True)
         torch.cuda.manual_seed(seed)
@@ -759,7 +759,7 @@ if __name__ == "__main__":
         if args.mode == 'train'  or args.mode == 'train_test' :
             optimizer = torch.optim.Adam(_model.parameters(),lr=args.lr,weight_decay=args.weight_decay) 
             enable_profiling = True
-            #enable_profiling = False
+            enable_profiling = False
 
             if 'val' not in args.ablation  :
                 pos_weight = args.pos_weight * torch.ones([1])

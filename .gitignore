@@ -173,3 +173,5 @@ profile_logs/
 ploi/server_information.py
 
 !cache/results/planner_data/*optimal.json
+
+**sas_plan**

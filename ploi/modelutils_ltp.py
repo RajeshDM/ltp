@@ -10,14 +10,19 @@ from torch_geometric.nn import TransformerConv
 from torch_geometric.nn import aggr
 from ploi.attention_layer import (
  GraphAttentionV2Layer,
+ ScriptableGraphAttentionLayer,
  MLP,
 )
+from ploi.scriptable_models import HeteroGNN_global_Wrapper
 import time
 import itertools
+from typing import Optional, Union,Tuple, Dict, Any, List
+from torch_geometric.data import  Data,HeteroData
 
 class EdgeModelLtp(nn.Module):
     def __init__(self, n_features, n_edge_features, n_global, n_hidden, dropout=0.0):
-        super(EdgeModelLtp, self).__init__()
+        #super(EdgeModelLtp, self).__init__()
+        super().__init__()
         self.edge_mlp = nn.Sequential(
             nn.Linear(2 * n_features + n_edge_features + n_global, n_hidden),
             nn.ReLU(),
@@ -26,52 +31,19 @@ class EdgeModelLtp(nn.Module):
             nn.LayerNorm(n_hidden),
         )
 
-    def forward(self, src, dest, edge_attr, u=None, batch=None):
+    #def forward(self, src, dest, edge_attr, u=None, batch=None):
+    def forward(self, src: torch.Tensor, dest: torch.Tensor, edge_attr: torch.Tensor, 
+                u: Optional[torch.Tensor] = None, batch: Optional[torch.Tensor] = None) -> torch.Tensor:
         if u is not None:
             out = torch.cat([src,dest, edge_attr,u], dim=1)
         else :
             out = torch.cat([src, dest, edge_attr], dim=1)
         return self.edge_mlp(out)
 
-class NodeModelLtp(nn.Module):
-    def __init__(self, n_features, n_edge_features, n_hidden, n_targets, dropout=0.0):
-        super(NodeModelLtp, self).__init__()
-        self.node_mlp_1 = nn.Sequential(
-            nn.Linear(n_features + n_hidden, n_hidden),
-            nn.ReLU(),
-            nn.Dropout(dropout) if dropout > 0.0 else nn.Identity(),
-            nn.Linear(n_hidden, n_hidden),
-            nn.LayerNorm(n_hidden),
-        )
-        self.node_mlp_2 = nn.Sequential(
-            nn.Linear(n_features + n_hidden*2, n_hidden),
-            nn.ReLU(),
-            nn.Dropout(dropout) if dropout > 0.0 else nn.Identity(),
-            nn.Linear(n_hidden, n_hidden),
-            nn.LayerNorm(n_hidden),
-        )
-
-    def forward(self, x, edge_idx, edge_attr, u=None, batch=None):
-        row, col = edge_idx
-        out = torch.cat([x[col], edge_attr], dim=1)
-        out = self.node_mlp_1(out)
-        out = scatter_mean(out, row, dim=0, dim_size=x.size(0))
-        out = torch.cat([x, out,u], dim=1)
-        #out = torch.cat([x, out], dim=1)
-        return self.node_mlp_2(out)
-
 class GlobalModel(nn.Module):
     def __init__(self, n_global_features,n_hidden, dropout=0.0):
-        super(GlobalModel, self).__init__()
-        '''
-        self.global_mlp_1 = nn.Sequential(
-            nn.Linear(n_global_features, n_hidden),
-            nn.ReLU(),
-            nn.Dropout(dropout) if dropout > 0.0 else nn.Identity(),
-            nn.Linear(n_hidden, n_hidden),
-            nn.LayerNorm(n_hidden),
-        )
-        '''
+        #super(GlobalModel, self).__init__()
+        super().__init__()
         self.global_mlp_2 = nn.Sequential(
             #nn.Linear(n_hidden*3, n_hidden),
             nn.Linear(n_global_features, n_hidden),
@@ -82,47 +54,97 @@ class GlobalModel(nn.Module):
         )
         self.aggr = aggr.SumAggregation()
 
-    def forward(self, x, edge_index,edge_attr, u ,node_index):
-
-        #u = self.global_mlp_1(u)
+    #def forward(self, x, edge_index,edge_attr, u ,node_index):
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, 
+            edge_attr: torch.Tensor, u: torch.Tensor, 
+            node_index: torch.Tensor) -> torch.Tensor:
         nodes_agg = self.aggr(x,index=node_index)
         edges_agg =self.aggr(edge_attr,index=edge_index) 
 
         u = torch.cat([u, nodes_agg,edges_agg],dim=1)
-        u = self.global_mlp_2(u)
-        return u
+        return self.global_mlp_2(u)
 
-class NodeUpdateAttn(nn.Module):
-    def __init__(self, in_channels, n_hidden, out_channels,n_heads=1):
-        super(NodeUpdateAttn, self).__init__()
-        self.attention1 = GATv2Conv((-1,-1), n_hidden,heads=n_heads, add_self_loops=False, edge_dim=n_hidden)
-        self.attention2 = GATv2Conv((-1,-1), n_hidden,heads=n_heads, add_self_loops=False, edge_dim=n_hidden)
+
+#Hetero graph neural network
+class HeteroGNN_global(nn.Module):
+    def __init__(self,n_features,n_edge_features,n_global_features,
+                        representation_size ,
+                        dropout=0.0,
+                        attn_dropout=0.0,
+                        num_rounds=3,
+                        n_heads=1,
+                        device='cuda:0'):
+        super(HeteroGNN_global, self).__init__()
         
-        self.lin_skip = nn.Linear(in_channels, out_channels)  # for the skip connection
-        self.norm1 = nn.InstanceNorm1d(n_hidden)
-        self.norm2 = nn.InstanceNorm1d(out_channels)
+        self.device = device
+        self.num_rounds = num_rounds
+        self.representation_size = representation_size
 
-        self.node_mlp_1 = nn.Sequential(
-            nn.Linear(n_hidden*3, n_hidden),
-            nn.ReLU(),
-            nn.Linear(n_hidden, n_hidden),
-            nn.LayerNorm(n_hidden),
-        )
-
-    def forward(self, x, edge_index,edge_attr,u=None):
-        # First attention layer
-        h = F.relu(self.attention1((x,x), edge_index,edge_attr=edge_attr))
-        h = self.norm1(h)
+        # Node related layers
+        self.node_encoder = MLP([self.representation_size]*2,n_features)
+        self.node_attention_layer = GraphAttentionV2Layer(in_features_1=self.representation_size*2,
+                                                    out_features_1=self.representation_size*2,
+                                                    in_features_2=self.representation_size,
+                                                    out_features_2=self.representation_size,
+                                                    n_heads=n_heads,
+                                                    is_concat=False,
+                                                    dropout=attn_dropout,
+                                                    leaky_relu_negative_slope=0.2,
+                                                    share_weights=False)
         
-        # Second attention layer with skip connection
-        h_out = F.relu(self.attention2((h, h), edge_index ,edge_attr=edge_attr) + self.lin_skip(x))
-        h_out = self.norm2(h_out)
+        self.node_update = MLP([self.representation_size]*2, self.representation_size*5,dropout=dropout)
+        
+        # Edge related layers
+        self.edge_encoder = MLP([self.representation_size]*2, n_edge_features)
+        self.edge_update = EdgeModelLtp(self.representation_size*2, #Node features
+                                        self.representation_size*2, #Edge features
+                                        self.representation_size*2, #global features
+                                        self.representation_size, #hidden features
+                                        dropout=dropout)
 
-        out = torch.cat([x, h_out,u], dim=1)
-        out = self.node_mlp_1(out)
+        # Global related layers
+        self.global_encoder  = MLP([self.representation_size]*2,n_global_features)
+        self.global_update = GlobalModel(self.representation_size*4,self.representation_size,dropout=dropout)
+        
+    #def forward(self, batch):
+    def forward(self, batch:  Union[HeteroData, Dict[str, Any]])-> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        node_data  = batch['node'].x
+        node_index = batch['node'].batch
+        #node_data  = batch['node']['x']
+        #node_index = batch['node']['batch']
+        #edge_index = torch.repeat_interleave(torch.arange(0, len(batch['globals'].x)).cuda(), batch['n_edge'].x)
+        edge_index = torch.repeat_interleave(torch.arange(0, len(batch['globals'].x),device=self.device), batch['n_edge'].x)
 
-        return out
+        edge_features_node = batch['node','sends','node'].edge_attr
+        edge_features_node_index = batch['node','sends','node'].edge_index
+        #global_data = batch['globals']['x']
+        global_data = batch['globals'].x
 
+        src_indices  = edge_features_node_index[0]
+        dest_indices = edge_features_node_index[1]
+        
+        node_data = self.node_encoder(node_data)
+        edge_features_node = self.edge_encoder(edge_features_node)
+        global_data = self.global_encoder(global_data)
+
+        node_data_original = node_data
+        edge_features_node_original = edge_features_node
+        global_data_original = global_data
+
+        for i in range(self.num_rounds) :
+            node_data = torch.cat([node_data_original,node_data],dim=1)
+            edge_features_node = torch.cat([edge_features_node_original,edge_features_node],dim=1)
+            global_data = torch.cat([global_data_original,global_data],dim=1)
+
+            src = node_data[src_indices]
+            dest = node_data[dest_indices]
+            global_node_repeat = global_data[node_index]
+            global_edge_repeat = global_data[edge_index]
+
+            edge_features_node = self.edge_update(src,dest,edge_features_node,global_edge_repeat)
+            node_data = self.node_update(self.node_attention_layer(node_data,edge_features_node,dest_indices,global_node_repeat))
+            global_data = self.global_update(node_data,edge_index,edge_features_node,global_data,node_index)
+        return node_data, edge_features_node,global_data
 
 class HeteroGNN(nn.Module):
     def __init__(self,n_features,n_edge_features,n_global_features,
@@ -198,79 +220,6 @@ class HeteroGNN(nn.Module):
 
         global_data = self.global_update(node_data,edge_index,edge_features_node,global_data,node_index)
 
-        return node_data, edge_features_node,global_data
-
-#Hetero graph neural network
-class HeteroGNN_global(nn.Module):
-    def __init__(self,n_features,n_edge_features,n_global_features,
-                        representation_size ,
-                        dropout=0.0,
-                        attn_dropout=0.0,
-                        num_rounds=3,
-                        n_heads=1,
-                        device='cuda:0'):
-        super(HeteroGNN_global, self).__init__()
-        
-        self.device = device
-        self.num_rounds = num_rounds
-        self.representation_size = representation_size
-
-        # Node related layers
-        self.node_encoder = MLP([self.representation_size]*2,n_features)
-        self.node_attention_layer = GraphAttentionV2Layer(in_features_1=self.representation_size*2,
-                                                    out_features_1=self.representation_size*2,
-                                                    in_features_2=self.representation_size,
-                                                    out_features_2=self.representation_size,
-                                                    n_heads=n_heads,
-                                                    is_concat=False,
-                                                    dropout=attn_dropout,
-                                                    leaky_relu_negative_slope=0.2,
-                                                    share_weights=False)
-        self.node_update = MLP([self.representation_size]*2, self.representation_size*5,dropout=dropout)
-        
-        # Edge related layers
-        self.edge_encoder = MLP([self.representation_size]*2, n_edge_features)
-        self.edge_update = EdgeModelLtp(self.representation_size*2, #Node features
-                                        self.representation_size*2, #Edge features
-                                        self.representation_size*2, #global features
-                                        self.representation_size, #hidden features
-                                        dropout=dropout)
-
-        # Global related layers
-        self.global_encoder  = MLP([self.representation_size]*2,n_global_features)
-        self.global_update = GlobalModel(self.representation_size*4,self.representation_size,dropout=dropout)
-        
-    def forward(self, batch):
-        node_data  = batch['node'].x
-        node_index = batch['node'].batch
-        #edge_index = torch.repeat_interleave(torch.arange(0, len(batch['globals'].x)).cuda(), batch['n_edge'].x)
-        edge_index = torch.repeat_interleave(torch.arange(0, len(batch['globals'].x),device=self.device), batch['n_edge'].x)
-
-        edge_features_node = batch['node','sends','node'].edge_attr
-        edge_features_node_index = batch['node','sends','node'].edge_index
-        global_data = batch['globals'].x
-        
-        node_data = self.node_encoder(node_data)
-        edge_features_node = self.edge_encoder(edge_features_node)
-        global_data = self.global_encoder(global_data)
-
-        node_data_original = node_data
-        edge_features_node_original = edge_features_node
-        global_data_original = global_data
-
-        for i in range(self.num_rounds) :
-            node_data = torch.cat([node_data_original,node_data],dim=1)
-            edge_features_node = torch.cat([edge_features_node_original,edge_features_node],dim=1)
-            global_data = torch.cat([global_data_original,global_data],dim=1)
-
-            src = node_data[edge_features_node_index[0]]
-            dest = node_data[edge_features_node_index[1]]
-            global_node_repeat = global_data[node_index]
-            global_edge_repeat = global_data[edge_index]
-
-            edge_features_node = self.edge_update(src,dest,edge_features_node,global_edge_repeat)
-            node_data = self.node_update(self.node_attention_layer(node_data,edge_features_node,edge_features_node_index[1],global_node_repeat))
-            global_data = self.global_update(node_data,edge_index,edge_features_node,global_data,node_index)
         return node_data, edge_features_node,global_data
 
 class EncodeDecode(nn.Module):
@@ -710,10 +659,13 @@ class GNN_GRU(EncodeDecode):
         if g_node is True :
             self.encoder = HeteroGNN_global(n_features,n_edge_features,n_global_features\
                                         ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads,device)
+            #self.encoder = HeteroGNN_global_Wrapper(n_features,n_edge_features,n_global_features\
+            #                            ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads,device)
         else :
             self.encoder = HeteroGNN(n_features,n_edge_features,n_global_features\
                                         ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads,device)
         
+        #self.encoder = torch.jit.script(self.encoder)
         self.representation_size = n_hidden
         self.max_number_action_parameters = 0
         self.action_parameter_number_dict = {}

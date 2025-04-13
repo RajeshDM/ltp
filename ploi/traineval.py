@@ -54,7 +54,8 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
                 return_last_model_weights=True,dagger_train=False,train_env_name=None,seed=None,
                 message_string='',
                 log_wandb=False,
-                chpkt_manager=None):
+                chpkt_manager=None,
+                enable_profiling=False):
 
     since = time.time()
     min_save_epoch = 0
