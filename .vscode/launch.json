@@ -119,7 +119,7 @@
                 "--weight-decay", "0.00",
                 "--wandb", "False",
                 "--starting-test-number", "0",
-                "--num-test-problems", "1",
+                "--num-test-problems", "100",
                 "--num-train-problems", "10",
                 "--epochs" , "100",
                 "--gnn-rounds" , "9",

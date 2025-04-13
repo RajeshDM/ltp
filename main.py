@@ -76,6 +76,7 @@ from ploi.traineval import (
     train_model_graphnetwork_ltp_batch,
     train_model_graphnetwork_ltp_batch_val,
     train_model_graphnetwork_ltp_batch_profiling,
+    train_model_graphnetwork_ltp_batch_val_profiling,
     train_model_hierarchical,
 )
 from ploi.baselines.exp_1.utils import load_checkpoint 
@@ -757,22 +758,26 @@ if __name__ == "__main__":
         #if args.mode == 'train' and (not os.path.exists(model_outfile) or continue_training == True):
         if args.mode == 'train'  or args.mode == 'train_test' :
             optimizer = torch.optim.Adam(_model.parameters(),lr=args.lr,weight_decay=args.weight_decay) 
+            enable_profiling = True
+            #enable_profiling = False
 
             if 'val' not in args.ablation  :
                 pos_weight = args.pos_weight * torch.ones([1])
                 criterion = torch.nn.CrossEntropyLoss()
-                enable_profiling = False
-                #train_func = train_model_graphnetwork_ltp_batch
-                train_func = train_model_graphnetwork_ltp_batch_profiling
+                if enable_profiling :
+                    train_func = train_model_graphnetwork_ltp_batch_profiling
+                else :
+                    train_func = train_model_graphnetwork_ltp_batch
 
-                if train_func == train_model_graphnetwork_ltp_batch_profiling:
-                    enable_profiling = True
-                    #enable_profiling = False
 
             else :
                 pos_weight = None 
                 criterion = torch.nn.MSELoss() 
-                train_func = train_model_graphnetwork_ltp_batch_val
+                if enable_profiling :
+                    train_func = train_model_graphnetwork_ltp_batch_val_profiling
+
+                else :
+                    train_func = train_model_graphnetwork_ltp_batch_val
 
             #optimizer = torch.optim.AdamW(self._model.parameters(), lr=5 * 1e-4,weight_decay=0.01)
             if continue_training == True and os.path.exists(model_outfile) :

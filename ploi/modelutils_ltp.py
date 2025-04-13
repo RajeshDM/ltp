@@ -291,7 +291,7 @@ class EncodeDecode(nn.Module):
     def __str__(self):
         return f"{self.__class__.__name__}"
 
-    def get_best_action_scores_locations(self,a_scores,k):
+    def get_best_action_scores_locations_old(self,a_scores,k):
         all_actions_batches = []
         all_actions_scores = []
         for i in range(a_scores.shape[0]):
@@ -301,7 +301,14 @@ class EncodeDecode(nn.Module):
 
         return all_actions_batches,all_actions_scores
 
-    def get_best_action_object_scores_locations(self,ao_scores,n_node,k):
+    def get_best_action_scores_locations(self, a_scores, k):
+        # Get top-k action scores and their indices using tensor operations.
+        # Apply topk across all batches at once
+        # Returns (values, indices) both of shape [batch_size, k]
+        values, indices = torch.topk(a_scores, k, dim=1)
+        return indices, values
+
+    def get_best_action_object_scores_locations_old(self,ao_scores,n_node,k):
         all_objects_batches = []
         all_objects_scores = []
 
@@ -314,7 +321,46 @@ class EncodeDecode(nn.Module):
 
         return all_objects_batches, all_objects_scores
 
-    def get_best_action_embeddings(self,x,all_actions,n_node,domain_number_actions):
+    def get_best_action_object_scores_locations(self, ao_scores, n_node, k):
+        """
+        Get top-k action-object scores and their indices using tensor operations.
+        Args:
+            ao_scores: Tensor of shape [batch_size * max_params, max_nodes]
+            n_node: Tensor containing total number of nodes per graph (including all node types)
+            k: Number of top objects to select
+            
+        Returns:
+            Tuple of (indices_tensor, values_tensor)
+        """
+        batch_size = ao_scores.shape[0]
+        
+        # Create a mask to ignore scores beyond valid nodes for each graph
+        max_nodes = ao_scores.shape[1]
+        
+        # Calculate which graph each row in ao_scores belongs to
+        graph_indices = torch.div(torch.arange(batch_size, device=ao_scores.device), 
+                                self.max_number_action_parameters, rounding_mode='floor').long()
+        
+        # Get number of nodes for each row in ao_scores
+        # n_node represents total nodes in the graph (including object, predicate, action nodes)
+        row_n_nodes = n_node[graph_indices]
+        
+        # Create range tensor for masking
+        node_indices = torch.arange(max_nodes, device=ao_scores.device).expand(batch_size, -1)
+        
+        # Create mask where valid nodes are True
+        # All node types are valid targets, as n_node includes all node types
+        mask = node_indices < row_n_nodes.unsqueeze(1)
+        
+        # Apply mask to scores (set invalid scores to -inf)
+        masked_scores = torch.where(mask, ao_scores, torch.tensor(float('-inf'), device=ao_scores.device))
+        
+        # Get top-k values and indices
+        values, indices = torch.topk(masked_scores, k, dim=1)
+        
+        return indices, values
+
+    def get_best_action_embeddings_old(self,x,all_actions,n_node,domain_number_actions):
         #required_correct_features = torch.zeros((len(all_actions),1,self.representation_size),dtype=torch.float32).cuda()
         required_correct_features = torch.zeros((len(all_actions),1,self.representation_size),dtype=torch.float32,device=self.device)
         current_number_nodes = 0
@@ -324,7 +370,26 @@ class EncodeDecode(nn.Module):
             current_number_nodes += n_node[a]
         return required_correct_features#,number_action_parameters
 
-    def compute_action_scores(self,x,n_actions,hidden_state, action_idxs):
+    def get_best_action_embeddings(self,x,all_actions,n_node,domain_number_actions):
+        # 1. Calculate the starting index of each graph in the flattened tensor `x`
+        offsets = torch.zeros_like(n_node) # Shape [num_graphs]
+        # Calculate cumulative sum of nodes *before* the current graph
+        offsets[1:] = torch.cumsum(n_node[:-1], dim=0)
+
+        action_block_starts_relative = n_node - domain_number_actions
+
+        # 3. Calculate the absolute index in `x` for the selected action in each graph
+        absolute_indices = offsets + action_block_starts_relative + all_actions
+
+        # 4. Gather the features using efficient indexing
+        selected_features = torch.index_select(x, dim=0, index=absolute_indices)
+
+        # 5. Reshape to match the original output format [num_graphs, 1, representation_size]
+        output_features = selected_features.unsqueeze(1)
+
+        return output_features
+
+    def compute_action_scores_old(self,x,n_actions,hidden_state, action_idxs):
         '''
         Computing the score for each of the actions (Updating the graph[action_scores]
         for all actions
@@ -340,8 +405,77 @@ class EncodeDecode(nn.Module):
 
         return torch.stack([torch.matmul(x[action_idxs[int(number_actions_array[i]):int(number_actions_array[i + 1])]],hidden_state[-1,i]) for i in range(len(number_actions_array)-1)])
 
+    def compute_action_scores(self, x, n_actions, hidden_state, action_idxs):
+        """
+        Completely vectorized implementation to score all actions for each graph.
+
+        Args:
+            x (Tensor): Features tensor of shape [num_total_nodes, feature_dim]
+            n_actions (Tensor): Number of actions per graph, tensor of shape [num_graphs]
+            hidden_state (Tensor): Hidden state tensor of shape [seq_len, num_graphs, hidden_dim]
+            action_idxs (Tensor): Action indices tensor of shape [num_total_actions]
+
+        Returns:
+            Tensor: Tensor of action scores, shape [num_graphs, max_actions], padded with -inf.
+        """
+        # Ensure inputs are tensors on the correct device
+        device = x.device # Use device from input tensor x
+
+        num_graphs = hidden_state.size(1) # Get num_graphs from hidden_state dim 1
+        total_actions = action_idxs.size(0)
+
+        # --- Calculation Steps ---
+
+        # 1. Get relevant hidden state (last timestep)
+        relevant_hidden = hidden_state[-1]  # Shape: [num_graphs, hidden_dim]
+
+        # 2. Get all action features
+        action_features = x[action_idxs]  # Shape: [total_actions, feature_dim]
+
+        # 3. Create graph indices directly using repeat_interleave
+        #    This correctly maps each action in the flat list to its graph index.
+        graph_indices = torch.arange(num_graphs, device=device).repeat_interleave(n_actions)
+
+        # 4. Get the corresponding hidden state for each action's graph
+        #    Shape: [total_actions, hidden_dim]
+        hidden_for_actions = relevant_hidden[graph_indices]
+
+        # 5. Compute dot product between action features and their corresponding hidden states
+        #    Shape: [total_actions]
+        action_scores_flat = torch.sum(action_features * hidden_for_actions, dim=1)
+
+        # 6. Calculate local indices (0 to n_actions[g]-1 for each graph g)
+        #    Create cumulative sum of actions *excluding* the current graph's count
+        #    to find the starting index of each graph's actions.
+        cum_actions_start = torch.cat([
+            torch.zeros(1, device=device, dtype=torch.long),
+            torch.cumsum(n_actions[:-1], dim=0, dtype=torch.long) # Exclude last element for start indices
+        ])
+        # The starting index for each action's graph block
+        graph_start_indices = cum_actions_start[graph_indices]
+        # Create a global range for actions
+        action_range = torch.arange(total_actions, device=device)
+        # Subtract the start index to get the 0-based index within the graph
+        local_indices = action_range - graph_start_indices
+
+        # 7. Prepare output tensor
+        #    Find max number of actions for padding dimension. Handle case where n_actions is empty.
+        max_actions = torch.max(n_actions).item() if num_graphs > 0 and n_actions.numel() > 0 else 0
+        # Initialize with -inf for proper padding / softmax compatibility
+        action_scores = torch.full((num_graphs, max_actions), float('-inf'), device=device)
+
+        # 8. Use scatter or index_put_ to place scores in the correct positions
+        #    Create the 2D indices for index_put_
+        #    row indices are graph_indices, column indices are local_indices
+        indices_tuple = (graph_indices, local_indices)
+
+        # Place the computed scores into the output tensor
+        action_scores.index_put_(indices_tuple, action_scores_flat)
+
+        return action_scores
+
     def extract_graph_info_ltp(self,data):
-        torch_time = time.time()
+        #torch_time = time.time()
         action_idxs = torch.where(data['node'].x[:,0] == 1)[0]
         object_idxs = torch.where(data['node'].x[:,1] == 1)[0]
 
@@ -352,72 +486,89 @@ class EncodeDecode(nn.Module):
         n_actions = data['n_action'].x
         n_objects = data['n_object'].x
         number_graphs = data['n_node'].x.shape[0]
-        torch_where_time = time.time() - torch_time
+        #torch_where_time = time.time() - torch_time
         return action_idxs, object_idxs, a_scores, ao_scores, n_node, n_parameters, n_actions, n_objects,number_graphs
 
-    def compute_object_scores(self, x,n_params, n_objects , ao_scores,
-                              hidden_state, object_idxs, parameter_number):
-        number_objects_array = []
-        for i,num_objs in enumerate(n_objects):
-            if len(number_objects_array) == 0 :
-                elem_to_add = (0,num_objs)
-            else :
-                elem_to_add = (number_objects_array[-1][1],number_objects_array[-1][1]+num_objs)
+    def compute_object_scores(self, x, n_params, n_objects, ao_scores, hidden_state, object_idxs, parameter_number):
+        # Get dimensions
+        total_params = ao_scores.shape[0]  # Total number of parameters across all graphs
+        max_length = ao_scores.shape[1]    # Maximum length dimension
+        
+        # Step 1: Compute parameter indices correctly
+        # In the original code, current_parameter_indexes represents the indices
+        # for the specific parameter_number across all graphs
+        cumulative_params = torch.cumsum(n_params, dim=0)
+        param_start_indices = cumulative_params - n_params
+        current_parameter_indexes = (param_start_indices + parameter_number).to(torch.long)
+        
+        # Step 2: Create a mask for the parameters we're interested in
+        mask_matrix = torch.zeros(total_params, max_length, device=self.device)
+        mask_matrix[current_parameter_indexes, :] = 1
+        
+        # Step 3: Create object ranges for each graph
+        cumulative_objects = torch.cat([torch.tensor([0], device=self.device), 
+                                    torch.cumsum(n_objects, dim=0)])
+        
+        # Get start and end indices for objects in each graph
+        object_start_idxs = cumulative_objects[:-1]
+        object_end_idxs = cumulative_objects[1:]
+        
+        # Repeat these ranges according to n_params for each graph
+        object_start_idxs_repeated = torch.repeat_interleave(object_start_idxs, n_params)
+        object_end_idxs_repeated = torch.repeat_interleave(object_end_idxs, n_params)
+        
+        # Step 4: Repeat hidden state for the matrix multiplication
+        new_hidden = torch.repeat_interleave(hidden_state[-1], n_params, dim=0)
+        
+        # Step 5: Determine the maximum number of objects across all graphs
+        object_counts = object_end_idxs_repeated - object_start_idxs_repeated
+        max_obj_count = torch.max(object_counts).item()
+        
+        # Step 6: Create object indices and masks for all batch items at once
+        # Create a range tensor that will be used for indexing
+        indices_range = torch.arange(max_obj_count, device=self.device).unsqueeze(0).repeat(total_params, 1)
+        
+        # Create masks for valid object indices
+        object_masks = indices_range < object_counts.unsqueeze(1)
+        
+        # Calculate actual indices into object_idxs
+        # First, create base indices by adding start indices to the range
+        object_indices = object_start_idxs_repeated.unsqueeze(1) + indices_range
+        
+        # Zero out invalid indices
+        object_indices = torch.where(object_masks, object_indices, torch.zeros_like(object_indices))
+        
+        # Step 7: Ensure all indices are within bounds
+        obj_idx_length = object_idxs.size(0)
+        safe_indices = torch.clamp(object_indices, 0, obj_idx_length - 1)
+        
+        # Get the actual object indices from object_idxs
+        actual_obj_idxs = object_idxs[safe_indices]
+        
+        # Apply mask to zero out invalid indices
+        masked_obj_idxs = torch.where(object_masks, actual_obj_idxs, torch.zeros_like(actual_obj_idxs))
+        
+        # Step 8: Gather features from x using the masked object indices
+        object_features = x[masked_obj_idxs]
+        
+        # Apply mask to zero out invalid features
+        object_features = object_features * object_masks.unsqueeze(-1)
+        
+        # Step 9: Compute scores using batch matrix multiplication
+        hidden_expanded = new_hidden.unsqueeze(1)  # [total_params, 1, dim]
+        scores = torch.bmm(object_features, hidden_expanded.transpose(1, 2)).squeeze(-1)  # [total_params, max_obj]
+        
+        # Apply mask to scores
+        scores = scores * object_masks
 
-            for num_params in range(int(n_params[i])):
-                number_objects_array.append(elem_to_add)
-            #number_objects_array.append(number_objects_array[-1] + num_params)
-        #ic (graph['nodes'].size)
-        #ic (number_objects_array)
-        new_hidden_state = [None]*hidden_state.shape[0]
-
-        mask_matrix = torch.zeros(2, ao_scores.shape[0], ao_scores.shape[1],device=self.device)
-
-        for j in range(0,hidden_state.shape[0]):
-            new_hidden_state[j] = torch.repeat_interleave(hidden_state[j],
-                                                           n_params, dim=0)
-        #ic(len(new_hidden_state))
-        #ic(new_hidden_state[0].shape)
-        #ic(new_hidden_state[-1].shape)
-        #ic(new_hidden_state[-1][0].shape)
-        #ic(new_hidden_state[-1][0])
-        #ic (graph['action_object_scores'])
-        #k = [torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
-        #              new_hidden_state[i]) for i,elem in enumerate(number_objects_array)]
-        current_parameter_indexes = []
-        action_object_score_counter = 0
-        #ic (graph['action_object_scores'])
-        for i in n_params:
-            #current_parameter_indexes.append(torch.tensor(action_object_score_counter+parameter_number))
-            current_parameter_indexes.append(action_object_score_counter+parameter_number)
-            action_object_score_counter += i.item()
-        #ic (current_parameter_indexes)
-        #exit()
-
-        #mask_matrix[0, current_parameter_indexes, :] = torch.ones(mask_matrix[0,current_parameter_indexes,:].shape).cuda()
-        #mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :] = torch.ones(mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :].shape).cuda()
-        mask_matrix[0, current_parameter_indexes, :] = torch.ones(mask_matrix[0,current_parameter_indexes,:].shape,device=self.device)
-        mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :] = torch.ones(mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :].shape,device=self.device)
-
-        #updated_action_scores =[torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
-        #                                     new_hidden_state[i]) for i,elem in enumerate(number_objects_array)]
-        #updated_action_scores =[torch.matmul(x[object_idxs[int(elem[0]):int(elem[1])]],
-        #                                     new_hidden_state[-1][i]) for i,elem in enumerate(number_objects_array)]
-        updated_action_scores =[torch.matmul(x[object_idxs[int(elem[0]):int(elem[1])]],
-                                             new_hidden_state[-1][i]) for i,elem in enumerate(number_objects_array)]
-        #updated_action_scores  = [torch.stack([torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],new_hidden_state[j][i]) for j in range(0,hidden_state.shape[0])],dim=0).sum(dim=0) for i,elem in enumerate(number_objects_array)]
-        #ic (updated_action_scores)
-
-        max_length = ao_scores.shape[1]
-        #ic (max_length)
-        variable_action_object_scores = []
-        for elem in updated_action_scores:
-            variable_action_object_scores.append(F.pad(elem, (0,max_length-elem.shape[0]), "constant", 0))
-
-        variable_action_object_scores = torch.stack(variable_action_object_scores)#,device=self.device)
-        #ic (variable_action_object_scores)
-
-        return torch.mul(mask_matrix[0],variable_action_object_scores)
+        variable_action_object_scores = torch.zeros(total_params, max_length, device=self.device)
+        copy_length = min(max_obj_count, max_length)
+        
+        if copy_length > 0:
+            variable_action_object_scores[:, :copy_length] = scores[:, :copy_length]
+        
+        # Step 10: Apply parameter mask to final scores
+        return torch.mul(mask_matrix, variable_action_object_scores)
 
     def get_best_object_embeddings(self,x,all_objects,all_actions,parameter_number,n_params,n_node):
         current_number_nodes = 0
@@ -597,22 +748,22 @@ class GNN_GRU(EncodeDecode):
 
     #def forward(self,x,edge_idx,edge_attr,u,a_scores, ao_scores, batch=None):
     def forward(self,data, beam_search = False):
-        start_time = time.time()
+        #start_time = time.time()
 
         graph_info = self.extract_graph_info_ltp(data)
         action_idxs, object_idxs, a_scores, ao_scores, n_node, n_parameters, n_actions, n_objects,number_graphs = graph_info 
         #h0 = torch.zeros(self.num_decoder_layers,number_graphs,self.representation_size).cuda()
         h0 = torch.zeros(self.num_decoder_layers,number_graphs,self.representation_size,device=self.device)
 
-        encoder_start_time = time.time()
+        #encoder_start_time = time.time()
         x,edge_attr, u = self.encoder(data)
-        encoder_time = time.time() - encoder_start_time
+        #encoder_time = time.time() - encoder_start_time
 
-        decoder_time = time.time()
+        #decoder_time = time.time()
         u = u.unsqueeze(1)
         _,hidden_state = self.decoder(u,h0)
         x = self.action_score_decoder(x)
-        decoder_total_time = time.time()-decoder_time
+        #decoder_total_time = time.time()-decoder_time
 
         #self.training_mode = False
         self.training_mode = self.training
@@ -633,18 +784,21 @@ class GNN_GRU(EncodeDecode):
         all_objects_batches,_ = self.get_best_action_object_scores_locations(ao_scores,n_node,self.max_num_objects)
         
         #if self.training_mode :
-        all_actions = [elem[0] for elem in all_actions_batches]
-        all_objects = [elem[0] for elem in all_objects_batches]
+        #all_actions = [elem[0] for elem in all_actions_batches]
+        #all_objects = [elem[0] for elem in all_objects_batches]
 
-        action_scores_time = time.time()
+        all_actions = all_actions_batches[:, 0]
+        all_objects = all_objects_batches[:, 0]
+
+        #action_scores_time = time.time()
         a_scores_new = self.compute_action_scores(x,n_actions,hidden_state,action_idxs)
-        action_scores_total_time = time.time() - action_scores_time
+        #action_scores_total_time = time.time() - action_scores_time
 
-        computing_best_action_embedding = time.time()
+        #computing_best_action_embedding = time.time()
         decoder_input = self.get_best_action_embeddings(x,all_actions,n_node,domain_number_actions=self.number_actions)
-        computing_best_action_embedding_time = time.time() - computing_best_action_embedding
+        #computing_best_action_embedding_time = time.time() - computing_best_action_embedding
 
-        decoder_time = time.time()
+        #decoder_time = time.time()
         #ao_scores_new = torch.zeros(ao_scores.shape).cuda()
         ao_scores_new = torch.zeros(ao_scores.shape,device=self.device)
         action_object_scores_0 = []
@@ -653,18 +807,18 @@ class GNN_GRU(EncodeDecode):
             _, hidden_state = self.decoder(decoder_input, hidden_state) 
             ao_scores_new += self.compute_object_scores(x, n_parameters,n_objects, ao_scores,hidden_state,
                                                        object_idxs,i)
-            computing_best_object_embedding = time.time()
+            #computing_best_object_embedding = time.time()
             if i == self.max_number_action_parameters-1 :
                 break
             decoder_input = self.get_best_object_embeddings(x, all_objects, all_actions,parameter_number=i,
                                                             n_params=n_parameters,
                                                             n_node=n_node)    
-            computing_best_object_embedding_time = time.time() - computing_best_object_embedding
-        decoder_total_time_2 = time.time()-decoder_time
+            #computing_best_object_embedding_time = time.time() - computing_best_object_embedding
+        #decoder_total_time_2 = time.time()-decoder_time
         #return a_scores, ao_scores
         return a_scores_new, ao_scores_new
 
-        end_time = time.time()
+        #end_time = time.time()
         #print ("encoder time : ", encoder_time)
         #print ("function time : ", end_time-start_time)
         '''
@@ -696,10 +850,11 @@ class GNN_GRU(EncodeDecode):
         curr_depth = 0
 
         for action_idx in range(self.max_num_actions):
-            all_actions = [elem[action_idx] for elem in all_actions_batches]
-            decoder_input = self.get_best_action_embeddings(x,all_actions,n_node,domain_number_actions=self.number_actions)
+            #all_actions = [elem[action_idx] for elem in all_actions_batches]
+            #decoder_input = self.get_best_action_embeddings(x,all_actions,n_node,domain_number_actions=self.number_actions)
+            decoder_input = self.get_best_action_embeddings(x,all_actions_batches[:,action_idx],n_node,domain_number_actions=self.number_actions)
             all_curr_action_scores = [elem[action_idx] for elem in all_actions_scores]
-            active_beams.append(([all_actions[0]], decoder_input, 
+            active_beams.append(([all_actions_batches[:,action_idx][0]], decoder_input, 
                                  all_curr_action_scores[0], hidden_state, curr_depth ))
 
         for parameter_number in range(self.max_number_action_parameters):  # replace with the actual maximum sequence length
@@ -750,370 +905,3 @@ class GNN_GRU(EncodeDecode):
 
         results = sorted(zip(finished_scores, finished_beams), reverse=True)
         return results
-
-class ExtraFunctions():
-
-    def get_best_action_scores_locations(self,a_scores,k):
-        all_actions_batches = []
-        all_actions_scores = []
-        for i in range(a_scores.shape[0]):
-            values , indexes = torch.topk(a_scores[i],k)
-            all_actions_batches.append(indexes)
-            all_actions_scores.append(values)
-
-        return all_actions_batches,all_actions_scores
-
-    def get_best_action_object_scores_locations(self,ao_scores,n_node,k):
-        all_objects_batches = []
-        all_objects_scores = []
-
-        for i in range(ao_scores.shape[0]) :
-            #Current graph objects is just a safety net to ensure we don't go over the number of objects in the graph
-            current_graph_objects = n_node[int(i/self.max_number_action_parameters)]
-            values , indexes = torch.topk(ao_scores[i][:current_graph_objects],k)
-            all_objects_batches.append(indexes)
-            all_objects_scores.append(values)
-
-        return all_objects_batches, all_objects_scores
-
-    def extract_graph_info_ltp(self,data):
-        torch_time = time.time()
-        action_idxs = torch.where(data['node'].x[:,0] == 1)[0]
-        object_idxs = torch.where(data['node'].x[:,1] == 1)[0]
-
-        a_scores = data['action_scores'].x
-        ao_scores = data['action_object_scores'].x
-        n_node = data['n_node'].x
-        n_parameters = data['n_parameters'].x
-        n_actions = data['n_action'].x
-        n_objects = data['n_object'].x
-        number_graphs = data['n_node'].x.shape[0]
-        torch_where_time = time.time() - torch_time
-        return action_idxs, object_idxs, a_scores, ao_scores, n_node, n_parameters, n_actions, n_objects,number_graphs
-
-    def get_best_action_embeddings(self,x,all_actions,n_node,domain_number_actions):
-        #required_correct_features = torch.zeros((len(all_actions),1,self.representation_size),dtype=torch.float32).cuda()
-        required_correct_features = torch.zeros((len(all_actions),1,self.representation_size),dtype=torch.float32,device=self.device)
-        current_number_nodes = 0
-        for a,action in enumerate(all_actions) :
-            action_curr_graph = n_node[a] - domain_number_actions
-            required_correct_features[a][0] = x[current_number_nodes+action_curr_graph+action][:]
-            current_number_nodes += n_node[a]
-        return required_correct_features#,number_action_parameters
-
-    def get_best_object_embeddings(self,x,all_objects,all_actions,parameter_number,n_params,n_node):
-        current_number_nodes = 0
-        #objects_counter = 0
-        objects_counter = parameter_number
-        feature_captured_object_counter = 0
-        #ic (all_objects)
-        #ic (parameter_number)
-        #ic (graph['n_parameters'])
-
-        #required_correct_object_features = torch.zeros((len(all_actions), 1, self.representation_size),
-        #                                               dtype=torch.float32).cuda()
-        required_correct_object_features = torch.zeros((len(all_actions), 1, self.representation_size),
-                                                       dtype=torch.float32,device=self.device)
-        for a, action in enumerate(all_actions):
-
-            object_idx = all_objects[objects_counter]
-            required_correct_object_features[feature_captured_object_counter][0] = x[
-                                                                      current_number_nodes + object_idx][:]
-
-            objects_counter += int(n_params[a])
-
-            feature_captured_object_counter += 1
-            current_number_nodes += n_node[a]
-        #ic (required_correct_object_features)
-        return required_correct_object_features
-
-    def get_best_object_embeddings_ltp(self,x,all_objects,n_node, num_graphs):
-        current_number_nodes = 0
-        #required_correct_object_features = torch.zeros((num_graphs, 1, self.representation_size),
-        #                                               dtype=torch.float32).cuda()
-        required_correct_object_features = torch.zeros((num_graphs, 1, self.representation_size),
-                                                       dtype=torch.float32,device=self.device)
-
-        for i in range(num_graphs):
-            object_idx = all_objects[i]
-            required_correct_object_features[i][0] = x[current_number_nodes+object_idx][:]
-            current_number_nodes += n_node[i]
-        return required_correct_object_features
-
-    def compute_action_scores(self,x,n_actions,hidden_state, action_idxs):
-        '''
-        Computing the score for each of the actions (Updating the graph[action_scores]
-        for all actions
-            - each super graph has a certain number of action nodes (Number of graphs * num of actions per graph)
-            - We score each set of actions in a graph (every diff value in global index refers to a diff graph)
-            - Hence we compute scores for a set of each graph - over all actions and store it in action_scores (1 vector per graph)
-        '''
-        #number_actions_array = [torch.tensor(0).cuda()]
-        number_actions_array = [torch.tensor(0,device=self.device)]
-
-        for elem in n_actions :
-            number_actions_array.append(number_actions_array[-1]+elem)
-
-        return torch.stack([torch.matmul(x[action_idxs[int(number_actions_array[i]):int(number_actions_array[i + 1])]],hidden_state[-1,i]) for i in range(len(number_actions_array)-1)])
-
-    #def compute_object_scores(self,graph, hidden_state,object_idxs,parameter_number):
-    def compute_object_scores(self, x,n_params, n_objects , ao_scores,
-                              hidden_state, object_idxs, parameter_number):
-        number_objects_array = []
-        #ic (object_idxs)
-        '''
-        if len(graph['n_object'].shape)== 0:
-            elem_to_add = (0, graph['n_object'])
-            #ic (graph['n_parameters'])
-            for num_params in range(int(graph['n_parameters'])):
-                number_objects_array.append(elem_to_add)
-        else :
-            #ic (graph['n_parameters'])
-        '''
-        #for i,num_objs in enumerate(graph['n_object']):
-        for i,num_objs in enumerate(n_objects):
-            if len(number_objects_array) == 0 :
-                elem_to_add = (0,num_objs)
-            else :
-                elem_to_add = (number_objects_array[-1][1],number_objects_array[-1][1]+num_objs)
-
-            for num_params in range(int(n_params[i])):
-                number_objects_array.append(elem_to_add)
-            #number_objects_array.append(number_objects_array[-1] + num_params)
-        #ic (graph['nodes'].size)
-        #ic (number_objects_array)
-        #exit()
-        #ic (hidden_state.shape)
-
-        new_hidden_state = [None]*hidden_state.shape[0]
-
-        #new_hidden_state = torch.repeat_interleave(hidden_state[0], new_tensor, dim=0)
-        #ic (new_tensor)
-        #mask_matrix = torch.zeros(2, ao_scores.shape[0], ao_scores.shape[1]).cuda()
-        mask_matrix = torch.zeros(2, ao_scores.shape[0], ao_scores.shape[1],device=self.device)
-
-        for j in range(0,hidden_state.shape[0]):
-            new_hidden_state[j] = torch.repeat_interleave(hidden_state[j],
-                                                           n_params, dim=0)
-        #ic(len(new_hidden_state))
-        #ic(new_hidden_state[0].shape)
-        #ic(new_hidden_state[-1].shape)
-        #ic(new_hidden_state[-1][0].shape)
-        #ic(new_hidden_state[-1][0])
-        #ic (graph['action_object_scores'])
-        #k = [torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
-        #              new_hidden_state[i]) for i,elem in enumerate(number_objects_array)]
-        current_parameter_indexes = []
-        action_object_score_counter = 0
-        '''
-        for i in graph['n_parameters']:
-            #ic (i,action_object_score_counter)
-            #ic (parameter_number)
-            if parameter_number == 0:
-                current_parameter_indexes.append(int(action_object_score_counter))
-            elif parameter_number == 1 :
-                if i == 2 :
-                    current_parameter_indexes.append(int(action_object_score_counter)+i-1)
-            action_object_score_counter += i
-        '''
-        #ic (graph['action_object_scores'])
-        for i in n_params:
-            #current_parameter_indexes.append(torch.tensor(action_object_score_counter+parameter_number))
-            current_parameter_indexes.append(action_object_score_counter+parameter_number)
-            action_object_score_counter += i.item()
-        #ic (current_parameter_indexes)
-        #exit()
-
-        #mask_matrix[0, current_parameter_indexes, :] = torch.ones(mask_matrix[0,current_parameter_indexes,:].shape).cuda()
-        #mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :] = torch.ones(mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :].shape).cuda()
-        mask_matrix[0, current_parameter_indexes, :] = torch.ones(mask_matrix[0,current_parameter_indexes,:].shape,device=self.device)
-        mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :] = torch.ones(mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :].shape,device=self.device)
-
-        '''
-        else :
-            mask_matrix[0, current_parameter_indexes, :] = 1
-            mask_matrix[1, list(set([i for i in range(len(graph['action_object_scores']))]) - set(current_parameter_indexes)), :] = 1
-        '''
-        #ic (graph['n_object'])
-        #ic ([torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
-        #                  new_hidden_state[i]) for i,elem in enumerate(number_objects_array)])
-        #ic ([torch.stack([torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],new_hidden_state[j][i]) for j in range(0,hidden_state.shape[0])],dim=0).sum(dim=0) for i,elem in enumerate(number_objects_array)])
-        #j=0
-        #ic ([torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
-        #                  new_hidden_state[i]) for i,elem in enumerate(number_objects_array)])
-        #j=1
-        #ic ([torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
-        #                                     new_hidden_state[i]) for i,elem in enumerate(number_objects_array)])
-        #exit()
-        #updated_action_scores =[torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
-        #                                     new_hidden_state[i]) for i,elem in enumerate(number_objects_array)]
-        #updated_action_scores =[torch.matmul(x[object_idxs[int(elem[0]):int(elem[1])]],
-        #                                     new_hidden_state[-1][i]) for i,elem in enumerate(number_objects_array)]
-        updated_action_scores =[torch.matmul(x[object_idxs[int(elem[0]):int(elem[1])]],
-                                             new_hidden_state[-1][i]) for i,elem in enumerate(number_objects_array)]
-        #updated_action_scores  = [torch.stack([torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],new_hidden_state[j][i]) for j in range(0,hidden_state.shape[0])],dim=0).sum(dim=0) for i,elem in enumerate(number_objects_array)]
-        #ic (updated_action_scores)
-
-        #max_length = len(graph['action_object_scores'][0])
-        #ic (graph['action_object_scores'])
-
-        
-        max_length = ao_scores.shape[1]
-        #ic (max_length)
-        variable_action_object_scores = []
-        for elem in updated_action_scores:
-            variable_action_object_scores.append(F.pad(elem, (0,max_length-elem.shape[0]), "constant", 0))
-
-        #variable_action_object_scores = torch.stack(variable_action_object_scores,device=self.device)
-        variable_action_object_scores = torch.stack(variable_action_object_scores)#,device=self.device)
-        #variable_action_object_scores = variable_action_object_scores.cuda()
-        
-        #ic (variable_action_object_scores)
-
-        #ic (variable_action_object_scores)
-        #ic (updated_action_scores)
-        '''
-        replacements = {
-        'action_object_scores': torch.mul(mask_matrix[0], variable_action_object_scores) + torch.mul(mask_matrix[1], graph['action_object_scores'])
-        }
-        '''
-        #new_ao_scores = torch.mul(mask_matrix[0], variable_action_object_scores) + torch.mul(mask_matrix[1], ao_scores)
-        #new_ao_scores = torch.mul(mask_matrix[0], variable_action_object_scores) + torch.mul(mask_matrix[1], ao_scores)
-
-        return torch.mul(mask_matrix[0],variable_action_object_scores)
-        #return torch.mul(mask_matrix[0], variable_action_object_scores) + torch.mul(mask_matrix[1], ao_scores)
-        #ic (replacements['action_object_scores'])
-        #exit()
-        #ic (mask_matrix.requires_grad)
-        #ic (new_tensor.requires_grad)
-        #del mask_matrix
-        #del variable_action_object_scores
-        #del new_tensor
-
-        #return new_ao_scores
-        #return replace(graph,replacements)
-
-    def compute_object_scores_ltp(self, x,n_params, n_objects , ao_scores,
-                              hidden_state, object_idxs, parameter_number):
-        number_objects_array = []
-        #ic (object_idxs)
-        '''
-        if len(graph['n_object'].shape)== 0:
-            elem_to_add = (0, graph['n_object'])
-            #ic (graph['n_parameters'])
-            for num_params in range(int(graph['n_parameters'])):
-                number_objects_array.append(elem_to_add)
-        else :
-            #ic (graph['n_parameters'])
-        '''
-        #for i,num_objs in enumerate(graph['n_object']):
-        for i,num_objs in enumerate(n_objects):
-            if len(number_objects_array) == 0 :
-                elem_to_add = (0,num_objs)
-            else :
-                elem_to_add = (number_objects_array[-1][1],number_objects_array[-1][1]+num_objs)
-
-            for num_params in range(int(n_params[i])):
-                number_objects_array.append(elem_to_add)
-            #number_objects_array.append(number_objects_array[-1] + num_params)
-        #ic (graph['nodes'].size)
-        #ic (number_objects_array)
-        #exit()
-        #ic (hidden_state.shape)
-
-        new_hidden_state = [None]*hidden_state.shape[0]
-
-        #new_hidden_state = torch.repeat_interleave(hidden_state[0], new_tensor, dim=0)
-        #ic (new_tensor)
-        #mask_matrix = torch.zeros(2, ao_scores.shape[0], ao_scores.shape[1]).cuda()
-        mask_matrix = torch.zeros(2, ao_scores.shape[0], ao_scores.shape[1],device=self.device)
-
-        for j in range(0,hidden_state.shape[0]):
-            new_hidden_state[j] = torch.repeat_interleave(hidden_state[j],
-                                                           n_params, dim=0)
-        #ic(len(new_hidden_state))
-        #ic(new_hidden_state[0].shape)
-        #ic(new_hidden_state[-1].shape)
-        #ic(new_hidden_state[-1][0].shape)
-        #ic(new_hidden_state[-1][0])
-        #ic (graph['action_object_scores'])
-        #k = [torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
-        #              new_hidden_state[i]) for i,elem in enumerate(number_objects_array)]
-        current_parameter_indexes = []
-        action_object_score_counter = 0
-        '''
-        for i in graph['n_parameters']:
-            #ic (i,action_object_score_counter)
-            #ic (parameter_number)
-            if parameter_number == 0:
-                current_parameter_indexes.append(int(action_object_score_counter))
-            elif parameter_number == 1 :
-                if i == 2 :
-                    current_parameter_indexes.append(int(action_object_score_counter)+i-1)
-            action_object_score_counter += i
-        '''
-        #ic (graph['action_object_scores'])
-        for i in n_params:
-            #current_parameter_indexes.append(torch.tensor(action_object_score_counter+parameter_number))
-            current_parameter_indexes.append(action_object_score_counter+parameter_number)
-            action_object_score_counter += i.item()
-        #ic (current_parameter_indexes)
-        #exit()
-
-        #mask_matrix[0, current_parameter_indexes, :] = torch.ones(mask_matrix[0,current_parameter_indexes,:].shape).cuda()
-        #mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :] = torch.ones(mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :].shape).cuda()
-        mask_matrix[0, current_parameter_indexes, :] = torch.ones(mask_matrix[0,current_parameter_indexes,:].shape,device=self.device)
-        mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :] = torch.ones(mask_matrix[1, list(set([i for i in range(ao_scores.shape[0])]) - set(current_parameter_indexes)), :].shape,device=self.device)
-
-        '''
-        else :
-            mask_matrix[0, current_parameter_indexes, :] = 1
-            mask_matrix[1, list(set([i for i in range(len(graph['action_object_scores']))]) - set(current_parameter_indexes)), :] = 1
-        '''
-        #ic (graph['n_object'])
-        #ic ([torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
-        #                  new_hidden_state[i]) for i,elem in enumerate(number_objects_array)])
-        #ic ([torch.stack([torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],new_hidden_state[j][i]) for j in range(0,hidden_state.shape[0])],dim=0).sum(dim=0) for i,elem in enumerate(number_objects_array)])
-        #j=0
-        #ic ([torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
-        #                  new_hidden_state[i]) for i,elem in enumerate(number_objects_array)])
-        #j=1
-        #ic ([torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
-        #                                     new_hidden_state[i]) for i,elem in enumerate(number_objects_array)])
-        #exit()
-        #updated_action_scores =[torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],
-        #                                     new_hidden_state[i]) for i,elem in enumerate(number_objects_array)]
-        #updated_action_scores =[torch.matmul(x[object_idxs[int(elem[0]):int(elem[1])]],
-        #                                     new_hidden_state[-1][i]) for i,elem in enumerate(number_objects_array)]
-        updated_action_scores =[torch.matmul(x[object_idxs[int(elem[0]):int(elem[1])]],
-                                             new_hidden_state[-1][i]) for i,elem in enumerate(number_objects_array)]
-        #updated_action_scores  = [torch.stack([torch.matmul(graph['nodes'][object_idxs[int(elem[0]):int(elem[1])]],new_hidden_state[j][i]) for j in range(0,hidden_state.shape[0])],dim=0).sum(dim=0) for i,elem in enumerate(number_objects_array)]
-        #ic (updated_action_scores)
-
-        #max_length = len(graph['action_object_scores'][0])
-        #ic (graph['action_object_scores'])
-
-        
-        max_length = ao_scores.shape[1]
-        #ic (max_length)
-        variable_action_object_scores = []
-        for elem in updated_action_scores:
-            variable_action_object_scores.append(F.pad(elem, (0,max_length-elem.shape[0]), "constant", 0))
-
-        #variable_action_object_scores = torch.stack(variable_action_object_scores,device=self.device)
-        variable_action_object_scores = torch.stack(variable_action_object_scores)#,device=self.device)
-        #variable_action_object_scores = variable_action_object_scores.cuda()
-        
-        #ic (variable_action_object_scores)
-
-        #ic (variable_action_object_scores)
-        #ic (updated_action_scores)
-        '''
-        replacements = {
-        'action_object_scores': torch.mul(mask_matrix[0], variable_action_object_scores) + torch.mul(mask_matrix[1], graph['action_object_scores'])
-        }
-        '''
-        #new_ao_scores = torch.mul(mask_matrix[0], variable_action_object_scores) + torch.mul(mask_matrix[1], ao_scores)
-        #new_ao_scores = torch.mul(mask_matrix[0], variable_action_object_scores) + torch.mul(mask_matrix[1], ao_scores)
-
-        return torch.mul(mask_matrix[0],variable_action_object_scores)

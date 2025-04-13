@@ -139,6 +139,157 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
     print('Training complete in {:.0f}m {:.0f}s'.format(
         time_elapsed // 60, time_elapsed % 60), flush=True)
 
+def train_model_graphnetwork_ltp_batch_val_profiling(model, datasets,
+                                 criterion, optimizer, use_gpu, print_iter=10, 
+                                 save_iter=100, save_folder='/tmp', starting_epoch=0, final_epoch=1000, 
+                                 global_criterion=None, return_last_model_weights=True, dagger_train=False,
+                                 train_env_name=None, seed=None, message_string='',
+                                 log_wandb=False, chpkt_manager=None,
+                                 # New profiler parameters
+                                 enable_profiling=True,
+                                 profile_log_dir='./profile_logs'):
+
+    since = time.time()
+    min_save_epoch = 0
+    save_iter = print_iter
+    
+    # Initialize the profiler manager if profiling is enabled
+    profiler = ProfilerManager(log_dir=profile_log_dir) if enable_profiling else None
+    
+    if use_gpu:
+        model = model.cuda()
+        device = "cuda:0"
+        if criterion is not None:
+            criterion = criterion.cuda()
+    else:
+        device = "cpu"
+
+    epochs = []
+    train_loss_values = []
+    val_loss_values = []
+    time_taken_for_save_iter = time.time()
+    
+    for epoch in range(starting_epoch, final_epoch+1):
+        epoch_start_time = time.time()
+        
+        # Determine if this epoch should have detailed output and profiling
+        should_detail = epoch % print_iter == 0
+        
+        # Start profiling if enabled and this is a detail epoch
+        if enable_profiling and should_detail:
+            profiler.start_profiling_session(epoch)
+        
+        if should_detail:
+            print('Epoch {}/{}'.format(epoch, final_epoch), flush=True)
+            print('-' * 10, flush=True)
+        
+        # Each epoch has a training and validation phase
+        running_num_samples = 0
+        phases = ['train', 'val'] if should_detail else ['train']
+        running_loss = {'train': 0.0, 'val': 0.0}
+
+        for phase in phases:
+            phase_start_time = time.time()
+            
+            # Set model mode based on phase
+            model.train() if phase == 'train' else model.eval()
+
+            for i, batch_data in enumerate(datasets[phase]):
+                # Process batch with optional profiling
+                with ConditionalRecordFunction(f"{phase}_batch", enable=enable_profiling and should_detail):
+                    batch_start_time = time.time()
+                    
+                    loss = 0.
+                    optimizer.zero_grad()
+                    batch_data = batch_data.to(device)
+                    
+                    # Forward pass
+                    with ConditionalRecordFunction("forward", enable=enable_profiling and should_detail):
+                        state_val = model(batch_data).squeeze(1)
+                    
+                    # Loss calculation
+                    with ConditionalRecordFunction("loss_calculation", enable=enable_profiling and should_detail):
+                        target_state_val = batch_data['goal_dist'].x/100
+                        target_state_val = target_state_val.to(state_val[0].dtype)
+                        loss += torch.mean(torch.abs(torch.sub(target_state_val, state_val)))
+
+                    # Backward pass for training
+                    if phase == 'train':
+                        with ConditionalRecordFunction("backward", enable=enable_profiling and should_detail):
+                            backward_time = time.time()
+                            loss.backward()
+                            optimizer.step()
+                            backward_duration = time.time() - backward_time
+                            
+                            if should_detail and i == 0:
+                                print(f"Backward pass time: {backward_duration:.4f}s")
+
+                    # Statistics
+                    running_loss[phase] += loss.item()
+                    running_num_samples += 1
+                    
+                    # Print batch timing info for first few batches in detail epochs
+                    if should_detail and i < 3:
+                        batch_duration = time.time() - batch_start_time
+                        print(f"  {phase} batch {i} time: {batch_duration:.4f}s")
+                
+                # Step the profiler after each batch if active
+                if enable_profiling and should_detail:
+                    profiler.step()
+            
+            # Print phase timing at detail epochs
+            if should_detail:
+                phase_duration = time.time() - phase_start_time
+                print(f"  {phase} phase completed in {phase_duration:.2f}s")
+            
+            # Log to wandb if enabled
+            if log_wandb:
+                wandb.log({f"loss_{phase}": running_loss[phase]})
+
+        # Print epoch summary at detail epochs
+        if should_detail:
+            epoch_duration = time.time() - epoch_start_time
+            print(f"Epoch {epoch} completed in {epoch_duration:.2f}s")
+            print(f"Running loss: {running_loss}", flush=True)
+            
+            epochs.append(epoch)
+            train_loss_values.append(running_loss['train'])
+            val_loss_values.append(running_loss['val'])
+            
+            # End profiling session if active
+            if enable_profiling:
+                profiler.end_profiling_session()
+    
+        # Save checkpoint at save_iter intervals
+        if epoch % save_iter == 0 and epoch >= min_save_epoch:
+            checkpoint_start_time = time.time()
+            chpkt_manager.save_checkpoint(
+                model=model,
+                optimizer=optimizer,
+                epoch=epoch,
+                train_env_name=train_env_name,
+                seed=42,
+                losses={'train': running_loss["train"], 'val': running_loss["val"]},
+            )
+            checkpoint_duration = time.time() - checkpoint_start_time
+            
+            if should_detail:
+                print(f"Checkpoint saved in {checkpoint_duration:.2f}s")
+                print(f"Time taken for {save_iter} epochs: {time.time() - time_taken_for_save_iter:.2f}s")
+            
+            time_taken_for_save_iter = time.time()
+
+    # Training complete
+    time_elapsed = time.time() - since
+    print('Training complete in {:.0f}m {:.0f}s'.format(
+        time_elapsed // 60, time_elapsed % 60), flush=True)
+    
+    # Ensure profiler is stopped if active
+    if enable_profiling and profiler and profiler.is_profiling:
+        profiler.end_profiling_session()
+        
+    return model
+
 def train_model_graphnetwork_ltp_batch(model, datasets,
                                  #dataloaders,
                                    criterion, optimizer, use_gpu, print_iter=10, 
