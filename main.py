@@ -715,7 +715,7 @@ if __name__ == "__main__":
                                     message_string=message_string,
                                     log_wandb=args.wandb,
                                     chpkt_manager=manager,
-                                    enable_profiling=False,
+                                    enable_profiling=True,
                                     )
             ic (args.attention_dropout)
             ic (args.dropout)
