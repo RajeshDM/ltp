@@ -44,7 +44,7 @@ declare -A domain_configs=(
     ["grid"]="name=grid_ipcc;train=192;test=48"
     ["logistics"]="name=logistics_ipcc;train=156;test=96"
     ["spanner"]="name=spanner_ipcc;train=234;test=96"
-    ["rovers"]="name=spanner_ipcc;train=312;test=58"
+    ["rovers"]="name=rovers_ipcc;train=312;test=54"
     ["klondike_solitaire"]="name=klondike_solitaire;train=150;test=99"
 )
 

@@ -1,0 +1,218 @@
+{
+    "rovers_ipcc_test/pfile_r-4_w-18_c-1_o-3.pddl": [
+        11,
+        0.13653326034545898
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-18_c-3_o-3.pddl": [
+        17,
+        0.1515979766845703
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-25_c-1_o-3.pddl": [
+        13,
+        0.17592954635620117
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-25_c-3_o-3.pddl": [
+        13,
+        0.2050611972808838
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-32_c-1_o-3.pddl": [
+        11,
+        0.2051081657409668
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-32_c-3_o-3.pddl": [
+        11,
+        0.19741320610046387
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-39_c-1_o-3.pddl": [
+        16,
+        0.4103701114654541
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-39_c-3_o-3.pddl": [
+        15,
+        0.45476746559143066
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-46_c-1_o-3.pddl": [
+        11,
+        0.5328044891357422
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-46_c-3_o-3.pddl": [
+        16,
+        0.5764749050140381
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-4_c-1_o-3.pddl": [
+        8,
+        0.21109604835510254
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-4_c-3_o-3.pddl": [
+        6,
+        0.19535374641418457
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-53_c-1_o-3.pddl": [
+        13,
+        0.6211366653442383
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-53_c-3_o-3.pddl": [
+        13,
+        0.6079592704772949
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-60_c-1_o-3.pddl": [
+        21,
+        0.35332822799682617
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-60_c-3_o-3.pddl": [
+        19,
+        0.3925058841705322
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-67_c-1_o-3.pddl": [
+        18,
+        0.45287299156188965
+    ],
+    "rovers_ipcc_test/pfile_r-4_w-67_c-3_o-3.pddl": [
+        14,
+        0.5058989524841309
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-13_c-1_o-3.pddl": [
+        10,
+        0.18270587921142578
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-13_c-3_o-3.pddl": [
+        10,
+        0.18657946586608887
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-20_c-1_o-3.pddl": [
+        12,
+        0.22367095947265625
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-20_c-3_o-3.pddl": [
+        12,
+        0.2209339141845703
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-27_c-1_o-3.pddl": [
+        12,
+        0.2003612518310547
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-27_c-3_o-3.pddl": [
+        11,
+        0.20107722282409668
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-34_c-1_o-3.pddl": [
+        10,
+        0.23103880882263184
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-34_c-3_o-3.pddl": [
+        12,
+        0.2770059108734131
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-41_c-1_o-3.pddl": [
+        12,
+        0.27337002754211426
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-41_c-3_o-3.pddl": [
+        16,
+        0.47554636001586914
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-48_c-1_o-3.pddl": [
+        15,
+        0.3457207679748535
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-48_c-3_o-3.pddl": [
+        13,
+        0.32903337478637695
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-55_c-1_o-3.pddl": [
+        16,
+        0.40642237663269043
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-55_c-3_o-3.pddl": [
+        16,
+        0.4133608341217041
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-62_c-1_o-3.pddl": [
+        12,
+        0.43147850036621094
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-62_c-3_o-3.pddl": [
+        15,
+        0.44495153427124023
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-69_c-1_o-3.pddl": [
+        19,
+        0.6556129455566406
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-69_c-3_o-3.pddl": [
+        19,
+        0.7061314582824707
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-6_c-1_o-3.pddl": [
+        8,
+        0.10369420051574707
+    ],
+    "rovers_ipcc_test/pfile_r-6_w-6_c-3_o-3.pddl": [
+        9,
+        0.11481595039367676
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-15_c-1_o-3.pddl": [
+        13,
+        0.14576959609985352
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-15_c-3_o-3.pddl": [
+        11,
+        0.15748095512390137
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-22_c-1_o-3.pddl": [
+        10,
+        0.1735677719116211
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-22_c-3_o-3.pddl": [
+        11,
+        0.19998812675476074
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-29_c-1_o-3.pddl": [
+        13,
+        0.1996476650238037
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-29_c-3_o-3.pddl": [
+        11,
+        0.2443864345550537
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-36_c-1_o-3.pddl": [
+        14,
+        0.25505566596984863
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-36_c-3_o-3.pddl": [
+        13,
+        0.2733187675476074
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-43_c-1_o-3.pddl": [
+        17,
+        0.28057122230529785
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-43_c-3_o-3.pddl": [
+        17,
+        0.28527212142944336
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-50_c-1_o-3.pddl": [
+        11,
+        0.2580702304840088
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-50_c-3_o-3.pddl": [
+        16,
+        0.2842710018157959
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-57_c-1_o-3.pddl": [
+        10,
+        0.5624451637268066
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-57_c-3_o-3.pddl": [
+        14,
+        0.5443158149719238
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-64_c-1_o-3.pddl": [
+        15,
+        0.538444995880127
+    ],
+    "rovers_ipcc_test/pfile_r-8_w-64_c-3_o-3.pddl": [
+        13,
+        0.5342917442321777
+    ]
+}

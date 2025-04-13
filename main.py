@@ -84,6 +84,8 @@ from ploi.baselines.exp_3.architecture import g_model_classes
 
 #import ploi.constants as constants
 from icecream import ic
+import subprocess
+import numpy as np
 
 '''
 baselines = [PlannerType.EXP_BASELINE, 
@@ -95,6 +97,15 @@ learned_planner_types = [
     PlannerType.LEARNED_MODEL_VAL
 ]
 '''
+def get_free_gpu():
+    # Get GPU memory usage using nvidia-smi
+    command = "nvidia-smi --query-gpu=memory.used --format=csv,nounits,noheader"
+    memory_use = subprocess.check_output(command.split()).decode("utf-8").strip().split("\n")
+    memory_use = [int(x) for x in memory_use]
+    
+    # Find the GPU with the least memory usage
+    free_gpu = np.argmin(memory_use)
+    return free_gpu
 
 def set_seed(args):
     seed = args.seed
@@ -115,7 +126,14 @@ def set_seed(args):
 
 def initialize_model(model_class, args, action_space):
     if args.use_gpu:
-        device = "cuda:0"
+        try :
+            free_gpu_idx = get_free_gpu()
+            device = f"cuda:{free_gpu_idx}"
+            print (f"Found free GPU at {device}")
+        except Exception as e : 
+            print (f"ISsue with finding the right GPU {e}")
+            print ("Using default GPU at CUDA 0")
+            device = "cuda:0"
     else:
         device = "cpu"
 
