@@ -167,6 +167,8 @@ lightning_logs/*
 *.pddl
 *.zip
 
+profile_logs/
+
 #Server information
 ploi/server_information.py
 
