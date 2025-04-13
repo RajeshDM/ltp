@@ -75,8 +75,7 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
     time_taken_for_save_iter = time.time()
     for epoch in range(starting_epoch,final_epoch+1):
         if epoch % print_iter == 0:
-            print('Epoch {}/{}'.format(epoch, final_epoch), flush=True)
-            print('-' * 10, flush=True)
+            print(f"Epoch {epoch}/{final_epoch}", end=" ", flush=True)
         # Each epoch has a training and validation phase
         running_num_samples = 0
         if epoch % print_iter == 0 :
@@ -119,7 +118,9 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
                 wandb.log({f"loss_{phase}": running_loss[phase]})
 
         if epoch % print_iter == 0:
-            print("running_loss:", running_loss, flush=True)
+            #print("running_loss:", running_loss, flush=True)
+            #print ("Time taken for {} epochs : {}".format(save_iter, time.time() - time_taken_for_save_iter))
+            print(f"loss: {running_loss} | time({save_iter}): {time.time() - time_taken_for_save_iter:.2f}s", flush=True)
             epochs.append(epoch)
             train_loss_values.append(running_loss['train'])
             val_loss_values.append(running_loss['val'])
@@ -133,7 +134,6 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
                 seed=42,
                 losses={'train': running_loss["train"], 'val': running_loss["val"]},
             )
-            print ("Time taken for {} epochs : {}".format(save_iter, time.time() - time_taken_for_save_iter))
             time_taken_for_save_iter = time.time()
 
     time_elapsed = time.time() - since
@@ -319,8 +319,7 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
     time_taken_for_save_iter = time.time()
     for epoch in range(starting_epoch,final_epoch+1):
         if epoch % print_iter == 0:
-            print('Epoch {}/{}'.format(epoch, final_epoch), flush=True)
-            print('-' * 10, flush=True)
+            print(f"Epoch {epoch}/{final_epoch}", end=" ", flush=True)
         # Each epoch has a training and validation phase
         running_num_samples = 0
         if epoch % print_iter == 0 :
@@ -392,7 +391,8 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
                 wandb.log({f"loss_{phase}": running_loss[phase]})
 
         if epoch % print_iter == 0:
-            print("running_loss:", running_loss, flush=True)
+            #print("running_loss:", running_loss, flush=True)
+            print(f"loss: {running_loss} | time({save_iter}): {time.time() - time_taken_for_save_iter:.2f}s", flush=True)
             epochs.append(epoch)
             train_loss_values.append(running_loss['train'])
             val_loss_values.append(running_loss['val'])
@@ -406,7 +406,7 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
                 seed=42,
                 losses={'train': running_loss["train"], 'val': running_loss["val"]},
             )
-            print ("Time taken for {} epochs : {}".format(save_iter, time.time() - time_taken_for_save_iter))
+            #print ("Time taken for {} epochs : {}".format(save_iter, time.time() - time_taken_for_save_iter))
             time_taken_for_save_iter = time.time()
 
     time_elapsed = time.time() - since

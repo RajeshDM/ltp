@@ -10,7 +10,6 @@ from torch_geometric.nn import TransformerConv
 from torch_geometric.nn import aggr
 from ploi.attention_layer import (
  GraphAttentionV2Layer,
- ScriptableGraphAttentionLayer,
  MLP,
 )
 from ploi.scriptable_models import HeteroGNN_global_Wrapper

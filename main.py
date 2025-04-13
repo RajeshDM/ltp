@@ -132,10 +132,10 @@ def initialize_model(model_class, args, action_space):
         try :
             free_gpu_idx = get_free_gpu()
             device = f"cuda:{free_gpu_idx}"
-            print (f"Found free GPU at {device}")
+            #print (f"Found free GPU at {device}")
         except Exception as e : 
-            print (f"ISsue with finding the right GPU {e}")
-            print ("Using default GPU at CUDA 0")
+            #print (f"ISsue with finding the right GPU {e}")
+            #print ("Using default GPU at CUDA 0")
             device = "cuda:0"
     else:
         device = "cpu"
@@ -252,7 +252,7 @@ def run_tests(
             #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
 
             #if PlannerType.NON_OPTIMAL in planner_types : 
-            _ = format_metrics(results[-1]['test_results'][PlannerType.NON_OPTIMAL], model_info['epoch'])
+            #     _ = format_metrics(results[-1]['test_results'][PlannerType.NON_OPTIMAL], model_info['epoch'])
             #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
             #combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'], PlannerType.LEARNED_MODEL)
             combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'], planner_type)

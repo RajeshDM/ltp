@@ -184,26 +184,38 @@ def format_metrics(metrics, epoch=None):
     # Extract metrics for cleaner access
     #metrics = result['test_results'][PlannerType.LEARNED_MODEL]
     
+    '''
     # Format numeric values
     formatted_metrics = {
         'Success': f"{metrics.success_rate_with_monitor :.2%}",
-        'Success without monitor': f"{metrics.success_rate_without_monitor :.2%}",
+        'Success No/M': f"{metrics.success_rate_without_monitor :.2%}",
         'Plan Length': f"{metrics.avg_plan_length:.1f}",
         'Time (sec)': f"{metrics.avg_time_taken:.2f}",
-        'MAx Plan Length': f"{metrics.max_plan_length}",
+        'MAx PL': f"{metrics.max_plan_length}",
         'Max Time (sec)': f"{metrics.max_time_taken:.2f}",
-        'Median Plan Length': f"{metrics.median_plan_length:.1f}",
-        'Impossible Actions': f"{metrics.impossible_actions:,d}"
+        'Median PL': f"{metrics.median_plan_length:.1f}",
+        #'Impossible Actions': f"{metrics.impossible_actions:,d}"
     }
     
     # Print header
     if epoch is not None:
         print(f"\nModel Metrics - Epoch {epoch}")
+    '''
+
+    formatted_metrics = {
+        'Succ': f"{metrics.success_rate_with_monitor:.2%}/{metrics.success_rate_without_monitor:.2%}",
+        'Plan': f"{metrics.avg_plan_length:.1f}/{metrics.median_plan_length:.1f}/{metrics.max_plan_length}",
+        'Time': f"{metrics.avg_time_taken:.2f}/{metrics.max_time_taken:.2f}"
+    }
+
+    # Print header and metrics in one line
+    if epoch is not None:
+        print(f"E{epoch} Metrics: " + " | ".join([f"{k}: {v}" for k, v in formatted_metrics.items()]))
     print("-" * 30)
     
     # Print metrics in aligned format
-    for key, value in formatted_metrics.items():
-        print(f"{key:<25} {value:>8}")
+    #for key, value in formatted_metrics.items():
+    #    print(f"{key:<25} {value:>8}")
     
     return formatted_metrics
 
