@@ -75,6 +75,7 @@ from ploi.traineval import (
     train_model_graphnetwork,
     train_model_graphnetwork_ltp_batch,
     train_model_graphnetwork_ltp_batch_val,
+    train_model_graphnetwork_ltp_batch_profiling,
     train_model_hierarchical,
 )
 from ploi.baselines.exp_1.utils import load_checkpoint 
@@ -110,7 +111,8 @@ def get_free_gpu():
 def set_seed(args):
     seed = args.seed
     torch.manual_seed(seed)
-    if args.server == True:
+    #if args.server == True:
+    if True :
         os.environ["CUBLAS_WORKSPACE_CONFIG"]=":16:8"
         torch.use_deterministic_algorithms(True)
         torch.cuda.manual_seed(seed)
@@ -759,7 +761,13 @@ if __name__ == "__main__":
             if 'val' not in args.ablation  :
                 pos_weight = args.pos_weight * torch.ones([1])
                 criterion = torch.nn.CrossEntropyLoss()
-                train_func = train_model_graphnetwork_ltp_batch
+                enable_profiling = False
+                #train_func = train_model_graphnetwork_ltp_batch
+                train_func = train_model_graphnetwork_ltp_batch_profiling
+
+                if train_func == train_model_graphnetwork_ltp_batch_profiling:
+                    enable_profiling = True
+                    #enable_profiling = False
 
             else :
                 pos_weight = None 
@@ -787,7 +795,8 @@ if __name__ == "__main__":
                                     train_env_name=train_env_name,seed=args.seed,
                                     message_string=message_string,
                                     log_wandb=args.wandb,
-                                    chpkt_manager=manager,)
+                                    chpkt_manager=manager,
+                                    enable_profiling=enable_profiling)
             ic (args.attention_dropout)
             ic (args.dropout)
             ic (args.weight_decay)
