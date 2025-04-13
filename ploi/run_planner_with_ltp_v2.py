@@ -702,14 +702,20 @@ class PlannerTester:
         results = {}
         number_divisions = max(int((max(problems_to_solve)) / self.config.problems_per_division), 1) + 1
         self.failure_dict = {i:[] for i in range(int(number_divisions) )}
+        success_until_now_for_learned = 0
+        progress_bar = tqdm(problems_to_solve)
         
-        for problem_idx in tqdm(problems_to_solve):
+        for problem_idx in progress_bar:
             action_space = self.env.action_space._action_predicate_to_operators
             result = None
             
             for planner_type in self.config.planner_types:
                 if planner_type == PlannerType.LEARNED_MODEL and PlannerType.LEARNED_MODEL in models:
                     result = self._run_learned_model(problem_idx, action_space, models[planner_type], graph_metadata, use_monitor=self.config.enable_state_monitor)
+                    if result.success :
+                        success_until_now_for_learned  += 1
+                    #tqdm.set_postfix(success=f"{success_until_now_for_learned}")
+                    progress_bar.set_postfix(success=f"{success_until_now_for_learned}")
 
                 if planner_type == PlannerType.LEARNED_MODEL_VAL and PlannerType.LEARNED_MODEL_VAL in models:
                     result = self._run_learned_model_val(problem_idx, action_space, models[planner_type], graph_metadata, use_monitor=self.config.enable_state_monitor)
