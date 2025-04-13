@@ -314,6 +314,16 @@ class EncodeDecode(nn.Module):
 
         return all_objects_batches, all_objects_scores
 
+    def get_best_action_embeddings(self,x,all_actions,n_node,domain_number_actions):
+        #required_correct_features = torch.zeros((len(all_actions),1,self.representation_size),dtype=torch.float32).cuda()
+        required_correct_features = torch.zeros((len(all_actions),1,self.representation_size),dtype=torch.float32,device=self.device)
+        current_number_nodes = 0
+        for a,action in enumerate(all_actions) :
+            action_curr_graph = n_node[a] - domain_number_actions
+            required_correct_features[a][0] = x[current_number_nodes+action_curr_graph+action][:]
+            current_number_nodes += n_node[a]
+        return required_correct_features#,number_action_parameters
+
     def compute_action_scores(self,x,n_actions,hidden_state, action_idxs):
         '''
         Computing the score for each of the actions (Updating the graph[action_scores]
@@ -514,7 +524,8 @@ class EncodeDecode(nn.Module):
 
         
 
-class GNN_GRU(nn.Module):
+#class GNN_GRU(nn.Module):
+class GNN_GRU(EncodeDecode):
     def __init__(self, n_features, n_edge_features,n_global_features,
                 n_hidden, gnn_rounds,
                  num_decoder_layers,
@@ -527,7 +538,20 @@ class GNN_GRU(nn.Module):
                  device,
                  action_options,
                  object_options):
-        super(GNN_GRU,self).__init__()
+        super(GNN_GRU,self).__init__(
+            n_features, n_edge_features, n_global_features,
+                n_hidden, gnn_rounds,
+                 num_decoder_layers,
+                 dropout, 
+                 attn_dropout ,
+                 action_space,
+                 batch_size,
+                 n_heads,
+                 g_node,
+                 device,
+                 action_options,
+                 object_options,
+        )
         self.max_num_actions = 1
         self.max_num_objects = 1
         self.device = device
@@ -726,6 +750,8 @@ class GNN_GRU(nn.Module):
 
         results = sorted(zip(finished_scores, finished_beams), reverse=True)
         return results
+
+class ExtraFunctions():
 
     def get_best_action_scores_locations(self,a_scores,k):
         all_actions_batches = []
