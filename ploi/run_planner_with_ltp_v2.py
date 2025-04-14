@@ -26,6 +26,7 @@ import time
 from tqdm import tqdm
 from ploi.test_utils import (
     PlannerConfig, PlannerType, PlanningResult, PlannerMetrics,
+    LearnedSearchStrat,
     compute_metrics,
     validate_strips_plan,
     learned_planner_types,
@@ -63,6 +64,14 @@ class StateMonitor:
     def add_state(self, state):
         state_hash = self._state_to_hashable(state)
         self.visited_states.add(state_hash)
+
+    def remove_state(self, state):
+        """
+        Remove a state from visited set (when backtracking)
+        """
+        state_hash = self._state_to_hashable(state)
+        if state_hash in self.visited_states:
+            self.visited_states.remove(state_hash)
 
 @dataclass
 class ModelMetrics:
@@ -239,6 +248,7 @@ class PlannerTester:
         #self.optimal_planner_data = {}
         # Initialize dictionary to store data for all planner types
         self.planner_data = {planner_type: {} for planner_type in self.config.planner_types}
+        self.learned_search_strat = config.learned_search_strat
 
         self.load_planner_data()
         self.opt_planner = _create_planner(config.train_planner_name)
@@ -334,10 +344,17 @@ class PlannerTester:
                     param_str = f"{k}{v}"
                     
                 param_strs.append(param_str)
+
+            training_param_part = "_" + "_".join(param_strs) if param_strs else ""
+            testing_param_strs = []
             
-            # Construct filename
-            param_part = "_" + "_".join(param_strs) if param_strs else ""
-            filename = f"{base_dir}/{domain_name}{param_part}.json"
+            for k, v in sorted(self.config.testing_hyperparameters.items()):
+                testing_param_strs.append(f'{v}')
+
+            testing_param_part = "_".join(testing_param_strs) if testing_param_strs else "" + "_"
+            
+            #filename = f"{base_dir}/{domain_name}{param_part}.json"
+            filename = f"{base_dir}/{testing_param_part}{training_param_part}.json"
             
             return filename
         
@@ -417,7 +434,8 @@ class PlannerTester:
         return False
 
     def _run_learned_model(self, problem_idx: int, action_space: Any, model_epoch: Any, 
-                        graph_metadata: Any, use_monitor: bool = False) -> PlanningResult:
+                        graph_metadata: Any, use_monitor: bool = False):
+                        #strategy : LearnedSearchStrat= LearnedSearchStrat.GREEDY) -> PlanningResult:
         result = PlanningResult()
         result.problem_idx = problem_idx
         start_time = time.time()
@@ -442,6 +460,32 @@ class PlannerTester:
         if monitor:
             monitor.add_state(state)
 
+        # CURRENLY SINGLE SEARCH TYPE ALLOWED - CAN EXTEND TO ALL LATER IF NEEDED
+        strategy = self.config.learned_search_strat[0]
+        # Choose strategy based on input
+        if strategy == LearnedSearchStrat.GREEDY:
+            return self._run_greedy_search(state, model, action_space, graph_metadata, monitor, 
+                                           result, start_time, fname, planner_data)
+        elif strategy == LearnedSearchStrat.DFS:
+            # DFS Prune Factor
+            dfs_width_prune_factor = 2
+            return self._run_iterative_deepening_search(state, model, action_space, graph_metadata, monitor, 
+                                           result, start_time, fname, planner_data,
+                                           max_depth=self.config.max_plan_length ,
+                                           prune_factor=dfs_width_prune_factor)
+        elif strategy == LearnedSearchStrat.BFS:
+            # Placeholder for your DFS implementation
+            # return self._run_dfs_search(state, model, action_space, graph_metadata, monitor, result, start_time, fname)
+            raise NotImplementedError("BFS strategy not implemented yet")
+        elif strategy == LearnedSearchStrat.MCTS:
+            # Placeholder for your DFS implementation
+            # return self._run_dfs_search(state, model, action_space, graph_metadata, monitor, result, start_time, fname)
+            raise NotImplementedError("BFS strategy not implemented yet")
+        else:
+            raise ValueError(f"Unknown search strategy: {strategy}")
+
+    def _run_greedy_search(self, state, model, action_space, graph_metadata,monitor,
+                            result,start_time, fname, planner_data):
         while True:
             groundings = list(self.env.action_space.all_ground_literals(state))
             action_param_list = convert_state_and_run_model(
@@ -501,6 +545,134 @@ class PlannerTester:
                 return result
 
         return result
+
+    def _run_iterative_deepening_search(self, state, model, action_space, graph_metadata, monitor,
+                                        result, start_time, fname, planner_data, max_depth, prune_factor=3,
+                                        pure_dfs=True):
+        """
+        Run iterative deepening search with cycle avoidance
+        """
+        # Initialize the initial state in the monitor
+        if monitor:
+            monitor.add_state(state)
+
+        min_depth = 1
+        if pure_dfs == True :
+            min_depth = max_depth
+        
+        for depth_limit in range(min_depth, max_depth + 1):
+            #print(f"Searching with depth limit: {depth_limit}")
+            
+            # Create a copy of the current state to reset between iterations
+            current_state = self.env.get_state()
+            
+            # Reset result plan for this depth-limited search
+            temp_plan = []
+            
+            # Run depth-limited search
+            success = self._depth_limited_dfs( state,model,action_space, graph_metadata, monitor,
+                depth_limit,prune_factor, temp_plan, result,current_state
+            )
+            
+            if success:
+                # Update the result with the successful plan
+                result.plan = temp_plan
+                result.success = True
+                result.time_taken = time.time() - start_time
+                result.plan_length = len(result.plan)
+                planner_data[fname] = (result.plan_length, result.time_taken)
+                return result
+            
+            # Reset environment to initial state for next iteration
+            self.env.set_state(state)
+        
+        # If no solution found at any depth
+        result.time_taken = time.time() - start_time
+        return result
+
+    def _depth_limited_dfs(self, state, model, action_space, graph_metadata, monitor, 
+                        depth_limit, prune_factor, current_plan, result, original_state):
+        """
+        Depth-limited DFS with cycle detection
+        """
+        # Check if goal is reached
+        if self._check_goal_reached(state):
+            return True
+            
+        # If depth limit is reached, return failure
+        if depth_limit <= 0:
+            result.cutoffs += 1
+            return False
+        
+        # Check if plan is too long
+        if len(current_plan) > self.config.max_plan_length:
+            return False
+        
+        # Get and rank actions
+        groundings = list(self.env.action_space.all_ground_literals(state))
+        action_param_list = convert_state_and_run_model(
+            model, state, action_space, self.config.device, groundings, graph_metadata
+        )
+        
+        # Filter valid actions
+        valid_actions = [action for action in action_param_list 
+                        if self._is_valid_action(action, groundings)]
+        
+        # If no valid actions, return failure
+        if not valid_actions:
+            result.deadends += 1
+            return False
+        
+        # Prune to top actions if needed
+        if prune_factor < len(valid_actions):
+            valid_actions = valid_actions[:prune_factor]
+        
+        # Try each valid action in order of neural network ranking
+        for new_action in valid_actions:
+            result.nodes_expanded += 1
+            
+            # Apply the action to get the next state
+            next_state = self.env.step(new_action)[0]
+            
+            # Check if this state has been visited before (cycle detection)
+            if monitor and monitor.has_visited(next_state):
+                # Found a repeated state - try next action
+                result.repeated_states += 1
+                # Reset to current state to try next action
+                self.env.set_state(state)
+                continue
+            
+            # Mark the new state as visited
+            if monitor:
+                monitor.add_state(next_state)
+            
+            # Add action to current plan
+            current_plan.append(new_action)
+            
+            # Recursively search from the new state
+            if self._depth_limited_dfs(
+                next_state,
+                model,
+                action_space,
+                graph_metadata,
+                monitor,
+                depth_limit - 1,
+                prune_factor,
+                current_plan,
+                result,
+                original_state
+            ):
+                return True
+            
+            # If search failed, backtrack
+            current_plan.pop()  # Remove the last action
+            self.env.set_state(state)
+            
+            if monitor:
+                monitor.remove_state(next_state)
+        
+        # If all actions failed, return failure
+        return False
 
     def _get_successor_states(self,state, applicable_actions):
         return [ (action, self._apply_action(state, action)) for action in applicable_actions ]

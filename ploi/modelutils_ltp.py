@@ -710,7 +710,6 @@ class GNN_GRU(EncodeDecode):
         x,edge_attr, u = self.encoder(data)
 
         u = u.unsqueeze(1)
-        #u = u.view(u.size(0), 1, *u.shape[1:])
         _,hidden_state = self.decoder(u,h0)
         x = self.action_score_decoder(x)
 

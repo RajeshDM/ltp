@@ -46,6 +46,7 @@ from ploi.run_planner_with_ltp_v1 import (
 #from ploi.run_planner_with_ltp_2 import PlannerTester, PlannerConfig, PlannerType
 from ploi.test_utils import (
     PlannerConfig, PlannerType, PlanningResult, PlannerMetrics,
+    LearnedSearchStrat,
     compute_metrics,
     compute_combined_metrics,
     learned_planner_types,
@@ -734,6 +735,11 @@ if __name__ == "__main__":
             'abl_' : args.ablation 
         }
 
+        testing_hyperparameters = {
+            'domain_name' : args.domain,
+            'search' : args.search_strat,
+        }
+
         ignore_defaults = {
             'g_node' : True ,
             #'model_class' : GNN_GRU.__name__
@@ -768,7 +774,6 @@ if __name__ == "__main__":
                     train_func = train_model_graphnetwork_ltp_batch_profiling
                 else :
                     train_func = train_model_graphnetwork_ltp_batch
-
 
             else :
                 pos_weight = None 
@@ -850,6 +855,16 @@ if __name__ == "__main__":
 
         #ONLY DONE FOR FINALY DAY TESTING - REMOVE LATER
         #planner_types = [PlannerType.LEARNED_MODEL,PlannerType.NON_OPTIMAL]
+        learned_search_strat = []
+
+        if args.search_strat == 'greedy' : 
+            learned_search_strat.append(LearnedSearchStrat.GREEDY)
+        elif args.search_strat == 'dfs' : 
+            learned_search_strat.append(LearnedSearchStrat.DFS)
+        elif args.search_strat == 'bfs' : 
+            learned_search_strat.append(LearnedSearchStrat.BFS)
+        elif args.search_strat == 'mcts' : 
+            learned_search_strat.append(LearnedSearchStrat.MCTS)
 
         config = PlannerConfig(
             #planner_types=[PlannerType.NON_OPTIMAL],
@@ -866,6 +881,8 @@ if __name__ == "__main__":
             train_planner_name = args.train_planner_name,
             model_hyperparameters = training_hyperparameters,
             ignore_defaults = ignore_defaults,
+            testing_hyperparameters = testing_hyperparameters,
+            learned_search_strat= learned_search_strat,
         )
 
         tester = PlannerTester(config)

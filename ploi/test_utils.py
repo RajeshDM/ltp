@@ -8,7 +8,19 @@ import tempfile
 import os
 import subprocess
 
+class LearnedSearchStrat(Enum):
+    """Defines search strategies for learned models."""
+    GREEDY = auto()
+    DFS = auto()
+    BFS = auto()
+    MCTS = auto()
+    # Add more search strategies as needed
+
 class PlannerType(Enum):
+    """
+    Main planner types.
+    For LEARNED_MODEL and LEARNED_MODEL_VAL, use with_strategy() to specify the search strategy.
+    """
     LEARNED_MODEL = auto()
     LEARNED_MODEL_VAL = auto()
     NON_OPTIMAL = auto()
@@ -16,6 +28,49 @@ class PlannerType(Enum):
     EXP_BASELINE = auto()
     EXP_BASELINE_2 = auto()
     EXP_BASELINE_3 = auto()
+    
+    def with_strategy(self, strategy: LearnedSearchStrat) -> 'PlannerTypeWithStrategy':
+        """
+        Attach a search strategy to this planner type.
+        Only valid for LEARNED_MODEL and LEARNED_MODEL_VAL.
+        
+        Args:
+            strategy: The search strategy to use
+            
+        Returns:
+            A PlannerTypeWithStrategy combining this planner type with the given strategy
+        
+        Raises:
+            ValueError: If attaching a strategy to a non-learned model planner type
+        """
+        if self not in [PlannerType.LEARNED_MODEL, PlannerType.LEARNED_MODEL_VAL]:
+            raise ValueError(f"Cannot attach search strategy to {self.name}")
+        return PlannerTypeWithStrategy(self, strategy)
+
+class PlannerTypeWithStrategy:
+    """
+    Combined planner type and search strategy.
+    Used for learned model planners that require a specific search strategy.
+    """
+    def __init__(self, planner_type: PlannerType, strategy: LearnedSearchStrat):
+        if planner_type not in [PlannerType.LEARNED_MODEL, PlannerType.LEARNED_MODEL_VAL]:
+            raise ValueError(f"Cannot attach search strategy to {planner_type.name}")
+        self.planner_type = planner_type
+        self.strategy = strategy
+    
+    def __eq__(self, other):
+        if isinstance(other, PlannerTypeWithStrategy):
+            return self.planner_type == other.planner_type and self.strategy == other.strategy
+        return False
+    
+    def __hash__(self):
+        return hash((self.planner_type, self.strategy))
+    
+    def __str__(self):
+        return f"{self.planner_type.name}_{self.strategy.name}"
+    
+    def __repr__(self):
+        return f"PlannerTypeWithStrategy({self.planner_type.name}, {self.strategy.name})"
 
 @dataclass
 class PlannerConfig:
@@ -32,7 +87,8 @@ class PlannerConfig:
     train_planner_name :str = "" 
     model_hyperparameters: Dict[str, float] = None
     ignore_defaults : Dict[str, Any] = None
-
+    testing_hyperparameters: Dict[str, Any] = None
+    learned_search_strat: List[LearnedSearchStrat] = List[LearnedSearchStrat.GREEDY] 
 
 @dataclass
 class PlannerMetrics:
@@ -56,6 +112,8 @@ class PlanningResult:
         self.plan_length = 0
         self.repeated_states = 0 
         self.problem_idx = -1
+        self.nodes_expanded = 0
+        self.cutoffs = 0
 
 learned_planner_types = [
     PlannerType.LEARNED_MODEL,

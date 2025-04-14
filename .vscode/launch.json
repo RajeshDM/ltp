@@ -113,13 +113,13 @@
                 "--domain", "manyblocks_ipcc_big",
                 "--all-problems",
                 "--lr", "0.0005",
-                "--n-heads", "4",
+                "--n-heads", "1",
                 "--attention-dropout", "0.1",
                 "--dropout", "0",
                 "--weight-decay", "0.00",
                 "--wandb", "False",
-                "--starting-test-number", "0",
-                "--num-test-problems", "230",
+                "--starting-test-number", "176",
+                "--num-test-problems", "5",
                 "--num-train-problems", "200",
                 "--epochs" , "30",
                 "--gnn-rounds" , "9",
@@ -136,7 +136,8 @@
                 "--use-global-node", "True",
                 //"--exp-baseline-3" , "True",
                 //"--ablation", "no_ag_no_cd"
-                //"--ablation", "val"
+                //"--ablation", "val",
+                "--search-strat" , "dfs"
             ],
         },
         {

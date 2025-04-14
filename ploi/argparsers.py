@@ -33,6 +33,12 @@ def get_ploi_argument_parser():
         default="main",
     )
     parser.add_argument(
+        "--search-strat",
+        type=str,
+        choices=['greedy', 'dfs', 'mcts'],
+        default="greedy",
+    )
+    parser.add_argument(
         "--num-seeds",
         type=int,
         default="1",
