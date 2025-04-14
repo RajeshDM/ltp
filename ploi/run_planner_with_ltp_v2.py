@@ -178,7 +178,8 @@ def convert_state_and_run_model(model, state, action_space , device, groundings,
     num_non_action_nodes = len(node_to_objects) - (num_actions) 
                                     
     model_input = convert_graph_to_model_input_v2([g_inp],device)
-    results = model(model_input, beam_search=True)
+    with torch.no_grad() :
+        results = model(model_input, beam_search=True)
     action_param_list = []
 
     for action_data in results : 
@@ -225,7 +226,8 @@ def convert_state_and_run_model_val(model, states, action_space ,
         graph_inputs.append(g_inp)
 
     model_input = convert_graph_to_model_input_v2(graph_inputs,device)
-    results = model(model_input).squeeze(1)
+    with torch.no_grad() :
+        results = model(model_input).squeeze(1)
     return results
 
 
