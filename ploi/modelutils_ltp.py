@@ -518,33 +518,31 @@ class EncodeDecode(nn.Module):
         # Step 10: Apply parameter mask to final scores
         return torch.mul(mask_matrix, variable_action_object_scores)
 
-    def get_best_object_embeddings(self,x,all_objects,all_actions,parameter_number,n_params,n_node):
+    def get_best_object_embeddings_old(self,x,all_objects,all_actions,parameter_number,n_params,n_node):
         current_number_nodes = 0
-        #objects_counter = 0
         objects_counter = parameter_number
         feature_captured_object_counter = 0
-        #ic (all_objects)
-        #ic (parameter_number)
-        #ic (graph['n_parameters'])
-
-        #required_correct_object_features = torch.zeros((len(all_actions), 1, self.representation_size),
-        #                                               dtype=torch.float32).cuda()
         required_correct_object_features = torch.zeros((len(all_actions), 1, self.representation_size),
                                                        dtype=torch.float32,device=self.device)
         for a, action in enumerate(all_actions):
-
             object_idx = all_objects[objects_counter]
             required_correct_object_features[feature_captured_object_counter][0] = x[
                                                                       current_number_nodes + object_idx][:]
-
             objects_counter += int(n_params[a])
-
             feature_captured_object_counter += 1
             current_number_nodes += n_node[a]
-        #ic (required_correct_object_features)
         return required_correct_object_features
 
-    def get_best_object_embeddings_ltp(self,x,all_objects,n_node, num_graphs):
+    def get_best_object_embeddings(self,x,all_objects,all_actions,parameter_number,n_params,n_node):
+        # Explanation 
+        # Fisrt, we extract the starting location for obj nodes in each graph
+        # Then, we get all the object positions (we get objects for all parameters, we extract current parameter objs)
+        return x[
+            torch.cat((n_node.new_zeros(1), torch.cumsum(n_node[:-1], 0)))
+            + all_objects[torch.cumsum(n_params, 0) - n_params[0] + parameter_number]
+        ].unsqueeze(1)
+
+    def get_best_object_embeddings_ltp_old(self,x,all_objects,n_node, num_graphs):
         current_number_nodes = 0
         #required_correct_object_features = torch.zeros((num_graphs, 1, self.representation_size),
         #                                               dtype=torch.float32).cuda()
@@ -556,6 +554,12 @@ class EncodeDecode(nn.Module):
             required_correct_object_features[i][0] = x[current_number_nodes+object_idx][:]
             current_number_nodes += n_node[i]
         return required_correct_object_features
+
+    def get_best_object_embeddings_ltp(self,x,all_objects,n_node, num_graphs):
+        return x[
+            torch.cat((n_node.new_zeros(1), torch.cumsum(n_node[:-1], 0)))
+            + all_objects
+        ].unsqueeze(1)
     
     #U is the global value
     def non_beam_decode_non_CD(self,x, u ,a_scores_new,ao_scores,n_node,n_parameters,n_objects,object_idxs,n_actions,action_idxs, num_graphs):
@@ -763,7 +767,8 @@ class GNN_GRU(EncodeDecode):
                 break
             decoder_input = self.get_best_object_embeddings(x, all_objects, all_actions,parameter_number=i,
                                                             n_params=n_parameters,
-                                                            n_node=n_node)    
+                                                            n_node=n_node)   
+
             #computing_best_object_embedding_time = time.time() - computing_best_object_embedding
         #decoder_total_time_2 = time.time()-decoder_time
         #return a_scores, ao_scores
@@ -836,14 +841,26 @@ class GNN_GRU(EncodeDecode):
                 all_objects_scores = all_objects_scores_all_params[parameter_number]
                 all_objects_batches = all_objects_batches_all_params[parameter_number]
                 for object_option in range(self.max_num_objects):
-                    all_objects = [all_objects_batches[object_option]] 
-                    all_curr_obj_scores = [all_objects_scores[object_option]]
-                    new_decoder_input = self.get_best_object_embeddings_ltp(x, all_objects, n_node, number_graphs)
+                    all_objects = all_objects_batches[object_option] 
+                    all_curr_obj_scores = all_objects_scores[object_option]
+                    #all_objects =  [all_objects_batches[object_option]]
+                    #all_curr_obj_scores = [all_objects_scores[object_option]]
+                    new_decoder_input = self.get_best_object_embeddings_ltp(x, 
+                                                                            all_objects,
+                                                                             n_node, number_graphs)
+                    
+                    '''
+                    new_decoder_input = self.get_best_object_embeddings_ltp_old(x, 
+                                                                                all_objects, 
+                                                                                n_node, number_graphs)
+                    '''
 
-                    curr_sequence = active_beams[beam_idx][0] + [all_objects[0]] 
+                    #curr_sequence = active_beams[beam_idx][0] + [all_objects[0]] 
+                    curr_sequence = active_beams[beam_idx][0] + [all_objects] 
 
                     action = curr_sequence[0].item()
-                    new_score = (current_scores[beam_idx]*(curr_depth+1) + all_curr_obj_scores[0])/ (curr_depth + 2 )
+                    #new_score = (current_scores[beam_idx]*(curr_depth+1) + all_curr_obj_scores[0])/ (curr_depth + 2 )
+                    new_score = (current_scores[beam_idx]*(curr_depth+1) + all_curr_obj_scores)/ (curr_depth + 2 )
                     if curr_depth + 1 == self.action_parameter_number_dict[action]:
                         finished_beams.append(curr_sequence)
                         finished_scores.append(new_score)
