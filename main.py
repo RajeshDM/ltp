@@ -743,9 +743,9 @@ if __name__ == "__main__":
         }
 
         ignore_defaults = {
-            'g_node' : True ,
+            #'g_node' : True ,
             #'model_class' : GNN_GRU.__name__
-            'abl_' : 'main'
+            #'abl_' : 'main'
         }
 
         continue_training = args.continue_training
