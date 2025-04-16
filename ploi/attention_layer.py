@@ -6,6 +6,7 @@ from torch_scatter.composite import scatter_softmax
 from torch_scatter import scatter
 import torch.nn.functional as F
 import time
+from torch_scatter import scatter_max
 from typing import Optional, Tuple, Dict, Any, List
 
 def MLP(layers, input_dim, dropout=0.):
@@ -79,22 +80,43 @@ class GraphAttentionV2Layer(nn.Module):
         n_edges = e.size(0)
         g_l = self.linear_l(h).view(n_nodes, self.n_heads, self.n_hidden_1)
         g_r = self.linear_r(e).view(n_edges, self.n_heads, self.n_hidden_2)
-        unique_info = torch.unique(receivers, return_counts=True, sorted=True,return_inverse=True)
-        receiver_counts = torch.zeros(n_nodes,dtype=torch.long,device=g_l.device)
-        receiver_counts[unique_info[0]] = unique_info[2]
+        receiver_counts = torch.bincount(receivers, minlength=n_nodes)
 
         g_concat = torch.cat((torch.repeat_interleave(g_l,receiver_counts,dim=0), g_r), dim=2)
 
-        # Calculate
+        '''
+        attn_scores = self.dropout(self.attn(self.activation(g_concat)))
+
+        # Find max scores for numerical stability
+        max_scores, _ = scatter_max(attn_scores, receivers, dim=0, dim_size=n_nodes)
+
+        # Calculate exponentials
+        exp_scores = torch.exp(attn_scores - max_scores[receivers])
+
+        # Sum exponentials per node
+        sum_exp = scatter(exp_scores, receivers, dim=0, dim_size=n_nodes, reduce='sum')
+
+        # Normalize to get softmax
+        attn_softmax = exp_scores / sum_exp[receivers]
+        '''
         attn_softmax = scatter_softmax(self.dropout(self.attn(self.activation(g_concat))), receivers, dim=0)
 
+        # Apply softmax weights to features and aggregate
         aggregated_effects = scatter(
             g_r * attn_softmax,
-            receivers, 
-            dim=0, 
-            dim_size=n_nodes,  # Explicitly specify dimension size
+            receivers,
+            dim=0,
+            dim_size=n_nodes,
             reduce='sum'
         )
+
+        '''
+        #print ("old time = ", b-a)
+        #print ("new time = ", c-b)
+        #print ("new time 2 = ", d-c)
+        print ("ratio1 = ", (b-a)/(c-b))
+        print ("ratio2 = ", (b-a)/(d-c))
+        '''
 
         if u is not None:
             out = torch.cat([g_l.mean(dim=1),aggregated_effects.mean(dim=1),u],dim=1)

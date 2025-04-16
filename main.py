@@ -112,7 +112,7 @@ def get_free_gpu():
 
 def set_seed(args):
     seed = args.seed
-    torch.manual_seed(seed)
+    #torch.manual_seed(seed)
     if args.server == True:
     #if True :
         os.environ["CUBLAS_WORKSPACE_CONFIG"]=":16:8"
@@ -130,6 +130,7 @@ def set_seed(args):
 
 def initialize_model(model_class, args, action_space):
     if args.use_gpu:
+        '''
         try :
             free_gpu_idx = get_free_gpu()
             device = f"cuda:{free_gpu_idx}"
@@ -137,7 +138,8 @@ def initialize_model(model_class, args, action_space):
         except Exception as e : 
             #print (f"ISsue with finding the right GPU {e}")
             #print ("Using default GPU at CUDA 0")
-            device = "cuda:0"
+        '''
+        device = "cuda:0"
     else:
         device = "cpu"
 
@@ -765,7 +767,7 @@ if __name__ == "__main__":
         if args.mode == 'train'  or args.mode == 'train_test' :
             optimizer = torch.optim.Adam(_model.parameters(),lr=args.lr,weight_decay=args.weight_decay) 
             enable_profiling = True
-            enable_profiling = False
+            #enable_profiling = False
 
             if 'val' not in args.ablation  :
                 pos_weight = args.pos_weight * torch.ones([1])

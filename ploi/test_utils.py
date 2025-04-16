@@ -78,6 +78,7 @@ class PlannerConfig:
     domain_name: str
     num_problems: int
     timeout: float
+    learned_search_strat: List[LearnedSearchStrat] 
     max_plan_length: int = 40
     problems_per_division: int = 10
     device: str = "cuda:0"
@@ -88,7 +89,6 @@ class PlannerConfig:
     model_hyperparameters: Dict[str, float] = None
     ignore_defaults : Dict[str, Any] = None
     testing_hyperparameters: Dict[str, Any] = None
-    learned_search_strat: List[LearnedSearchStrat] = List[LearnedSearchStrat.GREEDY] 
 
 @dataclass
 class PlannerMetrics:

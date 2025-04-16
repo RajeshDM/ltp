@@ -54,7 +54,7 @@ shift 1
 
 # Default values (from klondike_solitaire.sh)
 METHOD="ltp"
-heads=(2 4 8)
+heads=(1 2 4 8)
 lrs=(0.0005)
 decays=(0.000)
 other_drops=(0)
@@ -223,7 +223,7 @@ if [ "$mode" = "train_test" ] || [ "$mode" = "train" ]; then
                 for other_drop in ${other_drops[@]}; do
                     for lr in ${lrs[@]}; do
                         for gnn_round in ${gnn_rounds[@]}; do
-                            echo "python main.py --domain ${FULL_DOMAIN_NAME} --all-problems --lr $lr --n-heads $head --attention-dropout $attn_drop --dropout $other_drop --weight-decay $decay --wandb ${wandb_value} --mode ${mode} --method ${METHOD} --gnn-rounds $gnn_round --epochs $epochs --num-test-problems $num_test_problems --num-train-problems ${num_train_problems} --max-plan-length ${max_plan_length} --use-global-node ${g_node} --run-non-optimal ${non_opt} --ablation ${ablation} --search_strat ${search_strat}"
+                            echo "python main.py --domain ${FULL_DOMAIN_NAME} --all-problems --lr $lr --n-heads $head --attention-dropout $attn_drop --dropout $other_drop --weight-decay $decay --wandb ${wandb_value} --mode ${mode} --method ${METHOD} --gnn-rounds $gnn_round --epochs $epochs --num-test-problems $num_test_problems --num-train-problems ${num_train_problems} --max-plan-length ${max_plan_length} --use-global-node ${g_node} --run-non-optimal ${non_opt} --ablation ${ablation} --search-strat ${search_strat}"
                             
                             python main.py --domain ${FULL_DOMAIN_NAME} --all-problems --lr $lr --n-heads $head --attention-dropout $attn_drop --dropout $other_drop --weight-decay $decay --wandb ${wandb_value} --mode ${mode} --method ${METHOD} --gnn-rounds $gnn_round --epochs $epochs --num-test-problems $num_test_problems --num-train-problems ${num_train_problems} --max-plan-length ${max_plan_length} --use-global-node ${g_node} --run-non-optimal ${non_opt} --ablation ${ablation} --search-strat ${search_strat} |& tee -a "cache/results/${FULL_DOMAIN_NAME}/lr_${lr}_n_heads_${head}_attn_drop_${attn_drop}_drop_${other_drop}_decay_${decay}_g_node_${g_node}_ablation_${ablation}_search_strat_${search_strat}.txt"
                         done
@@ -246,7 +246,7 @@ if [ "$mode" = "test" ]; then
                 for other_drop in ${other_drops[@]}; do
                     for lr in ${lrs[@]}; do
                         for gnn_round in ${gnn_rounds[@]}; do
-                            echo "python main.py --domain ${FULL_DOMAIN_NAME} --all-problems --lr $lr --n-heads $head --attention-dropout $attn_drop --dropout $other_drop --weight-decay $decay --wandb ${wandb} --mode ${mode} --method ${METHOD} --gnn-rounds $gnn_round --epochs $epochs --num-test-problems $num_test_problems --num-train-problems ${num_train_problems} --max-plan-length=${max_plan_length} --use-global-node ${g_node} --run-non-optimal ${non_opt} --ablation ${ablation} --search_strat ${search_strat}"
+                            echo "python main.py --domain ${FULL_DOMAIN_NAME} --all-problems --lr $lr --n-heads $head --attention-dropout $attn_drop --dropout $other_drop --weight-decay $decay --wandb ${wandb} --mode ${mode} --method ${METHOD} --gnn-rounds $gnn_round --epochs $epochs --num-test-problems $num_test_problems --num-train-problems ${num_train_problems} --max-plan-length=${max_plan_length} --use-global-node ${g_node} --run-non-optimal ${non_opt} --ablation ${ablation} --search-strat ${search_strat}"
                             
                             python main.py --domain ${FULL_DOMAIN_NAME} --all-problems --lr $lr --n-heads $head --attention-dropout $attn_drop --dropout $other_drop --weight-decay $decay --wandb ${wandb} --mode ${mode} --method ${METHOD} --gnn-rounds $gnn_round --epochs $epochs --num-test-problems $num_test_problems --num-train-problems ${num_train_problems} --max-plan-length=${max_plan_length} --use-global-node ${g_node} --run-non-optimal ${non_opt} --ablation ${ablation} --search-strat ${search_strat}
                         done
