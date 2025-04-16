@@ -767,7 +767,7 @@ if __name__ == "__main__":
         if args.mode == 'train'  or args.mode == 'train_test' :
             optimizer = torch.optim.Adam(_model.parameters(),lr=args.lr,weight_decay=args.weight_decay) 
             enable_profiling = True
-            #enable_profiling = False
+            enable_profiling = False
 
             if 'val' not in args.ablation  :
                 pos_weight = args.pos_weight * torch.ones([1])
