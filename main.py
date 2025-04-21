@@ -76,6 +76,7 @@ from ploi.traineval import (
     train_model_graphnetwork,
     train_model_graphnetwork_ltp_batch,
     train_model_graphnetwork_ltp_batch_val,
+    train_model_graphnetwork_ltp_batch_allows_both,
     train_model_graphnetwork_ltp_batch_profiling,
     train_model_graphnetwork_ltp_batch_val_profiling,
     train_model_hierarchical,
@@ -113,7 +114,7 @@ def get_free_gpu():
 def set_seed(args):
     seed = args.seed
     #torch.manual_seed(seed)
-    if args.server == True:
+    if args.test_with_seed is True:
     #if True :
         os.environ["CUBLAS_WORKSPACE_CONFIG"]=":16:8"
         torch.use_deterministic_algorithms(True)
@@ -159,6 +160,7 @@ def initialize_model(model_class, args, action_space):
         device=device,
         action_options=args.action_options,
         object_options=args.object_options,
+        ablation=args.ablation
     )
 
 
@@ -714,7 +716,7 @@ if __name__ == "__main__":
         n_heads = args.n_heads
         #action_space = training_data[3]
 
-        if args.ablation == 'main':
+        if args.ablation == 'main' or args.ablation == 'main_val':
             model_class = GNN_GRU
         elif 'no_cd' in  args.ablation:
             model_class = GNN_non_CD
@@ -769,20 +771,20 @@ if __name__ == "__main__":
             enable_profiling = True
             enable_profiling = False
 
-            if 'val' not in args.ablation  :
+            if args.ablation != 'val' :# not in args.ablation  :
                 pos_weight = args.pos_weight * torch.ones([1])
                 criterion = torch.nn.CrossEntropyLoss()
                 if enable_profiling :
                     train_func = train_model_graphnetwork_ltp_batch_profiling
                 else :
-                    train_func = train_model_graphnetwork_ltp_batch
+                    #train_func = train_model_graphnetwork_ltp_batch
+                    train_func = train_model_graphnetwork_ltp_batch_allows_both
 
             else :
                 pos_weight = None 
                 criterion = torch.nn.MSELoss() 
                 if enable_profiling :
                     train_func = train_model_graphnetwork_ltp_batch_val_profiling
-
                 else :
                     train_func = train_model_graphnetwork_ltp_batch_val
 
@@ -807,6 +809,7 @@ if __name__ == "__main__":
                                     train_env_name=train_env_name,seed=args.seed,
                                     message_string=message_string,
                                     log_wandb=args.wandb,
+                                    ablation=args.ablation,
                                     chpkt_manager=manager,
                                     enable_profiling=enable_profiling)
             ic (args.attention_dropout)
@@ -823,7 +826,7 @@ if __name__ == "__main__":
         baseline_models = {}
 
         if args.run_learned_model is True :
-            if 'val' in args.ablation :
+            if args.ablation == 'val' :
                 planner_types.append(PlannerType.LEARNED_MODEL_VAL)
             else :
                 planner_types.append(PlannerType.LEARNED_MODEL)

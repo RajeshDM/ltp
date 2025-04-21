@@ -29,8 +29,14 @@ def get_ploi_argument_parser():
     parser.add_argument(
         "--ablation",
         type=str,
-        choices=["no_cd", "no_ag", "no_ag_no_cd", "val","main"] ,
+        choices=["no_cd", "no_ag", "no_ag_no_cd", "val","main", "main_val"] ,
         default="main",
+    )
+    parser.add_argument(
+        "--test-with-seed",
+        type=str2bool,
+        choices=[True, False],
+        default="false",
     )
     parser.add_argument(
         "--search-strat",

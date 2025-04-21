@@ -640,7 +640,9 @@ class GNN_GRU(EncodeDecode):
                  g_node,
                  device,
                  action_options,
-                 object_options):
+                 object_options,
+                 ablation,
+                 ):
         super(GNN_GRU,self).__init__(
             n_features, n_edge_features, n_global_features,
                 n_hidden, gnn_rounds,
@@ -697,34 +699,64 @@ class GNN_GRU(EncodeDecode):
             #nn.LayerNorm(n_hidden),
         )
         self.training_mode = True
+        self.ablation = ablation
+        if self.ablation == "main_val":
+            self.global_val = nn.Sequential(
+                nn.Linear(n_hidden, n_hidden),
+                nn.BatchNorm1d(n_hidden),
+                nn.ReLU(),
+                nn.Dropout(dropout) if dropout > 0.0 else nn.Identity(),
+                nn.Linear(n_hidden, int(n_hidden/2)),
+                nn.BatchNorm1d(int(n_hidden/2)),
+                nn.ReLU(),
+                nn.Linear(int(n_hidden/2), int(n_hidden/4)),
+                nn.BatchNorm1d(int(n_hidden/4)),
+                nn.ReLU(),
+                nn.Linear(int(n_hidden/4), int(n_hidden/8)),
+                nn.BatchNorm1d(int(n_hidden/8)),
+                nn.ReLU(),
+                nn.Linear(int(n_hidden/8), 1),
+            )
 
     def __str__(self):
         return f"{self.__class__.__name__}"
 
     #def forward(self,x,edge_idx,edge_attr,u,a_scores, ao_scores, batch=None):
-    def forward(self,data, beam_search = False):
+    def extract_data_and_run_encoder(self,data):
         graph_info = self.extract_graph_info_ltp(data)
         action_idxs, object_idxs, a_scores, ao_scores, n_node, n_parameters, n_actions, n_objects,number_graphs = graph_info 
         h0 = torch.zeros(self.num_decoder_layers,number_graphs,self.representation_size,device=self.device)
-
         x,edge_attr, u = self.encoder(data)
-
         u = u.unsqueeze(1)
         _,hidden_state = self.decoder(u,h0)
         x = self.action_score_decoder(x)
+        return x, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs
 
-        self.training_mode = self.training
+    def forward(self,data, beam_search = False):
+        x, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs = self.extract_data_and_run_encoder(data)
+        return self.non_beam_decode(x,hidden_state,a_scores,ao_scores,n_node,
+                                    n_parameters,n_objects,object_idxs,n_actions,action_idxs)
 
-        #if self.training_mode or number_graphs > 1 : 
-        if beam_search == False :
-            return self.non_beam_decode(x,hidden_state,a_scores,ao_scores,n_node,
-                                        n_parameters,n_objects,object_idxs,n_actions,action_idxs)
-    
-        else :
-            return self.beam_search_v2(x,hidden_state,number_graphs=number_graphs,
-                         ao_scores=ao_scores,n_node=n_node,n_parameters=n_parameters,
-                         n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
-                         action_idxs=action_idxs)
+
+    def forward_beam_decode(self,data):
+        x, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs = self.extract_data_and_run_encoder(data)
+        return self.beam_search_v2(x,hidden_state,number_graphs=number_graphs,
+                        ao_scores=ao_scores,n_node=n_node,n_parameters=n_parameters,
+                        n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
+                        action_idxs=action_idxs)
+
+    def forward_with_value(self,data):
+        graph_info = self.extract_graph_info_ltp(data)
+        action_idxs, object_idxs, a_scores, ao_scores, n_node, n_parameters, n_actions, n_objects,number_graphs = graph_info 
+        h0 = torch.zeros(self.num_decoder_layers,number_graphs,self.representation_size,device=self.device)
+        x,edge_attr, u = self.encoder(data)
+        state_val = self.global_val(u)
+        u = u.unsqueeze(1)
+        _,hidden_state = self.decoder(u,h0)
+        x = self.action_score_decoder(x)
+        return self.non_beam_decode(x,hidden_state,a_scores,ao_scores,n_node,
+                                    n_parameters,n_objects,object_idxs,n_actions,action_idxs), state_val
+
 
     def non_beam_decode(self,x,hidden_state,a_scores,ao_scores,n_node,n_parameters,n_objects,object_idxs,n_actions,action_idxs):
         all_actions_batches,_ = self.get_best_action_scores_locations(a_scores,self.max_num_actions)

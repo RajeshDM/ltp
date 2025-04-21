@@ -455,20 +455,6 @@ class GNN_Val(nn.Module):
             self.encoder = HeteroGNN(n_features,n_edge_features,n_global_features\
                                         ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads,device)
         
-        '''
-        self.output_mlp = nn.Sequential(
-            nn.Linear(n_hidden, n_hidden),
-            nn.SELU(),
-            nn.Dropout(dropout) if dropout > 0.0 else nn.Identity(),
-            nn.Linear(n_hidden, int(n_hidden/2)),
-            nn.SELU(),
-            nn.Linear(int(n_hidden/2), int(n_hidden/4)),
-            nn.SELU(),
-            nn.Linear(int(n_hidden/4), int(n_hidden/8)),
-            nn.SELU(),
-            nn.Linear(int(n_hidden/8), 1),
-        )
-        '''
         self.output_mlp = nn.Sequential(
             nn.Linear(n_hidden, n_hidden),
             nn.BatchNorm1d(n_hidden),

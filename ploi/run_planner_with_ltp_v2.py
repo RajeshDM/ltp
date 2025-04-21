@@ -188,7 +188,8 @@ def convert_state_and_run_model(model, state, action_space , device, groundings,
                                     
     model_input = convert_graph_to_model_input_v2([g_inp],device)
     with torch.no_grad() :
-        results = model(model_input, beam_search=True)
+        #results = model(model_input, beam_search=True)
+        results = model.forward_beam_decode(model_input)
     action_param_list = []
 
     for action_data in results : 
