@@ -29,7 +29,7 @@ pip install clingo
 
 ### Additional Requirements
 
-For use with pddlgym, we require our fork of [pddlgym](https://github.com/RajeshDM/pddlgym.git), which houses our custom domains and problems.
+For use with pddlgym, we require our fork of [pddlgym](https://anonymous.4open.science/r/pddlgym-0F03/), which houses our custom domains and problems.
 
 Download and build the plan validation tool available at https://github.com/KCL-Planning/VAL, then make a symlink called validate on your path that points to the build/Validate binary, e.g. `ln -s <path to VAL>/build/Validate /usr/local/bin/validate`. If done successfully, running validate on your command line should give an output that starts with the line: `VAL: The PDDL+ plan validation tool`.
 
