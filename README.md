@@ -27,67 +27,107 @@ pip install tarski
 pip install clingo
 ```
 
+### Additional Requirements
+
 For use with pddlgym, we require our fork of [pddlgym](https://github.com/RajeshDM/pddlgym.git), which houses our custom domains and problems.
 
 Download and build the plan validation tool available at https://github.com/KCL-Planning/VAL, then make a symlink called validate on your path that points to the build/Validate binary, e.g. `ln -s <path to VAL>/build/Validate /usr/local/bin/validate`. If done successfully, running validate on your command line should give an output that starts with the line: `VAL: The PDDL+ plan validation tool`.
 
-## Running PLOI/SCRUB/SEEK on a registered pddlgym environment
+## Running the Code
 
-To train a planner on an environment already registered with `pddlgym`, simply run `main.py` passing the appropriate commandline arguments.
+To run the planner, use `main.py` with the appropriate command-line arguments. The framework supports various learning-based planners and domains.
 
-For example, PLOI may be run on a domain `Taskographyv2tiny10` by executing the following command. It trains on 40 problem instances for 401 epochs, and tests on all validation problem instances.
+### Command-line Arguments
+
 ```
-python main.py --domain taskographyv2tiny10 --method ploi --num-train-problems 40 --epochs 401 --mode train  --timeout 30 --expid taskographyv2tiny10_ploi --logdir cache/results --all-problems
-```
-
-To run evaluation using a pretrained model a PLOI baseline on the domain, set the `--mode` argument to `test` instead. The code will then pick up the best model from the directory pointed to by `--expid`.
-
-Here's the list of supported commandline arguments across all planners.
-```sh
-usage: main.py [-h] [--seed SEED] [--method {scenegraph,hierarchical,ploi}]
-               [--mode {train,test,visualize}] [--domain DOMAIN]
-               [--train-planner-name {fd-lama-first,fd-opt-lmcut}]
-               [--eval-planner-name {fd-lama-first,fd-opt-lmcut}]
+usage: main.py [-h] [--seed SEED] [--method {ltp,ltp_no_cd,ltp_no_ag,ltp_no_ag_no_cd,ltp_val,scenegraph,hierarchical,ploi}]
+               [--mode {train,test,train_test,visualize}] [--domain DOMAIN]
+               [--all-problems] [--lr LR] [--n-heads N_HEADS]
+               [--attention-dropout ATTENTION_DROPOUT] [--dropout DROPOUT]
+               [--weight-decay WEIGHT_DECAY] [--wandb {True,False}]
+               [--starting-test-number STARTING_TEST_NUMBER]
                [--num-train-problems NUM_TRAIN_PROBLEMS]
                [--num-test-problems NUM_TEST_PROBLEMS]
-               [--do-incremental-planning] [--timeout TIMEOUT] [--expid EXPID]
-               [--logdir LOGDIR] [--device {cpu,cuda:0}] [--criterion {bce}]
-               [--pos-weight POS_WEIGHT] [--epochs EPOCHS] [--lr LR]
-               [--load-model] [--print-every PRINT_EVERY] [--gamma GAMMA]
+               [--epochs EPOCHS] [--gnn-rounds GNN_ROUNDS]
+               [--batch-size BATCH_SIZE] [--max-plan-length MAX_PLAN_LENGTH]
+               [--problems-per-division PROBLEMS_PER_DIVISION]
+               [--run-learned-model {True,False}]
+               [--run-non-optimal {True,False}] [--run-optimal {True,False}]
+               [--monitor {True,False}] [--use-global-node {True,False}]
+               [--ablation {no_ag_no_cd,main_val,main}]
+               [--search-strat {dfs,bfs}] [--test-with-seed {true,false}]
+               [--expid EXPID] [--logdir LOGDIR] [--device {cpu,cuda:0}]
+               [--criterion {bce}] [--pos-weight POS_WEIGHT]
+               [--print-every PRINT_EVERY] [--gamma GAMMA]
                [--force-collect-data]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --seed SEED           Random seed
-  --method {scenegraph,hierarchical,ploi}
-  --mode {train,test,visualize}
-                        Mode to run the script in
-  --domain DOMAIN       Name of the pddlgym domain to use.
-  --train-planner-name {fd-lama-first,fd-opt-lmcut}
-                        Train planner to use
-  --eval-planner-name {fd-lama-first,fd-opt-lmcut}
-                        Eval planner to use
-  --num-train-problems NUM_TRAIN_PROBLEMS
-                        Number of train problems
-  --num-test-problems NUM_TEST_PROBLEMS
-                        Number of test problems
-  --do-incremental-planning
-                        Whether or not to do incremental planning
-  --timeout TIMEOUT     Timeout for test-time planner
-  --expid EXPID         Unique exp id to log data to
-  --logdir LOGDIR       Directory to store all expt logs in
-  --device {cpu,cuda:0}
-                        torch.device argument
-  --criterion {bce}     Loss function to use
-  --pos-weight POS_WEIGHT
-                        Weight for the positive class in binary cross-entropy
-                        computation
-  --epochs EPOCHS       Number of epochs to run training for
-  --lr LR               Learning rate
-  --load-model          Path to load model from
-  --print-every PRINT_EVERY
-                        Number of iterations after which to print training
-                        progress.
-  --gamma GAMMA         Value of importance threshold (gamma) for PLOI.
-  --force-collect-data  Force data collection (ignore pre-cached datasets).
 ```
+
+### Key Arguments Explained
+
+- `--method`: The planning method to use (options: ltp, ltp_no_cd, ltp_no_ag, ltp_no_ag_no_cd, ltp_val, scenegraph, hierarchical, ploi)
+- `--mode`: Execution mode (options: train, test, train_test, visualize)
+- `--domain`: Name of the pddlgym domain to use
+- `--all-problems`: Use all available problems in the domain
+- `--lr`: Learning rate for training
+- `--n-heads`: Number of attention heads in the model
+- `--dropout` and `--attention-dropout`: Dropout rates for regularization
+- `--weight-decay`: Weight decay parameter for optimizer
+- `--wandb`: Whether to use Weights & Biases for logging (True/False)
+- `--num-train-problems`: Number of training problems to use
+- `--num-test-problems`: Number of test problems to use
+- `--epochs`: Number of training epochs
+- `--gnn-rounds`: Number of message-passing rounds in the GNN
+- `--batch-size`: Batch size for training
+- `--max-plan-length`: Maximum allowed plan length
+- `--run-learned-model`: Whether to run the learned model at test time (True/False)
+- `--run-non-optimal`: Whether to run the non-optimal planner (True/False)
+- `--use-global-node`: Whether to use a global node in the graph (True/False)
+- `--ablation`: Ablation study type (options: no_ag_no_cd, main_val, main)
+- `--search-strat`: Search strategy to use (options: dfs, bfs)
+
+### Example Commands
+
+#### Training and Testing on Blocks Domain
+
+```sh
+python main.py --method ltp --domain manyblocks_ipcc_big --all-problems --lr 0.0005 --n-heads 1 --attention-dropout 0 --dropout 0 --weight-decay 0.00 --wandb False --num-train-problems 50 --num-test-problems 5 --epochs 300 --gnn-rounds 9 --batch-size 16 --mode train_test --max-plan-length 500 --problems-per-division 10 --run-learned-model True --run-non-optimal True --use-global-node True
+```
+
+This command:
+- Uses the LTP (Learning to Plan) method
+- Trains on the "manyblocks_ipcc_big" domain
+- Uses all available problems with 50 for training and 5 for testing
+- Sets a learning rate of 0.0005
+- Uses a model with 1 attention head and no dropout
+- Disables Weights & Biases logging
+- Trains for 300 epochs with batch size 16
+- Performs 9 message-passing rounds in the GNN
+- Runs in train_test mode (trains then immediately tests)
+- Sets maximum plan length to 500
+- Uses 10 problems per division
+- Runs both the learned model and non-optimal planner
+- Uses a global node in the graph
+
+#### Testing a Pre-trained Model
+
+```sh
+python main.py --method ltp --domain manyblocks_ipcc_big --all-problems --num-test-problems 10 --mode test --max-plan-length 500 --run-learned-model True --use-global-node True
+```
+
+#### Running with Ablations
+
+```sh
+python main.py --method ltp_no_ag --domain manyblocks_ipcc_big --all-problems --lr 0.0005 --epochs 300 --mode train --max-plan-length 500 --ablation no_ag_no_cd
+```
+
+This runs the planner without action grounding (no_ag) ablation.
+
+### Baseline Methods
+
+The framework also supports running baseline methods:
+
+```sh
+python main.py --method ploi --domain taskographyv2tiny10 --num-train-problems 40 --epochs 401 --mode train --timeout 30 --expid taskographyv2tiny10_ploi --logdir cache/results --all-problems
+```
+
+This runs the PLOI baseline on the Taskography domain.
