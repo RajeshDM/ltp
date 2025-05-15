@@ -121,13 +121,3 @@ python main.py --method ltp_no_ag --domain manyblocks_ipcc_big --all-problems --
 ```
 
 This runs the planner without action grounding (no_ag) ablation.
-
-### Baseline Methods
-
-The framework also supports running baseline methods:
-
-```sh
-python main.py --method ploi --domain taskographyv2tiny10 --num-train-problems 40 --epochs 401 --mode train --timeout 30 --expid taskographyv2tiny10_ploi --logdir cache/results --all-problems
-```
-
-This runs the PLOI baseline on the Taskography domain.
