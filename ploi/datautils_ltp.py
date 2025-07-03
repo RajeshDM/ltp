@@ -652,18 +652,6 @@ def _create_graph_structure_ltp(training_data,dom_file=None,domain_name=None,age
         _node_feature_to_index['is_correct_obj_2'] = index
         index += 1
 
-    #self._node_feature_to_index['goal_pred'] = index
-    #index += 1
-
-    '''
-    for unary_predicate in self._unary_predicates:
-        self._node_feature_to_index[unary_predicate] = index
-        index += 1
-    for unary_predicate in self._unary_predicates:
-        self._node_feature_to_index[G(unary_predicate)] = index
-        index += 1
-    '''
-
     # Initialize edge features
     _edge_feature_to_index = {}
     index = 0
@@ -671,29 +659,17 @@ def _create_graph_structure_ltp(training_data,dom_file=None,domain_name=None,age
     _edge_feature_to_index['action_object'] = index
     index += 1
 
-    #TODO  adding diff edge type information - add it once basic learning starts working (sept 20, 2023)
-    #_edge_feature_to_index['pred_object'] = index
-    #index += 1
-
     '''
     Adding the preconditions in order instead of based on 
     each separate action
     '''
-    #index_action_edge = index
 
     all_preconds = []
 
-    #ic (action_space)
-    #ic (action_space.__dict__)
     _num_action_edge_features = 0
     _max_objects = 0
     for key,value in action_space.items():
-        #ic (key,value)
-        #ic (value.__dict__)
-        #required_features = self._num_action_edge_features + len(value.params)
         required_features = len(value.preconds.literals)
-        #ic (required_features)
-        #ic (value.__dict__)
         if _num_action_edge_features < required_features:
             _num_action_edge_features = required_features
         required_objects = len(value.params)
@@ -720,30 +696,45 @@ def _create_graph_structure_ltp(training_data,dom_file=None,domain_name=None,age
                     if object == str(param):
                         positions.append(param_pos+1)
 
-            #ic (positions)
-            #if precond not in all_preconds :
-            #    #ic (precond.__dict__)
-            #    all_preconds.append(precond)
             for position in positions:
                 if predicate + str(position) not in all_preconds:
                     all_preconds.append(predicate+str(position))
 
-    #ic (all_preconds)
-    '''
-    for predicate in self._agent_object_properties:
-        self._edge_feature_to_index[predicate] = index
-        index += 1
-    '''
 
     for arity in range(_max_objects):
         _edge_feature_to_index['pos_' + str(arity)] = index
         index+=1
-    #self._action_edge_feature_to_index['action_object'] = index
-    #exit()
 
     for precond in all_preconds:
         _edge_feature_to_index[precond] = index
         index+=1
+
+    _max_predicate_objects = 0
+    for predicate in _all_predicates:
+        #ic (predicate.arity)
+        _max_predicate_objects = max(_max_predicate_objects,predicate.arity)
+
+    for arity in range(_max_predicate_objects):
+        _edge_feature_to_index['pred_pos_' + str(arity)] = index
+        index+=1
+
+    _num_node_features = len(_node_feature_to_index)
+    nnf = _num_node_features
+    _num_edge_features= len(_edge_feature_to_index)
+    nef = _num_edge_features
+
+    graph_metadata = {
+        "num_node_features": _num_node_features,
+        "num_edge_features": _num_edge_features,
+        "node_feature_to_index": _node_feature_to_index,
+        "edge_feature_to_index": _edge_feature_to_index,
+        "unary_types": _unary_types,
+        "unary_predicates": _unary_predicates,
+        "binary_predicates": _binary_predicates,
+        "all_predicates" : _all_predicates
+        #"model_version" : model_version
+    }
+    return graph_metadata, action_space
 
     '''
     for precond in all_preconds:
@@ -823,44 +814,6 @@ def _create_graph_structure_ltp(training_data,dom_file=None,domain_name=None,age
         self._edge_feature_to_index[ternary_predicate] = index
         index += 1
     '''
-    _max_predicate_objects = 0
-    for predicate in _all_predicates:
-        #ic (predicate.arity)
-        _max_predicate_objects = max(_max_predicate_objects,predicate.arity)
-
-    '''
-    if len (self._ternary_predicates) != 0 :
-        self._max_predicate_objects = 3
-    else :
-        self._max_predicate_objects = 2
-    '''
-
-    for arity in range(_max_predicate_objects):
-        _edge_feature_to_index['pred_pos_' + str(arity)] = index
-        index+=1
-    '''
-    for ternary_predicate in self._ternary_predicates:
-        for pred_index in len(ternary_predicate):
-            self._edge_feature_to_index[str(ternary_predicate) + str()]
-    '''
-
-    _num_node_features = len(_node_feature_to_index)
-    nnf = _num_node_features
-    _num_edge_features= len(_edge_feature_to_index)
-    nef = _num_edge_features
-
-    graph_metadata = {
-        "num_node_features": _num_node_features,
-        "num_edge_features": _num_edge_features,
-        "node_feature_to_index": _node_feature_to_index,
-        "edge_feature_to_index": _edge_feature_to_index,
-        "unary_types": _unary_types,
-        "unary_predicates": _unary_predicates,
-        "binary_predicates": _binary_predicates,
-        "all_predicates" : _all_predicates
-        #"model_version" : model_version
-    }
-    return graph_metadata, action_space
 
 def _create_graph_from_state_ltp(training_data,action_space=None,graph_metadata=None,args=None ):
     # Process data

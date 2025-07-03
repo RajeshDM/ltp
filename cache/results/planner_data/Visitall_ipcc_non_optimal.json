@@ -198,5 +198,1205 @@
     "visitall_ipcc_test/pfile_x-8_y-8_r-50_s-1.pddl": [
         77,
         0.21945786476135254
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-10_r-100_s-1.pddl": [
+        124,
+        0.12149596214294434
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-10_r-100_s-10.pddl": [
+        129,
+        0.12109684944152832
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-10_r-100_s-11.pddl": [
+        125,
+        0.12686705589294434
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-10_r-100_s-12.pddl": [
+        108,
+        0.11691045761108398
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-10_r-100_s-2.pddl": [
+        115,
+        0.13129830360412598
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-10_r-100_s-3.pddl": [
+        130,
+        0.1195521354675293
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-10_r-100_s-4.pddl": [
+        125,
+        0.1180424690246582
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-10_r-100_s-5.pddl": [
+        113,
+        0.13602709770202637
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-10_r-100_s-6.pddl": [
+        120,
+        0.11844301223754883
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-10_r-100_s-7.pddl": [
+        124,
+        0.12209963798522949
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-10_r-100_s-8.pddl": [
+        124,
+        0.13114023208618164
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-10_r-100_s-9.pddl": [
+        127,
+        0.1229100227355957
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-8_r-100_s-1.pddl": [
+        89,
+        0.11168408393859863
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-8_r-100_s-10.pddl": [
+        99,
+        0.11065101623535156
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-8_r-100_s-11.pddl": [
+        102,
+        0.12198400497436523
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-8_r-100_s-12.pddl": [
+        87,
+        0.1067495346069336
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-8_r-100_s-2.pddl": [
+        96,
+        0.12557172775268555
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-8_r-100_s-3.pddl": [
+        89,
+        0.11897492408752441
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-8_r-100_s-4.pddl": [
+        113,
+        0.1114950180053711
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-8_r-100_s-5.pddl": [
+        109,
+        0.12739849090576172
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-8_r-100_s-6.pddl": [
+        90,
+        0.1117095947265625
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-8_r-100_s-7.pddl": [
+        99,
+        0.11796712875366211
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-8_r-100_s-8.pddl": [
+        102,
+        0.10875248908996582
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-8_r-100_s-9.pddl": [
+        112,
+        0.1252448558807373
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-9_r-100_s-1.pddl": [
+        115,
+        0.12162184715270996
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-9_r-100_s-10.pddl": [
+        122,
+        0.13869094848632812
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-9_r-100_s-11.pddl": [
+        118,
+        0.11506056785583496
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-9_r-100_s-12.pddl": [
+        121,
+        0.11282634735107422
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-9_r-100_s-2.pddl": [
+        122,
+        0.12648725509643555
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-9_r-100_s-3.pddl": [
+        110,
+        0.12565398216247559
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-9_r-100_s-4.pddl": [
+        114,
+        0.11855244636535645
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-9_r-100_s-5.pddl": [
+        107,
+        0.11815476417541504
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-9_r-100_s-6.pddl": [
+        123,
+        0.1291491985321045
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-9_r-100_s-7.pddl": [
+        122,
+        0.11466336250305176
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-9_r-100_s-8.pddl": [
+        106,
+        0.12555956840515137
+    ],
+    "visitall_ipcc_test/pfile_x-10_y-9_r-100_s-9.pddl": [
+        118,
+        0.11582350730895996
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-11_r-100_s-1.pddl": [
+        142,
+        0.13653993606567383
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-11_r-100_s-2.pddl": [
+        155,
+        0.15264463424682617
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-11_r-100_s-3.pddl": [
+        155,
+        0.12812280654907227
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-11_r-100_s-4.pddl": [
+        161,
+        0.13587403297424316
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-11_r-100_s-5.pddl": [
+        157,
+        0.13876032829284668
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-11_r-100_s-6.pddl": [
+        145,
+        0.127335786819458
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-12_r-100_s-1.pddl": [
+        165,
+        0.1344914436340332
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-12_r-100_s-2.pddl": [
+        161,
+        0.13823580741882324
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-12_r-100_s-3.pddl": [
+        154,
+        0.14027738571166992
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-12_r-100_s-4.pddl": [
+        161,
+        0.15554428100585938
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-12_r-100_s-5.pddl": [
+        145,
+        0.12947583198547363
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-12_r-100_s-6.pddl": [
+        152,
+        0.14561009407043457
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-13_r-100_s-1.pddl": [
+        176,
+        0.13947272300720215
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-13_r-100_s-2.pddl": [
+        181,
+        0.1457226276397705
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-13_r-100_s-3.pddl": [
+        178,
+        0.14654111862182617
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-13_r-100_s-4.pddl": [
+        178,
+        0.16413593292236328
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-13_r-100_s-5.pddl": [
+        178,
+        0.1538541316986084
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-13_r-100_s-6.pddl": [
+        183,
+        0.1428680419921875
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-14_r-100_s-1.pddl": [
+        209,
+        0.15509319305419922
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-14_r-100_s-2.pddl": [
+        188,
+        0.1496129035949707
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-14_r-100_s-3.pddl": [
+        180,
+        0.14302968978881836
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-14_r-100_s-4.pddl": [
+        187,
+        0.15079355239868164
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-14_r-100_s-5.pddl": [
+        184,
+        0.15775752067565918
+    ],
+    "visitall_ipcc_test/pfile_x-11_y-14_r-100_s-6.pddl": [
+        186,
+        0.14688396453857422
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-11_r-100_s-1.pddl": [
+        168,
+        0.14769744873046875
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-11_r-100_s-2.pddl": [
+        165,
+        0.1367189884185791
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-11_r-100_s-3.pddl": [
+        152,
+        0.13607549667358398
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-11_r-100_s-4.pddl": [
+        165,
+        0.13672542572021484
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-11_r-100_s-5.pddl": [
+        177,
+        0.13551044464111328
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-11_r-100_s-6.pddl": [
+        179,
+        0.14298701286315918
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-12_r-100_s-1.pddl": [
+        191,
+        0.1521742343902588
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-12_r-100_s-2.pddl": [
+        206,
+        0.15633368492126465
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-12_r-100_s-3.pddl": [
+        181,
+        0.14995288848876953
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-12_r-100_s-4.pddl": [
+        175,
+        0.1567220687866211
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-12_r-100_s-5.pddl": [
+        181,
+        0.14855217933654785
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-12_r-100_s-6.pddl": [
+        182,
+        0.14246559143066406
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-13_r-100_s-1.pddl": [
+        205,
+        0.15027475357055664
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-13_r-100_s-2.pddl": [
+        207,
+        0.16588997840881348
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-13_r-100_s-3.pddl": [
+        203,
+        0.15367460250854492
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-13_r-100_s-4.pddl": [
+        185,
+        0.15050935745239258
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-13_r-100_s-5.pddl": [
+        199,
+        0.16347479820251465
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-13_r-100_s-6.pddl": [
+        214,
+        0.16770434379577637
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-14_r-100_s-1.pddl": [
+        204,
+        0.16174864768981934
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-14_r-100_s-2.pddl": [
+        221,
+        0.16026043891906738
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-14_r-100_s-3.pddl": [
+        230,
+        0.17402148246765137
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-14_r-100_s-4.pddl": [
+        218,
+        0.16290593147277832
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-14_r-100_s-5.pddl": [
+        242,
+        0.15800142288208008
+    ],
+    "visitall_ipcc_test/pfile_x-12_y-14_r-100_s-6.pddl": [
+        234,
+        0.16124510765075684
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-11_r-100_s-1.pddl": [
+        192,
+        0.15681958198547363
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-11_r-100_s-2.pddl": [
+        175,
+        0.15488862991333008
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-11_r-100_s-3.pddl": [
+        188,
+        0.17512845993041992
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-11_r-100_s-4.pddl": [
+        190,
+        0.16154956817626953
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-11_r-100_s-5.pddl": [
+        182,
+        0.1501145362854004
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-11_r-100_s-6.pddl": [
+        173,
+        0.14920973777770996
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-12_r-100_s-1.pddl": [
+        192,
+        0.17093658447265625
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-12_r-100_s-2.pddl": [
+        192,
+        0.17813611030578613
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-12_r-100_s-3.pddl": [
+        188,
+        0.1550583839416504
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-12_r-100_s-4.pddl": [
+        216,
+        0.1598522663116455
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-12_r-100_s-5.pddl": [
+        191,
+        0.15302777290344238
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-12_r-100_s-6.pddl": [
+        179,
+        0.17348766326904297
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-13_r-100_s-1.pddl": [
+        248,
+        0.16405940055847168
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-13_r-100_s-2.pddl": [
+        238,
+        0.15698838233947754
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-13_r-100_s-3.pddl": [
+        217,
+        0.16753697395324707
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-13_r-100_s-4.pddl": [
+        220,
+        0.15848255157470703
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-13_r-100_s-5.pddl": [
+        201,
+        0.16603350639343262
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-13_r-100_s-6.pddl": [
+        233,
+        0.1598665714263916
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-14_r-100_s-1.pddl": [
+        246,
+        0.1783144474029541
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-14_r-100_s-2.pddl": [
+        237,
+        0.16918301582336426
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-14_r-100_s-3.pddl": [
+        229,
+        0.16781306266784668
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-14_r-100_s-4.pddl": [
+        235,
+        0.16813039779663086
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-14_r-100_s-5.pddl": [
+        249,
+        0.16972565650939941
+    ],
+    "visitall_ipcc_test/pfile_x-13_y-14_r-100_s-6.pddl": [
+        229,
+        0.16899967193603516
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-11_r-100_s-1.pddl": [
+        218,
+        0.1713697910308838
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-11_r-100_s-2.pddl": [
+        213,
+        0.16942977905273438
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-11_r-100_s-3.pddl": [
+        192,
+        0.16820812225341797
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-11_r-100_s-4.pddl": [
+        185,
+        0.14797353744506836
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-11_r-100_s-5.pddl": [
+        209,
+        0.15573740005493164
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-11_r-100_s-6.pddl": [
+        226,
+        0.15707778930664062
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-12_r-100_s-1.pddl": [
+        216,
+        0.1686537265777588
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-12_r-100_s-2.pddl": [
+        228,
+        0.15775847434997559
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-12_r-100_s-3.pddl": [
+        223,
+        0.15991711616516113
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-12_r-100_s-4.pddl": [
+        219,
+        0.16031432151794434
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-12_r-100_s-5.pddl": [
+        222,
+        0.1572880744934082
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-12_r-100_s-6.pddl": [
+        214,
+        0.17104530334472656
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-13_r-100_s-1.pddl": [
+        232,
+        0.17415618896484375
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-13_r-100_s-2.pddl": [
+        233,
+        0.186143159866333
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-13_r-100_s-3.pddl": [
+        233,
+        0.1737053394317627
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-13_r-100_s-4.pddl": [
+        238,
+        0.1652851104736328
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-13_r-100_s-5.pddl": [
+        222,
+        0.16984033584594727
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-13_r-100_s-6.pddl": [
+        252,
+        0.1821434497833252
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-14_r-100_s-1.pddl": [
+        250,
+        0.17792201042175293
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-14_r-100_s-2.pddl": [
+        266,
+        0.18141627311706543
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-14_r-100_s-3.pddl": [
+        259,
+        0.17737150192260742
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-14_r-100_s-4.pddl": [
+        258,
+        0.18406033515930176
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-14_r-100_s-5.pddl": [
+        260,
+        0.17821764945983887
+    ],
+    "visitall_ipcc_test/pfile_x-14_y-14_r-100_s-6.pddl": [
+        270,
+        0.18069815635681152
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-15_r-100_s-1.pddl": [
+        271,
+        0.21361947059631348
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-15_r-100_s-2.pddl": [
+        297,
+        0.21393370628356934
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-15_r-100_s-3.pddl": [
+        295,
+        0.21746158599853516
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-16_r-100_s-1.pddl": [
+        298,
+        0.20663142204284668
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-16_r-100_s-2.pddl": [
+        327,
+        0.21621227264404297
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-16_r-100_s-3.pddl": [
+        343,
+        0.22040748596191406
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-17_r-100_s-1.pddl": [
+        346,
+        0.23713994026184082
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-17_r-100_s-2.pddl": [
+        328,
+        0.23609089851379395
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-17_r-100_s-3.pddl": [
+        350,
+        0.23335027694702148
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-18_r-100_s-1.pddl": [
+        369,
+        0.2510666847229004
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-18_r-100_s-2.pddl": [
+        341,
+        0.24521350860595703
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-18_r-100_s-3.pddl": [
+        333,
+        0.2503812313079834
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-19_r-100_s-1.pddl": [
+        343,
+        0.26943111419677734
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-19_r-100_s-2.pddl": [
+        356,
+        0.24725055694580078
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-19_r-100_s-3.pddl": [
+        345,
+        0.24980902671813965
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-20_r-100_s-1.pddl": [
+        368,
+        0.2696201801300049
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-20_r-100_s-2.pddl": [
+        369,
+        0.26668715476989746
+    ],
+    "visitall_ipcc_test/pfile_x-15_y-20_r-100_s-3.pddl": [
+        418,
+        0.2741243839263916
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-15_r-100_s-1.pddl": [
+        299,
+        0.21395230293273926
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-15_r-100_s-2.pddl": [
+        309,
+        0.21985268592834473
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-15_r-100_s-3.pddl": [
+        330,
+        0.2155284881591797
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-16_r-100_s-1.pddl": [
+        326,
+        0.223646879196167
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-16_r-100_s-2.pddl": [
+        325,
+        0.22638392448425293
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-16_r-100_s-3.pddl": [
+        321,
+        0.22477173805236816
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-17_r-100_s-1.pddl": [
+        367,
+        0.2567739486694336
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-17_r-100_s-2.pddl": [
+        353,
+        0.256227970123291
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-17_r-100_s-3.pddl": [
+        381,
+        0.2490243911743164
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-18_r-100_s-1.pddl": [
+        385,
+        0.26147985458374023
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-18_r-100_s-2.pddl": [
+        384,
+        0.2592959403991699
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-18_r-100_s-3.pddl": [
+        351,
+        0.2609884738922119
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-19_r-100_s-1.pddl": [
+        403,
+        0.2736644744873047
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-19_r-100_s-2.pddl": [
+        420,
+        0.27905964851379395
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-19_r-100_s-3.pddl": [
+        382,
+        0.28527235984802246
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-20_r-100_s-1.pddl": [
+        415,
+        0.30811214447021484
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-20_r-100_s-2.pddl": [
+        418,
+        0.29720282554626465
+    ],
+    "visitall_ipcc_test/pfile_x-16_y-20_r-100_s-3.pddl": [
+        428,
+        0.2885148525238037
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-15_r-100_s-1.pddl": [
+        346,
+        0.23223018646240234
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-15_r-100_s-2.pddl": [
+        325,
+        0.22199106216430664
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-15_r-100_s-3.pddl": [
+        325,
+        0.23504185676574707
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-16_r-100_s-1.pddl": [
+        324,
+        0.2446742057800293
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-16_r-100_s-2.pddl": [
+        371,
+        0.2463223934173584
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-16_r-100_s-3.pddl": [
+        315,
+        0.2322385311126709
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-17_r-100_s-1.pddl": [
+        386,
+        0.28025197982788086
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-17_r-100_s-2.pddl": [
+        393,
+        0.2700774669647217
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-17_r-100_s-3.pddl": [
+        362,
+        0.2598137855529785
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-18_r-100_s-1.pddl": [
+        415,
+        0.28276658058166504
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-18_r-100_s-2.pddl": [
+        387,
+        0.2897512912750244
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-18_r-100_s-3.pddl": [
+        367,
+        0.27021002769470215
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-19_r-100_s-1.pddl": [
+        406,
+        0.29790353775024414
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-19_r-100_s-2.pddl": [
+        397,
+        0.297593355178833
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-19_r-100_s-3.pddl": [
+        398,
+        0.29418516159057617
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-20_r-100_s-1.pddl": [
+        457,
+        0.31935644149780273
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-20_r-100_s-2.pddl": [
+        505,
+        0.3396003246307373
+    ],
+    "visitall_ipcc_test/pfile_x-17_y-20_r-100_s-3.pddl": [
+        451,
+        0.3172011375427246
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-15_r-100_s-1.pddl": [
+        357,
+        0.248307466506958
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-15_r-100_s-2.pddl": [
+        339,
+        0.2414112091064453
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-15_r-100_s-3.pddl": [
+        370,
+        0.24527955055236816
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-16_r-100_s-1.pddl": [
+        372,
+        0.2628450393676758
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-16_r-100_s-2.pddl": [
+        379,
+        0.25553417205810547
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-16_r-100_s-3.pddl": [
+        356,
+        0.25440359115600586
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-17_r-100_s-1.pddl": [
+        426,
+        0.2874596118927002
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-17_r-100_s-2.pddl": [
+        399,
+        0.2773923873901367
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-17_r-100_s-3.pddl": [
+        412,
+        0.28272199630737305
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-18_r-100_s-1.pddl": [
+        407,
+        0.28931117057800293
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-18_r-100_s-2.pddl": [
+        437,
+        0.29197096824645996
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-18_r-100_s-3.pddl": [
+        425,
+        0.2965214252471924
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-19_r-100_s-1.pddl": [
+        429,
+        0.30940890312194824
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-19_r-100_s-2.pddl": [
+        440,
+        0.3166041374206543
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-19_r-100_s-3.pddl": [
+        451,
+        0.3243138790130615
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-20_r-100_s-1.pddl": [
+        457,
+        0.33739233016967773
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-20_r-100_s-2.pddl": [
+        444,
+        0.3389852046966553
+    ],
+    "visitall_ipcc_test/pfile_x-18_y-20_r-100_s-3.pddl": [
+        468,
+        0.34343504905700684
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-15_r-100_s-1.pddl": [
+        381,
+        0.25751638412475586
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-15_r-100_s-2.pddl": [
+        384,
+        0.2582848072052002
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-15_r-100_s-3.pddl": [
+        370,
+        0.2570984363555908
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-16_r-100_s-1.pddl": [
+        397,
+        0.28145480155944824
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-16_r-100_s-2.pddl": [
+        398,
+        0.2762949466705322
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-16_r-100_s-3.pddl": [
+        393,
+        0.2815403938293457
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-17_r-100_s-1.pddl": [
+        433,
+        0.31255531311035156
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-17_r-100_s-2.pddl": [
+        407,
+        0.29154205322265625
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-17_r-100_s-3.pddl": [
+        439,
+        0.29401373863220215
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-18_r-100_s-1.pddl": [
+        448,
+        0.33434057235717773
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-18_r-100_s-2.pddl": [
+        482,
+        0.32438063621520996
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-18_r-100_s-3.pddl": [
+        458,
+        0.31649351119995117
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-19_r-100_s-1.pddl": [
+        468,
+        0.34334731101989746
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-19_r-100_s-2.pddl": [
+        463,
+        0.32717251777648926
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-19_r-100_s-3.pddl": [
+        458,
+        0.3423306941986084
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-20_r-100_s-1.pddl": [
+        492,
+        0.370269775390625
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-20_r-100_s-2.pddl": [
+        506,
+        0.3586864471435547
+    ],
+    "visitall_ipcc_test/pfile_x-19_y-20_r-100_s-3.pddl": [
+        479,
+        0.36565184593200684
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-10_r-100_s-1.pddl": [
+        250,
+        0.18582606315612793
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-10_r-100_s-10.pddl": [
+        250,
+        0.18390727043151855
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-10_r-100_s-2.pddl": [
+        255,
+        0.18035531044006348
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-10_r-100_s-3.pddl": [
+        247,
+        0.1804661750793457
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-10_r-100_s-4.pddl": [
+        255,
+        0.1843254566192627
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-10_r-100_s-5.pddl": [
+        269,
+        0.18555545806884766
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-10_r-100_s-6.pddl": [
+        275,
+        0.18323397636413574
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-10_r-100_s-7.pddl": [
+        286,
+        0.1904621124267578
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-10_r-100_s-8.pddl": [
+        241,
+        0.1891765594482422
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-10_r-100_s-9.pddl": [
+        253,
+        0.18702316284179688
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-15_r-100_s-1.pddl": [
+        394,
+        0.2798430919647217
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-15_r-100_s-2.pddl": [
+        418,
+        0.2765622138977051
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-15_r-100_s-3.pddl": [
+        380,
+        0.2788581848144531
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-16_r-100_s-1.pddl": [
+        453,
+        0.30233049392700195
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-16_r-100_s-2.pddl": [
+        439,
+        0.29793572425842285
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-16_r-100_s-3.pddl": [
+        406,
+        0.29169726371765137
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-17_r-100_s-1.pddl": [
+        444,
+        0.311187744140625
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-17_r-100_s-2.pddl": [
+        469,
+        0.32909178733825684
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-17_r-100_s-3.pddl": [
+        450,
+        0.32427358627319336
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-18_r-100_s-1.pddl": [
+        483,
+        0.3498823642730713
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-18_r-100_s-2.pddl": [
+        484,
+        0.34412646293640137
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-18_r-100_s-3.pddl": [
+        514,
+        0.3482356071472168
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-19_r-100_s-1.pddl": [
+        486,
+        0.36246538162231445
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-19_r-100_s-2.pddl": [
+        475,
+        0.36524534225463867
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-19_r-100_s-3.pddl": [
+        461,
+        0.355452299118042
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-20_r-100_s-1.pddl": [
+        524,
+        0.39366602897644043
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-20_r-100_s-2.pddl": [
+        549,
+        0.41167783737182617
+    ],
+    "visitall_ipcc_test/pfile_x-20_y-20_r-100_s-3.pddl": [
+        495,
+        0.39177370071411133
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-10_r-100_s-1.pddl": [
+        101,
+        0.11224961280822754
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-10_r-100_s-10.pddl": [
+        90,
+        0.11617898941040039
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-10_r-100_s-11.pddl": [
+        102,
+        0.11558723449707031
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-10_r-100_s-12.pddl": [
+        100,
+        0.11480975151062012
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-10_r-100_s-2.pddl": [
+        95,
+        0.11743426322937012
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-10_r-100_s-3.pddl": [
+        101,
+        0.11478304862976074
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-10_r-100_s-4.pddl": [
+        91,
+        0.11080241203308105
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-10_r-100_s-5.pddl": [
+        94,
+        0.11218929290771484
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-10_r-100_s-6.pddl": [
+        103,
+        0.1145784854888916
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-10_r-100_s-7.pddl": [
+        97,
+        0.11366462707519531
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-10_r-100_s-8.pddl": [
+        102,
+        0.1138601303100586
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-10_r-100_s-9.pddl": [
+        101,
+        0.11346054077148438
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-8_r-100_s-1.pddl": [
+        77,
+        0.10508346557617188
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-8_r-100_s-10.pddl": [
+        73,
+        0.1207890510559082
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-8_r-100_s-11.pddl": [
+        82,
+        0.10439705848693848
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-8_r-100_s-12.pddl": [
+        77,
+        0.10648536682128906
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-8_r-100_s-2.pddl": [
+        83,
+        0.1148672103881836
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-8_r-100_s-3.pddl": [
+        75,
+        0.1138918399810791
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-8_r-100_s-4.pddl": [
+        82,
+        0.10402774810791016
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-8_r-100_s-5.pddl": [
+        76,
+        0.10463070869445801
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-8_r-100_s-6.pddl": [
+        74,
+        0.11843419075012207
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-8_r-100_s-7.pddl": [
+        73,
+        0.12682890892028809
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-8_r-100_s-8.pddl": [
+        79,
+        0.1060941219329834
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-8_r-100_s-9.pddl": [
+        80,
+        0.11804580688476562
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-9_r-100_s-1.pddl": [
+        95,
+        0.10848021507263184
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-9_r-100_s-10.pddl": [
+        79,
+        0.10769534111022949
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-9_r-100_s-11.pddl": [
+        92,
+        0.12108612060546875
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-9_r-100_s-12.pddl": [
+        92,
+        0.10579824447631836
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-9_r-100_s-2.pddl": [
+        80,
+        0.10507440567016602
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-9_r-100_s-3.pddl": [
+        89,
+        0.10823822021484375
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-9_r-100_s-4.pddl": [
+        95,
+        0.11758637428283691
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-9_r-100_s-5.pddl": [
+        89,
+        0.12629079818725586
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-9_r-100_s-6.pddl": [
+        86,
+        0.1218104362487793
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-9_r-100_s-7.pddl": [
+        86,
+        0.11772012710571289
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-9_r-100_s-8.pddl": [
+        99,
+        0.10806798934936523
+    ],
+    "visitall_ipcc_test/pfile_x-8_y-9_r-100_s-9.pddl": [
+        89,
+        0.10827231407165527
+    ],
+    "visitall_ipcc_test/pfile_x-9_y-10_r-100_s-1.pddl": [
+        102,
+        0.11597704887390137
+    ],
+    "visitall_ipcc_test/pfile_x-9_y-10_r-100_s-10.pddl": [
+        102,
+        0.13087058067321777
+    ],
+    "visitall_ipcc_test/pfile_x-9_y-10_r-100_s-11.pddl": [
+        105,
+        0.11324143409729004
+    ],
+    "visitall_ipcc_test/pfile_x-9_y-10_r-100_s-12.pddl": [
+        107,
+        0.1174464225769043
+    ],
+    "visitall_ipcc_test/pfile_x-9_y-10_r-100_s-2.pddl": [
+        115,
+        0.1152806282043457
+    ],
+    "visitall_ipcc_test/pfile_x-9_y-10_r-100_s-3.pddl": [
+        102,
+        0.14281439781188965
+    ],
+    "visitall_ipcc_test/pfile_x-9_y-10_r-100_s-4.pddl": [
+        119,
+        0.12303686141967773
+    ],
+    "visitall_ipcc_test/pfile_x-9_y-10_r-100_s-5.pddl": [
+        108,
+        0.11194181442260742
+    ],
+    "visitall_ipcc_test/pfile_x-9_y-10_r-100_s-6.pddl": [
+        100,
+        0.12300610542297363
+    ],
+    "visitall_ipcc_test/pfile_x-9_y-10_r-100_s-7.pddl": [
+        101,
+        0.12087202072143555
+    ],
+    "visitall_ipcc_test/pfile_x-9_y-10_r-100_s-8.pddl": [
+        109,
+        0.12323665618896484
+    ],
+    "visitall_ipcc_test/pfile_x-9_y-10_r-100_s-9.pddl": [
+        111,
+        0.12593770027160645
+    ],
+    "visitall_ipcc_test/pfile_x-9_y-8_r-100_s-1.pddl": [
+        80,
+        0.10370016098022461
+    ],
+    "visitall_ipcc_test/pfile_x-9_y-8_r-100_s-10.pddl": [
+        100,
+        0.10762524604797363
     ]
 }

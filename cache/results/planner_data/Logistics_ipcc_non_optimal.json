@@ -382,5 +382,1205 @@
     "logistics_ipcc_test/pfile_a-2_c-30_s-2_p-9_t-30_v2.pddl": [
         80,
         0.22063398361206055
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-16_s-2_p-10_t-16_v0.pddl": [
+        74,
+        0.15540313720703125
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-16_s-2_p-10_t-16_v1.pddl": [
+        74,
+        0.14844274520874023
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-16_s-2_p-11_t-16_v0.pddl": [
+        81,
+        0.1875290870666504
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-16_s-2_p-11_t-16_v1.pddl": [
+        81,
+        0.17708826065063477
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-16_s-2_p-12_t-16_v0.pddl": [
+        84,
+        0.17720842361450195
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-16_s-2_p-12_t-16_v1.pddl": [
+        84,
+        0.1741621494293213
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-16_s-2_p-8_t-16_v0.pddl": [
+        56,
+        0.15546894073486328
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-16_s-2_p-8_t-16_v1.pddl": [
+        56,
+        0.13691926002502441
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-16_s-2_p-9_t-16_v0.pddl": [
+        64,
+        0.14284706115722656
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-16_s-2_p-9_t-16_v1.pddl": [
+        64,
+        0.13999366760253906
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-17_s-2_p-10_t-17_v0.pddl": [
+        80,
+        0.15937590599060059
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-17_s-2_p-10_t-17_v1.pddl": [
+        80,
+        0.1792457103729248
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-17_s-2_p-11_t-17_v0.pddl": [
+        89,
+        0.16910696029663086
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-17_s-2_p-11_t-17_v1.pddl": [
+        89,
+        0.1675853729248047
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-17_s-2_p-12_t-17_v0.pddl": [
+        97,
+        0.19133257865905762
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-17_s-2_p-12_t-17_v1.pddl": [
+        97,
+        0.18450474739074707
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-17_s-2_p-8_t-17_v0.pddl": [
+        67,
+        0.13927388191223145
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-17_s-2_p-8_t-17_v1.pddl": [
+        67,
+        0.13790440559387207
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-17_s-2_p-9_t-17_v0.pddl": [
+        73,
+        0.1510913372039795
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-17_s-2_p-9_t-17_v1.pddl": [
+        73,
+        0.15243172645568848
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-18_s-2_p-10_t-18_v0.pddl": [
+        69,
+        0.15829706192016602
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-18_s-2_p-10_t-18_v1.pddl": [
+        69,
+        0.1646287441253662
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-18_s-2_p-11_t-18_v0.pddl": [
+        79,
+        0.1762237548828125
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-18_s-2_p-11_t-18_v1.pddl": [
+        79,
+        0.16883158683776855
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-18_s-2_p-12_t-18_v0.pddl": [
+        93,
+        0.19452190399169922
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-18_s-2_p-12_t-18_v1.pddl": [
+        93,
+        0.19739770889282227
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-18_s-2_p-8_t-18_v0.pddl": [
+        55,
+        0.13587737083435059
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-18_s-2_p-8_t-18_v1.pddl": [
+        55,
+        0.13964223861694336
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-18_s-2_p-9_t-18_v0.pddl": [
+        65,
+        0.15515756607055664
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-18_s-2_p-9_t-18_v1.pddl": [
+        65,
+        0.15647125244140625
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-19_s-2_p-10_t-19_v0.pddl": [
+        78,
+        0.17157864570617676
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-19_s-2_p-10_t-19_v1.pddl": [
+        78,
+        0.16032886505126953
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-19_s-2_p-11_t-19_v0.pddl": [
+        81,
+        0.17267751693725586
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-19_s-2_p-11_t-19_v1.pddl": [
+        81,
+        0.1672687530517578
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-19_s-2_p-12_t-19_v0.pddl": [
+        103,
+        0.2025594711303711
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-19_s-2_p-12_t-19_v1.pddl": [
+        103,
+        0.19863677024841309
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-19_s-2_p-8_t-19_v0.pddl": [
+        64,
+        0.16428303718566895
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-19_s-2_p-8_t-19_v1.pddl": [
+        64,
+        0.14102983474731445
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-19_s-2_p-9_t-19_v0.pddl": [
+        69,
+        0.1629040241241455
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-19_s-2_p-9_t-19_v1.pddl": [
+        69,
+        0.153106689453125
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-20_s-2_p-10_t-20_v0.pddl": [
+        72,
+        0.19594049453735352
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-20_s-2_p-10_t-20_v1.pddl": [
+        72,
+        0.18400287628173828
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-20_s-2_p-11_t-20_v0.pddl": [
+        82,
+        0.18352365493774414
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-20_s-2_p-11_t-20_v1.pddl": [
+        82,
+        0.18210363388061523
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-20_s-2_p-12_t-20_v0.pddl": [
+        80,
+        0.19864964485168457
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-20_s-2_p-12_t-20_v1.pddl": [
+        80,
+        0.18007993698120117
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-20_s-2_p-8_t-20_v0.pddl": [
+        46,
+        0.14882373809814453
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-20_s-2_p-8_t-20_v1.pddl": [
+        46,
+        0.15297865867614746
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-20_s-2_p-9_t-20_v0.pddl": [
+        48,
+        0.15105152130126953
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-20_s-2_p-9_t-20_v1.pddl": [
+        48,
+        0.14451169967651367
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-21_s-2_p-10_t-21_v0.pddl": [
+        59,
+        0.15996479988098145
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-21_s-2_p-10_t-21_v1.pddl": [
+        59,
+        0.16599225997924805
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-21_s-2_p-12_t-21_v0.pddl": [
+        73,
+        0.18581604957580566
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-21_s-2_p-12_t-21_v1.pddl": [
+        73,
+        0.1822054386138916
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-21_s-2_p-14_t-21_v0.pddl": [
+        93,
+        0.2292027473449707
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-21_s-2_p-14_t-21_v1.pddl": [
+        93,
+        0.20361113548278809
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-21_s-2_p-16_t-21_v0.pddl": [
+        110,
+        0.254805326461792
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-21_s-2_p-16_t-21_v1.pddl": [
+        110,
+        0.26430583000183105
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-21_s-2_p-8_t-21_v0.pddl": [
+        46,
+        0.14071321487426758
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-21_s-2_p-8_t-21_v1.pddl": [
+        46,
+        0.14026975631713867
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-22_s-2_p-10_t-22_v0.pddl": [
+        84,
+        0.17653441429138184
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-22_s-2_p-10_t-22_v1.pddl": [
+        84,
+        0.19213223457336426
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-22_s-2_p-12_t-22_v0.pddl": [
+        97,
+        0.2196333408355713
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-22_s-2_p-12_t-22_v1.pddl": [
+        97,
+        0.21238493919372559
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-22_s-2_p-14_t-22_v0.pddl": [
+        113,
+        0.268296480178833
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-22_s-2_p-14_t-22_v1.pddl": [
+        113,
+        0.24849915504455566
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-22_s-2_p-16_t-22_v0.pddl": [
+        105,
+        0.23222041130065918
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-22_s-2_p-16_t-22_v1.pddl": [
+        105,
+        0.232757568359375
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-22_s-2_p-8_t-22_v0.pddl": [
+        74,
+        0.16167831420898438
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-22_s-2_p-8_t-22_v1.pddl": [
+        74,
+        0.15967297554016113
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-23_s-2_p-10_t-23_v0.pddl": [
+        69,
+        0.17449617385864258
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-23_s-2_p-10_t-23_v1.pddl": [
+        69,
+        0.16882705688476562
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-23_s-2_p-12_t-23_v0.pddl": [
+        86,
+        0.2145397663116455
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-23_s-2_p-12_t-23_v1.pddl": [
+        86,
+        0.21828222274780273
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-23_s-2_p-14_t-23_v0.pddl": [
+        101,
+        0.2395930290222168
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-23_s-2_p-14_t-23_v1.pddl": [
+        101,
+        0.2504549026489258
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-23_s-2_p-16_t-23_v0.pddl": [
+        111,
+        0.2581009864807129
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-23_s-2_p-16_t-23_v1.pddl": [
+        111,
+        0.25376057624816895
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-23_s-2_p-8_t-23_v0.pddl": [
+        52,
+        0.1645975112915039
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-23_s-2_p-8_t-23_v1.pddl": [
+        52,
+        0.14930176734924316
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-24_s-2_p-10_t-24_v0.pddl": [
+        88,
+        0.20223188400268555
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-24_s-2_p-10_t-24_v1.pddl": [
+        88,
+        0.21503424644470215
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-24_s-2_p-12_t-24_v0.pddl": [
+        91,
+        0.2128589153289795
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-24_s-2_p-12_t-24_v1.pddl": [
+        91,
+        0.21345281600952148
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-24_s-2_p-14_t-24_v0.pddl": [
+        117,
+        0.25507378578186035
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-24_s-2_p-14_t-24_v1.pddl": [
+        117,
+        0.2621173858642578
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-24_s-2_p-16_t-24_v0.pddl": [
+        124,
+        0.2795844078063965
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-24_s-2_p-16_t-24_v1.pddl": [
+        124,
+        0.27480340003967285
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-24_s-2_p-8_t-24_v0.pddl": [
+        72,
+        0.18161797523498535
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-24_s-2_p-8_t-24_v1.pddl": [
+        72,
+        0.19196414947509766
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-25_s-2_p-10_t-25_v0.pddl": [
+        71,
+        0.1902611255645752
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-25_s-2_p-10_t-25_v1.pddl": [
+        71,
+        0.18935203552246094
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-25_s-2_p-12_t-25_v0.pddl": [
+        82,
+        0.20628786087036133
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-25_s-2_p-12_t-25_v1.pddl": [
+        82,
+        0.20979785919189453
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-25_s-2_p-14_t-25_v0.pddl": [
+        109,
+        0.26235485076904297
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-25_s-2_p-14_t-25_v1.pddl": [
+        109,
+        0.26780009269714355
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-25_s-2_p-16_t-25_v0.pddl": [
+        114,
+        0.2991909980773926
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-25_s-2_p-16_t-25_v1.pddl": [
+        114,
+        0.2888355255126953
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-25_s-2_p-8_t-25_v0.pddl": [
+        56,
+        0.16200757026672363
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-25_s-2_p-8_t-25_v1.pddl": [
+        56,
+        0.15300512313842773
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-26_s-2_p-12_t-26_v0.pddl": [
+        100,
+        0.23717236518859863
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-26_s-2_p-12_t-26_v1.pddl": [
+        100,
+        0.23142361640930176
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-26_s-2_p-15_t-26_v0.pddl": [
+        136,
+        0.3032188415527344
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-26_s-2_p-15_t-26_v1.pddl": [
+        136,
+        0.2989485263824463
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-26_s-2_p-18_t-26_v0.pddl": [
+        157,
+        0.39261412620544434
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-26_s-2_p-18_t-26_v1.pddl": [
+        157,
+        0.42685937881469727
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-26_s-2_p-21_t-26_v0.pddl": [
+        165,
+        0.4996027946472168
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-26_s-2_p-21_t-26_v1.pddl": [
+        165,
+        0.5035319328308105
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-26_s-2_p-24_t-26_v0.pddl": [
+        184,
+        0.7228517532348633
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-26_s-2_p-24_t-26_v1.pddl": [
+        184,
+        0.6690154075622559
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-27_s-2_p-12_t-27_v0.pddl": [
+        104,
+        0.2578766345977783
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-27_s-2_p-12_t-27_v1.pddl": [
+        104,
+        0.26425838470458984
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-27_s-2_p-15_t-27_v0.pddl": [
+        112,
+        0.28208327293395996
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-27_s-2_p-15_t-27_v1.pddl": [
+        112,
+        0.2802278995513916
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-27_s-2_p-18_t-27_v0.pddl": [
+        138,
+        0.39113354682922363
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-27_s-2_p-18_t-27_v1.pddl": [
+        138,
+        0.38724279403686523
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-27_s-2_p-21_t-27_v0.pddl": [
+        153,
+        0.4607079029083252
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-27_s-2_p-21_t-27_v1.pddl": [
+        153,
+        0.43848252296447754
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-27_s-2_p-24_t-27_v0.pddl": [
+        188,
+        0.6668996810913086
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-27_s-2_p-24_t-27_v1.pddl": [
+        188,
+        0.6714358329772949
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-28_s-2_p-12_t-28_v0.pddl": [
+        104,
+        0.27692365646362305
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-28_s-2_p-12_t-28_v1.pddl": [
+        104,
+        0.2629964351654053
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-28_s-2_p-15_t-28_v0.pddl": [
+        123,
+        0.33017849922180176
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-28_s-2_p-15_t-28_v1.pddl": [
+        123,
+        0.32645559310913086
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-28_s-2_p-18_t-28_v0.pddl": [
+        148,
+        0.42438507080078125
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-28_s-2_p-18_t-28_v1.pddl": [
+        148,
+        0.4297487735748291
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-28_s-2_p-21_t-28_v0.pddl": [
+        166,
+        0.49664735794067383
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-28_s-2_p-21_t-28_v1.pddl": [
+        166,
+        0.5215518474578857
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-28_s-2_p-24_t-28_v0.pddl": [
+        169,
+        0.5173726081848145
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-28_s-2_p-24_t-28_v1.pddl": [
+        169,
+        0.5129740238189697
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-29_s-2_p-12_t-29_v0.pddl": [
+        104,
+        0.26978254318237305
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-29_s-2_p-12_t-29_v1.pddl": [
+        104,
+        0.2686479091644287
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-29_s-2_p-15_t-29_v0.pddl": [
+        129,
+        0.34944987297058105
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-29_s-2_p-15_t-29_v1.pddl": [
+        129,
+        0.35054445266723633
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-29_s-2_p-18_t-29_v0.pddl": [
+        133,
+        0.3744220733642578
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-29_s-2_p-18_t-29_v1.pddl": [
+        133,
+        0.35350608825683594
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-29_s-2_p-21_t-29_v0.pddl": [
+        166,
+        0.5589373111724854
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-29_s-2_p-21_t-29_v1.pddl": [
+        166,
+        0.5678648948669434
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-29_s-2_p-24_t-29_v0.pddl": [
+        167,
+        0.5244126319885254
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-29_s-2_p-24_t-29_v1.pddl": [
+        167,
+        0.5274438858032227
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-30_s-2_p-12_t-30_v0.pddl": [
+        92,
+        0.23427295684814453
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-30_s-2_p-12_t-30_v1.pddl": [
+        92,
+        0.24040460586547852
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-30_s-2_p-15_t-30_v0.pddl": [
+        129,
+        0.34500932693481445
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-30_s-2_p-15_t-30_v1.pddl": [
+        129,
+        0.3380086421966553
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-30_s-2_p-18_t-30_v0.pddl": [
+        149,
+        0.4733145236968994
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-30_s-2_p-18_t-30_v1.pddl": [
+        149,
+        0.47416019439697266
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-30_s-2_p-21_t-30_v0.pddl": [
+        155,
+        0.508648157119751
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-30_s-2_p-21_t-30_v1.pddl": [
+        155,
+        0.5101988315582275
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-30_s-2_p-24_t-30_v0.pddl": [
+        185,
+        0.6960148811340332
+    ],
+    "logistics_ipcc_test/pfile_a-1_c-30_s-2_p-24_t-30_v1.pddl": [
+        185,
+        0.6985266208648682
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-16_s-2_p-10_t-16_v0.pddl": [
+        71,
+        0.1750781536102295
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-16_s-2_p-10_t-16_v1.pddl": [
+        71,
+        0.16855216026306152
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-16_s-2_p-11_t-16_v0.pddl": [
+        79,
+        0.1789536476135254
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-16_s-2_p-11_t-16_v1.pddl": [
+        79,
+        0.17525243759155273
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-16_s-2_p-12_t-16_v0.pddl": [
+        73,
+        0.18775653839111328
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-16_s-2_p-12_t-16_v1.pddl": [
+        73,
+        0.17679762840270996
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-16_s-2_p-8_t-16_v0.pddl": [
+        54,
+        0.14598679542541504
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-16_s-2_p-8_t-16_v1.pddl": [
+        54,
+        0.14981412887573242
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-16_s-2_p-9_t-16_v0.pddl": [
+        65,
+        0.17252039909362793
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-16_s-2_p-9_t-16_v1.pddl": [
+        65,
+        0.16492819786071777
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-17_s-2_p-10_t-17_v0.pddl": [
+        77,
+        0.17773675918579102
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-17_s-2_p-10_t-17_v1.pddl": [
+        77,
+        0.17499971389770508
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-17_s-2_p-11_t-17_v0.pddl": [
+        86,
+        0.19922161102294922
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-17_s-2_p-11_t-17_v1.pddl": [
+        86,
+        0.2035512924194336
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-17_s-2_p-12_t-17_v0.pddl": [
+        96,
+        0.2010176181793213
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-17_s-2_p-12_t-17_v1.pddl": [
+        96,
+        0.206099271774292
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-17_s-2_p-8_t-17_v0.pddl": [
+        61,
+        0.1734755039215088
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-17_s-2_p-8_t-17_v1.pddl": [
+        61,
+        0.15429353713989258
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-17_s-2_p-9_t-17_v0.pddl": [
+        67,
+        0.16396546363830566
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-17_s-2_p-9_t-17_v1.pddl": [
+        67,
+        0.17365360260009766
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-18_s-2_p-10_t-18_v0.pddl": [
+        68,
+        0.18303370475769043
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-18_s-2_p-10_t-18_v1.pddl": [
+        68,
+        0.17627859115600586
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-18_s-2_p-11_t-18_v0.pddl": [
+        82,
+        0.20088768005371094
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-18_s-2_p-11_t-18_v1.pddl": [
+        82,
+        0.2036750316619873
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-18_s-2_p-12_t-18_v0.pddl": [
+        94,
+        0.22655534744262695
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-18_s-2_p-12_t-18_v1.pddl": [
+        94,
+        0.22572994232177734
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-18_s-2_p-8_t-18_v0.pddl": [
+        52,
+        0.15994548797607422
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-18_s-2_p-8_t-18_v1.pddl": [
+        52,
+        0.17129969596862793
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-18_s-2_p-9_t-18_v0.pddl": [
+        61,
+        0.16234707832336426
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-18_s-2_p-9_t-18_v1.pddl": [
+        61,
+        0.1747729778289795
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-19_s-2_p-10_t-19_v0.pddl": [
+        81,
+        0.18757295608520508
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-19_s-2_p-10_t-19_v1.pddl": [
+        81,
+        0.19501161575317383
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-19_s-2_p-11_t-19_v0.pddl": [
+        82,
+        0.20596599578857422
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-19_s-2_p-11_t-19_v1.pddl": [
+        82,
+        0.20473575592041016
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-19_s-2_p-12_t-19_v0.pddl": [
+        101,
+        0.2150106430053711
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-19_s-2_p-12_t-19_v1.pddl": [
+        101,
+        0.22467541694641113
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-19_s-2_p-8_t-19_v0.pddl": [
+        55,
+        0.1565237045288086
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-19_s-2_p-8_t-19_v1.pddl": [
+        55,
+        0.1751255989074707
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-19_s-2_p-9_t-19_v0.pddl": [
+        71,
+        0.1809999942779541
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-19_s-2_p-9_t-19_v1.pddl": [
+        71,
+        0.17664694786071777
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-20_s-2_p-10_t-20_v0.pddl": [
+        73,
+        0.19604945182800293
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-20_s-2_p-10_t-20_v1.pddl": [
+        73,
+        0.19066715240478516
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-20_s-2_p-11_t-20_v0.pddl": [
+        75,
+        0.19569683074951172
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-20_s-2_p-11_t-20_v1.pddl": [
+        75,
+        0.20696258544921875
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-20_s-2_p-12_t-20_v0.pddl": [
+        73,
+        0.20160722732543945
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-20_s-2_p-12_t-20_v1.pddl": [
+        73,
+        0.19841265678405762
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-20_s-2_p-8_t-20_v0.pddl": [
+        51,
+        0.16661834716796875
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-20_s-2_p-8_t-20_v1.pddl": [
+        51,
+        0.1690964698791504
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-20_s-2_p-9_t-20_v0.pddl": [
+        48,
+        0.18626832962036133
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-20_s-2_p-9_t-20_v1.pddl": [
+        48,
+        0.17171049118041992
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-21_s-2_p-10_t-21_v0.pddl": [
+        63,
+        0.18396592140197754
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-21_s-2_p-10_t-21_v1.pddl": [
+        63,
+        0.19603204727172852
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-21_s-2_p-12_t-21_v0.pddl": [
+        73,
+        0.23145103454589844
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-21_s-2_p-12_t-21_v1.pddl": [
+        73,
+        0.21961545944213867
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-21_s-2_p-14_t-21_v0.pddl": [
+        91,
+        0.22925591468811035
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-21_s-2_p-14_t-21_v1.pddl": [
+        91,
+        0.24943232536315918
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-21_s-2_p-16_t-21_v0.pddl": [
+        111,
+        0.3101084232330322
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-21_s-2_p-16_t-21_v1.pddl": [
+        111,
+        0.30083155632019043
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-21_s-2_p-8_t-21_v0.pddl": [
+        42,
+        0.19155168533325195
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-21_s-2_p-8_t-21_v1.pddl": [
+        42,
+        0.17671489715576172
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-22_s-2_p-10_t-22_v0.pddl": [
+        83,
+        0.21649169921875
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-22_s-2_p-10_t-22_v1.pddl": [
+        83,
+        0.21833086013793945
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-22_s-2_p-12_t-22_v0.pddl": [
+        101,
+        0.24735188484191895
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-22_s-2_p-12_t-22_v1.pddl": [
+        101,
+        0.2461388111114502
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-22_s-2_p-14_t-22_v0.pddl": [
+        111,
+        0.28128719329833984
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-22_s-2_p-14_t-22_v1.pddl": [
+        111,
+        0.27875399589538574
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-22_s-2_p-16_t-22_v0.pddl": [
+        111,
+        0.2941324710845947
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-22_s-2_p-16_t-22_v1.pddl": [
+        111,
+        0.2739403247833252
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-22_s-2_p-8_t-22_v0.pddl": [
+        73,
+        0.19517278671264648
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-22_s-2_p-8_t-22_v1.pddl": [
+        73,
+        0.19967269897460938
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-23_s-2_p-10_t-23_v0.pddl": [
+        71,
+        0.20465564727783203
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-23_s-2_p-10_t-23_v1.pddl": [
+        71,
+        0.21047234535217285
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-23_s-2_p-12_t-23_v0.pddl": [
+        84,
+        0.24944019317626953
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-23_s-2_p-12_t-23_v1.pddl": [
+        84,
+        0.22979116439819336
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-23_s-2_p-14_t-23_v0.pddl": [
+        99,
+        0.2725989818572998
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-23_s-2_p-14_t-23_v1.pddl": [
+        99,
+        0.2775685787200928
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-23_s-2_p-16_t-23_v0.pddl": [
+        111,
+        0.3024134635925293
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-23_s-2_p-16_t-23_v1.pddl": [
+        111,
+        0.3011054992675781
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-23_s-2_p-8_t-23_v0.pddl": [
+        59,
+        0.1782078742980957
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-23_s-2_p-8_t-23_v1.pddl": [
+        59,
+        0.17777132987976074
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-24_s-2_p-10_t-24_v0.pddl": [
+        85,
+        0.22830772399902344
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-24_s-2_p-10_t-24_v1.pddl": [
+        85,
+        0.241485595703125
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-24_s-2_p-12_t-24_v0.pddl": [
+        88,
+        0.22852206230163574
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-24_s-2_p-12_t-24_v1.pddl": [
+        88,
+        0.24825668334960938
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-24_s-2_p-14_t-24_v0.pddl": [
+        110,
+        0.3066532611846924
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-24_s-2_p-14_t-24_v1.pddl": [
+        110,
+        0.2939159870147705
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-24_s-2_p-16_t-24_v0.pddl": [
+        129,
+        0.3176090717315674
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-24_s-2_p-16_t-24_v1.pddl": [
+        129,
+        0.3183872699737549
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-24_s-2_p-8_t-24_v0.pddl": [
+        71,
+        0.2021484375
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-24_s-2_p-8_t-24_v1.pddl": [
+        71,
+        0.20445489883422852
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-25_s-2_p-10_t-25_v0.pddl": [
+        65,
+        0.20940494537353516
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-25_s-2_p-10_t-25_v1.pddl": [
+        65,
+        0.19854259490966797
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-25_s-2_p-12_t-25_v0.pddl": [
+        82,
+        0.24959373474121094
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-25_s-2_p-12_t-25_v1.pddl": [
+        82,
+        0.2434070110321045
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-25_s-2_p-14_t-25_v0.pddl": [
+        110,
+        0.3025226593017578
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-25_s-2_p-14_t-25_v1.pddl": [
+        110,
+        0.2979850769042969
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-25_s-2_p-16_t-25_v0.pddl": [
+        117,
+        0.38231778144836426
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-25_s-2_p-16_t-25_v1.pddl": [
+        117,
+        0.3800370693206787
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-25_s-2_p-8_t-25_v0.pddl": [
+        55,
+        0.18857979774475098
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-25_s-2_p-8_t-25_v1.pddl": [
+        55,
+        0.18257784843444824
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-26_s-2_p-12_t-26_v0.pddl": [
+        96,
+        0.25625014305114746
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-26_s-2_p-12_t-26_v1.pddl": [
+        96,
+        0.28029823303222656
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-26_s-2_p-15_t-26_v0.pddl": [
+        137,
+        0.3691420555114746
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-26_s-2_p-15_t-26_v1.pddl": [
+        137,
+        0.36119675636291504
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-26_s-2_p-18_t-26_v0.pddl": [
+        157,
+        0.48317575454711914
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-26_s-2_p-18_t-26_v1.pddl": [
+        157,
+        0.49831509590148926
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-26_s-2_p-21_t-26_v0.pddl": [
+        166,
+        0.5944838523864746
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-26_s-2_p-21_t-26_v1.pddl": [
+        166,
+        0.5924046039581299
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-26_s-2_p-24_t-26_v0.pddl": [
+        187,
+        0.6981034278869629
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-26_s-2_p-24_t-26_v1.pddl": [
+        187,
+        0.6929903030395508
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-27_s-2_p-12_t-27_v0.pddl": [
+        105,
+        0.28830575942993164
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-27_s-2_p-12_t-27_v1.pddl": [
+        105,
+        0.2985706329345703
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-27_s-2_p-15_t-27_v0.pddl": [
+        112,
+        0.36526036262512207
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-27_s-2_p-15_t-27_v1.pddl": [
+        112,
+        0.3382136821746826
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-27_s-2_p-18_t-27_v0.pddl": [
+        147,
+        0.4913334846496582
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-27_s-2_p-18_t-27_v1.pddl": [
+        147,
+        0.4845573902130127
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-27_s-2_p-21_t-27_v0.pddl": [
+        153,
+        0.48790526390075684
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-27_s-2_p-21_t-27_v1.pddl": [
+        153,
+        0.49294257164001465
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-27_s-2_p-24_t-27_v0.pddl": [
+        187,
+        0.7223548889160156
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-27_s-2_p-24_t-27_v1.pddl": [
+        187,
+        0.7083384990692139
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-28_s-2_p-12_t-28_v0.pddl": [
+        104,
+        0.29824018478393555
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-28_s-2_p-12_t-28_v1.pddl": [
+        104,
+        0.30771470069885254
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-28_s-2_p-15_t-28_v0.pddl": [
+        124,
+        0.39171409606933594
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-28_s-2_p-15_t-28_v1.pddl": [
+        124,
+        0.3872990608215332
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-28_s-2_p-18_t-28_v0.pddl": [
+        151,
+        0.49411463737487793
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-28_s-2_p-18_t-28_v1.pddl": [
+        151,
+        0.49466419219970703
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-28_s-2_p-21_t-28_v0.pddl": [
+        163,
+        0.5234153270721436
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-28_s-2_p-21_t-28_v1.pddl": [
+        163,
+        0.5244326591491699
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-28_s-2_p-24_t-28_v0.pddl": [
+        159,
+        0.5329186916351318
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-28_s-2_p-24_t-28_v1.pddl": [
+        159,
+        0.5374042987823486
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-29_s-2_p-12_t-29_v0.pddl": [
+        99,
+        0.3010711669921875
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-29_s-2_p-12_t-29_v1.pddl": [
+        99,
+        0.30019545555114746
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-29_s-2_p-15_t-29_v0.pddl": [
+        125,
+        0.39844179153442383
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-29_s-2_p-15_t-29_v1.pddl": [
+        125,
+        0.38872241973876953
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-29_s-2_p-18_t-29_v0.pddl": [
+        129,
+        0.40264248847961426
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-29_s-2_p-18_t-29_v1.pddl": [
+        129,
+        0.4080204963684082
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-29_s-2_p-21_t-29_v0.pddl": [
+        163,
+        0.6326556205749512
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-29_s-2_p-21_t-29_v1.pddl": [
+        163,
+        0.6326947212219238
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-29_s-2_p-24_t-29_v0.pddl": [
+        164,
+        0.5738790035247803
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-29_s-2_p-24_t-29_v1.pddl": [
+        164,
+        0.5723249912261963
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-30_s-2_p-12_t-30_v0.pddl": [
+        92,
+        0.2944297790527344
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-30_s-2_p-12_t-30_v1.pddl": [
+        92,
+        0.31180238723754883
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-30_s-2_p-15_t-30_v0.pddl": [
+        126,
+        0.39302563667297363
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-30_s-2_p-15_t-30_v1.pddl": [
+        126,
+        0.3853793144226074
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-30_s-2_p-18_t-30_v0.pddl": [
+        151,
+        0.5355098247528076
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-30_s-2_p-18_t-30_v1.pddl": [
+        151,
+        0.5445122718811035
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-30_s-2_p-21_t-30_v0.pddl": [
+        157,
+        0.5682480335235596
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-30_s-2_p-21_t-30_v1.pddl": [
+        157,
+        0.568310022354126
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-30_s-2_p-24_t-30_v0.pddl": [
+        177,
+        0.7197978496551514
+    ],
+    "logistics_ipcc_test/pfile_a-2_c-30_s-2_p-24_t-30_v1.pddl": [
+        177,
+        0.7269799709320068
     ]
 }

@@ -690,5 +690,1205 @@
     "gripper_ipcc_test/pfile_1_24_45.pddl": [
         162,
         0.38785576820373535
+    ],
+    "gripper_ipcc_test/pfile_1_2_100.pddl": [
+        133,
+        0.15268516540527344
+    ],
+    "gripper_ipcc_test/pfile_1_2_21.pddl": [
+        36,
+        0.10644650459289551
+    ],
+    "gripper_ipcc_test/pfile_1_2_22.pddl": [
+        28,
+        0.09875297546386719
+    ],
+    "gripper_ipcc_test/pfile_1_2_23.pddl": [
+        36,
+        0.10994815826416016
+    ],
+    "gripper_ipcc_test/pfile_1_2_24.pddl": [
+        14,
+        0.10160493850708008
+    ],
+    "gripper_ipcc_test/pfile_1_2_25.pddl": [
+        50,
+        0.10361218452453613
+    ],
+    "gripper_ipcc_test/pfile_1_2_26.pddl": [
+        33,
+        0.10213780403137207
+    ],
+    "gripper_ipcc_test/pfile_1_2_27.pddl": [
+        39,
+        0.11604046821594238
+    ],
+    "gripper_ipcc_test/pfile_1_2_28.pddl": [
+        39,
+        0.10656595230102539
+    ],
+    "gripper_ipcc_test/pfile_1_2_29.pddl": [
+        39,
+        0.10878586769104004
+    ],
+    "gripper_ipcc_test/pfile_1_2_30.pddl": [
+        35,
+        0.11449241638183594
+    ],
+    "gripper_ipcc_test/pfile_1_2_31.pddl": [
+        45,
+        0.10895133018493652
+    ],
+    "gripper_ipcc_test/pfile_1_2_32.pddl": [
+        47,
+        0.11181330680847168
+    ],
+    "gripper_ipcc_test/pfile_1_2_33.pddl": [
+        65,
+        0.10538744926452637
+    ],
+    "gripper_ipcc_test/pfile_1_2_34.pddl": [
+        39,
+        0.10759210586547852
+    ],
+    "gripper_ipcc_test/pfile_1_2_35.pddl": [
+        59,
+        0.10055184364318848
+    ],
+    "gripper_ipcc_test/pfile_1_2_36.pddl": [
+        45,
+        0.10429596900939941
+    ],
+    "gripper_ipcc_test/pfile_1_2_37.pddl": [
+        63,
+        0.10394001007080078
+    ],
+    "gripper_ipcc_test/pfile_1_2_38.pddl": [
+        47,
+        0.10741615295410156
+    ],
+    "gripper_ipcc_test/pfile_1_2_39.pddl": [
+        57,
+        0.10492897033691406
+    ],
+    "gripper_ipcc_test/pfile_1_2_40.pddl": [
+        51,
+        0.10834980010986328
+    ],
+    "gripper_ipcc_test/pfile_1_2_41.pddl": [
+        64,
+        0.12093853950500488
+    ],
+    "gripper_ipcc_test/pfile_1_2_42.pddl": [
+        48,
+        0.13343381881713867
+    ],
+    "gripper_ipcc_test/pfile_1_2_43.pddl": [
+        64,
+        0.1168510913848877
+    ],
+    "gripper_ipcc_test/pfile_1_2_44.pddl": [
+        74,
+        0.11486005783081055
+    ],
+    "gripper_ipcc_test/pfile_1_2_45.pddl": [
+        54,
+        0.10881948471069336
+    ],
+    "gripper_ipcc_test/pfile_1_2_46.pddl": [
+        60,
+        0.12035608291625977
+    ],
+    "gripper_ipcc_test/pfile_1_2_47.pddl": [
+        68,
+        0.10712361335754395
+    ],
+    "gripper_ipcc_test/pfile_1_2_48.pddl": [
+        72,
+        0.10778188705444336
+    ],
+    "gripper_ipcc_test/pfile_1_2_49.pddl": [
+        88,
+        0.13402819633483887
+    ],
+    "gripper_ipcc_test/pfile_1_2_50.pddl": [
+        62,
+        0.11447310447692871
+    ],
+    "gripper_ipcc_test/pfile_1_2_51.pddl": [
+        68,
+        0.13721108436584473
+    ],
+    "gripper_ipcc_test/pfile_1_2_52.pddl": [
+        72,
+        0.11516547203063965
+    ],
+    "gripper_ipcc_test/pfile_1_2_53.pddl": [
+        78,
+        0.10897612571716309
+    ],
+    "gripper_ipcc_test/pfile_1_2_54.pddl": [
+        76,
+        0.12306356430053711
+    ],
+    "gripper_ipcc_test/pfile_1_2_55.pddl": [
+        72,
+        0.11223888397216797
+    ],
+    "gripper_ipcc_test/pfile_1_2_56.pddl": [
+        98,
+        0.12198853492736816
+    ],
+    "gripper_ipcc_test/pfile_1_2_57.pddl": [
+        84,
+        0.12639236450195312
+    ],
+    "gripper_ipcc_test/pfile_1_2_58.pddl": [
+        92,
+        0.11928129196166992
+    ],
+    "gripper_ipcc_test/pfile_1_2_59.pddl": [
+        72,
+        0.12419438362121582
+    ],
+    "gripper_ipcc_test/pfile_1_2_60.pddl": [
+        82,
+        0.12975120544433594
+    ],
+    "gripper_ipcc_test/pfile_1_2_62.pddl": [
+        89,
+        0.11989474296569824
+    ],
+    "gripper_ipcc_test/pfile_1_2_64.pddl": [
+        93,
+        0.12497758865356445
+    ],
+    "gripper_ipcc_test/pfile_1_2_66.pddl": [
+        73,
+        0.13155770301818848
+    ],
+    "gripper_ipcc_test/pfile_1_2_68.pddl": [
+        89,
+        0.12713336944580078
+    ],
+    "gripper_ipcc_test/pfile_1_2_70.pddl": [
+        95,
+        0.12073230743408203
+    ],
+    "gripper_ipcc_test/pfile_1_2_72.pddl": [
+        93,
+        0.12772369384765625
+    ],
+    "gripper_ipcc_test/pfile_1_2_74.pddl": [
+        121,
+        0.16202569007873535
+    ],
+    "gripper_ipcc_test/pfile_1_2_76.pddl": [
+        101,
+        0.13730621337890625
+    ],
+    "gripper_ipcc_test/pfile_1_2_78.pddl": [
+        93,
+        0.1305675506591797
+    ],
+    "gripper_ipcc_test/pfile_1_2_80.pddl": [
+        103,
+        0.13121676445007324
+    ],
+    "gripper_ipcc_test/pfile_1_2_82.pddl": [
+        129,
+        0.1314682960510254
+    ],
+    "gripper_ipcc_test/pfile_1_2_84.pddl": [
+        132,
+        0.1375141143798828
+    ],
+    "gripper_ipcc_test/pfile_1_2_86.pddl": [
+        109,
+        0.16434288024902344
+    ],
+    "gripper_ipcc_test/pfile_1_2_88.pddl": [
+        117,
+        0.13538217544555664
+    ],
+    "gripper_ipcc_test/pfile_1_2_90.pddl": [
+        121,
+        0.13546037673950195
+    ],
+    "gripper_ipcc_test/pfile_1_2_92.pddl": [
+        123,
+        0.13708949089050293
+    ],
+    "gripper_ipcc_test/pfile_1_2_94.pddl": [
+        101,
+        0.16257834434509277
+    ],
+    "gripper_ipcc_test/pfile_1_2_96.pddl": [
+        123,
+        0.1325206756591797
+    ],
+    "gripper_ipcc_test/pfile_1_2_98.pddl": [
+        131,
+        0.1564922332763672
+    ],
+    "gripper_ipcc_test/pfile_2_2_100.pddl": [
+        117,
+        0.18570709228515625
+    ],
+    "gripper_ipcc_test/pfile_2_2_21.pddl": [
+        36,
+        0.10390377044677734
+    ],
+    "gripper_ipcc_test/pfile_2_2_22.pddl": [
+        28,
+        0.10651254653930664
+    ],
+    "gripper_ipcc_test/pfile_2_2_23.pddl": [
+        36,
+        0.12254023551940918
+    ],
+    "gripper_ipcc_test/pfile_2_2_24.pddl": [
+        16,
+        0.10399556159973145
+    ],
+    "gripper_ipcc_test/pfile_2_2_25.pddl": [
+        48,
+        0.11448955535888672
+    ],
+    "gripper_ipcc_test/pfile_2_2_26.pddl": [
+        31,
+        0.1153872013092041
+    ],
+    "gripper_ipcc_test/pfile_2_2_27.pddl": [
+        38,
+        0.10645890235900879
+    ],
+    "gripper_ipcc_test/pfile_2_2_28.pddl": [
+        35,
+        0.11452484130859375
+    ],
+    "gripper_ipcc_test/pfile_2_2_29.pddl": [
+        38,
+        0.11679744720458984
+    ],
+    "gripper_ipcc_test/pfile_2_2_30.pddl": [
+        30,
+        0.12088799476623535
+    ],
+    "gripper_ipcc_test/pfile_2_2_31.pddl": [
+        44,
+        0.11503386497497559
+    ],
+    "gripper_ipcc_test/pfile_2_2_32.pddl": [
+        44,
+        0.11593103408813477
+    ],
+    "gripper_ipcc_test/pfile_2_2_33.pddl": [
+        52,
+        0.11368179321289062
+    ],
+    "gripper_ipcc_test/pfile_2_2_34.pddl": [
+        32,
+        0.11005043983459473
+    ],
+    "gripper_ipcc_test/pfile_2_2_35.pddl": [
+        50,
+        0.11792540550231934
+    ],
+    "gripper_ipcc_test/pfile_2_2_36.pddl": [
+        42,
+        0.1227407455444336
+    ],
+    "gripper_ipcc_test/pfile_2_2_37.pddl": [
+        54,
+        0.11283135414123535
+    ],
+    "gripper_ipcc_test/pfile_2_2_38.pddl": [
+        44,
+        0.12388491630554199
+    ],
+    "gripper_ipcc_test/pfile_2_2_39.pddl": [
+        48,
+        0.1455080509185791
+    ],
+    "gripper_ipcc_test/pfile_2_2_40.pddl": [
+        48,
+        0.12065625190734863
+    ],
+    "gripper_ipcc_test/pfile_2_2_41.pddl": [
+        61,
+        0.12854933738708496
+    ],
+    "gripper_ipcc_test/pfile_2_2_42.pddl": [
+        43,
+        0.12315559387207031
+    ],
+    "gripper_ipcc_test/pfile_2_2_43.pddl": [
+        57,
+        0.130401611328125
+    ],
+    "gripper_ipcc_test/pfile_2_2_44.pddl": [
+        61,
+        0.12650299072265625
+    ],
+    "gripper_ipcc_test/pfile_2_2_45.pddl": [
+        43,
+        0.12038850784301758
+    ],
+    "gripper_ipcc_test/pfile_2_2_46.pddl": [
+        53,
+        0.12632417678833008
+    ],
+    "gripper_ipcc_test/pfile_2_2_47.pddl": [
+        59,
+        0.12379908561706543
+    ],
+    "gripper_ipcc_test/pfile_2_2_48.pddl": [
+        59,
+        0.12952756881713867
+    ],
+    "gripper_ipcc_test/pfile_2_2_49.pddl": [
+        77,
+        0.14392709732055664
+    ],
+    "gripper_ipcc_test/pfile_2_2_50.pddl": [
+        53,
+        0.12753081321716309
+    ],
+    "gripper_ipcc_test/pfile_2_2_51.pddl": [
+        65,
+        0.12983369827270508
+    ],
+    "gripper_ipcc_test/pfile_2_2_52.pddl": [
+        61,
+        0.12876009941101074
+    ],
+    "gripper_ipcc_test/pfile_2_2_53.pddl": [
+        65,
+        0.12598299980163574
+    ],
+    "gripper_ipcc_test/pfile_2_2_54.pddl": [
+        71,
+        0.12941551208496094
+    ],
+    "gripper_ipcc_test/pfile_2_2_55.pddl": [
+        61,
+        0.14637446403503418
+    ],
+    "gripper_ipcc_test/pfile_2_2_56.pddl": [
+        86,
+        0.14899563789367676
+    ],
+    "gripper_ipcc_test/pfile_2_2_57.pddl": [
+        73,
+        0.14394068717956543
+    ],
+    "gripper_ipcc_test/pfile_2_2_58.pddl": [
+        81,
+        0.13393402099609375
+    ],
+    "gripper_ipcc_test/pfile_2_2_59.pddl": [
+        66,
+        0.13376808166503906
+    ],
+    "gripper_ipcc_test/pfile_2_2_60.pddl": [
+        68,
+        0.14002346992492676
+    ],
+    "gripper_ipcc_test/pfile_2_2_62.pddl": [
+        79,
+        0.15902400016784668
+    ],
+    "gripper_ipcc_test/pfile_2_2_64.pddl": [
+        87,
+        0.15188241004943848
+    ],
+    "gripper_ipcc_test/pfile_2_2_66.pddl": [
+        69,
+        0.14063572883605957
+    ],
+    "gripper_ipcc_test/pfile_2_2_68.pddl": [
+        81,
+        0.14417243003845215
+    ],
+    "gripper_ipcc_test/pfile_2_2_70.pddl": [
+        83,
+        0.1489412784576416
+    ],
+    "gripper_ipcc_test/pfile_2_2_72.pddl": [
+        88,
+        0.15360641479492188
+    ],
+    "gripper_ipcc_test/pfile_2_2_74.pddl": [
+        111,
+        0.15716886520385742
+    ],
+    "gripper_ipcc_test/pfile_2_2_76.pddl": [
+        95,
+        0.15055346488952637
+    ],
+    "gripper_ipcc_test/pfile_2_2_78.pddl": [
+        83,
+        0.14840292930603027
+    ],
+    "gripper_ipcc_test/pfile_2_2_80.pddl": [
+        97,
+        0.16567158699035645
+    ],
+    "gripper_ipcc_test/pfile_2_2_82.pddl": [
+        115,
+        0.1622016429901123
+    ],
+    "gripper_ipcc_test/pfile_2_2_84.pddl": [
+        121,
+        0.16870856285095215
+    ],
+    "gripper_ipcc_test/pfile_2_2_86.pddl": [
+        101,
+        0.1631481647491455
+    ],
+    "gripper_ipcc_test/pfile_2_2_88.pddl": [
+        107,
+        0.17139267921447754
+    ],
+    "gripper_ipcc_test/pfile_2_2_90.pddl": [
+        109,
+        0.17119121551513672
+    ],
+    "gripper_ipcc_test/pfile_2_2_92.pddl": [
+        113,
+        0.17619919776916504
+    ],
+    "gripper_ipcc_test/pfile_2_2_94.pddl": [
+        93,
+        0.18654561042785645
+    ],
+    "gripper_ipcc_test/pfile_2_2_96.pddl": [
+        107,
+        0.17523789405822754
+    ],
+    "gripper_ipcc_test/pfile_2_2_98.pddl": [
+        117,
+        0.1788930892944336
+    ],
+    "gripper_ipcc_test/pfile_3_2_100.pddl": [
+        155,
+        0.2837083339691162
+    ],
+    "gripper_ipcc_test/pfile_3_2_21.pddl": [
+        40,
+        0.14392948150634766
+    ],
+    "gripper_ipcc_test/pfile_3_2_22.pddl": [
+        30,
+        0.11900091171264648
+    ],
+    "gripper_ipcc_test/pfile_3_2_23.pddl": [
+        36,
+        0.10875463485717773
+    ],
+    "gripper_ipcc_test/pfile_3_2_24.pddl": [
+        13,
+        0.11932802200317383
+    ],
+    "gripper_ipcc_test/pfile_3_2_25.pddl": [
+        62,
+        0.1180262565612793
+    ],
+    "gripper_ipcc_test/pfile_3_2_26.pddl": [
+        34,
+        0.11298418045043945
+    ],
+    "gripper_ipcc_test/pfile_3_2_27.pddl": [
+        48,
+        0.11201620101928711
+    ],
+    "gripper_ipcc_test/pfile_3_2_28.pddl": [
+        42,
+        0.12479948997497559
+    ],
+    "gripper_ipcc_test/pfile_3_2_29.pddl": [
+        50,
+        0.11705517768859863
+    ],
+    "gripper_ipcc_test/pfile_3_2_30.pddl": [
+        36,
+        0.11312413215637207
+    ],
+    "gripper_ipcc_test/pfile_3_2_31.pddl": [
+        58,
+        0.12146711349487305
+    ],
+    "gripper_ipcc_test/pfile_3_2_32.pddl": [
+        60,
+        0.13173460960388184
+    ],
+    "gripper_ipcc_test/pfile_3_2_33.pddl": [
+        64,
+        0.1269209384918213
+    ],
+    "gripper_ipcc_test/pfile_3_2_34.pddl": [
+        42,
+        0.12185978889465332
+    ],
+    "gripper_ipcc_test/pfile_3_2_35.pddl": [
+        68,
+        0.14583706855773926
+    ],
+    "gripper_ipcc_test/pfile_3_2_36.pddl": [
+        54,
+        0.12480711936950684
+    ],
+    "gripper_ipcc_test/pfile_3_2_37.pddl": [
+        74,
+        0.13124966621398926
+    ],
+    "gripper_ipcc_test/pfile_3_2_38.pddl": [
+        60,
+        0.1410360336303711
+    ],
+    "gripper_ipcc_test/pfile_3_2_39.pddl": [
+        64,
+        0.14545345306396484
+    ],
+    "gripper_ipcc_test/pfile_3_2_40.pddl": [
+        66,
+        0.1379683017730713
+    ],
+    "gripper_ipcc_test/pfile_3_2_41.pddl": [
+        81,
+        0.13933968544006348
+    ],
+    "gripper_ipcc_test/pfile_3_2_42.pddl": [
+        53,
+        0.13816261291503906
+    ],
+    "gripper_ipcc_test/pfile_3_2_43.pddl": [
+        71,
+        0.13557863235473633
+    ],
+    "gripper_ipcc_test/pfile_3_2_44.pddl": [
+        79,
+        0.1474628448486328
+    ],
+    "gripper_ipcc_test/pfile_3_2_45.pddl": [
+        57,
+        0.14359593391418457
+    ],
+    "gripper_ipcc_test/pfile_3_2_46.pddl": [
+        67,
+        0.1620492935180664
+    ],
+    "gripper_ipcc_test/pfile_3_2_47.pddl": [
+        71,
+        0.1599562168121338
+    ],
+    "gripper_ipcc_test/pfile_3_2_48.pddl": [
+        77,
+        0.1505284309387207
+    ],
+    "gripper_ipcc_test/pfile_3_2_49.pddl": [
+        95,
+        0.16327881813049316
+    ],
+    "gripper_ipcc_test/pfile_3_2_50.pddl": [
+        71,
+        0.1425619125366211
+    ],
+    "gripper_ipcc_test/pfile_3_2_51.pddl": [
+        81,
+        0.14681005477905273
+    ],
+    "gripper_ipcc_test/pfile_3_2_52.pddl": [
+        79,
+        0.15643763542175293
+    ],
+    "gripper_ipcc_test/pfile_3_2_53.pddl": [
+        89,
+        0.16663908958435059
+    ],
+    "gripper_ipcc_test/pfile_3_2_54.pddl": [
+        93,
+        0.1542208194732666
+    ],
+    "gripper_ipcc_test/pfile_3_2_55.pddl": [
+        79,
+        0.16464567184448242
+    ],
+    "gripper_ipcc_test/pfile_3_2_56.pddl": [
+        115,
+        0.1728515625
+    ],
+    "gripper_ipcc_test/pfile_3_2_57.pddl": [
+        95,
+        0.1672360897064209
+    ],
+    "gripper_ipcc_test/pfile_3_2_58.pddl": [
+        111,
+        0.1728832721710205
+    ],
+    "gripper_ipcc_test/pfile_3_2_59.pddl": [
+        87,
+        0.17226457595825195
+    ],
+    "gripper_ipcc_test/pfile_3_2_60.pddl": [
+        91,
+        0.16695833206176758
+    ],
+    "gripper_ipcc_test/pfile_3_2_62.pddl": [
+        105,
+        0.1925826072692871
+    ],
+    "gripper_ipcc_test/pfile_3_2_64.pddl": [
+        113,
+        0.1838212013244629
+    ],
+    "gripper_ipcc_test/pfile_3_2_66.pddl": [
+        91,
+        0.18053388595581055
+    ],
+    "gripper_ipcc_test/pfile_3_2_68.pddl": [
+        103,
+        0.1960582733154297
+    ],
+    "gripper_ipcc_test/pfile_3_2_70.pddl": [
+        107,
+        0.18866348266601562
+    ],
+    "gripper_ipcc_test/pfile_3_2_72.pddl": [
+        121,
+        0.20447850227355957
+    ],
+    "gripper_ipcc_test/pfile_3_2_74.pddl": [
+        151,
+        0.23023200035095215
+    ],
+    "gripper_ipcc_test/pfile_3_2_76.pddl": [
+        123,
+        0.21340179443359375
+    ],
+    "gripper_ipcc_test/pfile_3_2_78.pddl": [
+        105,
+        0.2020552158355713
+    ],
+    "gripper_ipcc_test/pfile_3_2_80.pddl": [
+        127,
+        0.2173597812652588
+    ],
+    "gripper_ipcc_test/pfile_3_2_82.pddl": [
+        153,
+        0.24923348426818848
+    ],
+    "gripper_ipcc_test/pfile_3_2_84.pddl": [
+        163,
+        0.27304553985595703
+    ],
+    "gripper_ipcc_test/pfile_3_2_86.pddl": [
+        131,
+        0.2452402114868164
+    ],
+    "gripper_ipcc_test/pfile_3_2_88.pddl": [
+        137,
+        0.24679183959960938
+    ],
+    "gripper_ipcc_test/pfile_3_2_90.pddl": [
+        147,
+        0.2632310390472412
+    ],
+    "gripper_ipcc_test/pfile_3_2_92.pddl": [
+        149,
+        0.2688462734222412
+    ],
+    "gripper_ipcc_test/pfile_3_2_94.pddl": [
+        117,
+        0.24408984184265137
+    ],
+    "gripper_ipcc_test/pfile_3_2_96.pddl": [
+        137,
+        0.2504312992095947
+    ],
+    "gripper_ipcc_test/pfile_3_2_98.pddl": [
+        155,
+        0.28354907035827637
+    ],
+    "gripper_ipcc_test/pfile_4_2_100.pddl": [
+        154,
+        0.36178159713745117
+    ],
+    "gripper_ipcc_test/pfile_4_2_21.pddl": [
+        41,
+        0.11351943016052246
+    ],
+    "gripper_ipcc_test/pfile_4_2_22.pddl": [
+        31,
+        0.12076115608215332
+    ],
+    "gripper_ipcc_test/pfile_4_2_23.pddl": [
+        41,
+        0.12093162536621094
+    ],
+    "gripper_ipcc_test/pfile_4_2_24.pddl": [
+        16,
+        0.12101292610168457
+    ],
+    "gripper_ipcc_test/pfile_4_2_25.pddl": [
+        61,
+        0.13005924224853516
+    ],
+    "gripper_ipcc_test/pfile_4_2_26.pddl": [
+        29,
+        0.1264328956604004
+    ],
+    "gripper_ipcc_test/pfile_4_2_27.pddl": [
+        47,
+        0.13575005531311035
+    ],
+    "gripper_ipcc_test/pfile_4_2_28.pddl": [
+        43,
+        0.12064337730407715
+    ],
+    "gripper_ipcc_test/pfile_4_2_29.pddl": [
+        45,
+        0.12975549697875977
+    ],
+    "gripper_ipcc_test/pfile_4_2_30.pddl": [
+        35,
+        0.1285407543182373
+    ],
+    "gripper_ipcc_test/pfile_4_2_31.pddl": [
+        49,
+        0.1331171989440918
+    ],
+    "gripper_ipcc_test/pfile_4_2_32.pddl": [
+        59,
+        0.1406092643737793
+    ],
+    "gripper_ipcc_test/pfile_4_2_33.pddl": [
+        59,
+        0.13177824020385742
+    ],
+    "gripper_ipcc_test/pfile_4_2_34.pddl": [
+        39,
+        0.1473839282989502
+    ],
+    "gripper_ipcc_test/pfile_4_2_35.pddl": [
+        65,
+        0.14571237564086914
+    ],
+    "gripper_ipcc_test/pfile_4_2_36.pddl": [
+        49,
+        0.14130949974060059
+    ],
+    "gripper_ipcc_test/pfile_4_2_37.pddl": [
+        71,
+        0.14330697059631348
+    ],
+    "gripper_ipcc_test/pfile_4_2_38.pddl": [
+        57,
+        0.13682866096496582
+    ],
+    "gripper_ipcc_test/pfile_4_2_39.pddl": [
+        57,
+        0.16025018692016602
+    ],
+    "gripper_ipcc_test/pfile_4_2_40.pddl": [
+        67,
+        0.15948724746704102
+    ],
+    "gripper_ipcc_test/pfile_4_2_41.pddl": [
+        80,
+        0.15853500366210938
+    ],
+    "gripper_ipcc_test/pfile_4_2_42.pddl": [
+        56,
+        0.1515655517578125
+    ],
+    "gripper_ipcc_test/pfile_4_2_43.pddl": [
+        76,
+        0.15800857543945312
+    ],
+    "gripper_ipcc_test/pfile_4_2_44.pddl": [
+        80,
+        0.15922927856445312
+    ],
+    "gripper_ipcc_test/pfile_4_2_45.pddl": [
+        60,
+        0.16314911842346191
+    ],
+    "gripper_ipcc_test/pfile_4_2_46.pddl": [
+        72,
+        0.1652231216430664
+    ],
+    "gripper_ipcc_test/pfile_4_2_47.pddl": [
+        74,
+        0.16989779472351074
+    ],
+    "gripper_ipcc_test/pfile_4_2_48.pddl": [
+        84,
+        0.17061567306518555
+    ],
+    "gripper_ipcc_test/pfile_4_2_49.pddl": [
+        94,
+        0.18776512145996094
+    ],
+    "gripper_ipcc_test/pfile_4_2_50.pddl": [
+        74,
+        0.16298484802246094
+    ],
+    "gripper_ipcc_test/pfile_4_2_51.pddl": [
+        84,
+        0.17083239555358887
+    ],
+    "gripper_ipcc_test/pfile_4_2_52.pddl": [
+        76,
+        0.17147564888000488
+    ],
+    "gripper_ipcc_test/pfile_4_2_53.pddl": [
+        90,
+        0.18938231468200684
+    ],
+    "gripper_ipcc_test/pfile_4_2_54.pddl": [
+        96,
+        0.19962382316589355
+    ],
+    "gripper_ipcc_test/pfile_4_2_55.pddl": [
+        82,
+        0.18182826042175293
+    ],
+    "gripper_ipcc_test/pfile_4_2_56.pddl": [
+        112,
+        0.212632417678833
+    ],
+    "gripper_ipcc_test/pfile_4_2_57.pddl": [
+        88,
+        0.18557524681091309
+    ],
+    "gripper_ipcc_test/pfile_4_2_58.pddl": [
+        110,
+        0.2162303924560547
+    ],
+    "gripper_ipcc_test/pfile_4_2_59.pddl": [
+        86,
+        0.18979620933532715
+    ],
+    "gripper_ipcc_test/pfile_4_2_60.pddl": [
+        88,
+        0.20632505416870117
+    ],
+    "gripper_ipcc_test/pfile_4_2_62.pddl": [
+        110,
+        0.22034072875976562
+    ],
+    "gripper_ipcc_test/pfile_4_2_64.pddl": [
+        118,
+        0.2323291301727295
+    ],
+    "gripper_ipcc_test/pfile_4_2_66.pddl": [
+        94,
+        0.21517491340637207
+    ],
+    "gripper_ipcc_test/pfile_4_2_68.pddl": [
+        104,
+        0.216477632522583
+    ],
+    "gripper_ipcc_test/pfile_4_2_70.pddl": [
+        110,
+        0.23366522789001465
+    ],
+    "gripper_ipcc_test/pfile_4_2_72.pddl": [
+        122,
+        0.24746417999267578
+    ],
+    "gripper_ipcc_test/pfile_4_2_74.pddl": [
+        154,
+        0.28633975982666016
+    ],
+    "gripper_ipcc_test/pfile_4_2_76.pddl": [
+        126,
+        0.260068416595459
+    ],
+    "gripper_ipcc_test/pfile_4_2_78.pddl": [
+        108,
+        0.24488592147827148
+    ],
+    "gripper_ipcc_test/pfile_4_2_80.pddl": [
+        132,
+        0.28522372245788574
+    ],
+    "gripper_ipcc_test/pfile_4_2_82.pddl": [
+        150,
+        0.29912900924682617
+    ],
+    "gripper_ipcc_test/pfile_4_2_84.pddl": [
+        164,
+        0.3399820327758789
+    ],
+    "gripper_ipcc_test/pfile_4_2_86.pddl": [
+        132,
+        0.29872894287109375
+    ],
+    "gripper_ipcc_test/pfile_4_2_88.pddl": [
+        140,
+        0.31139636039733887
+    ],
+    "gripper_ipcc_test/pfile_4_2_90.pddl": [
+        148,
+        0.3231041431427002
+    ],
+    "gripper_ipcc_test/pfile_4_2_92.pddl": [
+        160,
+        0.3499114513397217
+    ],
+    "gripper_ipcc_test/pfile_4_2_94.pddl": [
+        128,
+        0.3068118095397949
+    ],
+    "gripper_ipcc_test/pfile_4_2_96.pddl": [
+        144,
+        0.31995677947998047
+    ],
+    "gripper_ipcc_test/pfile_4_2_98.pddl": [
+        158,
+        0.3533668518066406
+    ],
+    "gripper_ipcc_test/pfile_5_2_100.pddl": [
+        154,
+        0.4347505569458008
+    ],
+    "gripper_ipcc_test/pfile_5_2_21.pddl": [
+        45,
+        0.12789320945739746
+    ],
+    "gripper_ipcc_test/pfile_5_2_22.pddl": [
+        31,
+        0.13027572631835938
+    ],
+    "gripper_ipcc_test/pfile_5_2_23.pddl": [
+        41,
+        0.1257317066192627
+    ],
+    "gripper_ipcc_test/pfile_5_2_24.pddl": [
+        19,
+        0.12008857727050781
+    ],
+    "gripper_ipcc_test/pfile_5_2_25.pddl": [
+        61,
+        0.1342158317565918
+    ],
+    "gripper_ipcc_test/pfile_5_2_26.pddl": [
+        33,
+        0.12658452987670898
+    ],
+    "gripper_ipcc_test/pfile_5_2_27.pddl": [
+        47,
+        0.14175963401794434
+    ],
+    "gripper_ipcc_test/pfile_5_2_28.pddl": [
+        45,
+        0.14894509315490723
+    ],
+    "gripper_ipcc_test/pfile_5_2_29.pddl": [
+        45,
+        0.13858795166015625
+    ],
+    "gripper_ipcc_test/pfile_5_2_30.pddl": [
+        31,
+        0.13210701942443848
+    ],
+    "gripper_ipcc_test/pfile_5_2_31.pddl": [
+        49,
+        0.1363072395324707
+    ],
+    "gripper_ipcc_test/pfile_5_2_32.pddl": [
+        59,
+        0.15679144859313965
+    ],
+    "gripper_ipcc_test/pfile_5_2_33.pddl": [
+        59,
+        0.14653730392456055
+    ],
+    "gripper_ipcc_test/pfile_5_2_34.pddl": [
+        41,
+        0.1418595314025879
+    ],
+    "gripper_ipcc_test/pfile_5_2_35.pddl": [
+        63,
+        0.15071845054626465
+    ],
+    "gripper_ipcc_test/pfile_5_2_36.pddl": [
+        49,
+        0.14498376846313477
+    ],
+    "gripper_ipcc_test/pfile_5_2_37.pddl": [
+        71,
+        0.16184163093566895
+    ],
+    "gripper_ipcc_test/pfile_5_2_38.pddl": [
+        53,
+        0.1511831283569336
+    ],
+    "gripper_ipcc_test/pfile_5_2_39.pddl": [
+        57,
+        0.1628711223602295
+    ],
+    "gripper_ipcc_test/pfile_5_2_40.pddl": [
+        63,
+        0.15753960609436035
+    ],
+    "gripper_ipcc_test/pfile_5_2_41.pddl": [
+        84,
+        0.1710200309753418
+    ],
+    "gripper_ipcc_test/pfile_5_2_42.pddl": [
+        58,
+        0.17259788513183594
+    ],
+    "gripper_ipcc_test/pfile_5_2_43.pddl": [
+        72,
+        0.17238140106201172
+    ],
+    "gripper_ipcc_test/pfile_5_2_44.pddl": [
+        80,
+        0.17727088928222656
+    ],
+    "gripper_ipcc_test/pfile_5_2_45.pddl": [
+        62,
+        0.17038798332214355
+    ],
+    "gripper_ipcc_test/pfile_5_2_46.pddl": [
+        74,
+        0.17882418632507324
+    ],
+    "gripper_ipcc_test/pfile_5_2_47.pddl": [
+        74,
+        0.17808961868286133
+    ],
+    "gripper_ipcc_test/pfile_5_2_48.pddl": [
+        84,
+        0.19671988487243652
+    ],
+    "gripper_ipcc_test/pfile_5_2_49.pddl": [
+        94,
+        0.1938772201538086
+    ],
+    "gripper_ipcc_test/pfile_5_2_50.pddl": [
+        76,
+        0.1836555004119873
+    ],
+    "gripper_ipcc_test/pfile_5_2_51.pddl": [
+        80,
+        0.19547438621520996
+    ],
+    "gripper_ipcc_test/pfile_5_2_52.pddl": [
+        76,
+        0.190230131149292
+    ],
+    "gripper_ipcc_test/pfile_5_2_53.pddl": [
+        94,
+        0.2087862491607666
+    ],
+    "gripper_ipcc_test/pfile_5_2_54.pddl": [
+        100,
+        0.2164146900177002
+    ],
+    "gripper_ipcc_test/pfile_5_2_55.pddl": [
+        84,
+        0.19809794425964355
+    ],
+    "gripper_ipcc_test/pfile_5_2_56.pddl": [
+        114,
+        0.2386791706085205
+    ],
+    "gripper_ipcc_test/pfile_5_2_57.pddl": [
+        88,
+        0.20960760116577148
+    ],
+    "gripper_ipcc_test/pfile_5_2_58.pddl": [
+        106,
+        0.23836946487426758
+    ],
+    "gripper_ipcc_test/pfile_5_2_59.pddl": [
+        88,
+        0.21252751350402832
+    ],
+    "gripper_ipcc_test/pfile_5_2_60.pddl": [
+        92,
+        0.22903084754943848
+    ],
+    "gripper_ipcc_test/pfile_5_2_62.pddl": [
+        112,
+        0.24340224266052246
+    ],
+    "gripper_ipcc_test/pfile_5_2_64.pddl": [
+        120,
+        0.24989008903503418
+    ],
+    "gripper_ipcc_test/pfile_5_2_66.pddl": [
+        94,
+        0.26967859268188477
+    ],
+    "gripper_ipcc_test/pfile_5_2_68.pddl": [
+        108,
+        0.25411391258239746
+    ],
+    "gripper_ipcc_test/pfile_5_2_70.pddl": [
+        112,
+        0.26721692085266113
+    ],
+    "gripper_ipcc_test/pfile_5_2_72.pddl": [
+        120,
+        0.27153801918029785
+    ],
+    "gripper_ipcc_test/pfile_5_2_74.pddl": [
+        156,
+        0.3383052349090576
+    ],
+    "gripper_ipcc_test/pfile_5_2_76.pddl": [
+        126,
+        0.3025672435760498
+    ],
+    "gripper_ipcc_test/pfile_5_2_78.pddl": [
+        108,
+        0.28429412841796875
+    ],
+    "gripper_ipcc_test/pfile_5_2_80.pddl": [
+        132,
+        0.31400108337402344
+    ],
+    "gripper_ipcc_test/pfile_5_2_82.pddl": [
+        146,
+        0.34158825874328613
+    ],
+    "gripper_ipcc_test/pfile_5_2_84.pddl": [
+        168,
+        0.41014766693115234
+    ],
+    "gripper_ipcc_test/pfile_5_2_86.pddl": [
+        132,
+        0.33069276809692383
+    ],
+    "gripper_ipcc_test/pfile_5_2_88.pddl": [
+        142,
+        0.3590555191040039
+    ],
+    "gripper_ipcc_test/pfile_5_2_90.pddl": [
+        150,
+        0.36727070808410645
+    ],
+    "gripper_ipcc_test/pfile_5_2_92.pddl": [
+        160,
+        0.3963768482208252
+    ],
+    "gripper_ipcc_test/pfile_5_2_94.pddl": [
+        130,
+        0.3700556755065918
+    ],
+    "gripper_ipcc_test/pfile_5_2_96.pddl": [
+        144,
+        0.38844752311706543
+    ],
+    "gripper_ipcc_test/pfile_5_2_98.pddl": [
+        158,
+        0.42386531829833984
     ]
 }

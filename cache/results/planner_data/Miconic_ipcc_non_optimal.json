@@ -474,5 +474,1109 @@
     "miconic_ipcc_test/pfile_p-97_f-29_v1.pddl": [
         284,
         0.19741392135620117
+    ],
+    "miconic_ipcc_test/pfile_p-100_f-11_v1.pddl": [
+        249,
+        0.14850568771362305
+    ],
+    "miconic_ipcc_test/pfile_p-100_f-15_v1.pddl": [
+        259,
+        0.15902924537658691
+    ],
+    "miconic_ipcc_test/pfile_p-100_f-19_v1.pddl": [
+        270,
+        0.17824816703796387
+    ],
+    "miconic_ipcc_test/pfile_p-100_f-23_v1.pddl": [
+        276,
+        0.18030524253845215
+    ],
+    "miconic_ipcc_test/pfile_p-100_f-27_v1.pddl": [
+        288,
+        0.20255041122436523
+    ],
+    "miconic_ipcc_test/pfile_p-21_f-11_v1.pddl": [
+        68,
+        0.10580253601074219
+    ],
+    "miconic_ipcc_test/pfile_p-21_f-15_v1.pddl": [
+        69,
+        0.10294032096862793
+    ],
+    "miconic_ipcc_test/pfile_p-21_f-19_v1.pddl": [
+        79,
+        0.10365629196166992
+    ],
+    "miconic_ipcc_test/pfile_p-21_f-23_v1.pddl": [
+        81,
+        0.12616491317749023
+    ],
+    "miconic_ipcc_test/pfile_p-21_f-27_v1.pddl": [
+        81,
+        0.12308478355407715
+    ],
+    "miconic_ipcc_test/pfile_p-22_f-15_v1.pddl": [
+        76,
+        0.10737466812133789
+    ],
+    "miconic_ipcc_test/pfile_p-22_f-19_v1.pddl": [
+        83,
+        0.11363387107849121
+    ],
+    "miconic_ipcc_test/pfile_p-22_f-27_v1.pddl": [
+        94,
+        0.13173556327819824
+    ],
+    "miconic_ipcc_test/pfile_p-23_f-11_v1.pddl": [
+        70,
+        0.0993199348449707
+    ],
+    "miconic_ipcc_test/pfile_p-23_f-15_v1.pddl": [
+        77,
+        0.1282026767730713
+    ],
+    "miconic_ipcc_test/pfile_p-23_f-19_v1.pddl": [
+        86,
+        0.1127018928527832
+    ],
+    "miconic_ipcc_test/pfile_p-23_f-23_v1.pddl": [
+        90,
+        0.11534857749938965
+    ],
+    "miconic_ipcc_test/pfile_p-23_f-27_v1.pddl": [
+        92,
+        0.1189126968383789
+    ],
+    "miconic_ipcc_test/pfile_p-24_f-11_v1.pddl": [
+        72,
+        0.09536099433898926
+    ],
+    "miconic_ipcc_test/pfile_p-24_f-15_v1.pddl": [
+        79,
+        0.10688495635986328
+    ],
+    "miconic_ipcc_test/pfile_p-24_f-19_v1.pddl": [
+        85,
+        0.10579991340637207
+    ],
+    "miconic_ipcc_test/pfile_p-24_f-23_v1.pddl": [
+        87,
+        0.11434435844421387
+    ],
+    "miconic_ipcc_test/pfile_p-24_f-27_v1.pddl": [
+        95,
+        0.12802386283874512
+    ],
+    "miconic_ipcc_test/pfile_p-25_f-11_v1.pddl": [
+        74,
+        0.10255026817321777
+    ],
+    "miconic_ipcc_test/pfile_p-25_f-15_v1.pddl": [
+        91,
+        0.10568666458129883
+    ],
+    "miconic_ipcc_test/pfile_p-25_f-19_v1.pddl": [
+        89,
+        0.11722373962402344
+    ],
+    "miconic_ipcc_test/pfile_p-25_f-23_v1.pddl": [
+        95,
+        0.11355447769165039
+    ],
+    "miconic_ipcc_test/pfile_p-25_f-27_v1.pddl": [
+        100,
+        0.13438677787780762
+    ],
+    "miconic_ipcc_test/pfile_p-26_f-11_v1.pddl": [
+        81,
+        0.12457656860351562
+    ],
+    "miconic_ipcc_test/pfile_p-26_f-15_v1.pddl": [
+        85,
+        0.12212228775024414
+    ],
+    "miconic_ipcc_test/pfile_p-26_f-19_v1.pddl": [
+        92,
+        0.11426615715026855
+    ],
+    "miconic_ipcc_test/pfile_p-26_f-23_v1.pddl": [
+        97,
+        0.11360454559326172
+    ],
+    "miconic_ipcc_test/pfile_p-26_f-27_v1.pddl": [
+        100,
+        0.13366031646728516
+    ],
+    "miconic_ipcc_test/pfile_p-27_f-15_v1.pddl": [
+        93,
+        0.11819005012512207
+    ],
+    "miconic_ipcc_test/pfile_p-27_f-19_v1.pddl": [
+        87,
+        0.11777663230895996
+    ],
+    "miconic_ipcc_test/pfile_p-27_f-27_v1.pddl": [
+        105,
+        0.12817645072937012
+    ],
+    "miconic_ipcc_test/pfile_p-28_f-11_v1.pddl": [
+        81,
+        0.09803009033203125
+    ],
+    "miconic_ipcc_test/pfile_p-28_f-15_v1.pddl": [
+        94,
+        0.11417412757873535
+    ],
+    "miconic_ipcc_test/pfile_p-28_f-19_v1.pddl": [
+        103,
+        0.12175107002258301
+    ],
+    "miconic_ipcc_test/pfile_p-28_f-23_v1.pddl": [
+        97,
+        0.12136101722717285
+    ],
+    "miconic_ipcc_test/pfile_p-28_f-27_v1.pddl": [
+        108,
+        0.12737441062927246
+    ],
+    "miconic_ipcc_test/pfile_p-29_f-11_v1.pddl": [
+        84,
+        0.12897467613220215
+    ],
+    "miconic_ipcc_test/pfile_p-29_f-15_v1.pddl": [
+        93,
+        0.11526179313659668
+    ],
+    "miconic_ipcc_test/pfile_p-29_f-19_v1.pddl": [
+        99,
+        0.10929131507873535
+    ],
+    "miconic_ipcc_test/pfile_p-29_f-23_v1.pddl": [
+        106,
+        0.11455631256103516
+    ],
+    "miconic_ipcc_test/pfile_p-29_f-27_v1.pddl": [
+        113,
+        0.13587284088134766
+    ],
+    "miconic_ipcc_test/pfile_p-30_f-11_v1.pddl": [
+        90,
+        0.10375475883483887
+    ],
+    "miconic_ipcc_test/pfile_p-30_f-15_v1.pddl": [
+        95,
+        0.10448169708251953
+    ],
+    "miconic_ipcc_test/pfile_p-30_f-19_v1.pddl": [
+        104,
+        0.12040162086486816
+    ],
+    "miconic_ipcc_test/pfile_p-30_f-23_v1.pddl": [
+        111,
+        0.12186694145202637
+    ],
+    "miconic_ipcc_test/pfile_p-30_f-27_v1.pddl": [
+        114,
+        0.12681198120117188
+    ],
+    "miconic_ipcc_test/pfile_p-31_f-11_v1.pddl": [
+        89,
+        0.1332380771636963
+    ],
+    "miconic_ipcc_test/pfile_p-31_f-15_v1.pddl": [
+        99,
+        0.10697603225708008
+    ],
+    "miconic_ipcc_test/pfile_p-31_f-19_v1.pddl": [
+        100,
+        0.12685823440551758
+    ],
+    "miconic_ipcc_test/pfile_p-31_f-23_v1.pddl": [
+        114,
+        0.12125825881958008
+    ],
+    "miconic_ipcc_test/pfile_p-31_f-27_v1.pddl": [
+        114,
+        0.12886857986450195
+    ],
+    "miconic_ipcc_test/pfile_p-32_f-15_v1.pddl": [
+        102,
+        0.12028384208679199
+    ],
+    "miconic_ipcc_test/pfile_p-32_f-19_v1.pddl": [
+        109,
+        0.12374234199523926
+    ],
+    "miconic_ipcc_test/pfile_p-32_f-27_v1.pddl": [
+        119,
+        0.13237547874450684
+    ],
+    "miconic_ipcc_test/pfile_p-33_f-11_v1.pddl": [
+        99,
+        0.11289095878601074
+    ],
+    "miconic_ipcc_test/pfile_p-33_f-15_v1.pddl": [
+        102,
+        0.1146235466003418
+    ],
+    "miconic_ipcc_test/pfile_p-33_f-19_v1.pddl": [
+        110,
+        0.12374997138977051
+    ],
+    "miconic_ipcc_test/pfile_p-33_f-23_v1.pddl": [
+        119,
+        0.1375429630279541
+    ],
+    "miconic_ipcc_test/pfile_p-33_f-27_v1.pddl": [
+        120,
+        0.17841196060180664
+    ],
+    "miconic_ipcc_test/pfile_p-34_f-11_v1.pddl": [
+        98,
+        0.10506463050842285
+    ],
+    "miconic_ipcc_test/pfile_p-34_f-15_v1.pddl": [
+        109,
+        0.12319397926330566
+    ],
+    "miconic_ipcc_test/pfile_p-34_f-19_v1.pddl": [
+        117,
+        0.11995720863342285
+    ],
+    "miconic_ipcc_test/pfile_p-34_f-23_v1.pddl": [
+        121,
+        0.12582945823669434
+    ],
+    "miconic_ipcc_test/pfile_p-34_f-27_v1.pddl": [
+        121,
+        0.1330428123474121
+    ],
+    "miconic_ipcc_test/pfile_p-35_f-11_v1.pddl": [
+        96,
+        0.12587475776672363
+    ],
+    "miconic_ipcc_test/pfile_p-35_f-15_v1.pddl": [
+        110,
+        0.11015701293945312
+    ],
+    "miconic_ipcc_test/pfile_p-35_f-19_v1.pddl": [
+        108,
+        0.1351463794708252
+    ],
+    "miconic_ipcc_test/pfile_p-35_f-23_v1.pddl": [
+        123,
+        0.12659716606140137
+    ],
+    "miconic_ipcc_test/pfile_p-35_f-27_v1.pddl": [
+        130,
+        0.13852477073669434
+    ],
+    "miconic_ipcc_test/pfile_p-36_f-11_v1.pddl": [
+        107,
+        0.11201810836791992
+    ],
+    "miconic_ipcc_test/pfile_p-36_f-15_v1.pddl": [
+        106,
+        0.12363195419311523
+    ],
+    "miconic_ipcc_test/pfile_p-36_f-19_v1.pddl": [
+        122,
+        0.13396549224853516
+    ],
+    "miconic_ipcc_test/pfile_p-36_f-23_v1.pddl": [
+        117,
+        0.13550734519958496
+    ],
+    "miconic_ipcc_test/pfile_p-36_f-27_v1.pddl": [
+        137,
+        0.13647842407226562
+    ],
+    "miconic_ipcc_test/pfile_p-37_f-15_v1.pddl": [
+        110,
+        0.11149144172668457
+    ],
+    "miconic_ipcc_test/pfile_p-37_f-19_v1.pddl": [
+        122,
+        0.11911177635192871
+    ],
+    "miconic_ipcc_test/pfile_p-37_f-27_v1.pddl": [
+        128,
+        0.12863779067993164
+    ],
+    "miconic_ipcc_test/pfile_p-38_f-11_v1.pddl": [
+        106,
+        0.11010169982910156
+    ],
+    "miconic_ipcc_test/pfile_p-38_f-15_v1.pddl": [
+        115,
+        0.12171554565429688
+    ],
+    "miconic_ipcc_test/pfile_p-38_f-19_v1.pddl": [
+        126,
+        0.12465310096740723
+    ],
+    "miconic_ipcc_test/pfile_p-38_f-23_v1.pddl": [
+        127,
+        0.11929869651794434
+    ],
+    "miconic_ipcc_test/pfile_p-38_f-27_v1.pddl": [
+        137,
+        0.15361714363098145
+    ],
+    "miconic_ipcc_test/pfile_p-39_f-11_v1.pddl": [
+        110,
+        0.11999130249023438
+    ],
+    "miconic_ipcc_test/pfile_p-39_f-15_v1.pddl": [
+        119,
+        0.13667821884155273
+    ],
+    "miconic_ipcc_test/pfile_p-39_f-19_v1.pddl": [
+        129,
+        0.12086009979248047
+    ],
+    "miconic_ipcc_test/pfile_p-39_f-23_v1.pddl": [
+        130,
+        0.12431669235229492
+    ],
+    "miconic_ipcc_test/pfile_p-39_f-27_v1.pddl": [
+        137,
+        0.14036059379577637
+    ],
+    "miconic_ipcc_test/pfile_p-40_f-11_v1.pddl": [
+        110,
+        0.11745381355285645
+    ],
+    "miconic_ipcc_test/pfile_p-40_f-15_v1.pddl": [
+        123,
+        0.11327838897705078
+    ],
+    "miconic_ipcc_test/pfile_p-40_f-19_v1.pddl": [
+        127,
+        0.1337292194366455
+    ],
+    "miconic_ipcc_test/pfile_p-40_f-23_v1.pddl": [
+        129,
+        0.12432646751403809
+    ],
+    "miconic_ipcc_test/pfile_p-40_f-27_v1.pddl": [
+        140,
+        0.13456439971923828
+    ],
+    "miconic_ipcc_test/pfile_p-41_f-11_v1.pddl": [
+        111,
+        0.10986685752868652
+    ],
+    "miconic_ipcc_test/pfile_p-41_f-15_v1.pddl": [
+        123,
+        0.11629891395568848
+    ],
+    "miconic_ipcc_test/pfile_p-41_f-19_v1.pddl": [
+        131,
+        0.12765121459960938
+    ],
+    "miconic_ipcc_test/pfile_p-41_f-23_v1.pddl": [
+        141,
+        0.14935588836669922
+    ],
+    "miconic_ipcc_test/pfile_p-41_f-27_v1.pddl": [
+        147,
+        0.14433717727661133
+    ],
+    "miconic_ipcc_test/pfile_p-42_f-15_v1.pddl": [
+        120,
+        0.13387346267700195
+    ],
+    "miconic_ipcc_test/pfile_p-42_f-19_v1.pddl": [
+        138,
+        0.12727594375610352
+    ],
+    "miconic_ipcc_test/pfile_p-42_f-27_v1.pddl": [
+        145,
+        0.13563132286071777
+    ],
+    "miconic_ipcc_test/pfile_p-43_f-11_v1.pddl": [
+        122,
+        0.11766505241394043
+    ],
+    "miconic_ipcc_test/pfile_p-43_f-15_v1.pddl": [
+        127,
+        0.1128382682800293
+    ],
+    "miconic_ipcc_test/pfile_p-43_f-19_v1.pddl": [
+        137,
+        0.12963128089904785
+    ],
+    "miconic_ipcc_test/pfile_p-43_f-23_v1.pddl": [
+        143,
+        0.13125038146972656
+    ],
+    "miconic_ipcc_test/pfile_p-43_f-27_v1.pddl": [
+        144,
+        0.14834976196289062
+    ],
+    "miconic_ipcc_test/pfile_p-44_f-11_v1.pddl": [
+        121,
+        0.11157894134521484
+    ],
+    "miconic_ipcc_test/pfile_p-44_f-15_v1.pddl": [
+        133,
+        0.11508750915527344
+    ],
+    "miconic_ipcc_test/pfile_p-44_f-19_v1.pddl": [
+        140,
+        0.11947822570800781
+    ],
+    "miconic_ipcc_test/pfile_p-44_f-23_v1.pddl": [
+        143,
+        0.12047076225280762
+    ],
+    "miconic_ipcc_test/pfile_p-44_f-27_v1.pddl": [
+        150,
+        0.15339255332946777
+    ],
+    "miconic_ipcc_test/pfile_p-45_f-11_v1.pddl": [
+        125,
+        0.11819171905517578
+    ],
+    "miconic_ipcc_test/pfile_p-45_f-15_v1.pddl": [
+        127,
+        0.11591362953186035
+    ],
+    "miconic_ipcc_test/pfile_p-45_f-19_v1.pddl": [
+        140,
+        0.15163421630859375
+    ],
+    "miconic_ipcc_test/pfile_p-45_f-23_v1.pddl": [
+        144,
+        0.15294814109802246
+    ],
+    "miconic_ipcc_test/pfile_p-45_f-27_v1.pddl": [
+        156,
+        0.1331310272216797
+    ],
+    "miconic_ipcc_test/pfile_p-46_f-11_v1.pddl": [
+        126,
+        0.13128256797790527
+    ],
+    "miconic_ipcc_test/pfile_p-46_f-15_v1.pddl": [
+        137,
+        0.12395668029785156
+    ],
+    "miconic_ipcc_test/pfile_p-46_f-19_v1.pddl": [
+        148,
+        0.1270751953125
+    ],
+    "miconic_ipcc_test/pfile_p-46_f-23_v1.pddl": [
+        151,
+        0.14440035820007324
+    ],
+    "miconic_ipcc_test/pfile_p-46_f-27_v1.pddl": [
+        155,
+        0.14926409721374512
+    ],
+    "miconic_ipcc_test/pfile_p-47_f-15_v1.pddl": [
+        137,
+        0.12612366676330566
+    ],
+    "miconic_ipcc_test/pfile_p-47_f-19_v1.pddl": [
+        145,
+        0.13486075401306152
+    ],
+    "miconic_ipcc_test/pfile_p-47_f-27_v1.pddl": [
+        152,
+        0.14142680168151855
+    ],
+    "miconic_ipcc_test/pfile_p-48_f-11_v1.pddl": [
+        130,
+        0.12467408180236816
+    ],
+    "miconic_ipcc_test/pfile_p-48_f-15_v1.pddl": [
+        140,
+        0.12501907348632812
+    ],
+    "miconic_ipcc_test/pfile_p-48_f-19_v1.pddl": [
+        149,
+        0.13076448440551758
+    ],
+    "miconic_ipcc_test/pfile_p-48_f-23_v1.pddl": [
+        156,
+        0.13113689422607422
+    ],
+    "miconic_ipcc_test/pfile_p-48_f-27_v1.pddl": [
+        166,
+        0.14246082305908203
+    ],
+    "miconic_ipcc_test/pfile_p-49_f-11_v1.pddl": [
+        133,
+        0.11172103881835938
+    ],
+    "miconic_ipcc_test/pfile_p-49_f-15_v1.pddl": [
+        143,
+        0.1217188835144043
+    ],
+    "miconic_ipcc_test/pfile_p-49_f-19_v1.pddl": [
+        153,
+        0.12647318840026855
+    ],
+    "miconic_ipcc_test/pfile_p-49_f-23_v1.pddl": [
+        163,
+        0.14725804328918457
+    ],
+    "miconic_ipcc_test/pfile_p-49_f-27_v1.pddl": [
+        161,
+        0.1662616729736328
+    ],
+    "miconic_ipcc_test/pfile_p-50_f-11_v1.pddl": [
+        139,
+        0.11286306381225586
+    ],
+    "miconic_ipcc_test/pfile_p-50_f-15_v1.pddl": [
+        139,
+        0.12952089309692383
+    ],
+    "miconic_ipcc_test/pfile_p-50_f-19_v1.pddl": [
+        153,
+        0.12917685508728027
+    ],
+    "miconic_ipcc_test/pfile_p-50_f-23_v1.pddl": [
+        153,
+        0.1387944221496582
+    ],
+    "miconic_ipcc_test/pfile_p-50_f-27_v1.pddl": [
+        170,
+        0.14768123626708984
+    ],
+    "miconic_ipcc_test/pfile_p-51_f-11_v1.pddl": [
+        136,
+        0.15284490585327148
+    ],
+    "miconic_ipcc_test/pfile_p-51_f-15_v1.pddl": [
+        150,
+        0.12320256233215332
+    ],
+    "miconic_ipcc_test/pfile_p-51_f-19_v1.pddl": [
+        158,
+        0.1288132667541504
+    ],
+    "miconic_ipcc_test/pfile_p-51_f-23_v1.pddl": [
+        162,
+        0.1532444953918457
+    ],
+    "miconic_ipcc_test/pfile_p-51_f-27_v1.pddl": [
+        167,
+        0.15500736236572266
+    ],
+    "miconic_ipcc_test/pfile_p-52_f-15_v1.pddl": [
+        147,
+        0.12946224212646484
+    ],
+    "miconic_ipcc_test/pfile_p-52_f-19_v1.pddl": [
+        155,
+        0.1568753719329834
+    ],
+    "miconic_ipcc_test/pfile_p-52_f-27_v1.pddl": [
+        169,
+        0.15766239166259766
+    ],
+    "miconic_ipcc_test/pfile_p-53_f-11_v1.pddl": [
+        140,
+        0.11998224258422852
+    ],
+    "miconic_ipcc_test/pfile_p-53_f-15_v1.pddl": [
+        152,
+        0.13512301445007324
+    ],
+    "miconic_ipcc_test/pfile_p-53_f-19_v1.pddl": [
+        158,
+        0.15772223472595215
+    ],
+    "miconic_ipcc_test/pfile_p-53_f-23_v1.pddl": [
+        174,
+        0.1471560001373291
+    ],
+    "miconic_ipcc_test/pfile_p-53_f-27_v1.pddl": [
+        178,
+        0.150986909866333
+    ],
+    "miconic_ipcc_test/pfile_p-54_f-11_v1.pddl": [
+        146,
+        0.12754535675048828
+    ],
+    "miconic_ipcc_test/pfile_p-54_f-15_v1.pddl": [
+        154,
+        0.13491487503051758
+    ],
+    "miconic_ipcc_test/pfile_p-54_f-19_v1.pddl": [
+        159,
+        0.1287243366241455
+    ],
+    "miconic_ipcc_test/pfile_p-54_f-23_v1.pddl": [
+        174,
+        0.15703463554382324
+    ],
+    "miconic_ipcc_test/pfile_p-54_f-27_v1.pddl": [
+        179,
+        0.1522970199584961
+    ],
+    "miconic_ipcc_test/pfile_p-55_f-11_v1.pddl": [
+        146,
+        0.15139436721801758
+    ],
+    "miconic_ipcc_test/pfile_p-55_f-15_v1.pddl": [
+        158,
+        0.13342928886413574
+    ],
+    "miconic_ipcc_test/pfile_p-55_f-19_v1.pddl": [
+        164,
+        0.13276982307434082
+    ],
+    "miconic_ipcc_test/pfile_p-55_f-23_v1.pddl": [
+        175,
+        0.1638050079345703
+    ],
+    "miconic_ipcc_test/pfile_p-55_f-27_v1.pddl": [
+        177,
+        0.1538829803466797
+    ],
+    "miconic_ipcc_test/pfile_p-56_f-11_v1.pddl": [
+        148,
+        0.11737489700317383
+    ],
+    "miconic_ipcc_test/pfile_p-56_f-15_v1.pddl": [
+        154,
+        0.1386888027191162
+    ],
+    "miconic_ipcc_test/pfile_p-56_f-19_v1.pddl": [
+        166,
+        0.13443446159362793
+    ],
+    "miconic_ipcc_test/pfile_p-56_f-23_v1.pddl": [
+        176,
+        0.13825535774230957
+    ],
+    "miconic_ipcc_test/pfile_p-56_f-27_v1.pddl": [
+        189,
+        0.15868735313415527
+    ],
+    "miconic_ipcc_test/pfile_p-57_f-15_v1.pddl": [
+        164,
+        0.1313033103942871
+    ],
+    "miconic_ipcc_test/pfile_p-57_f-19_v1.pddl": [
+        171,
+        0.13761019706726074
+    ],
+    "miconic_ipcc_test/pfile_p-57_f-27_v1.pddl": [
+        186,
+        0.15481257438659668
+    ],
+    "miconic_ipcc_test/pfile_p-58_f-11_v1.pddl": [
+        154,
+        0.1270613670349121
+    ],
+    "miconic_ipcc_test/pfile_p-58_f-15_v1.pddl": [
+        163,
+        0.150282621383667
+    ],
+    "miconic_ipcc_test/pfile_p-58_f-19_v1.pddl": [
+        162,
+        0.15049147605895996
+    ],
+    "miconic_ipcc_test/pfile_p-58_f-23_v1.pddl": [
+        187,
+        0.14700841903686523
+    ],
+    "miconic_ipcc_test/pfile_p-58_f-27_v1.pddl": [
+        194,
+        0.17077875137329102
+    ],
+    "miconic_ipcc_test/pfile_p-59_f-11_v1.pddl": [
+        155,
+        0.12675762176513672
+    ],
+    "miconic_ipcc_test/pfile_p-59_f-15_v1.pddl": [
+        165,
+        0.13138747215270996
+    ],
+    "miconic_ipcc_test/pfile_p-59_f-19_v1.pddl": [
+        176,
+        0.1380901336669922
+    ],
+    "miconic_ipcc_test/pfile_p-59_f-23_v1.pddl": [
+        178,
+        0.15380620956420898
+    ],
+    "miconic_ipcc_test/pfile_p-59_f-27_v1.pddl": [
+        192,
+        0.15560460090637207
+    ],
+    "miconic_ipcc_test/pfile_p-60_f-11_v1.pddl": [
+        155,
+        0.13552188873291016
+    ],
+    "miconic_ipcc_test/pfile_p-60_f-15_v1.pddl": [
+        167,
+        0.1269984245300293
+    ],
+    "miconic_ipcc_test/pfile_p-60_f-19_v1.pddl": [
+        175,
+        0.16159796714782715
+    ],
+    "miconic_ipcc_test/pfile_p-60_f-23_v1.pddl": [
+        192,
+        0.1527690887451172
+    ],
+    "miconic_ipcc_test/pfile_p-60_f-27_v1.pddl": [
+        193,
+        0.15563344955444336
+    ],
+    "miconic_ipcc_test/pfile_p-62_f-15_v1.pddl": [
+        172,
+        0.15164613723754883
+    ],
+    "miconic_ipcc_test/pfile_p-62_f-19_v1.pddl": [
+        176,
+        0.14331912994384766
+    ],
+    "miconic_ipcc_test/pfile_p-62_f-27_v1.pddl": [
+        196,
+        0.150285005569458
+    ],
+    "miconic_ipcc_test/pfile_p-64_f-11_v1.pddl": [
+        169,
+        0.13573956489562988
+    ],
+    "miconic_ipcc_test/pfile_p-64_f-15_v1.pddl": [
+        179,
+        0.13454747200012207
+    ],
+    "miconic_ipcc_test/pfile_p-64_f-19_v1.pddl": [
+        189,
+        0.14866971969604492
+    ],
+    "miconic_ipcc_test/pfile_p-64_f-23_v1.pddl": [
+        197,
+        0.15338397026062012
+    ],
+    "miconic_ipcc_test/pfile_p-64_f-27_v1.pddl": [
+        208,
+        0.1732337474822998
+    ],
+    "miconic_ipcc_test/pfile_p-66_f-11_v1.pddl": [
+        172,
+        0.13638925552368164
+    ],
+    "miconic_ipcc_test/pfile_p-66_f-15_v1.pddl": [
+        181,
+        0.1382911205291748
+    ],
+    "miconic_ipcc_test/pfile_p-66_f-19_v1.pddl": [
+        187,
+        0.1607356071472168
+    ],
+    "miconic_ipcc_test/pfile_p-66_f-23_v1.pddl": [
+        208,
+        0.161240816116333
+    ],
+    "miconic_ipcc_test/pfile_p-66_f-27_v1.pddl": [
+        214,
+        0.16317462921142578
+    ],
+    "miconic_ipcc_test/pfile_p-68_f-11_v1.pddl": [
+        173,
+        0.1367504596710205
+    ],
+    "miconic_ipcc_test/pfile_p-68_f-15_v1.pddl": [
+        185,
+        0.15540766716003418
+    ],
+    "miconic_ipcc_test/pfile_p-68_f-19_v1.pddl": [
+        194,
+        0.1645650863647461
+    ],
+    "miconic_ipcc_test/pfile_p-68_f-23_v1.pddl": [
+        211,
+        0.15635251998901367
+    ],
+    "miconic_ipcc_test/pfile_p-68_f-27_v1.pddl": [
+        209,
+        0.15813040733337402
+    ],
+    "miconic_ipcc_test/pfile_p-70_f-11_v1.pddl": [
+        180,
+        0.14010024070739746
+    ],
+    "miconic_ipcc_test/pfile_p-70_f-15_v1.pddl": [
+        190,
+        0.1413099765777588
+    ],
+    "miconic_ipcc_test/pfile_p-70_f-19_v1.pddl": [
+        202,
+        0.1422269344329834
+    ],
+    "miconic_ipcc_test/pfile_p-70_f-23_v1.pddl": [
+        207,
+        0.15456390380859375
+    ],
+    "miconic_ipcc_test/pfile_p-70_f-27_v1.pddl": [
+        221,
+        0.17190098762512207
+    ],
+    "miconic_ipcc_test/pfile_p-72_f-15_v1.pddl": [
+        191,
+        0.14040660858154297
+    ],
+    "miconic_ipcc_test/pfile_p-72_f-19_v1.pddl": [
+        204,
+        0.16850948333740234
+    ],
+    "miconic_ipcc_test/pfile_p-72_f-27_v1.pddl": [
+        227,
+        0.18149161338806152
+    ],
+    "miconic_ipcc_test/pfile_p-74_f-11_v1.pddl": [
+        187,
+        0.12654542922973633
+    ],
+    "miconic_ipcc_test/pfile_p-74_f-15_v1.pddl": [
+        194,
+        0.14748644828796387
+    ],
+    "miconic_ipcc_test/pfile_p-74_f-19_v1.pddl": [
+        207,
+        0.15908312797546387
+    ],
+    "miconic_ipcc_test/pfile_p-74_f-23_v1.pddl": [
+        216,
+        0.15642189979553223
+    ],
+    "miconic_ipcc_test/pfile_p-74_f-27_v1.pddl": [
+        241,
+        0.17992711067199707
+    ],
+    "miconic_ipcc_test/pfile_p-76_f-11_v1.pddl": [
+        194,
+        0.14050889015197754
+    ],
+    "miconic_ipcc_test/pfile_p-76_f-15_v1.pddl": [
+        201,
+        0.1539316177368164
+    ],
+    "miconic_ipcc_test/pfile_p-76_f-19_v1.pddl": [
+        211,
+        0.15232443809509277
+    ],
+    "miconic_ipcc_test/pfile_p-76_f-23_v1.pddl": [
+        225,
+        0.16051459312438965
+    ],
+    "miconic_ipcc_test/pfile_p-76_f-27_v1.pddl": [
+        236,
+        0.1704699993133545
+    ],
+    "miconic_ipcc_test/pfile_p-78_f-11_v1.pddl": [
+        195,
+        0.1597585678100586
+    ],
+    "miconic_ipcc_test/pfile_p-78_f-15_v1.pddl": [
+        211,
+        0.13794755935668945
+    ],
+    "miconic_ipcc_test/pfile_p-78_f-19_v1.pddl": [
+        222,
+        0.14629364013671875
+    ],
+    "miconic_ipcc_test/pfile_p-78_f-23_v1.pddl": [
+        229,
+        0.17568731307983398
+    ],
+    "miconic_ipcc_test/pfile_p-78_f-27_v1.pddl": [
+        230,
+        0.16956448554992676
+    ],
+    "miconic_ipcc_test/pfile_p-80_f-11_v1.pddl": [
+        206,
+        0.14425325393676758
+    ],
+    "miconic_ipcc_test/pfile_p-80_f-15_v1.pddl": [
+        214,
+        0.15204405784606934
+    ],
+    "miconic_ipcc_test/pfile_p-80_f-19_v1.pddl": [
+        223,
+        0.16013193130493164
+    ],
+    "miconic_ipcc_test/pfile_p-80_f-23_v1.pddl": [
+        236,
+        0.16767668724060059
+    ],
+    "miconic_ipcc_test/pfile_p-80_f-27_v1.pddl": [
+        246,
+        0.1844468116760254
+    ],
+    "miconic_ipcc_test/pfile_p-82_f-15_v1.pddl": [
+        221,
+        0.15146517753601074
+    ],
+    "miconic_ipcc_test/pfile_p-82_f-19_v1.pddl": [
+        224,
+        0.1552751064300537
+    ],
+    "miconic_ipcc_test/pfile_p-82_f-27_v1.pddl": [
+        246,
+        0.1786484718322754
+    ],
+    "miconic_ipcc_test/pfile_p-84_f-11_v1.pddl": [
+        213,
+        0.13242316246032715
+    ],
+    "miconic_ipcc_test/pfile_p-84_f-15_v1.pddl": [
+        221,
+        0.14624238014221191
+    ],
+    "miconic_ipcc_test/pfile_p-84_f-19_v1.pddl": [
+        234,
+        0.15625333786010742
+    ],
+    "miconic_ipcc_test/pfile_p-84_f-23_v1.pddl": [
+        235,
+        0.16274619102478027
+    ],
+    "miconic_ipcc_test/pfile_p-84_f-27_v1.pddl": [
+        253,
+        0.1814570426940918
+    ],
+    "miconic_ipcc_test/pfile_p-86_f-11_v1.pddl": [
+        218,
+        0.16211771965026855
+    ],
+    "miconic_ipcc_test/pfile_p-86_f-15_v1.pddl": [
+        228,
+        0.1534578800201416
+    ],
+    "miconic_ipcc_test/pfile_p-86_f-19_v1.pddl": [
+        236,
+        0.15196561813354492
+    ],
+    "miconic_ipcc_test/pfile_p-86_f-23_v1.pddl": [
+        254,
+        0.17754077911376953
+    ],
+    "miconic_ipcc_test/pfile_p-86_f-27_v1.pddl": [
+        253,
+        0.2050797939300537
+    ],
+    "miconic_ipcc_test/pfile_p-88_f-11_v1.pddl": [
+        222,
+        0.1373908519744873
+    ],
+    "miconic_ipcc_test/pfile_p-88_f-15_v1.pddl": [
+        232,
+        0.1698920726776123
+    ],
+    "miconic_ipcc_test/pfile_p-88_f-19_v1.pddl": [
+        241,
+        0.16862225532531738
+    ],
+    "miconic_ipcc_test/pfile_p-88_f-23_v1.pddl": [
+        252,
+        0.17694568634033203
+    ],
+    "miconic_ipcc_test/pfile_p-88_f-27_v1.pddl": [
+        258,
+        0.20049190521240234
+    ],
+    "miconic_ipcc_test/pfile_p-90_f-11_v1.pddl": [
+        224,
+        0.13608717918395996
+    ],
+    "miconic_ipcc_test/pfile_p-90_f-15_v1.pddl": [
+        239,
+        0.15243935585021973
+    ],
+    "miconic_ipcc_test/pfile_p-90_f-19_v1.pddl": [
+        252,
+        0.16483068466186523
+    ],
+    "miconic_ipcc_test/pfile_p-90_f-23_v1.pddl": [
+        250,
+        0.17148756980895996
+    ],
+    "miconic_ipcc_test/pfile_p-90_f-27_v1.pddl": [
+        261,
+        0.20415687561035156
+    ],
+    "miconic_ipcc_test/pfile_p-92_f-15_v1.pddl": [
+        244,
+        0.1706230640411377
+    ],
+    "miconic_ipcc_test/pfile_p-92_f-19_v1.pddl": [
+        243,
+        0.16942334175109863
+    ],
+    "miconic_ipcc_test/pfile_p-92_f-27_v1.pddl": [
+        280,
+        0.1988215446472168
+    ],
+    "miconic_ipcc_test/pfile_p-94_f-11_v1.pddl": [
+        229,
+        0.1625826358795166
+    ],
+    "miconic_ipcc_test/pfile_p-94_f-15_v1.pddl": [
+        245,
+        0.17674541473388672
+    ],
+    "miconic_ipcc_test/pfile_p-94_f-19_v1.pddl": [
+        254,
+        0.15985870361328125
+    ],
+    "miconic_ipcc_test/pfile_p-94_f-23_v1.pddl": [
+        262,
+        0.18645977973937988
+    ],
+    "miconic_ipcc_test/pfile_p-94_f-27_v1.pddl": [
+        285,
+        0.1938645839691162
+    ],
+    "miconic_ipcc_test/pfile_p-96_f-11_v1.pddl": [
+        236,
+        0.14186906814575195
+    ],
+    "miconic_ipcc_test/pfile_p-96_f-15_v1.pddl": [
+        252,
+        0.15564489364624023
+    ],
+    "miconic_ipcc_test/pfile_p-96_f-19_v1.pddl": [
+        261,
+        0.16605591773986816
+    ],
+    "miconic_ipcc_test/pfile_p-96_f-23_v1.pddl": [
+        265,
+        0.18160367012023926
+    ],
+    "miconic_ipcc_test/pfile_p-96_f-27_v1.pddl": [
+        286,
+        0.1982288360595703
+    ],
+    "miconic_ipcc_test/pfile_p-98_f-11_v1.pddl": [
+        234,
+        0.1535334587097168
+    ],
+    "miconic_ipcc_test/pfile_p-98_f-15_v1.pddl": [
+        259,
+        0.16117119789123535
+    ],
+    "miconic_ipcc_test/pfile_p-98_f-19_v1.pddl": [
+        268,
+        0.18342971801757812
+    ],
+    "miconic_ipcc_test/pfile_p-98_f-23_v1.pddl": [
+        280,
+        0.19276142120361328
+    ],
+    "miconic_ipcc_test/pfile_p-98_f-27_v1.pddl": [
+        280,
+        0.19588732719421387
     ]
 }

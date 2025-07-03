@@ -18,9 +18,10 @@ def MLP(layers, input_dim, dropout=0.):
         mlp_layers.append(nn.ReLU())
         mlp_layers.append(nn.Linear(layers[layer_num], layers[layer_num+1]))
     if len(layers) > 1:
-        mlp_layers.append(nn.LayerNorm(mlp_layers[-1].weight.size()[:-1]))
-        if dropout > 0:
-            mlp_layers.append(nn.Dropout(p=dropout))
+        #mlp_layers.append(nn.LayerNorm(mlp_layers[-1].weight.size()[:-1]))
+        mlp_layers.append(nn.LayerNorm(layers[-1]))
+        #if dropout > 0:
+        #    mlp_layers.append(nn.Dropout(p=dropout))
     return nn.Sequential(*mlp_layers)
 
 class GraphAttentionV2Layer(nn.Module):
@@ -81,11 +82,6 @@ class GraphAttentionV2Layer(nn.Module):
         g_l = self.linear_l(h).view(n_nodes, self.n_heads, self.n_hidden_1)
         g_r = self.linear_r(e).view(n_edges, self.n_heads, self.n_hidden_2)
         receiver_counts = torch.bincount(receivers, minlength=n_nodes)
-        '''
-        unique_info = torch.unique(receivers, return_counts=True, sorted=True,return_inverse=True)
-        receiver_counts = torch.zeros(n_nodes,dtype=torch.long,device=g_l.device)
-        receiver_counts[unique_info[0]] = unique_info[2]
-        '''
         g_concat = torch.cat((torch.repeat_interleave(g_l,receiver_counts,dim=0), g_r), dim=2)
 
         attn_softmax = scatter_softmax(self.dropout(self.attn(self.activation(g_concat))), receivers, dim=0)

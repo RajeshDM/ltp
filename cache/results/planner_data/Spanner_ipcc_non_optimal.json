@@ -382,5 +382,1461 @@
     "spanner_ipcc_test/pfile_l-19_n-8_s_5.pddl": [
         22,
         2.6302685737609863
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_11.pddl": [
+        26,
+        0.3993194103240967
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_12.pddl": [
+        27,
+        0.5195860862731934
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_13.pddl": [
+        28,
+        0.5347163677215576
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_14.pddl": [
+        29,
+        0.5197677612304688
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_15.pddl": [
+        30,
+        0.8805737495422363
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_16.pddl": [
+        31,
+        0.41999030113220215
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_17.pddl": [
+        32,
+        0.6050331592559814
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_18.pddl": [
+        33,
+        0.5334568023681641
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_19.pddl": [
+        34,
+        0.5967600345611572
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_20.pddl": [
+        35,
+        0.5497756004333496
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_11.pddl": [
+        30,
+        21.50491452217102
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_12.pddl": [
+        31,
+        13.543625593185425
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_13.pddl": [
+        32,
+        23.54473376274109
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_14.pddl": [
+        33,
+        16.834489583969116
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_15.pddl": [
+        34,
+        13.58455204963684
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_16.pddl": [
+        35,
+        16.067018747329712
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_17.pddl": [
+        36,
+        16.140485048294067
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_18.pddl": [
+        37,
+        16.162587642669678
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_19.pddl": [
+        38,
+        16.31115460395813
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_20.pddl": [
+        39,
+        15.935072660446167
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_11.pddl": [
+        26,
+        0.6448423862457275
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_12.pddl": [
+        27,
+        0.533555269241333
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_13.pddl": [
+        28,
+        0.5993320941925049
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_14.pddl": [
+        29,
+        0.7694091796875
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_15.pddl": [
+        30,
+        0.5480713844299316
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_16.pddl": [
+        31,
+        0.6556951999664307
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_17.pddl": [
+        32,
+        0.6213650703430176
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_18.pddl": [
+        33,
+        0.6909942626953125
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_19.pddl": [
+        34,
+        0.6183717250823975
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_20.pddl": [
+        35,
+        0.6934628486633301
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_11.pddl": [
+        30,
+        18.570964813232422
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_12.pddl": [
+        31,
+        16.312716245651245
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_13.pddl": [
+        32,
+        23.9837749004364
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_14.pddl": [
+        33,
+        16.765042304992676
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_15.pddl": [
+        34,
+        21.464487075805664
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_16.pddl": [
+        35,
+        14.320082902908325
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_17.pddl": [
+        36,
+        19.081907749176025
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_18.pddl": [
+        37,
+        18.994436264038086
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_19.pddl": [
+        38,
+        14.316007375717163
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_20.pddl": [
+        39,
+        19.241365909576416
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_11.pddl": [
+        26,
+        1.4034113883972168
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_12.pddl": [
+        27,
+        0.5508332252502441
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_13.pddl": [
+        28,
+        0.6777899265289307
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_14.pddl": [
+        29,
+        0.6766200065612793
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_15.pddl": [
+        30,
+        0.6794002056121826
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_16.pddl": [
+        31,
+        1.1622262001037598
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_17.pddl": [
+        32,
+        0.684058427810669
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_18.pddl": [
+        33,
+        1.1290485858917236
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_19.pddl": [
+        34,
+        0.6882555484771729
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_20.pddl": [
+        35,
+        0.6976673603057861
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_11.pddl": [
+        30,
+        18.784404039382935
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_12.pddl": [
+        31,
+        18.782827377319336
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_13.pddl": [
+        32,
+        21.218664407730103
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_14.pddl": [
+        33,
+        21.615461111068726
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_15.pddl": [
+        34,
+        21.719180822372437
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_16.pddl": [
+        35,
+        21.701980113983154
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_17.pddl": [
+        36,
+        16.83126425743103
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_18.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_19.pddl": [
+        38,
+        22.32746386528015
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_20.pddl": [
+        39,
+        29.850691556930542
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-7_s_11.pddl": [
+        26,
+        0.7317342758178711
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-7_s_12.pddl": [
+        27,
+        0.6090166568756104
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-7_s_13.pddl": [
+        28,
+        0.6081950664520264
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-7_s_14.pddl": [
+        29,
+        0.7388887405395508
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-7_s_15.pddl": [
+        30,
+        1.3340911865234375
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-7_s_16.pddl": [
+        31,
+        1.0033531188964844
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-7_s_17.pddl": [
+        32,
+        0.8798568248748779
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-7_s_18.pddl": [
+        33,
+        0.760986328125
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-7_s_19.pddl": [
+        34,
+        1.7125380039215088
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-7_s_20.pddl": [
+        35,
+        0.8373928070068359
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_11.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_12.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_13.pddl": [
+        32,
+        24.833784818649292
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_14.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_15.pddl": [
+        34,
+        22.45195960998535
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_16.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_17.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_18.pddl": [
+        37,
+        25.447762489318848
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_19.pddl": [
+        38,
+        28.23503875732422
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_20.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-7_s_11.pddl": [
+        26,
+        1.2728586196899414
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-7_s_12.pddl": [
+        27,
+        0.8177459239959717
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-7_s_13.pddl": [
+        28,
+        2.4119458198547363
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-7_s_14.pddl": [
+        29,
+        0.7155849933624268
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-7_s_15.pddl": [
+        30,
+        1.3153865337371826
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-7_s_16.pddl": [
+        31,
+        0.8937249183654785
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-7_s_17.pddl": [
+        32,
+        0.9156296253204346
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-7_s_18.pddl": [
+        33,
+        2.1432137489318848
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-7_s_19.pddl": [
+        34,
+        0.9057977199554443
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-7_s_20.pddl": [
+        35,
+        1.6109509468078613
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_11.pddl": [
+        30,
+        24.65256428718567
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_12.pddl": [
+        31,
+        27.178386211395264
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_13.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_14.pddl": [
+        33,
+        24.859978675842285
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_15.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_16.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_17.pddl": [
+        36,
+        25.4397554397583
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_18.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_19.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_20.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-11_s_21.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-11_s_22.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-11_s_23.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-11_s_24.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-11_s_25.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-11_s_26.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-11_s_27.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-11_s_28.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-11_s_29.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-11_s_30.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_21.pddl": [
+        40,
+        14.593377113342285
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_22.pddl": [
+        41,
+        21.022627353668213
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_23.pddl": [
+        42,
+        21.07145595550537
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_24.pddl": [
+        43,
+        17.410053491592407
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_25.pddl": [
+        44,
+        17.616050720214844
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_26.pddl": [
+        45,
+        25.201871871948242
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_27.pddl": [
+        46,
+        17.71321964263916
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_28.pddl": [
+        47,
+        18.032440185546875
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_29.pddl": [
+        48,
+        15.489193439483643
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-9_s_30.pddl": [
+        49,
+        18.19988441467285
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-11_s_21.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-11_s_22.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-11_s_23.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-11_s_24.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-11_s_26.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-11_s_27.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-11_s_28.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-11_s_29.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_21.pddl": [
+        40,
+        21.205618858337402
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_22.pddl": [
+        41,
+        14.894787549972534
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_23.pddl": [
+        42,
+        22.803107976913452
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_24.pddl": [
+        43,
+        20.373109102249146
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_25.pddl": [
+        44,
+        20.617313623428345
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_26.pddl": [
+        45,
+        20.68277931213379
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_27.pddl": [
+        46,
+        20.758953332901
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_28.pddl": [
+        47,
+        18.339463472366333
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_29.pddl": [
+        48,
+        15.658222198486328
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-9_s_30.pddl": [
+        49,
+        21.38024592399597
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-11_s_21.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-11_s_22.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-11_s_23.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-11_s_24.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-11_s_25.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-11_s_26.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-11_s_27.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-11_s_28.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-11_s_29.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-11_s_30.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_21.pddl": [
+        40,
+        23.23599886894226
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_22.pddl": [
+        41,
+        26.605849027633667
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_23.pddl": [
+        42,
+        26.275237560272217
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_24.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_25.pddl": [
+        44,
+        26.72773575782776
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_26.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_27.pddl": [
+        46,
+        26.844730138778687
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_28.pddl": [
+        47,
+        21.369115591049194
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_29.pddl": [
+        48,
+        27.272245407104492
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-9_s_30.pddl": [
+        49,
+        27.940199851989746
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-11_s_21.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-11_s_22.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-11_s_23.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-11_s_24.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-11_s_25.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-11_s_26.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-11_s_27.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-11_s_28.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-11_s_29.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-11_s_30.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_21.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_22.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_23.pddl": [
+        42,
+        29.96042776107788
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_24.pddl": [
+        43,
+        29.517879247665405
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_25.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_26.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_27.pddl": [
+        46,
+        27.322972536087036
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_28.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_29.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-17_n-9_s_30.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-11_s_21.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-11_s_22.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-11_s_23.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-11_s_24.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-11_s_26.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-11_s_27.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-11_s_28.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-11_s_29.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_21.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_22.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_23.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_24.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_25.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_26.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_27.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_28.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_29.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-19_n-9_s_30.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_21.pddl": [
+        36,
+        0.6235201358795166
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_22.pddl": [
+        37,
+        0.6909093856811523
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_23.pddl": [
+        38,
+        0.7263922691345215
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_24.pddl": [
+        39,
+        0.5907583236694336
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_25.pddl": [
+        40,
+        0.6470990180969238
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_26.pddl": [
+        41,
+        0.594759464263916
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_27.pddl": [
+        42,
+        0.5882108211517334
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_28.pddl": [
+        43,
+        0.523090124130249
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_29.pddl": [
+        44,
+        0.6064682006835938
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_30.pddl": [
+        45,
+        0.6066210269927979
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_21.pddl": [
+        36,
+        0.6982567310333252
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_22.pddl": [
+        37,
+        0.6258177757263184
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_23.pddl": [
+        38,
+        0.5811526775360107
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_24.pddl": [
+        39,
+        0.8350989818572998
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_25.pddl": [
+        40,
+        0.6606760025024414
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_26.pddl": [
+        41,
+        0.5970458984375
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_27.pddl": [
+        42,
+        0.5912325382232666
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_28.pddl": [
+        43,
+        0.7456996440887451
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_29.pddl": [
+        44,
+        0.6922907829284668
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_30.pddl": [
+        45,
+        0.6831552982330322
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-9_s_21.pddl": [
+        40,
+        19.859537839889526
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-9_s_22.pddl": [
+        41,
+        17.414567470550537
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-9_s_23.pddl": [
+        42,
+        19.977150440216064
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-9_s_24.pddl": [
+        43,
+        17.573312044143677
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-9_s_25.pddl": [
+        44,
+        20.378913164138794
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-9_s_26.pddl": [
+        45,
+        17.815661668777466
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-9_s_27.pddl": [
+        46,
+        26.427828311920166
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-9_s_28.pddl": [
+        47,
+        18.002561569213867
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-9_s_29.pddl": [
+        48,
+        15.63997745513916
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-9_s_30.pddl": [
+        49,
+        18.380059242248535
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_21.pddl": [
+        36,
+        0.7652187347412109
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_22.pddl": [
+        37,
+        0.6979622840881348
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_23.pddl": [
+        38,
+        1.0587656497955322
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_24.pddl": [
+        39,
+        0.6432051658630371
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_25.pddl": [
+        40,
+        0.7877907752990723
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_26.pddl": [
+        41,
+        0.8650598526000977
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_27.pddl": [
+        42,
+        0.7369763851165771
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_28.pddl": [
+        43,
+        0.6750407218933105
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_29.pddl": [
+        44,
+        0.6883459091186523
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_30.pddl": [
+        45,
+        0.8370890617370605
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_21.pddl": [
+        36,
+        0.8409574031829834
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_22.pddl": [
+        37,
+        0.9533994197845459
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_23.pddl": [
+        38,
+        0.6158096790313721
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_24.pddl": [
+        39,
+        1.0875248908996582
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_25.pddl": [
+        40,
+        0.8599991798400879
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_26.pddl": [
+        41,
+        0.8661291599273682
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_27.pddl": [
+        42,
+        0.6748125553131104
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_28.pddl": [
+        43,
+        2.3383750915527344
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_29.pddl": [
+        44,
+        0.9010419845581055
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_30.pddl": [
+        45,
+        0.8369410037994385
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-9_s_21.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-9_s_22.pddl": [
+        41,
+        23.096813440322876
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-9_s_23.pddl": [
+        42,
+        23.185184240341187
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-9_s_24.pddl": [
+        43,
+        23.28730845451355
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-9_s_25.pddl": [
+        44,
+        20.830976486206055
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-9_s_26.pddl": [
+        45,
+        21.04772639274597
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-9_s_27.pddl": [
+        46,
+        21.18475079536438
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-9_s_28.pddl": [
+        -1,
+        null
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-9_s_29.pddl": [
+        48,
+        21.75825524330139
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-9_s_30.pddl": [
+        49,
+        24.490248203277588
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_21.pddl": [
+        36,
+        0.8517098426818848
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_22.pddl": [
+        37,
+        1.1837506294250488
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_23.pddl": [
+        38,
+        1.110520601272583
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_24.pddl": [
+        39,
+        0.7938048839569092
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_25.pddl": [
+        40,
+        0.8108463287353516
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_26.pddl": [
+        41,
+        0.8766860961914062
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_27.pddl": [
+        42,
+        0.8861243724822998
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_28.pddl": [
+        43,
+        0.8934206962585449
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_29.pddl": [
+        44,
+        0.9785771369934082
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_30.pddl": [
+        45,
+        0.84757399559021
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_31.pddl": [
+        46,
+        0.681403636932373
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_32.pddl": [
+        47,
+        0.6161091327667236
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_33.pddl": [
+        48,
+        0.6226029396057129
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_34.pddl": [
+        49,
+        0.7092349529266357
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_35.pddl": [
+        50,
+        0.6386644840240479
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_36.pddl": [
+        51,
+        0.7355639934539795
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_37.pddl": [
+        52,
+        0.7223069667816162
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_38.pddl": [
+        53,
+        0.7353675365447998
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_39.pddl": [
+        54,
+        0.8582959175109863
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-7_s_40.pddl": [
+        55,
+        0.7462513446807861
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-8_s_31.pddl": [
+        48,
+        3.3639795780181885
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-8_s_32.pddl": [
+        49,
+        3.3962950706481934
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-8_s_33.pddl": [
+        50,
+        4.440628290176392
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-8_s_34.pddl": [
+        51,
+        3.476357936859131
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-8_s_35.pddl": [
+        52,
+        3.5178275108337402
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-8_s_36.pddl": [
+        53,
+        3.553179979324341
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-8_s_37.pddl": [
+        54,
+        3.5888569355010986
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-8_s_38.pddl": [
+        55,
+        3.635047674179077
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-8_s_39.pddl": [
+        56,
+        3.6340038776397705
+    ],
+    "spanner_ipcc_test/pfile_l-11_n-8_s_40.pddl": [
+        57,
+        3.6922342777252197
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_31.pddl": [
+        46,
+        0.6251838207244873
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_32.pddl": [
+        47,
+        0.7719149589538574
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_33.pddl": [
+        48,
+        0.9166717529296875
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_34.pddl": [
+        49,
+        0.6469428539276123
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_35.pddl": [
+        50,
+        0.7150259017944336
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_36.pddl": [
+        51,
+        0.6480906009674072
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_37.pddl": [
+        52,
+        0.7296226024627686
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_38.pddl": [
+        53,
+        0.7446541786193848
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_39.pddl": [
+        54,
+        0.7627778053283691
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-7_s_40.pddl": [
+        55,
+        0.836829662322998
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-8_s_31.pddl": [
+        48,
+        2.9709315299987793
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-8_s_32.pddl": [
+        49,
+        3.939034938812256
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-8_s_33.pddl": [
+        50,
+        3.4324662685394287
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-8_s_34.pddl": [
+        51,
+        3.953944683074951
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-8_s_35.pddl": [
+        52,
+        4.218747615814209
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-8_s_36.pddl": [
+        53,
+        5.336496591567993
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-8_s_37.pddl": [
+        54,
+        3.5944321155548096
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-8_s_38.pddl": [
+        55,
+        3.6660125255584717
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-8_s_39.pddl": [
+        56,
+        4.160511016845703
+    ],
+    "spanner_ipcc_test/pfile_l-12_n-8_s_40.pddl": [
+        57,
+        7.062151670455933
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_31.pddl": [
+        46,
+        0.831768274307251
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_32.pddl": [
+        47,
+        0.7821426391601562
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_33.pddl": [
+        48,
+        0.8484609127044678
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_34.pddl": [
+        49,
+        0.8028106689453125
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_35.pddl": [
+        50,
+        0.8627657890319824
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_36.pddl": [
+        51,
+        0.8231267929077148
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_37.pddl": [
+        52,
+        0.8452250957489014
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_38.pddl": [
+        53,
+        0.8334958553314209
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_39.pddl": [
+        54,
+        0.8364379405975342
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-7_s_40.pddl": [
+        55,
+        1.1419754028320312
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-8_s_31.pddl": [
+        48,
+        3.407179832458496
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-8_s_32.pddl": [
+        49,
+        3.489745855331421
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-8_s_33.pddl": [
+        50,
+        4.4360222816467285
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-8_s_34.pddl": [
+        51,
+        4.447801113128662
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-8_s_36.pddl": [
+        53,
+        4.0722551345825195
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-8_s_37.pddl": [
+        54,
+        3.624528646469116
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-8_s_38.pddl": [
+        55,
+        6.313370227813721
+    ],
+    "spanner_ipcc_test/pfile_l-13_n-8_s_39.pddl": [
+        56,
+        4.678203344345093
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_31.pddl": [
+        46,
+        0.8477716445922852
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_32.pddl": [
+        47,
+        0.7857141494750977
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_33.pddl": [
+        48,
+        0.7861390113830566
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_34.pddl": [
+        49,
+        1.0587995052337646
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_35.pddl": [
+        50,
+        0.8784806728363037
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_36.pddl": [
+        51,
+        0.9622087478637695
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_37.pddl": [
+        52,
+        0.7490847110748291
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_38.pddl": [
+        53,
+        0.8970930576324463
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_39.pddl": [
+        54,
+        0.9089572429656982
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-7_s_40.pddl": [
+        55,
+        0.931096076965332
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-8_s_31.pddl": [
+        48,
+        4.395937919616699
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-8_s_32.pddl": [
+        49,
+        3.9514501094818115
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-8_s_33.pddl": [
+        50,
+        4.432255744934082
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-8_s_34.pddl": [
+        51,
+        5.359158515930176
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-8_s_35.pddl": [
+        52,
+        4.536181449890137
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-8_s_36.pddl": [
+        53,
+        4.126246452331543
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-8_s_37.pddl": [
+        54,
+        4.1714928150177
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-8_s_38.pddl": [
+        55,
+        3.70573091506958
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-8_s_39.pddl": [
+        56,
+        5.236899375915527
+    ],
+    "spanner_ipcc_test/pfile_l-14_n-8_s_40.pddl": [
+        57,
+        6.519114255905151
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_31.pddl": [
+        46,
+        1.2826964855194092
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_32.pddl": [
+        47,
+        1.277726411819458
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_33.pddl": [
+        48,
+        0.8671038150787354
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_34.pddl": [
+        49,
+        1.0183031558990479
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_35.pddl": [
+        50,
+        1.0346369743347168
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_36.pddl": [
+        51,
+        0.8218240737915039
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_37.pddl": [
+        52,
+        0.9023966789245605
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_38.pddl": [
+        53,
+        0.9907751083374023
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_39.pddl": [
+        54,
+        0.9146714210510254
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-7_s_40.pddl": [
+        55,
+        1.0732111930847168
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-8_s_31.pddl": [
+        48,
+        3.5155537128448486
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-8_s_32.pddl": [
+        49,
+        4.438749074935913
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-8_s_33.pddl": [
+        50,
+        4.979591131210327
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-8_s_34.pddl": [
+        51,
+        5.464893102645874
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-8_s_35.pddl": [
+        52,
+        5.479462385177612
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-8_s_36.pddl": [
+        53,
+        5.093843698501587
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-8_s_37.pddl": [
+        54,
+        5.138339996337891
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-8_s_38.pddl": [
+        55,
+        5.206740379333496
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-8_s_39.pddl": [
+        56,
+        5.287042617797852
+    ],
+    "spanner_ipcc_test/pfile_l-15_n-8_s_40.pddl": [
+        57,
+        5.781407594680786
     ]
 }

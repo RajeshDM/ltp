@@ -513,7 +513,6 @@ class PlannerTester:
                     result.repeated_states += 1
                     # Reset to current state to try next action
                     self.env.set_state(state)
-                    
                     continue
                 
                 # Found a non-repeating state

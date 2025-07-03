@@ -157,6 +157,7 @@ def initialize_model(model_class, args, action_space):
         batch_size=args.batch_size,
         n_heads = args.n_heads,
         g_node = args.use_global_node,
+        num_mlp_layers_gnn=args.num_mlp_layers_gnn,
         device=device,
         action_options=args.action_options,
         object_options=args.object_options,
@@ -256,8 +257,8 @@ def run_tests(
             _ = format_metrics(results[-1]['test_results'][planner_type], model_info['epoch'])
             #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
 
-            #if PlannerType.NON_OPTIMAL in planner_types : 
-            #     _ = format_metrics(results[-1]['test_results'][PlannerType.NON_OPTIMAL], model_info['epoch'])
+            if PlannerType.NON_OPTIMAL in planner_types : 
+                 _ = format_metrics(results[-1]['test_results'][PlannerType.NON_OPTIMAL], model_info['epoch'])
             #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
             #combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'], PlannerType.LEARNED_MODEL)
             combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'], planner_type)
@@ -736,7 +737,8 @@ if __name__ == "__main__":
             'heads' : args.n_heads,
             'g_node' : args.use_global_node,
             #'model_class' : model_class.__name__,
-            'abl_' : args.ablation 
+            'abl_' : args.ablation ,
+            'mlp_layers' : args.num_mlp_layers_gnn,
         }
 
         testing_hyperparameters = {
@@ -898,8 +900,8 @@ if __name__ == "__main__":
                                         models=curr_models, 
                                         graph_metadata=graph_metadata)
 
-        all_model_types = ['validation','training','combined']
-        #all_model_types = ['validation','training']
+        #all_model_types = ['validation','training','combined']
+        all_model_types = ['validation','training']
         #all_model_types = ['validation']#,'training']
         #all_model_types = ['training' ]
         #all_model_types = ['combined' ]

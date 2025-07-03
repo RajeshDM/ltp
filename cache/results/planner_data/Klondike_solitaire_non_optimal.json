@@ -1054,5 +1054,405 @@
     "klondike_solitaire_test/aces_to_04_stack_klondike_solitaire_face_up_99.pddl": [
         21,
         0.12148356437683105
+    ],
+    "klondike_solitaire_test/0.pddl": [
+        81,
+        0.21873021125793457
+    ],
+    "klondike_solitaire_test/1.pddl": [
+        77,
+        0.21227741241455078
+    ],
+    "klondike_solitaire_test/10.pddl": [
+        94,
+        0.2176821231842041
+    ],
+    "klondike_solitaire_test/11.pddl": [
+        75,
+        0.20479726791381836
+    ],
+    "klondike_solitaire_test/12.pddl": [
+        86,
+        0.31030726432800293
+    ],
+    "klondike_solitaire_test/13.pddl": [
+        119,
+        0.6834168434143066
+    ],
+    "klondike_solitaire_test/14.pddl": [
+        94,
+        0.22231316566467285
+    ],
+    "klondike_solitaire_test/15.pddl": [
+        106,
+        1.5649127960205078
+    ],
+    "klondike_solitaire_test/16.pddl": [
+        118,
+        0.3191032409667969
+    ],
+    "klondike_solitaire_test/17.pddl": [
+        77,
+        0.2108454704284668
+    ],
+    "klondike_solitaire_test/18.pddl": [
+        83,
+        0.22966456413269043
+    ],
+    "klondike_solitaire_test/19.pddl": [
+        92,
+        0.2454988956451416
+    ],
+    "klondike_solitaire_test/2.pddl": [
+        85,
+        0.22527575492858887
+    ],
+    "klondike_solitaire_test/20.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/21.pddl": [
+        79,
+        0.21157622337341309
+    ],
+    "klondike_solitaire_test/22.pddl": [
+        109,
+        0.35251688957214355
+    ],
+    "klondike_solitaire_test/23.pddl": [
+        104,
+        6.609164714813232
+    ],
+    "klondike_solitaire_test/24.pddl": [
+        110,
+        0.4697847366333008
+    ],
+    "klondike_solitaire_test/25.pddl": [
+        115,
+        0.2357494831085205
+    ],
+    "klondike_solitaire_test/26.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/27.pddl": [
+        72,
+        0.21900606155395508
+    ],
+    "klondike_solitaire_test/28.pddl": [
+        94,
+        0.21959853172302246
+    ],
+    "klondike_solitaire_test/29.pddl": [
+        82,
+        0.2145836353302002
+    ],
+    "klondike_solitaire_test/3.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/30.pddl": [
+        97,
+        0.2869284152984619
+    ],
+    "klondike_solitaire_test/31.pddl": [
+        75,
+        0.19840693473815918
+    ],
+    "klondike_solitaire_test/32.pddl": [
+        81,
+        0.22053265571594238
+    ],
+    "klondike_solitaire_test/33.pddl": [
+        134,
+        0.6228511333465576
+    ],
+    "klondike_solitaire_test/34.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/35.pddl": [
+        96,
+        0.42885613441467285
+    ],
+    "klondike_solitaire_test/36.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/37.pddl": [
+        94,
+        0.5117411613464355
+    ],
+    "klondike_solitaire_test/38.pddl": [
+        91,
+        0.21573615074157715
+    ],
+    "klondike_solitaire_test/39.pddl": [
+        78,
+        0.21686339378356934
+    ],
+    "klondike_solitaire_test/4.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/40.pddl": [
+        77,
+        0.2160782814025879
+    ],
+    "klondike_solitaire_test/41.pddl": [
+        115,
+        0.23657917976379395
+    ],
+    "klondike_solitaire_test/42.pddl": [
+        81,
+        0.2279682159423828
+    ],
+    "klondike_solitaire_test/43.pddl": [
+        79,
+        0.2018260955810547
+    ],
+    "klondike_solitaire_test/44.pddl": [
+        83,
+        0.19530153274536133
+    ],
+    "klondike_solitaire_test/45.pddl": [
+        115,
+        0.7606105804443359
+    ],
+    "klondike_solitaire_test/46.pddl": [
+        87,
+        0.2246401309967041
+    ],
+    "klondike_solitaire_test/47.pddl": [
+        80,
+        0.22154498100280762
+    ],
+    "klondike_solitaire_test/48.pddl": [
+        96,
+        0.23260092735290527
+    ],
+    "klondike_solitaire_test/49.pddl": [
+        81,
+        0.21089649200439453
+    ],
+    "klondike_solitaire_test/5.pddl": [
+        84,
+        0.2082064151763916
+    ],
+    "klondike_solitaire_test/50.pddl": [
+        97,
+        0.5721695423126221
+    ],
+    "klondike_solitaire_test/51.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/52.pddl": [
+        115,
+        0.760636568069458
+    ],
+    "klondike_solitaire_test/53.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/54.pddl": [
+        109,
+        0.34775733947753906
+    ],
+    "klondike_solitaire_test/55.pddl": [
+        81,
+        0.22314119338989258
+    ],
+    "klondike_solitaire_test/56.pddl": [
+        93,
+        0.2351546287536621
+    ],
+    "klondike_solitaire_test/57.pddl": [
+        79,
+        0.1958003044128418
+    ],
+    "klondike_solitaire_test/58.pddl": [
+        119,
+        0.29941821098327637
+    ],
+    "klondike_solitaire_test/59.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/6.pddl": [
+        93,
+        0.5286173820495605
+    ],
+    "klondike_solitaire_test/60.pddl": [
+        101,
+        0.3262758255004883
+    ],
+    "klondike_solitaire_test/61.pddl": [
+        97,
+        0.5809905529022217
+    ],
+    "klondike_solitaire_test/62.pddl": [
+        91,
+        0.7623519897460938
+    ],
+    "klondike_solitaire_test/63.pddl": [
+        75,
+        0.20299148559570312
+    ],
+    "klondike_solitaire_test/64.pddl": [
+        86,
+        0.31739091873168945
+    ],
+    "klondike_solitaire_test/65.pddl": [
+        83,
+        0.20451116561889648
+    ],
+    "klondike_solitaire_test/66.pddl": [
+        81,
+        0.21906495094299316
+    ],
+    "klondike_solitaire_test/67.pddl": [
+        81,
+        0.23091340065002441
+    ],
+    "klondike_solitaire_test/68.pddl": [
+        80,
+        0.20641708374023438
+    ],
+    "klondike_solitaire_test/69.pddl": [
+        92,
+        0.23705673217773438
+    ],
+    "klondike_solitaire_test/7.pddl": [
+        104,
+        0.389310359954834
+    ],
+    "klondike_solitaire_test/70.pddl": [
+        85,
+        0.26680755615234375
+    ],
+    "klondike_solitaire_test/71.pddl": [
+        104,
+        0.3929331302642822
+    ],
+    "klondike_solitaire_test/72.pddl": [
+        81,
+        0.22174596786499023
+    ],
+    "klondike_solitaire_test/73.pddl": [
+        115,
+        0.769446849822998
+    ],
+    "klondike_solitaire_test/74.pddl": [
+        73,
+        0.20055913925170898
+    ],
+    "klondike_solitaire_test/75.pddl": [
+        75,
+        0.20646405220031738
+    ],
+    "klondike_solitaire_test/76.pddl": [
+        118,
+        0.3183250427246094
+    ],
+    "klondike_solitaire_test/77.pddl": [
+        105,
+        3.179347515106201
+    ],
+    "klondike_solitaire_test/78.pddl": [
+        99,
+        0.23130011558532715
+    ],
+    "klondike_solitaire_test/79.pddl": [
+        75,
+        0.20896625518798828
+    ],
+    "klondike_solitaire_test/8.pddl": [
+        -1,
+        null
+    ],
+    "klondike_solitaire_test/80.pddl": [
+        115,
+        0.7646455764770508
+    ],
+    "klondike_solitaire_test/81.pddl": [
+        101,
+        10.766976356506348
+    ],
+    "klondike_solitaire_test/82.pddl": [
+        75,
+        0.2023317813873291
+    ],
+    "klondike_solitaire_test/83.pddl": [
+        97,
+        0.5758922100067139
+    ],
+    "klondike_solitaire_test/84.pddl": [
+        95,
+        1.07700777053833
+    ],
+    "klondike_solitaire_test/85.pddl": [
+        79,
+        0.20898795127868652
+    ],
+    "klondike_solitaire_test/86.pddl": [
+        79,
+        0.20312857627868652
+    ],
+    "klondike_solitaire_test/87.pddl": [
+        75,
+        0.2135605812072754
+    ],
+    "klondike_solitaire_test/88.pddl": [
+        109,
+        0.23281574249267578
+    ],
+    "klondike_solitaire_test/89.pddl": [
+        81,
+        0.21219110488891602
+    ],
+    "klondike_solitaire_test/9.pddl": [
+        77,
+        0.22614336013793945
+    ],
+    "klondike_solitaire_test/90.pddl": [
+        78,
+        0.22365903854370117
+    ],
+    "klondike_solitaire_test/91.pddl": [
+        81,
+        0.21887826919555664
+    ],
+    "klondike_solitaire_test/92.pddl": [
+        83,
+        0.19687271118164062
+    ],
+    "klondike_solitaire_test/93.pddl": [
+        67,
+        0.2022085189819336
+    ],
+    "klondike_solitaire_test/94.pddl": [
+        89,
+        0.23132896423339844
+    ],
+    "klondike_solitaire_test/95.pddl": [
+        76,
+        0.21661639213562012
+    ],
+    "klondike_solitaire_test/96.pddl": [
+        118,
+        0.30786657333374023
+    ],
+    "klondike_solitaire_test/97.pddl": [
+        79,
+        0.21650075912475586
+    ],
+    "klondike_solitaire_test/98.pddl": [
+        80,
+        0.20819544792175293
+    ],
+    "klondike_solitaire_test/99.pddl": [
+        109,
+        0.2360391616821289
     ]
 }

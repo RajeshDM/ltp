@@ -398,5 +398,10 @@ def get_ploi_argument_parser():
         default=constants.ACTION_OPTIONS,
         help="Number of actions to consider")
 
+    parser.add_argument(
+        "--num-mlp-layers-gnn",
+        type=int,
+        default=constants.NUM_MLP_LAYERS_GNN,
+        help="Number of layers in MLP of the GNN")
 
     return parser

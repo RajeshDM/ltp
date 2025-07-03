@@ -104,6 +104,7 @@ EXPID = "blocks"
 MODE = "train_test"
 OBJECT_OPTIONS=3
 ACTION_OPTIONS=2
+NUM_MLP_LAYERS_GNN=2
 
 '''
 Debug level information:

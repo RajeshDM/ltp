@@ -1162,5 +1162,485 @@
     "manyblocks_ipcc_big_test/blocks06_task01.pddl": [
         32,
         0.11496543884277344
+    ],
+    "manyblocks_ipcc_big_test/blocks26_task40.pddl": [
+        86,
+        0.23329925537109375
+    ],
+    "manyblocks_ipcc_big_test/blocks26_task41.pddl": [
+        122,
+        0.19939017295837402
+    ],
+    "manyblocks_ipcc_big_test/blocks26_task42.pddl": [
+        280,
+        0.2370283603668213
+    ],
+    "manyblocks_ipcc_big_test/blocks26_task43.pddl": [
+        116,
+        0.18441510200500488
+    ],
+    "manyblocks_ipcc_big_test/blocks26_task44.pddl": [
+        146,
+        0.19384407997131348
+    ],
+    "manyblocks_ipcc_big_test/blocks26_task45.pddl": [
+        104,
+        0.20627188682556152
+    ],
+    "manyblocks_ipcc_big_test/blocks26_task46.pddl": [
+        80,
+        0.18581676483154297
+    ],
+    "manyblocks_ipcc_big_test/blocks26_task47.pddl": [
+        98,
+        0.19408082962036133
+    ],
+    "manyblocks_ipcc_big_test/blocks26_task48.pddl": [
+        192,
+        0.21755123138427734
+    ],
+    "manyblocks_ipcc_big_test/blocks26_task49.pddl": [
+        90,
+        0.18797516822814941
+    ],
+    "manyblocks_ipcc_big_test/blocks27_task40.pddl": [
+        108,
+        0.20615363121032715
+    ],
+    "manyblocks_ipcc_big_test/blocks27_task41.pddl": [
+        100,
+        0.1921694278717041
+    ],
+    "manyblocks_ipcc_big_test/blocks27_task42.pddl": [
+        160,
+        0.2108917236328125
+    ],
+    "manyblocks_ipcc_big_test/blocks27_task43.pddl": [
+        156,
+        0.20748496055603027
+    ],
+    "manyblocks_ipcc_big_test/blocks27_task44.pddl": [
+        84,
+        0.20727205276489258
+    ],
+    "manyblocks_ipcc_big_test/blocks27_task45.pddl": [
+        154,
+        0.23228716850280762
+    ],
+    "manyblocks_ipcc_big_test/blocks27_task46.pddl": [
+        122,
+        0.2136547565460205
+    ],
+    "manyblocks_ipcc_big_test/blocks27_task47.pddl": [
+        252,
+        0.2469348907470703
+    ],
+    "manyblocks_ipcc_big_test/blocks27_task48.pddl": [
+        186,
+        0.21715664863586426
+    ],
+    "manyblocks_ipcc_big_test/blocks27_task49.pddl": [
+        94,
+        0.1958303451538086
+    ],
+    "manyblocks_ipcc_big_test/blocks28_task40.pddl": [
+        184,
+        0.2283935546875
+    ],
+    "manyblocks_ipcc_big_test/blocks28_task41.pddl": [
+        96,
+        0.20012998580932617
+    ],
+    "manyblocks_ipcc_big_test/blocks28_task42.pddl": [
+        158,
+        0.21329140663146973
+    ],
+    "manyblocks_ipcc_big_test/blocks28_task43.pddl": [
+        124,
+        0.20880532264709473
+    ],
+    "manyblocks_ipcc_big_test/blocks28_task44.pddl": [
+        88,
+        0.21601223945617676
+    ],
+    "manyblocks_ipcc_big_test/blocks28_task45.pddl": [
+        104,
+        0.22894501686096191
+    ],
+    "manyblocks_ipcc_big_test/blocks28_task46.pddl": [
+        162,
+        0.2338426113128662
+    ],
+    "manyblocks_ipcc_big_test/blocks28_task47.pddl": [
+        142,
+        0.20506882667541504
+    ],
+    "manyblocks_ipcc_big_test/blocks28_task48.pddl": [
+        80,
+        0.21630477905273438
+    ],
+    "manyblocks_ipcc_big_test/blocks28_task49.pddl": [
+        114,
+        0.19358134269714355
+    ],
+    "manyblocks_ipcc_big_test/blocks29_task40.pddl": [
+        158,
+        0.22388291358947754
+    ],
+    "manyblocks_ipcc_big_test/blocks29_task41.pddl": [
+        114,
+        0.2116086483001709
+    ],
+    "manyblocks_ipcc_big_test/blocks29_task42.pddl": [
+        128,
+        0.23523640632629395
+    ],
+    "manyblocks_ipcc_big_test/blocks29_task43.pddl": [
+        100,
+        0.25607824325561523
+    ],
+    "manyblocks_ipcc_big_test/blocks29_task44.pddl": [
+        112,
+        0.23936748504638672
+    ],
+    "manyblocks_ipcc_big_test/blocks29_task45.pddl": [
+        104,
+        0.2122790813446045
+    ],
+    "manyblocks_ipcc_big_test/blocks29_task46.pddl": [
+        150,
+        0.23620390892028809
+    ],
+    "manyblocks_ipcc_big_test/blocks29_task47.pddl": [
+        166,
+        0.22266626358032227
+    ],
+    "manyblocks_ipcc_big_test/blocks29_task48.pddl": [
+        162,
+        0.21372699737548828
+    ],
+    "manyblocks_ipcc_big_test/blocks29_task49.pddl": [
+        134,
+        0.2202749252319336
+    ],
+    "manyblocks_ipcc_big_test/blocks31_task40.pddl": [
+        164,
+        0.2485027313232422
+    ],
+    "manyblocks_ipcc_big_test/blocks31_task41.pddl": [
+        222,
+        0.2685396671295166
+    ],
+    "manyblocks_ipcc_big_test/blocks31_task42.pddl": [
+        160,
+        0.26389408111572266
+    ],
+    "manyblocks_ipcc_big_test/blocks31_task43.pddl": [
+        160,
+        0.30920958518981934
+    ],
+    "manyblocks_ipcc_big_test/blocks31_task44.pddl": [
+        276,
+        0.4483194351196289
+    ],
+    "manyblocks_ipcc_big_test/blocks31_task45.pddl": [
+        98,
+        0.25979113578796387
+    ],
+    "manyblocks_ipcc_big_test/blocks31_task46.pddl": [
+        118,
+        0.23233485221862793
+    ],
+    "manyblocks_ipcc_big_test/blocks31_task47.pddl": [
+        148,
+        0.23637938499450684
+    ],
+    "manyblocks_ipcc_big_test/blocks31_task48.pddl": [
+        142,
+        0.2518351078033447
+    ],
+    "manyblocks_ipcc_big_test/blocks31_task49.pddl": [
+        144,
+        0.2371203899383545
+    ],
+    "manyblocks_ipcc_big_test/blocks32_task40.pddl": [
+        134,
+        0.26700520515441895
+    ],
+    "manyblocks_ipcc_big_test/blocks32_task41.pddl": [
+        132,
+        0.24427080154418945
+    ],
+    "manyblocks_ipcc_big_test/blocks32_task42.pddl": [
+        138,
+        0.286409854888916
+    ],
+    "manyblocks_ipcc_big_test/blocks32_task43.pddl": [
+        162,
+        0.2444303035736084
+    ],
+    "manyblocks_ipcc_big_test/blocks32_task44.pddl": [
+        118,
+        0.276045560836792
+    ],
+    "manyblocks_ipcc_big_test/blocks32_task45.pddl": [
+        112,
+        0.26093101501464844
+    ],
+    "manyblocks_ipcc_big_test/blocks32_task46.pddl": [
+        144,
+        0.26714468002319336
+    ],
+    "manyblocks_ipcc_big_test/blocks32_task47.pddl": [
+        254,
+        0.3164207935333252
+    ],
+    "manyblocks_ipcc_big_test/blocks32_task48.pddl": [
+        176,
+        0.26952123641967773
+    ],
+    "manyblocks_ipcc_big_test/blocks32_task49.pddl": [
+        192,
+        0.2753887176513672
+    ],
+    "manyblocks_ipcc_big_test/blocks33_task40.pddl": [
+        170,
+        0.26047706604003906
+    ],
+    "manyblocks_ipcc_big_test/blocks33_task41.pddl": [
+        94,
+        0.294755220413208
+    ],
+    "manyblocks_ipcc_big_test/blocks33_task42.pddl": [
+        202,
+        0.28090620040893555
+    ],
+    "manyblocks_ipcc_big_test/blocks33_task43.pddl": [
+        186,
+        0.2901875972747803
+    ],
+    "manyblocks_ipcc_big_test/blocks33_task44.pddl": [
+        140,
+        0.2542243003845215
+    ],
+    "manyblocks_ipcc_big_test/blocks33_task45.pddl": [
+        196,
+        0.34238743782043457
+    ],
+    "manyblocks_ipcc_big_test/blocks33_task46.pddl": [
+        100,
+        0.29209303855895996
+    ],
+    "manyblocks_ipcc_big_test/blocks33_task47.pddl": [
+        142,
+        0.27655625343322754
+    ],
+    "manyblocks_ipcc_big_test/blocks33_task48.pddl": [
+        224,
+        0.3224763870239258
+    ],
+    "manyblocks_ipcc_big_test/blocks33_task49.pddl": [
+        184,
+        0.2636454105377197
+    ],
+    "manyblocks_ipcc_big_test/blocks34_task40.pddl": [
+        178,
+        0.29566526412963867
+    ],
+    "manyblocks_ipcc_big_test/blocks34_task41.pddl": [
+        102,
+        0.2845895290374756
+    ],
+    "manyblocks_ipcc_big_test/blocks34_task42.pddl": [
+        128,
+        0.27978992462158203
+    ],
+    "manyblocks_ipcc_big_test/blocks34_task43.pddl": [
+        166,
+        0.2959170341491699
+    ],
+    "manyblocks_ipcc_big_test/blocks34_task44.pddl": [
+        154,
+        0.28827857971191406
+    ],
+    "manyblocks_ipcc_big_test/blocks34_task45.pddl": [
+        198,
+        0.3087921142578125
+    ],
+    "manyblocks_ipcc_big_test/blocks34_task46.pddl": [
+        200,
+        0.30451107025146484
+    ],
+    "manyblocks_ipcc_big_test/blocks34_task47.pddl": [
+        136,
+        0.2952589988708496
+    ],
+    "manyblocks_ipcc_big_test/blocks34_task48.pddl": [
+        210,
+        0.3014070987701416
+    ],
+    "manyblocks_ipcc_big_test/blocks34_task49.pddl": [
+        180,
+        0.32143402099609375
+    ],
+    "manyblocks_ipcc_big_test/blocks36_task40.pddl": [
+        198,
+        0.31727075576782227
+    ],
+    "manyblocks_ipcc_big_test/blocks36_task41.pddl": [
+        242,
+        0.3525047302246094
+    ],
+    "manyblocks_ipcc_big_test/blocks36_task42.pddl": [
+        152,
+        0.33193325996398926
+    ],
+    "manyblocks_ipcc_big_test/blocks36_task43.pddl": [
+        208,
+        0.39014172554016113
+    ],
+    "manyblocks_ipcc_big_test/blocks36_task44.pddl": [
+        244,
+        0.35704493522644043
+    ],
+    "manyblocks_ipcc_big_test/blocks36_task45.pddl": [
+        158,
+        0.30470776557922363
+    ],
+    "manyblocks_ipcc_big_test/blocks36_task46.pddl": [
+        138,
+        0.35796284675598145
+    ],
+    "manyblocks_ipcc_big_test/blocks36_task47.pddl": [
+        204,
+        0.33847880363464355
+    ],
+    "manyblocks_ipcc_big_test/blocks36_task48.pddl": [
+        196,
+        0.34143853187561035
+    ],
+    "manyblocks_ipcc_big_test/blocks36_task49.pddl": [
+        210,
+        0.32411742210388184
+    ],
+    "manyblocks_ipcc_big_test/blocks37_task40.pddl": [
+        178,
+        0.31463146209716797
+    ],
+    "manyblocks_ipcc_big_test/blocks37_task41.pddl": [
+        182,
+        0.3858833312988281
+    ],
+    "manyblocks_ipcc_big_test/blocks37_task42.pddl": [
+        224,
+        0.378925085067749
+    ],
+    "manyblocks_ipcc_big_test/blocks37_task43.pddl": [
+        234,
+        0.3433504104614258
+    ],
+    "manyblocks_ipcc_big_test/blocks37_task44.pddl": [
+        260,
+        0.36826276779174805
+    ],
+    "manyblocks_ipcc_big_test/blocks37_task45.pddl": [
+        292,
+        0.4829263687133789
+    ],
+    "manyblocks_ipcc_big_test/blocks37_task46.pddl": [
+        274,
+        0.651268720626831
+    ],
+    "manyblocks_ipcc_big_test/blocks37_task47.pddl": [
+        264,
+        0.4086952209472656
+    ],
+    "manyblocks_ipcc_big_test/blocks37_task48.pddl": [
+        188,
+        0.37035083770751953
+    ],
+    "manyblocks_ipcc_big_test/blocks37_task49.pddl": [
+        390,
+        0.6210236549377441
+    ],
+    "manyblocks_ipcc_big_test/blocks38_task40.pddl": [
+        272,
+        0.4026319980621338
+    ],
+    "manyblocks_ipcc_big_test/blocks38_task41.pddl": [
+        148,
+        0.34896397590637207
+    ],
+    "manyblocks_ipcc_big_test/blocks38_task42.pddl": [
+        308,
+        0.5838031768798828
+    ],
+    "manyblocks_ipcc_big_test/blocks38_task43.pddl": [
+        234,
+        0.3809075355529785
+    ],
+    "manyblocks_ipcc_big_test/blocks38_task44.pddl": [
+        248,
+        0.3955204486846924
+    ],
+    "manyblocks_ipcc_big_test/blocks38_task45.pddl": [
+        134,
+        0.443695068359375
+    ],
+    "manyblocks_ipcc_big_test/blocks38_task46.pddl": [
+        184,
+        0.3478691577911377
+    ],
+    "manyblocks_ipcc_big_test/blocks38_task47.pddl": [
+        306,
+        0.5117409229278564
+    ],
+    "manyblocks_ipcc_big_test/blocks38_task48.pddl": [
+        278,
+        0.43619418144226074
+    ],
+    "manyblocks_ipcc_big_test/blocks38_task49.pddl": [
+        238,
+        0.4008653163909912
+    ],
+    "manyblocks_ipcc_big_test/blocks39_task40.pddl": [
+        134,
+        0.4422457218170166
+    ],
+    "manyblocks_ipcc_big_test/blocks39_task41.pddl": [
+        252,
+        0.4106900691986084
+    ],
+    "manyblocks_ipcc_big_test/blocks39_task42.pddl": [
+        354,
+        0.750025749206543
+    ],
+    "manyblocks_ipcc_big_test/blocks39_task43.pddl": [
+        310,
+        0.46617579460144043
+    ],
+    "manyblocks_ipcc_big_test/blocks39_task44.pddl": [
+        236,
+        0.3845524787902832
+    ],
+    "manyblocks_ipcc_big_test/blocks39_task45.pddl": [
+        366,
+        0.550382137298584
+    ],
+    "manyblocks_ipcc_big_test/blocks39_task46.pddl": [
+        146,
+        0.45211362838745117
+    ],
+    "manyblocks_ipcc_big_test/blocks39_task47.pddl": [
+        206,
+        0.3564438819885254
+    ],
+    "manyblocks_ipcc_big_test/blocks39_task48.pddl": [
+        268,
+        0.3955235481262207
+    ],
+    "manyblocks_ipcc_big_test/blocks39_task49.pddl": [
+        150,
+        0.31646013259887695
     ]
 }

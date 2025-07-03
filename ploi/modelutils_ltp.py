@@ -39,6 +39,19 @@ class EdgeModelLtp(nn.Module):
             out = torch.cat([src, dest, edge_attr], dim=1)
         return self.edge_mlp(out)
 
+class EdgeModelLtp_2(nn.Module):
+    def __init__(self, n_features, n_edge_features, n_global, n_hidden,num_mlp_layers , dropout=0.0):
+        super().__init__()
+        self.edge_mlp = MLP([n_hidden]*num_mlp_layers, 2*n_features + n_edge_features + n_global, dropout=dropout) 
+
+    def forward(self, src: torch.Tensor, dest: torch.Tensor, edge_attr: torch.Tensor, 
+                u: Optional[torch.Tensor] = None, batch: Optional[torch.Tensor] = None) -> torch.Tensor:
+        if u is not None:
+            out = torch.cat([src,dest, edge_attr,u], dim=1)
+        else :
+            out = torch.cat([src, dest, edge_attr], dim=1)
+        return self.edge_mlp(out)
+
 class GlobalModel(nn.Module):
     def __init__(self, n_global_features,n_hidden, dropout=0.0):
         #super(GlobalModel, self).__init__()
@@ -63,6 +76,21 @@ class GlobalModel(nn.Module):
         u = torch.cat([u, nodes_agg,edges_agg],dim=1)
         return self.global_mlp_2(u)
 
+class GlobalModel_v2(nn.Module):
+    def __init__(self, n_global_features, n_hidden,num_mlp_layers,dropout=0.0):
+        super().__init__()
+        self.global_mlp_2 = MLP([n_hidden]*num_mlp_layers, n_global_features, dropout=dropout) 
+        self.aggr = aggr.SumAggregation()
+
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, 
+            edge_attr: torch.Tensor, u: torch.Tensor, 
+            node_index: torch.Tensor) -> torch.Tensor:
+        nodes_agg = self.aggr(x,index=node_index)
+        edges_agg =self.aggr(edge_attr,index=edge_index) 
+
+        u = torch.cat([u, nodes_agg,edges_agg],dim=1)
+        return self.global_mlp_2(u)
+
 
 #Hetero graph neural network
 class HeteroGNN_global(nn.Module):
@@ -72,15 +100,19 @@ class HeteroGNN_global(nn.Module):
                         attn_dropout=0.0,
                         num_rounds=3,
                         n_heads=1,
+                        num_mlp_layers=2,
                         device='cuda:0'):
         super(HeteroGNN_global, self).__init__()
         
+        num_mlp_layers_encoder = num_mlp_layers
+        num_mlp_layers_update = num_mlp_layers_encoder 
+        num_mlp_layers_update_global = num_mlp_layers_update
         self.device = device
         self.num_rounds = num_rounds
         self.representation_size = representation_size
 
         # Node related layers
-        self.node_encoder = MLP([self.representation_size]*2,n_features)
+        self.node_encoder = MLP([self.representation_size]*num_mlp_layers_encoder,n_features)
         self.node_attention_layer = GraphAttentionV2Layer(in_features_1=self.representation_size*2,
                                                     out_features_1=self.representation_size*2,
                                                     in_features_2=self.representation_size,
@@ -91,19 +123,23 @@ class HeteroGNN_global(nn.Module):
                                                     leaky_relu_negative_slope=0.2,
                                                     share_weights=False)
         
-        self.node_update = MLP([self.representation_size]*2, self.representation_size*5,dropout=dropout)
+        self.node_update = MLP([self.representation_size]*num_mlp_layers_update, self.representation_size*5,dropout=dropout)
         
         # Edge related layers
-        self.edge_encoder = MLP([self.representation_size]*2, n_edge_features)
-        self.edge_update = EdgeModelLtp(self.representation_size*2, #Node features
+        self.edge_encoder = MLP([self.representation_size]*num_mlp_layers_encoder, n_edge_features)
+        self.edge_update = EdgeModelLtp_2(self.representation_size*2, #Node features
                                         self.representation_size*2, #Edge features
                                         self.representation_size*2, #global features
                                         self.representation_size, #hidden features
+                                        num_mlp_layers=num_mlp_layers_update,
                                         dropout=dropout)
 
         # Global related layers
-        self.global_encoder  = MLP([self.representation_size]*2,n_global_features)
-        self.global_update = GlobalModel(self.representation_size*4,self.representation_size,dropout=dropout)
+        self.global_encoder  = MLP([self.representation_size]*num_mlp_layers_encoder,n_global_features)
+        self.global_update = GlobalModel_v2(self.representation_size*4,
+                                         self.representation_size,
+                                         num_mlp_layers_update_global,
+                                         dropout=dropout)
         
     #def forward(self, batch):
     def forward(self, batch:  Union[HeteroData, Dict[str, Any]])-> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -231,6 +267,7 @@ class EncodeDecode(nn.Module):
                  batch_size,
                  n_heads,
                  g_node,
+                 num_mlp_layers_gnn,
                  device,
                  action_options,
                  object_options):
@@ -638,6 +675,7 @@ class GNN_GRU(EncodeDecode):
                  batch_size,
                  n_heads,
                  g_node,
+                 num_mlp_layers_gnn,
                  device,
                  action_options,
                  object_options,
@@ -653,6 +691,7 @@ class GNN_GRU(EncodeDecode):
                  batch_size,
                  n_heads,
                  g_node,
+                 num_mlp_layers_gnn,
                  device,
                  action_options,
                  object_options,
@@ -663,7 +702,7 @@ class GNN_GRU(EncodeDecode):
 
         if g_node is True :
             self.encoder = HeteroGNN_global(n_features,n_edge_features,n_global_features\
-                                        ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads,device)
+                                        ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads,num_mlp_layers_gnn,device)
             #self.encoder = HeteroGNN_global_Wrapper(n_features,n_edge_features,n_global_features\
             #                            ,n_hidden,dropout,attn_dropout,gnn_rounds,n_heads,device)
         else :
@@ -736,7 +775,12 @@ class GNN_GRU(EncodeDecode):
         x, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs = self.extract_data_and_run_encoder(data)
         return self.non_beam_decode(x,hidden_state,a_scores,ao_scores,n_node,
                                     n_parameters,n_objects,object_idxs,n_actions,action_idxs)
-
+        #return self.beam_search_parallel(x,hidden_state,number_graphs=number_graphs,
+        #                ao_scores=ao_scores,n_node=n_node,n_parameters=n_parameters,
+        #                n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
+        #                action_idxs=action_idxs)
+        #return self.non_beam_decode(x,hidden_state,a_scores,ao_scores,n_node,
+        #                            n_parameters,n_objects,object_idxs,n_actions,action_idxs)
 
     def forward_beam_decode(self,data):
         x, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs = self.extract_data_and_run_encoder(data)
@@ -886,6 +930,103 @@ class GNN_GRU(EncodeDecode):
             
             active_beams = new_active_beams[:]
 
+        # Sort using tensor operations instead of python lists 
+        scores_tensor = torch.tensor(finished_scores, device=self.device)
+        indices = torch.argsort(scores_tensor, descending=True)
+        sorted_beams = [finished_beams[i] for i in indices.tolist()]
+        sorted_scores = scores_tensor[indices].tolist()
+        results = list(zip(sorted_scores, sorted_beams))
+        return results
+
+    @torch.no_grad()  
+    def beam_search_parallel(self, x, hidden_state, number_graphs,ao_scores,n_node,
+                    n_parameters,n_objects,object_idxs,n_actions,
+                    action_idxs):
+
+        a_scores_new = self.compute_action_scores(x,n_actions,hidden_state,action_idxs)
+        self.max_num_actions = self.action_options
+        self.max_num_objects = self.object_options
+        all_actions_batches,all_actions_scores = self.get_best_action_scores_locations(a_scores_new,self.max_num_actions)
+
+        # Active beams now contain (token_ids, embeddings, scores)
+        active_beams = []
+        
+        # Storage for completed sequences
+        finished_beams = []
+        finished_scores = []
+        curr_depth = 0
+
+        for action_idx in range(self.max_num_actions):
+            decoder_input = self.get_best_action_embeddings(x,all_actions_batches[:,action_idx],n_node,domain_number_actions=self.number_actions)
+            #all_curr_action_scores = [elem[action_idx] for elem in all_actions_scores]
+            #active_beams.append(([all_actions_batches[:,action_idx][0]], decoder_input, 
+            #                     all_curr_action_scores[0], hidden_state, curr_depth ))
+            active_beams.append(([all_actions_batches[:,action_idx]], decoder_input, 
+                                 all_actions_scores[:,action_idx], hidden_state, curr_depth ))
+
+        for parameter_number in range(self.max_number_action_parameters):  # replace with the actual maximum sequence length
+            if not active_beams:
+                break
+
+            # Prepare batched inputs for the model
+            current_decoder_input = torch.cat([beam[1] for beam in active_beams], dim=0)
+            current_scores = [beam[2] for beam in active_beams]
+            current_hidden = torch.cat([beam[3] for beam in active_beams], dim=1)
+            curr_depth = active_beams[0][4]
+            _, new_hidden = self.decoder(current_decoder_input, current_hidden)
+
+            #new_hidden_split = torch.split(new_hidden, split_size_or_sections=1, dim=1)
+
+            # Prepare for next step
+            new_active_beams = []
+            ao_scores_new = torch.zeros(ao_scores.shape,device=self.device)
+            #ao_scores_new = torch.zeros_like(ao_scores)
+
+            for beam_idx, beam in enumerate(active_beams):
+                ao_scores_new = self.compute_object_scores(x, n_parameters,n_objects, 
+                                                            ao_scores_new,
+                                                            #new_hidden_split[beam_idx],
+                                                            new_hidden[:, beam_idx*number_graphs :(beam_idx+1)*number_graphs],
+                                                        object_idxs,parameter_number)
+                all_objects_batches_all_params,all_objects_scores_all_params = self.get_best_action_object_scores_locations(
+                                        ao_scores=ao_scores_new, n_node=n_node, k=self.max_num_objects)
+
+                #all_objects_scores = all_objects_scores_all_params[parameter_number]
+                #all_objects_batches = all_objects_batches_all_params[parameter_number]
+                parameter_locations = torch.arange(parameter_number, all_objects_batches_all_params.shape[0], self.max_number_action_parameters)
+                all_objects_batches = all_objects_batches_all_params[parameter_locations]
+                all_objects_scores = all_objects_scores_all_params[parameter_locations]
+                for object_option in range(self.max_num_objects):
+                    all_objects = all_objects_batches[:,object_option] 
+                    all_curr_obj_scores = all_objects_scores[:,object_option]
+                    new_decoder_input = self.get_best_object_embeddings_ltp(x, 
+                                                                            all_objects,
+                                                                             n_node, number_graphs)
+                    
+
+                    curr_sequence = active_beams[beam_idx][0] + [all_objects] 
+                    #action = curr_sequence[0].item()
+                    actions = curr_sequence[0]
+                    new_score = (current_scores[beam_idx]*(curr_depth+1) + all_curr_obj_scores)/ (curr_depth + 2 )
+                    #if curr_depth + 1 == self.action_parameter_number_dict[action]:
+                    if all([curr_depth + 1 >= self.action_parameter_number_dict[actions[idx].item()] for idx in range(actions.shape[0])]):
+                        finished_beams.append(curr_sequence)
+                        finished_scores.append(new_score)
+                        continue
+
+                    new_active_beams.append((curr_sequence, new_decoder_input, 
+                                             new_score, 
+                                             #new_hidden_split[beam_idx],
+                                             new_hidden[:, beam_idx*number_graphs:(beam_idx+1)*number_graphs],
+                                             curr_depth+1))
+            
+            active_beams = new_active_beams[:]
+
+        ###
+        ### PARALLELIZATION ALMOST DONE - JUST NEED to handle this last sorting
+        ### currently, I just have total beams = num action * (num objects ^ num_params)
+        ### Each beam has information about all input states in parallel
+        ###
         # Sort using tensor operations instead of python lists 
         scores_tensor = torch.tensor(finished_scores, device=self.device)
         indices = torch.argsort(scores_tensor, descending=True)
