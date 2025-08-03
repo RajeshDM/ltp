@@ -781,6 +781,12 @@ class GNN_GRU(EncodeDecode):
         #                action_idxs=action_idxs)
         #return self.non_beam_decode(x,hidden_state,a_scores,ao_scores,n_node,
         #                            n_parameters,n_objects,object_idxs,n_actions,action_idxs)
+    def forward_with_parallel_beam_search(self,data, beam_search = False):
+        x, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs = self.extract_data_and_run_encoder(data)
+        return self.beam_search_parallel(x,hidden_state,number_graphs=number_graphs,
+                        ao_scores=ao_scores,n_node=n_node,n_parameters=n_parameters,
+                        n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
+                        action_idxs=action_idxs)
 
     def forward_beam_decode(self,data):
         x, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs = self.extract_data_and_run_encoder(data)
@@ -1028,9 +1034,66 @@ class GNN_GRU(EncodeDecode):
         ### Each beam has information about all input states in parallel
         ###
         # Sort using tensor operations instead of python lists 
+        '''
         scores_tensor = torch.tensor(finished_scores, device=self.device)
         indices = torch.argsort(scores_tensor, descending=True)
         sorted_beams = [finished_beams[i] for i in indices.tolist()]
         sorted_scores = scores_tensor[indices].tolist()
         results = list(zip(sorted_scores, sorted_beams))
         return results
+        '''
+        return self.sort_parallel_beam_results(finished_scores, finished_beams)
+
+    def sort_parallel_beam_results(self, finished_scores_parallel, finished_beams_parallel):
+        """
+        Sort parallel beam search results and return them in the same format as the original code.
+        
+        Args:
+            finished_scores_parallel: List of tensors, each of shape [batch_size]
+            finished_beams_parallel: List of beam sequences, where each sequence is a list of tensors
+        
+        Returns:
+            List of results, where each result contains:
+            - results[batch_idx]: List of (score, beam) tuples sorted by score in descending order
+        """
+        # Get batch size from the first score tensor
+        batch_size = finished_scores_parallel[0].shape[0]
+        
+        # Initialize results for each batch
+        all_results = []
+        
+        # Process each batch separately
+        for batch_idx in range(batch_size):
+            # Extract scores for this batch
+            batch_scores = [score[batch_idx].item() for score in finished_scores_parallel]
+            
+            # Extract beams for this batch
+            batch_beams = []
+            for beam_seq in finished_beams_parallel:
+                # Each beam_seq is a list of tensors where each tensor has shape [batch_size, ...]
+                beam_for_batch = []
+                for token_tensor in beam_seq:
+                    # Extract the token(s) for this batch
+                    if len(token_tensor.shape) == 1:
+                        # Shape is [batch_size]
+                        beam_for_batch.append(token_tensor[batch_idx])
+                    else:
+                        # Shape is [batch_size, 2] or similar
+                        beam_for_batch.append(token_tensor[batch_idx])
+                batch_beams.append(beam_for_batch)
+            
+            # Convert scores to tensor for sorting
+            scores_tensor = torch.tensor(batch_scores, device=finished_scores_parallel[0].device)
+            
+            # Sort indices in descending order
+            indices = torch.argsort(scores_tensor, descending=True)
+            
+            # Create sorted beams and scores
+            sorted_beams = [batch_beams[i] for i in indices.tolist()]
+            sorted_scores = scores_tensor[indices].tolist()
+            
+            # Create results for this batch
+            batch_results = list(zip(sorted_scores, sorted_beams))
+            all_results.append(batch_results)
+        
+        return all_results

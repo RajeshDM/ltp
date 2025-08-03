@@ -479,6 +479,7 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
                 
                 elif ablation == "main" :
                     action_scores, action_object_scores = model(batch_data, beam_search=False)
+                    #action_scores, action_object_scores = model.forward_with_parallel_beam_search(batch_data, beam_search=False)
                 tgt_action_scores = batch_data['target_action_scores'].x
                 tgt_action_object_scores = batch_data['target_action_object_scores'].x
                 tgt_params = batch_data['target_n_parameters'].x
