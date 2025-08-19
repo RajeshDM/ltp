@@ -200,11 +200,10 @@ def run_tests(
         logger.warning("No models found to test")
         planner_types_copy = planner_types[:]
         if PlannerType.LEARNED_MODEL in planner_types_copy:
-            planner_types.remove(PlannerType.LEARNED_MODEL)
+            planner_types_copy.remove(PlannerType.LEARNED_MODEL)
 
         if PlannerType.LEARNED_MODEL_VAL in planner_types_copy:
-            planner_types.remove(PlannerType.LEARNED_MODEL_VAL)
-        
+            planner_types_copy.remove(PlannerType.LEARNED_MODEL_VAL)
 
         if len(planner_types_copy) == 0:  
             return []
@@ -750,6 +749,7 @@ if __name__ == "__main__":
             #'g_node' : True ,
             #'model_class' : GNN_GRU.__name__
             #'abl_' : 'main'
+            'mlp_layers' : 2,
         }
 
         continue_training = args.continue_training
@@ -900,8 +900,8 @@ if __name__ == "__main__":
                                         models=curr_models, 
                                         graph_metadata=graph_metadata)
 
-        #all_model_types = ['validation','training','combined']
-        all_model_types = ['validation','training']
+        all_model_types = ['validation','training','combined']
+        #all_model_types = ['validation','training']
         #all_model_types = ['validation']#,'training']
         #all_model_types = ['training' ]
         #all_model_types = ['combined' ]

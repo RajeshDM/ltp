@@ -127,19 +127,22 @@ class HeteroGNN_global(nn.Module):
         
         # Edge related layers
         self.edge_encoder = MLP([self.representation_size]*num_mlp_layers_encoder, n_edge_features)
-        self.edge_update = EdgeModelLtp_2(self.representation_size*2, #Node features
+        #self.edge_update = EdgeModelLtp_2(self.representation_size*2, #Node features
+        self.edge_update = EdgeModelLtp(self.representation_size*2, #Node features
                                         self.representation_size*2, #Edge features
                                         self.representation_size*2, #global features
                                         self.representation_size, #hidden features
-                                        num_mlp_layers=num_mlp_layers_update,
+                                        #num_mlp_layers=num_mlp_layers_update,
                                         dropout=dropout)
 
         # Global related layers
         self.global_encoder  = MLP([self.representation_size]*num_mlp_layers_encoder,n_global_features)
-        self.global_update = GlobalModel_v2(self.representation_size*4,
+        #self.global_update = GlobalModel_v2(self.representation_size*4,
+        self.global_update = GlobalModel(self.representation_size*4,
                                          self.representation_size,
-                                         num_mlp_layers_update_global,
-                                         dropout=dropout)
+                                         #num_mlp_layers_update_global,
+                                         dropout=dropout
+                                         )
         
     #def forward(self, batch):
     def forward(self, batch:  Union[HeteroData, Dict[str, Any]])-> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
