@@ -792,6 +792,7 @@ class GNN_GRU(EncodeDecode):
                         action_idxs=action_idxs)
 
     def forward_beam_decode(self,data):
+        # CAN ONLY BE USED WITH BATCH SIZE 1
         x, u, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs = self.extract_data_and_run_encoder(data)
         return self.beam_search_v2(x,hidden_state,number_graphs=number_graphs,
                         ao_scores=ao_scores,n_node=n_node,n_parameters=n_parameters,
@@ -808,6 +809,14 @@ class GNN_GRU(EncodeDecode):
         x,u, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects, object_idxs, n_actions, action_idxs,number_graphs, state_val = self.forward_with_value_before_decoding(data)
         return self.non_beam_decode(x,hidden_state,a_scores,ao_scores,n_node,
                                     n_parameters,n_objects,object_idxs,n_actions,action_idxs), state_val
+
+    def forward_with_value_beam_search(self,data):
+        # CAN ONLY BE USED WITH BATCH SIZE 1
+        x,u, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects, object_idxs, n_actions, action_idxs,number_graphs, state_val = self.forward_with_value_before_decoding(data)
+        return self.beam_search_v2(x,hidden_state,number_graphs=number_graphs,
+                        ao_scores=ao_scores,n_node=n_node,n_parameters=n_parameters,
+                        n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
+                        action_idxs=action_idxs), state_val
 
     def forward_with_value_parallel_beam_search(self,data):
         x,u ,hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects, object_idxs, n_actions, action_idxs,number_graphs, state_val = self.forward_with_value_before_decoding(data)
