@@ -5,6 +5,7 @@ from .traineval import (
     predict_graph_with_graphnetwork_hierarchical,
 )
 import torch
+import numpy as np
 
 
 class PLOIGuidance(BaseSearchGuidance):

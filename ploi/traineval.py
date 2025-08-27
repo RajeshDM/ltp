@@ -475,7 +475,7 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
                 batch_data = batch_data.to(device)
 
                 if ablation == "main_val" :
-                    (action_scores, action_object_scores), state_val_1 = model.forward_with_value(batch_data)
+                    (action_scores, action_object_scores), state_val = model.forward_with_value(batch_data)
                 
                 elif ablation == "main" :
                     action_scores, action_object_scores = model(batch_data, beam_search=False)
