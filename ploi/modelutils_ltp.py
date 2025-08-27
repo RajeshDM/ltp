@@ -772,10 +772,10 @@ class GNN_GRU(EncodeDecode):
         u = u.unsqueeze(1)
         _,hidden_state = self.decoder(u,h0)
         x = self.action_score_decoder(x)
-        return x, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs
+        return x, u,  hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs
 
     def forward(self,data, beam_search = False):
-        x, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs = self.extract_data_and_run_encoder(data)
+        x, u, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs = self.extract_data_and_run_encoder(data)
         return self.non_beam_decode(x,hidden_state,a_scores,ao_scores,n_node,
                                     n_parameters,n_objects,object_idxs,n_actions,action_idxs)
         #return self.beam_search_parallel(x,hidden_state,number_graphs=number_graphs,
@@ -785,30 +785,36 @@ class GNN_GRU(EncodeDecode):
         #return self.non_beam_decode(x,hidden_state,a_scores,ao_scores,n_node,
         #                            n_parameters,n_objects,object_idxs,n_actions,action_idxs)
     def forward_with_parallel_beam_search(self,data, beam_search = False):
-        x, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs = self.extract_data_and_run_encoder(data)
+        x, u, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs = self.extract_data_and_run_encoder(data)
         return self.beam_search_parallel(x,hidden_state,number_graphs=number_graphs,
                         ao_scores=ao_scores,n_node=n_node,n_parameters=n_parameters,
                         n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
                         action_idxs=action_idxs)
 
     def forward_beam_decode(self,data):
-        x, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs = self.extract_data_and_run_encoder(data)
+        x, u, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs = self.extract_data_and_run_encoder(data)
         return self.beam_search_v2(x,hidden_state,number_graphs=number_graphs,
                         ao_scores=ao_scores,n_node=n_node,n_parameters=n_parameters,
                         n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
                         action_idxs=action_idxs)
 
+    def forward_with_value_before_decoding(self,data):
+        x, u, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs = self.extract_data_and_run_encoder(data)
+        #state_val = self.global_val(u.squeeze(1))
+        state_val = self.global_val(u.view(u.size(0), -1))
+        return x,u,  hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs, state_val 
+
     def forward_with_value(self,data):
-        graph_info = self.extract_graph_info_ltp(data)
-        action_idxs, object_idxs, a_scores, ao_scores, n_node, n_parameters, n_actions, n_objects,number_graphs = graph_info 
-        h0 = torch.zeros(self.num_decoder_layers,number_graphs,self.representation_size,device=self.device)
-        x,edge_attr, u = self.encoder(data)
-        state_val = self.global_val(u)
-        u = u.unsqueeze(1)
-        _,hidden_state = self.decoder(u,h0)
-        x = self.action_score_decoder(x)
+        x,u, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects, object_idxs, n_actions, action_idxs,number_graphs, state_val = self.forward_with_value_before_decoding(data)
         return self.non_beam_decode(x,hidden_state,a_scores,ao_scores,n_node,
                                     n_parameters,n_objects,object_idxs,n_actions,action_idxs), state_val
+
+    def forward_with_value_parallel_beam_search(self,data):
+        x,u ,hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects, object_idxs, n_actions, action_idxs,number_graphs, state_val = self.forward_with_value_before_decoding(data)
+        return self.beam_search_parallel(x,hidden_state,number_graphs=number_graphs,
+                        ao_scores=ao_scores,n_node=n_node,n_parameters=n_parameters,
+                        n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
+                        action_idxs=action_idxs),state_val
 
 
     def non_beam_decode(self,x,hidden_state,a_scores,ao_scores,n_node,n_parameters,n_objects,object_idxs,n_actions,action_idxs):
