@@ -122,3 +122,86 @@ python main.py --method ltp_no_ag --domain manyblocks_ipcc_big --all-problems --
 ```
 
 This runs the planner without action grounding (no_ag) ablation.
+## Multi-Domain Training (Domain-Agnostic Extension)
+
+Extension of GABAR from per-domain to domain-agnostic policies (see CLAUDE.md
+for the research plan; claims C1-C5 referenced below). Run the steps in order -
+each is a go/no-go gate.
+
+### Step 0 - Unit tests (no GPU / no pddlgym needed)
+
+```sh
+python tests/test_multidomain_metadata.py
+```
+
+Expect: all tests PASS. Covers the union-vocabulary merge, action-space
+collision detection, and domain-arg parsing.
+
+### Step 1 - Parity gate (Phase 0)
+
+The multi-domain harness must reproduce published single-domain GABAR exactly:
+
+```sh
+python main.py --method ltp --domains manyblocks_ipcc_big --featurization per_domain \
+    --all-problems --lr 0.0005 --epochs 300 --gnn-rounds 9 --batch-size 16 \
+    --mode train_test --num-train-problems 50 --num-test-problems 5 \
+    --max-plan-length 500 --run-learned-model True --use-global-node True
+```
+
+Expect: coverage and plan quality identical to the same command with
+`--domain manyblocks_ipcc_big` (the single-domain path is untouched code; the
+harness only loops it). Any difference is a harness bug - stop and fix before
+proceeding. Checkpoints/caches are keyed `MULTI-<domains>`; first run is slow
+(plan collection), later runs hit `cache/results/<domain>_unified_cache_*.pkl`.
+
+### Step 2 - Union-vocab baseline training (Phase 1, C1 control)
+
+```sh
+python main.py --method ltp --domains manyblocks_ipcc_big,gripper_ipcc \
+    --heldout-domains spanner_learning --featurization union --mode train_test [flags as above]
+```
+
+What happens: pass 1 collects each training domain (cached), pass 2
+re-featurizes everything with the merged union vocabulary (cache key suffix
+`_union`), action spaces are merged (loud error on schema-name collisions),
+graphs are shuffled (seeded) before the train/val split.
+
+Expect: healthy training-domain performance (multi-task learning works);
+first run does two featurization passes.
+
+### Step 3 - Zero-shot evaluation on held-out domains (C1)
+
+Runs automatically after testing when `--heldout-domains` is given. Each
+held-out domain is evaluated with the trained model; its unseen symbols get
+no feature slot (`allow_unknown_symbols`), so evaluation runs instead of
+crashing. Results are logged under `heldout_<domain>` keys.
+
+Expect for the union baseline: near-zero coverage on held-out domains. That
+is the point - this number is the control that every domain-agnostic method
+(structural featurization onward) must beat by a clear margin.
+
+### Step 4 - Structural featurization (Phase 2, first real zero-shot signal)
+
+```sh
+python main.py --method ltp --domains manyblocks_ipcc_big,gripper_ipcc \
+    --heldout-domains spanner_learning --featurization structural --mode train_test [flags]
+```
+
+Symbols are classed by structural role (predicate arity + static-ness, schema
+arity) instead of identity, so a held-out domain's symbols map to trained
+feature slots. Expect: training-domain performance may drop somewhat vs union
+(the "expressiveness tax" - record it either way, CLAUDE.md rule 4); zero-shot
+coverage on held-out domains must beat Step 3's control for claim C1 to be
+alive (Phase 2 gate).
+
+### Troubleshooting
+
+- `Action schema collision across domains` - two domains share a schema name;
+  rename in the PDDL or drop one domain.
+- `per_domain featurization cannot mix domains` - use `--featurization union`
+  or `structural` for >1 training domain.
+- Stale/corrupt cache: delete `cache/results/<Domain>_unified_cache_*.pkl`
+  (plan collection re-runs; slow).
+- KeyError on a symbol during training featurization: real bug (training
+  domains must know all their symbols) - do not enable tolerant lookups to
+  paper over it.
