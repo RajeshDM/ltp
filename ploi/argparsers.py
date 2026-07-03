@@ -404,4 +404,31 @@ def get_ploi_argument_parser():
         default=constants.NUM_MLP_LAYERS_GNN,
         help="Number of layers in MLP of the GNN")
 
+    # Multi-domain harness (CLAUDE.md Phase 0/1, claim C1). When --domains is
+    # given it supersedes --domain; --domain alone keeps the published
+    # single-domain GABAR behavior (parity gate).
+    parser.add_argument(
+        "--domains",
+        type=str,
+        default="",
+        help="Comma-separated training domains, each optionally with a "
+             "problem count, e.g. 'blocks:100,gripper'. Empty = single-domain "
+             "mode via --domain.")
+
+    parser.add_argument(
+        "--heldout-domains",
+        type=str,
+        default="",
+        help="Comma-separated domains excluded from training and used only "
+             "for zero-shot evaluation (C1).")
+
+    parser.add_argument(
+        "--featurization",
+        type=str,
+        choices=["per_domain", "union"],
+        default="per_domain",
+        help="Feature dictionary mode: 'per_domain' = published GABAR "
+             "(Phase 0 parity), 'union' = shared union vocabulary across "
+             "training domains (Baseline 0, C1 control).")
+
     return parser
