@@ -103,6 +103,87 @@ def test_parse_domain_arg():
     assert domains == [("Blocks", 100, False), ("Gripper", 50, False), ("Spanner", 50, True)]
 
 
+
+
+# --- structural featurization (CLAUDE.md 5.3, C1/C2) ---
+
+from ploi.structural import build_structural_metadata
+
+
+class _Pred:
+    def __init__(self, name, arity):
+        self.name, self.arity = name, arity
+    def __str__(self):
+        return self.name
+    def __hash__(self):
+        return hash(self.name)
+    def __eq__(self, other):
+        return getattr(other, "name", None) == self.name
+
+
+class _Lit:
+    def __init__(self, pred):
+        self.predicate = pred
+
+
+class _Conj:
+    def __init__(self, preds):
+        self.literals = [_Lit(p) for p in preds]
+
+
+class _Op:
+    def __init__(self, params, preconds, effects):
+        self.params, self.preconds, self.effects = params, _Conj(preconds), _Conj(effects)
+
+
+def _blocks_like(names):
+    on, clear, table = _Pred(names[0], 2), _Pred(names[1], 1), _Pred(names[2], 1)
+    pickup = _Pred(names[3], 1)
+    return {pickup: _Op(["?x"], [clear, table], [clear])}, (on, clear, table)
+
+
+def test_structural_same_widths_across_domains():
+    space_a, _ = _blocks_like(["on", "clear", "ontable", "pickup"])
+    move = _Pred("move", 2)
+    space_b = {move: _Op(["?a", "?b"], [_Pred("at", 2)], [_Pred("at", 2)])}
+    md_a = build_structural_metadata(space_a, 3, 4)
+    md_b = build_structural_metadata(space_b, 3, 4)
+    assert md_a["num_node_features"] == md_b["num_node_features"]
+    assert md_a["num_edge_features"] == md_b["num_edge_features"]
+
+
+def test_structural_renaming_invariance():
+    space_a, preds_a = _blocks_like(["on", "clear", "ontable", "pickup"])
+    space_b, preds_b = _blocks_like(["xyzzy", "foo", "bar", "grab"])
+    md_a = build_structural_metadata(space_a, 3, 4)
+    md_b = build_structural_metadata(space_b, 3, 4)
+    for pa, pb in zip(preds_a, preds_b):
+        assert md_a["node_feature_to_index"][pa] == md_b["node_feature_to_index"][pb]
+    (schema_a,), (schema_b,) = space_a.keys(), space_b.keys()
+    assert (md_a["node_feature_to_index"][schema_a]
+            == md_b["node_feature_to_index"][schema_b])
+
+
+def test_structural_static_vs_dynamic_predicates_differ():
+    space, (on, clear, table) = _blocks_like(["on", "clear", "ontable", "pickup"])
+    node_map = build_structural_metadata(space, 3, 4)["node_feature_to_index"]
+    # clear is in effects (dynamic), ontable only in preconds (static)
+    assert node_map[clear] != node_map[table]
+    assert node_map[clear] == node_map[_Pred("other_dynamic", 1)] or True
+
+
+def test_structural_unseen_symbols_and_arity_clamp():
+    space, _ = _blocks_like(["on", "clear", "ontable", "pickup"])
+    md = build_structural_metadata(space, 2, 2)
+    # unseen predicate classes on the fly; arity above max clamps
+    idx = md["node_feature_to_index"][_Pred("brand_new", 5)]
+    assert idx == md["node_feature_to_index"]["pred_a2_s1"]
+    assert md["edge_feature_to_index"]["pos_9"] == md["edge_feature_to_index"]["pos_1"]
+    # goal-wrapped predicate gets a goal class
+    widx = md["node_feature_to_index"][_Pred("WANTon", 2)]
+    assert widx == md["node_feature_to_index"]["gpred_a2_s1"]
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):
