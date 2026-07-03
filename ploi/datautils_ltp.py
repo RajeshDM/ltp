@@ -546,9 +546,15 @@ def _get_precondition_satisfaction_position(curr_action, all_literals, all_objec
                 all_edge_features[object_index, action_index, precondition_index] = 1
             break
 
-def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent=None,args=None):
+def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent=None,args=None,metadata_override=None):
+    # metadata_override (CLAUDE.md §5.2, C1): featurize this domain's states
+    # with a shared (e.g. union-vocabulary) feature dictionary instead of the
+    # per-domain one, so feature widths agree across domains. Grounding still
+    # uses this domain's own action space.
     graph_metadata, action_space = _create_graph_structure_ltp(training_data,dom_file,domain_name,agent,args)
-    input_graphs, target_graphs = _create_graph_from_state_ltp(training_data,action_space,graph_metadata=graph_metadata,args=args) 
+    if metadata_override is not None:
+        graph_metadata = metadata_override
+    input_graphs, target_graphs = _create_graph_from_state_ltp(training_data,action_space,graph_metadata=graph_metadata,args=args)
     return input_graphs, target_graphs, graph_metadata
 
 def _create_graph_structure_ltp(training_data,dom_file=None,domain_name=None,agent=None,args=None):
@@ -1465,7 +1471,8 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
     return training_data, None, domain_name, cache_modified, processed_problems
 
 
-def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, create_graph_dataset_func):
+def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, create_graph_dataset_func,
+                           metadata_override=None, cache_tag=""):
     """
     Process PDDL files to graphs with per-problem caching using a unified cache file.
     Ensures all graphs are properly accumulated and returned, even when restarting.
@@ -1498,8 +1505,11 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
     env = pddlgym.make(f"PDDLEnv{train_env_name}-v0")
     action_space = env.action_space._action_predicate_to_operators
     
-    # Path to the unified cache file
+    # Path to the unified cache file. The file is shared across featurization
+    # modes (plan collection is mode-independent and expensive); featurized
+    # graph entries inside it are namespaced by cache_tag (C1 union mode).
     unified_cache_file = os.path.join(cache_dir, f"{train_env_name}_unified_cache_{0}_{num_train_problems}.pkl")
+    all_graphs_key = 'all_graphs' + cache_tag
     
     # Initialize or load the unified cache
     unified_cache = {'metadata': {'completed_problems': []}, 'problems': {}, 'all_graphs': None}
@@ -1512,16 +1522,16 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
                 unified_cache['metadata'] = {'completed_problems': []}
             elif 'completed_problems' not in unified_cache['metadata']:
                 unified_cache['metadata']['completed_problems'] = []
-            if 'all_graphs' not in unified_cache:
-                unified_cache['all_graphs'] = None
+            if all_graphs_key not in unified_cache:
+                unified_cache[all_graphs_key] = None
                 
             logger.info(f"Loaded unified cache from {unified_cache_file}")
             logger.info(f"Cache contains data for {len(unified_cache['problems'])} problems")
             logger.info(f"Completed problems: {len(unified_cache['metadata']['completed_problems'])}")
             
             # Check if we already have final results in the cache
-            if unified_cache['all_graphs'] is not None:
-                all_graphs = unified_cache['all_graphs']
+            if unified_cache.get(all_graphs_key) is not None:
+                all_graphs = unified_cache[all_graphs_key]
                 logger.info(f"Found complete graph data in cache with {len(all_graphs[0])} graphs")
                 
                 # Check if the graph count looks correct (significantly more than problem count)
@@ -1549,8 +1559,9 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
     graph_metadata = None
     
     # Load any existing graph metadata
-    if 'graph_metadata' in unified_cache and unified_cache['graph_metadata'] is not None:
-        graph_metadata = unified_cache['graph_metadata']
+    graph_metadata_key = 'graph_metadata' + cache_tag
+    if graph_metadata_key in unified_cache and unified_cache[graph_metadata_key] is not None:
+        graph_metadata = unified_cache[graph_metadata_key]
     
     # Process each batch
     batch_training_data_full = []
@@ -1570,7 +1581,7 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
         
         # First, check if we can load cached graph data for this batch
         batch_graphs_loaded = False
-        batch_key = f"batch_{batch_start}_{batch_end}"
+        batch_key = f"batch_{batch_start}_{batch_end}{cache_tag}"
         
         if 'batch_graphs' in unified_cache and batch_key in unified_cache['batch_graphs']:
             try:
@@ -1650,12 +1661,13 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
                 batch_training_data_full_formatted[i] = elem
 
     batch_input_graphs, batch_target_graphs, batch_metadata = create_graph_dataset_func(
-        batch_training_data_full_formatted, dom_file, domain_name, None, args)
+        batch_training_data_full_formatted, dom_file, domain_name, None, args,
+        metadata_override)
     
     # If this is the first valid batch with metadata, store it
     if graph_metadata is None:
         graph_metadata = batch_metadata
-        unified_cache['graph_metadata'] = batch_metadata
+        unified_cache[graph_metadata_key] = batch_metadata
         cache_modified = True
 
     else :
@@ -1698,7 +1710,7 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
     if cache_modified:
         try:
             # Store current complete graph data in the cache
-            unified_cache['all_graphs'] = (all_input_graphs, graph_metadata)
+            unified_cache[all_graphs_key] = (all_input_graphs, graph_metadata)
             
             with open(unified_cache_file, 'wb') as f:
                 pickle.dump(unified_cache, f)
@@ -1720,7 +1732,7 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
     unified_cache['metadata']['last_updated'] = time.strftime("%Y-%m-%d %H:%M:%S")
     
     # Store final graph data in the cache
-    unified_cache['all_graphs'] = (all_input_graphs, graph_metadata)
+    unified_cache[all_graphs_key] = (all_input_graphs, graph_metadata)
 
     if 'globals' in batch_input_graphs[0] :
         graph_metadata['num_global_features'] =  batch_input_graphs[0]['globals'][0].shape[-1]
