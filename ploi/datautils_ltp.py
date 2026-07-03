@@ -223,6 +223,7 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
 
     #_model_version = graph_metadata['model_version']
     _all_predicates = graph_metadata['all_predicates']
+    _allow_unknown = graph_metadata.get('allow_unknown_symbols', False)
     assert _node_feature_to_index is not None, "Must initialize first"
     G = wrap_goal_literal
     R = reverse_binary_literal
@@ -325,19 +326,21 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
 
     # Add features for types
     for obj_index, obj in enumerate(all_objects):
-        var_type_index = _node_feature_to_index[obj.var_type]
-        input_node_features[obj_index+num_agents, var_type_index] = 1
+        var_type_index = _feature_index(_node_feature_to_index, obj.var_type, _allow_unknown)
+        if var_type_index is not None:
+            input_node_features[obj_index+num_agents, var_type_index] = 1
         if 'object_node' in _node_feature_to_index:
             type_index = _node_feature_to_index['object_node']
             input_node_features[obj_index+num_agents, type_index] = 1
 
     #ic (all_actions)
     for action_index, action in enumerate(all_actions):
-        action_feature_pos = _node_feature_to_index[action]
+        action_feature_pos = _feature_index(_node_feature_to_index, action, _allow_unknown)
         type_index = _node_feature_to_index['action_node']
         #input_node_features[action_index+len(all_objects), type_index] = 1
         input_node_features[action_index+n_non_action_nodes, type_index] = 1
-        input_node_features[action_index+n_non_action_nodes,action_feature_pos] = 1
+        if action_feature_pos is not None:
+            input_node_features[action_index+n_non_action_nodes,action_feature_pos] = 1
 
     #ic (all_literals)
     #ic (_node_feature_to_index)
@@ -353,9 +356,10 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
         type_index = _node_feature_to_index['predicate_node']
         pred_index = objects_to_node[lit]
         pred = lit.predicate
-        predicate_feature_index = _node_feature_to_index[pred]
+        predicate_feature_index = _feature_index(_node_feature_to_index, pred, _allow_unknown)
         input_node_features[pred_index, type_index] = 1
-        input_node_features[pred_index, predicate_feature_index] = 1
+        if predicate_feature_index is not None:
+            input_node_features[pred_index, predicate_feature_index] = 1
 
         if lit in goal_literals and 'goal_pred' in _node_feature_to_index:
             goal_index = _node_feature_to_index['goal_pred']
@@ -368,7 +372,8 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     All edge features of predicate object are being added in this function
     '''
     # self.add_all_predicate_edge_info_in_graph(state,objects_to_node,all_edge_features)
-    _add_all_predicate_edge_info_in_graph(all_literals, objects_to_node, all_edge_features,_edge_feature_to_index)
+    _add_all_predicate_edge_info_in_graph(all_literals, objects_to_node, all_edge_features,_edge_feature_to_index,
+                                          allow_unknown=_allow_unknown)
 
     node_to_only_actions = dict(enumerate(all_actions))
     action_positions = dict(enumerate(list(range(max_action_arity))))
@@ -391,7 +396,9 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
             #TODO - Change this - currently using same features both ways
             #all_edge_features[obj_index, action_index, pred_index] = 1
 
-            position_index = _edge_feature_to_index['pos_' + str(position)]
+            position_index = _feature_index(_edge_feature_to_index, 'pos_' + str(position), _allow_unknown)
+            if position_index is None:
+                continue
             all_edge_features_stack[position,action_index, obj_index, pred_index] = 1
             all_edge_features_stack[position,obj_index, action_index, pred_index] = 1
             all_edge_features_stack[position,action_index, obj_index, position_index] = 1
@@ -404,7 +411,8 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
                 object_loc = all_objects.index(object)
                 _get_precondition_satisfaction_position(action, state.literals, all_objects, all_edge_features_stack[position],
                                                             action_space, action_index, object_loc,
-                                                            position,_edge_feature_to_index)
+                                                            position,_edge_feature_to_index,
+                                                            allow_unknown=_allow_unknown)
 
     for action_edge in action_edges :
         for position in range(max_action_arity):
@@ -481,7 +489,8 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
 
 
 def _add_all_predicate_edge_info_in_graph(all_literals, objects_to_node, 
-                                          all_edge_features,_edge_feature_to_index):
+                                          all_edge_features,_edge_feature_to_index,
+                                          allow_unknown=False):
     # ic ("New unary literals start")
     # Add features for unary state literals
     G = wrap_goal_literal
@@ -497,7 +506,25 @@ def _add_all_predicate_edge_info_in_graph(all_literals, objects_to_node,
         for i in range(len(lit.variables)):
             # self.add_predicate_info_in_edge_in_graph(lit, objects_to_node, all_edge_features, pred_index,lit_index, i)
             _add_predicate_edge_info_in_graph(lit, objects_to_node,
-                                              all_edge_features, pred_index, i,_edge_feature_to_index)
+                                              all_edge_features, pred_index, i,_edge_feature_to_index,
+                                              allow_unknown=allow_unknown)
+
+
+def _feature_index(feature_map, key, allow_unknown=False):
+    """Symbol -> feature index lookup (CLAUDE.md 5.2, C1 zero-shot eval).
+
+    In normal (training/parity) mode a missing symbol is a bug: raise.
+    With allow_unknown=True (set via graph_metadata['allow_unknown_symbols']
+    when featurizing a held-out domain with a union vocabulary), unknown
+    symbols get NO feature slot (return None; caller skips the bit). This is
+    the intended Baseline 0 semantics: unseen symbols land in no trained
+    slot, so the control fails by scoring badly - not by crashing.
+    """
+    if key in feature_map:
+        return feature_map[key]
+    if allow_unknown:
+        return None
+    raise KeyError(key)
 
 def _add_predicate_info_in_edge_in_graph(lit,objects_to_node,all_edge_features,pred_index,lit_index,pos):
     obj_index = objects_to_node[lit.variables[pos]]
@@ -505,15 +532,19 @@ def _add_predicate_info_in_edge_in_graph(lit,objects_to_node,all_edge_features,p
     all_edge_features[obj_index, pred_index, lit_index] = 1
 
 def _add_predicate_edge_info_in_graph(lit,objects_to_node,
-                                      all_edge_features,pred_index,pos,_edge_feature_to_index):
+                                      all_edge_features,pred_index,pos,_edge_feature_to_index,
+                                      allow_unknown=False):
     obj_index = objects_to_node[lit.variables[pos]]
-    obj_pos_index = _edge_feature_to_index['pred_pos_' + str(pos)]
+    obj_pos_index = _feature_index(_edge_feature_to_index, 'pred_pos_' + str(pos), allow_unknown)
+    if obj_pos_index is None:
+        return
     all_edge_features[pred_index, obj_index, obj_pos_index] = 1
     all_edge_features[obj_index, pred_index, obj_pos_index] = 1
 
 def _get_precondition_satisfaction_position(curr_action, all_literals, all_objects,all_edge_features,
                                             action_space, action_index, object_index,
-                                            position,_edge_feature_to_index):
+                                            position,_edge_feature_to_index,
+                                            allow_unknown=False):
     precond_for_current_action_object_pos_var = []
     precond_for_current_action_object = []
     for action in action_space:
@@ -540,7 +571,11 @@ def _get_precondition_satisfaction_position(curr_action, all_literals, all_objec
                     curr_pos = 0
                 else :
                     curr_pos = position + 1
-                precondition_index = _edge_feature_to_index[precond_str+str(curr_pos)]
+                precondition_index = _feature_index(
+                    _edge_feature_to_index, precond_str + str(curr_pos),
+                    allow_unknown)
+                if precondition_index is None:
+                    continue
                 all_edge_features[action_index, object_index, precondition_index] = 1
                 # action_obj_inversion
                 all_edge_features[object_index, action_index, precondition_index] = 1
