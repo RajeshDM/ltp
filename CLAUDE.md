@@ -269,6 +269,10 @@ few-shot track; aliasing is a theorem, not a bug).
    changes concentrate in graph construction (`datautils_ltp.py`) and feature
    metadata. If a change wants to touch the decoder mechanism, re-read §5.7
    and justify against C1–C5 first.
+6. **Match the repo's style; keep it simple.** Plain functions and
+   tuples/dicts over classes — add a class only when state genuinely demands
+   it. Extendable for the plans in this file, no speculative structure
+   beyond them. Comments concise and only where the code can't say it.
 
 ## 9. Glossary
 

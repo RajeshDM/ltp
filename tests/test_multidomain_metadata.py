@@ -11,8 +11,6 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from ploi.multidomain import (
-    DomainSpec,
-    MultiDomainConfig,
     merge_feature_metadata,
     merge_action_spaces,
     parse_domain_arg,
@@ -101,15 +99,8 @@ def test_action_space_merge_and_collision():
 
 
 def test_parse_domain_arg():
-    specs = parse_domain_arg("blocks:100,gripper", "spanner",
-                             num_train_problems=50, num_test_problems=5)
-    assert [s.name for s in specs] == ["Blocks", "Gripper", "Spanner"]
-    assert specs[0].num_train_problems == 100
-    assert specs[1].num_train_problems == 50
-    assert [s.held_out for s in specs] == [False, False, True]
-    cfg = MultiDomainConfig(domains=specs)
-    assert [d.name for d in cfg.train_domains] == ["Blocks", "Gripper"]
-    assert [d.name for d in cfg.held_out_domains] == ["Spanner"]
+    domains = parse_domain_arg("blocks:100,gripper", "spanner", num_train_problems=50)
+    assert domains == [("Blocks", 100, False), ("Gripper", 50, False), ("Spanner", 50, True)]
 
 
 if __name__ == "__main__":

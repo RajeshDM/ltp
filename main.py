@@ -348,14 +348,11 @@ if __name__ == "__main__":
     # Capitalize the first letter of the domain name
     args.domain = args.domain.capitalize()
 
-    if getattr(args, "domains", ""):
-        # Multi-domain runs get a composite name so checkpoints/caches are
-        # keyed by the training-domain set (CLAUDE.md Phase 0/1, C1).
-        from ploi.multidomain import parse_domain_arg as _pda
-        _specs = _pda(args.domains, args.heldout_domains,
-                      args.num_train_problems, args.num_test_problems)
+    if args.domains:
+        # Composite name: checkpoints/caches keyed by training-domain set (C1)
+        from ploi.multidomain import parse_domain_arg
         args.domain = "MULTI-" + "-".join(
-            s.name for s in _specs if not s.held_out)
+            n for n, _, held_out in parse_domain_arg(args.domains) if not held_out)
 
     # This datafile is the same for ploi and hierarchical variants
     args.datafile = os.path.join(args.logdir, f"ploi_{args.domain}.pkl")
@@ -382,61 +379,41 @@ if __name__ == "__main__":
             args.datafile = _dataset_file_prefix + "_{}.pkl".format(args.domain)
 
             if args.domains:
-                # Multi-domain harness (CLAUDE.md Phase 0/1, claim C1).
-                from ploi.multidomain import (
-                    MultiDomainConfig,
-                    merge_action_spaces,
-                    merge_feature_metadata,
-                    parse_domain_arg,
-                )
+                # Multi-domain path (CLAUDE.md Phase 0/1, C1)
+                from ploi.multidomain import (merge_action_spaces,
+                    merge_feature_metadata, parse_domain_arg)
                 import random as _random
 
-                specs = parse_domain_arg(
-                    args.domains, args.heldout_domains,
-                    args.num_train_problems, args.num_test_problems)
-                md_config = MultiDomainConfig(
-                    domains=specs, featurization=args.featurization)
-                if not md_config.train_domains:
+                domains = parse_domain_arg(args.domains, args.heldout_domains,
+                                           args.num_train_problems)
+                train_domains = [(n, c) for n, c, held_out in domains if not held_out]
+                if not train_domains:
                     raise ValueError("--domains produced no training domains")
 
-                # Pass 1: per-domain collection (cached; also yields the
-                # per-domain feature dictionaries the union is built from).
+                # Pass 1: per-domain collection (cached), gives per-domain metadata
                 per_domain = {}
-                for spec in md_config.train_domains:
-                    per_domain[spec.name] = process_pddl_to_graphs(
-                        spec.name, train_planner, spec.num_train_problems,
-                        args, _create_graph_dataset_ltp)
+                for name, num_problems in train_domains:
+                    per_domain[name] = process_pddl_to_graphs(
+                        name, train_planner, num_problems, args, _create_graph_dataset_ltp)
 
                 if args.featurization == 'union':
-                    # Pass 2: re-featurize every training domain with the
-                    # shared union vocabulary (Baseline 0, C1 control). The
-                    # held-out domains contribute nothing to the union -
-                    # that exclusion IS the experiment.
-                    union_md = merge_feature_metadata(
-                        [md for (_, md, _) in per_domain.values()])
+                    # Pass 2: re-featurize with shared union vocab (Baseline 0).
+                    # Held-out domains contribute nothing to the union - that's the experiment.
+                    union_md = merge_feature_metadata([md for (_, md, _) in per_domain.values()])
                     all_input_graphs = []
-                    for spec in md_config.train_domains:
+                    for name, num_problems in train_domains:
                         graphs, _, _ = process_pddl_to_graphs(
-                            spec.name, train_planner,
-                            spec.num_train_problems, args,
-                            _create_graph_dataset_ltp,
+                            name, train_planner, num_problems, args, _create_graph_dataset_ltp,
                             metadata_override=union_md, cache_tag="_union")
                         all_input_graphs.extend(graphs)
                     graph_metadata = union_md
-                    action_space = merge_action_spaces(
-                        [a for (_, _, a) in per_domain.values()])
-                    # Mix domains before the validation split so every domain
-                    # appears in both train and val (deterministic in seed).
+                    action_space = merge_action_spaces([a for (_, _, a) in per_domain.values()])
+                    # mix domains before the val split (deterministic in seed)
                     _random.Random(args.seed).shuffle(all_input_graphs)
                 else:
-                    if len(md_config.train_domains) > 1:
-                        raise ValueError(
-                            "--featurization per_domain cannot mix domains "
-                            "(feature widths differ); use --featurization "
-                            "union or a single training domain.")
-                    only = md_config.train_domains[0].name
-                    all_input_graphs, graph_metadata, action_space = \
-                        per_domain[only]
+                    if len(train_domains) > 1:
+                        raise ValueError("per_domain featurization cannot mix domains; use --featurization union")
+                    all_input_graphs, graph_metadata, action_space = per_domain[train_domains[0][0]]
             else:
                 #graphs_inp , graphs_tgt, graph_metadata,action_space =  process_pddl_to_graphs(
                 all_input_graphs , graph_metadata,action_space =  process_pddl_to_graphs(
@@ -1003,24 +980,19 @@ if __name__ == "__main__":
             results = run_tests_model_type(model_type, tested_epoch_numbers)
             all_results[model_type] = results
 
-        if getattr(args, "heldout_domains", ""):
-            # Zero-shot evaluation on held-out domains (CLAUDE.md C1).
-            # Same trained models, union graph_metadata with tolerant symbol
-            # lookups: unseen symbols get no feature slot, so the union-vocab
-            # control fails by scoring badly rather than crashing.
+        if args.heldout_domains:
+            # Zero-shot eval on held-out domains (C1): same models, union
+            # metadata with tolerant lookups - unseen symbols get no feature slot
             from ploi.multidomain import parse_domain_arg
-            heldout_specs = parse_domain_arg(
-                "", args.heldout_domains,
-                args.num_train_problems, args.num_test_problems)
+            heldout_names = [n for n, _, _ in parse_domain_arg("", args.heldout_domains)]
             heldout_md = dict(graph_metadata)
             heldout_md['allow_unknown_symbols'] = True
-            for h_spec in heldout_specs:
-                print(f"=== Zero-shot evaluation on held-out domain "
-                      f"{h_spec.name} (C1) ===")
+            for heldout_name in heldout_names:
+                print(f"=== Zero-shot evaluation on held-out domain {heldout_name} (C1) ===")
                 heldout_config = PlannerConfig(
                     planner_types=planner_types,
-                    domain_name=h_spec.name,
-                    num_problems=h_spec.num_test_problems,
+                    domain_name=heldout_name,
+                    num_problems=args.num_test_problems,
                     timeout=30.0,
                     enable_state_monitor=args.monitor,
                     max_plan_length=args.max_plan_length,
@@ -1031,11 +1003,11 @@ if __name__ == "__main__":
                     ignore_defaults=ignore_defaults,
                     testing_hyperparameters={
                         **testing_hyperparameters,
-                        'domain_name': h_spec.name},
+                        'domain_name': heldout_name},
                     learned_search_strat=learned_search_strat,
                 )
                 heldout_tester = PlannerTester(heldout_config)
-                heldout_problems = list(range(h_spec.num_test_problems))
+                heldout_problems = list(range(args.num_test_problems))
 
                 def heldout_test_function(curr_models, _tester=heldout_tester,
                                           _problems=heldout_problems):
@@ -1060,6 +1032,6 @@ if __name__ == "__main__":
                     baseline_models={},
                     ignore_defaults=ignore_defaults,
                 )
-                all_results[f'heldout_{h_spec.name}'] = heldout_results
+                all_results[f'heldout_{heldout_name}'] = heldout_results
 
         _ = log_model_metrics(all_results,args)
