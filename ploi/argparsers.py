@@ -425,10 +425,11 @@ def get_ploi_argument_parser():
     parser.add_argument(
         "--featurization",
         type=str,
-        choices=["per_domain", "union"],
+        choices=["per_domain", "union", "structural"],
         default="per_domain",
         help="Feature dictionary mode: 'per_domain' = published GABAR "
              "(Phase 0 parity), 'union' = shared union vocabulary across "
-             "training domains (Baseline 0, C1 control).")
+             "training domains (Baseline 0, C1 control), 'structural' = "
+             "symbol-free structural classes (CLAUDE.md 5.3, zero-shot capable).")
 
     return parser

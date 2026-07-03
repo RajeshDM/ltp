@@ -90,6 +90,7 @@ from ploi.baselines.exp_3.architecture import g_model_classes
 from icecream import ic
 import subprocess
 import numpy as np
+import pddlgym
 
 '''
 baselines = [PlannerType.EXP_BASELINE, 
@@ -410,9 +411,28 @@ if __name__ == "__main__":
                     action_space = merge_action_spaces([a for (_, _, a) in per_domain.values()])
                     # mix domains before the val split (deterministic in seed)
                     _random.Random(args.seed).shuffle(all_input_graphs)
+                elif args.featurization == 'structural':
+                    # Symbol-free structural classes (CLAUDE.md 5.3): each
+                    # domain aliases its own symbols, widths shared by
+                    # canonical max arities taken over the training domains
+                    from ploi.structural import build_structural_metadata
+                    kp = max(p.arity for (_, md, _) in per_domain.values()
+                             for p in md['all_predicates'])
+                    ka = max(len(op.params) for (_, _, a) in per_domain.values()
+                             for op in a.values())
+                    all_input_graphs = []
+                    for name, num_problems in train_domains:
+                        struct_md = build_structural_metadata(per_domain[name][2], kp, ka)
+                        graphs, _, _ = process_pddl_to_graphs(
+                            name, train_planner, num_problems, args, _create_graph_dataset_ltp,
+                            metadata_override=struct_md, cache_tag="_structural")
+                        all_input_graphs.extend(graphs)
+                    graph_metadata = struct_md
+                    action_space = merge_action_spaces([a for (_, _, a) in per_domain.values()])
+                    _random.Random(args.seed).shuffle(all_input_graphs)
                 else:
                     if len(train_domains) > 1:
-                        raise ValueError("per_domain featurization cannot mix domains; use --featurization union")
+                        raise ValueError("per_domain featurization cannot mix domains; use --featurization union or structural")
                     all_input_graphs, graph_metadata, action_space = per_domain[train_domains[0][0]]
             else:
                 #graphs_inp , graphs_tgt, graph_metadata,action_space =  process_pddl_to_graphs(
@@ -985,10 +1005,20 @@ if __name__ == "__main__":
             # metadata with tolerant lookups - unseen symbols get no feature slot
             from ploi.multidomain import parse_domain_arg
             heldout_names = [n for n, _, _ in parse_domain_arg("", args.heldout_domains)]
-            heldout_md = dict(graph_metadata)
-            heldout_md['allow_unknown_symbols'] = True
             for heldout_name in heldout_names:
                 print(f"=== Zero-shot evaluation on held-out domain {heldout_name} (C1) ===")
+                if graph_metadata.get('featurization') == 'structural':
+                    # held-out domain featurizes with its own aliases at the
+                    # same widths - all symbols known, no tolerant lookups
+                    from ploi.structural import build_structural_metadata
+                    h_env = pddlgym.make(f"PDDLEnv{heldout_name}-v0")
+                    heldout_md = build_structural_metadata(
+                        h_env.action_space._action_predicate_to_operators,
+                        graph_metadata['max_pred_arity'],
+                        graph_metadata['max_action_arity'])
+                else:
+                    heldout_md = dict(graph_metadata)
+                    heldout_md['allow_unknown_symbols'] = True
                 heldout_config = PlannerConfig(
                     planner_types=planner_types,
                     domain_name=heldout_name,
