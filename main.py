@@ -372,14 +372,71 @@ if __name__ == "__main__":
         if 'ltp' in args.method :
             args.datafile = _dataset_file_prefix + "_{}.pkl".format(args.domain)
 
-            #graphs_inp , graphs_tgt, graph_metadata,action_space =  process_pddl_to_graphs(
-            all_input_graphs , graph_metadata,action_space =  process_pddl_to_graphs(
-                args.domain,
-                train_planner,
-                args.num_train_problems,
-                args,
-                _create_graph_dataset_ltp, 
-            )
+            if args.domains:
+                # Multi-domain harness (CLAUDE.md Phase 0/1, claim C1).
+                from ploi.multidomain import (
+                    MultiDomainConfig,
+                    merge_action_spaces,
+                    merge_feature_metadata,
+                    parse_domain_arg,
+                )
+                import random as _random
+
+                specs = parse_domain_arg(
+                    args.domains, args.heldout_domains,
+                    args.num_train_problems, args.num_test_problems)
+                md_config = MultiDomainConfig(
+                    domains=specs, featurization=args.featurization)
+                if not md_config.train_domains:
+                    raise ValueError("--domains produced no training domains")
+
+                # Pass 1: per-domain collection (cached; also yields the
+                # per-domain feature dictionaries the union is built from).
+                per_domain = {}
+                for spec in md_config.train_domains:
+                    per_domain[spec.name] = process_pddl_to_graphs(
+                        spec.name, train_planner, spec.num_train_problems,
+                        args, _create_graph_dataset_ltp)
+
+                if args.featurization == 'union':
+                    # Pass 2: re-featurize every training domain with the
+                    # shared union vocabulary (Baseline 0, C1 control). The
+                    # held-out domains contribute nothing to the union -
+                    # that exclusion IS the experiment.
+                    union_md = merge_feature_metadata(
+                        [md for (_, md, _) in per_domain.values()])
+                    all_input_graphs = []
+                    for spec in md_config.train_domains:
+                        graphs, _, _ = process_pddl_to_graphs(
+                            spec.name, train_planner,
+                            spec.num_train_problems, args,
+                            _create_graph_dataset_ltp,
+                            metadata_override=union_md, cache_tag="_union")
+                        all_input_graphs.extend(graphs)
+                    graph_metadata = union_md
+                    action_space = merge_action_spaces(
+                        [a for (_, _, a) in per_domain.values()])
+                    # Mix domains before the validation split so every domain
+                    # appears in both train and val (deterministic in seed).
+                    _random.Random(args.seed).shuffle(all_input_graphs)
+                else:
+                    if len(md_config.train_domains) > 1:
+                        raise ValueError(
+                            "--featurization per_domain cannot mix domains "
+                            "(feature widths differ); use --featurization "
+                            "union or a single training domain.")
+                    only = md_config.train_domains[0].name
+                    all_input_graphs, graph_metadata, action_space = \
+                        per_domain[only]
+            else:
+                #graphs_inp , graphs_tgt, graph_metadata,action_space =  process_pddl_to_graphs(
+                all_input_graphs , graph_metadata,action_space =  process_pddl_to_graphs(
+                    args.domain,
+                    train_planner,
+                    args.num_train_problems,
+                    args,
+                    _create_graph_dataset_ltp,
+                )
             num_validation = max(1, int(len(all_input_graphs) * 0.1))
             input_hetero_graphs = all_input_graphs[num_validation:] 
             val_hetero_graphs = all_input_graphs[:num_validation]
