@@ -348,6 +348,15 @@ if __name__ == "__main__":
     # Capitalize the first letter of the domain name
     args.domain = args.domain.capitalize()
 
+    if getattr(args, "domains", ""):
+        # Multi-domain runs get a composite name so checkpoints/caches are
+        # keyed by the training-domain set (CLAUDE.md Phase 0/1, C1).
+        from ploi.multidomain import parse_domain_arg as _pda
+        _specs = _pda(args.domains, args.heldout_domains,
+                      args.num_train_problems, args.num_test_problems)
+        args.domain = "MULTI-" + "-".join(
+            s.name for s in _specs if not s.held_out)
+
     # This datafile is the same for ploi and hierarchical variants
     args.datafile = os.path.join(args.logdir, f"ploi_{args.domain}.pkl")
     if args.domain.endswith("scrub"):
@@ -993,5 +1002,64 @@ if __name__ == "__main__":
         for model_type in all_model_types:
             results = run_tests_model_type(model_type, tested_epoch_numbers)
             all_results[model_type] = results
+
+        if getattr(args, "heldout_domains", ""):
+            # Zero-shot evaluation on held-out domains (CLAUDE.md C1).
+            # Same trained models, union graph_metadata with tolerant symbol
+            # lookups: unseen symbols get no feature slot, so the union-vocab
+            # control fails by scoring badly rather than crashing.
+            from ploi.multidomain import parse_domain_arg
+            heldout_specs = parse_domain_arg(
+                "", args.heldout_domains,
+                args.num_train_problems, args.num_test_problems)
+            heldout_md = dict(graph_metadata)
+            heldout_md['allow_unknown_symbols'] = True
+            for h_spec in heldout_specs:
+                print(f"=== Zero-shot evaluation on held-out domain "
+                      f"{h_spec.name} (C1) ===")
+                heldout_config = PlannerConfig(
+                    planner_types=planner_types,
+                    domain_name=h_spec.name,
+                    num_problems=h_spec.num_test_problems,
+                    timeout=30.0,
+                    enable_state_monitor=args.monitor,
+                    max_plan_length=args.max_plan_length,
+                    problems_per_division=args.problems_per_division,
+                    eval_planner_name=args.eval_planner_name,
+                    train_planner_name=args.train_planner_name,
+                    model_hyperparameters=training_hyperparameters,
+                    ignore_defaults=ignore_defaults,
+                    testing_hyperparameters={
+                        **testing_hyperparameters,
+                        'domain_name': h_spec.name},
+                    learned_search_strat=learned_search_strat,
+                )
+                heldout_tester = PlannerTester(heldout_config)
+                heldout_problems = list(range(h_spec.num_test_problems))
+
+                def heldout_test_function(curr_models, _tester=heldout_tester,
+                                          _problems=heldout_problems):
+                    return _tester.test_planners(
+                        problems_to_solve=_problems, models=curr_models,
+                        graph_metadata=heldout_md)
+
+                heldout_results = run_tests(
+                    curr_manager=manager,
+                    model_class=model_class,
+                    train_env_name=train_env_name,
+                    seed=42,
+                    hyperparameters=training_hyperparameters,
+                    test_function=heldout_test_function,
+                    metric='validation',
+                    args=args,
+                    action_space=action_space,
+                    tested_epoch_numbers=set(),
+                    num_models_to_test=num_models_to_test,
+                    starting_model_num=starting_model_num,
+                    planner_types=planner_types,
+                    baseline_models={},
+                    ignore_defaults=ignore_defaults,
+                )
+                all_results[f'heldout_{h_spec.name}'] = heldout_results
 
         _ = log_model_metrics(all_results,args)
