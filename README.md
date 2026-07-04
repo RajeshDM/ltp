@@ -205,3 +205,9 @@ alive (Phase 2 gate).
 - KeyError on a symbol during training featurization: real bug (training
   domains must know all their symbols) - do not enable tolerant lookups to
   paper over it.
+- `RuntimeError: Not compiled with CUDA support` in `scatter_softmax`:
+  `torch-scatter` was installed without CUDA. Reinstall matching your torch
+  and CUDA versions:
+  `pip install torch-scatter -f https://data.pyg.org/whl/torch-<VER>+<CUDA>.html`
+  (e.g. `torch-2.6.0+cu126`). Run `python -c "import torch; print(torch.version.cuda)"`
+  to check your CUDA version.
