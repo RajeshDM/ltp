@@ -349,11 +349,16 @@ if __name__ == "__main__":
     # Capitalize the first letter of the domain name
     args.domain = args.domain.capitalize()
 
+    # Multi-domain: parsed once, used for both data and test loops
+    train_domain_names = []
     if args.domains:
-        # Composite name: checkpoints/caches keyed by training-domain set (C1)
         from ploi.multidomain import parse_domain_arg
-        args.domain = "MULTI-" + "-".join(
-            n for n, _, held_out in parse_domain_arg(args.domains) if not held_out)
+        _parsed = parse_domain_arg(args.domains, args.heldout_domains,
+                                    args.num_train_problems)
+        train_domain_names = [n for n, _, held_out in _parsed if not held_out]
+        if not train_domain_names:
+            raise ValueError("--domains produced no training domains")
+        args.domain = "MULTI-" + "-".join(train_domain_names)
 
     # This datafile is the same for ploi and hierarchical variants
     args.datafile = os.path.join(args.logdir, f"ploi_{args.domain}.pkl")
@@ -388,8 +393,6 @@ if __name__ == "__main__":
                 domains = parse_domain_arg(args.domains, args.heldout_domains,
                                            args.num_train_problems)
                 train_domains = [(n, c) for n, c, held_out in domains if not held_out]
-                if not train_domains:
-                    raise ValueError("--domains produced no training domains")
 
                 # Pass 1: per-domain collection (cached), gives per-domain metadata
                 per_domain = {}
@@ -936,69 +939,80 @@ if __name__ == "__main__":
         elif args.search_strat == 'mcts' : 
             learned_search_strat.append(LearnedSearchStrat.MCTS)
 
-        config = PlannerConfig(
-            #planner_types=[PlannerType.NON_OPTIMAL],
-            #planner_types=[PlannerType.LEARNED_MODEL],
-            #planner_types=[PlannerType.LEARNED_MODEL, PlannerType.NON_OPTIMAL],
-            planner_types=planner_types,
-            domain_name=args.domain , 
-            num_problems=args.num_test_problems,
-            timeout=30.0,
-            enable_state_monitor=args.monitor,  # Enable monitoring
-            max_plan_length=args.max_plan_length,
-            problems_per_division=args.problems_per_division,
-            eval_planner_name = args.eval_planner_name,
-            train_planner_name = args.train_planner_name,
-            model_hyperparameters = training_hyperparameters,
-            ignore_defaults = ignore_defaults,
-            testing_hyperparameters = testing_hyperparameters,
-            learned_search_strat= learned_search_strat,
-        )
-
-        tester = PlannerTester(config)
-        problems_to_solve = list(range(args.starting_test_number, args.starting_test_number + args.num_test_problems))
-
-        def test_function_v2(curr_models):
-            return tester.test_planners(problems_to_solve=problems_to_solve,
-                                        models=curr_models, 
-                                        graph_metadata=graph_metadata)
+        # Which domains to evaluate on: for multi-domain, test each training
+        # domain individually; for single-domain, test on args.domain as before.
+        test_domains = train_domain_names if train_domain_names else [args.domain]
 
         all_model_types = ['validation','training','combined']
-        #all_model_types = ['validation','training']
-        #all_model_types = ['validation']#,'training']
-        #all_model_types = ['training' ]
-        #all_model_types = ['combined' ]
-
-        #curr_test_function = test_function
-        curr_test_function = test_function_v2
         num_models_to_test = 2
         starting_model_num = 0
+        all_results = {}
 
-        def run_tests_model_type(model_type, tested_epoch_numbers):
-            return run_tests(
-                curr_manager=manager,
-                model_class=model_class,
-                train_env_name=train_env_name,
-                seed=42,
-                hyperparameters=training_hyperparameters,
-                test_function=curr_test_function,
-                metric=model_type,  # or 'training' or 'combined',
-                args=args,
-                action_space=action_space,
-                tested_epoch_numbers=tested_epoch_numbers,
-                num_models_to_test=num_models_to_test,
-                starting_model_num=starting_model_num,
+        for test_domain in test_domains:
+            if len(test_domains) > 1:
+                print(f"\n=== In-domain evaluation: {test_domain} ===")
+
+            # Per-domain graph metadata for testing
+            if args.domains and args.featurization == 'structural':
+                from ploi.structural import build_structural_metadata
+                t_env = pddlgym.make(f"PDDLEnv{test_domain}-v0")
+                test_md = build_structural_metadata(
+                    t_env.action_space._action_predicate_to_operators,
+                    graph_metadata['max_pred_arity'],
+                    graph_metadata['max_action_arity'])
+            else:
+                test_md = graph_metadata
+
+            test_hypers = {**testing_hyperparameters, 'domain_name': test_domain}
+            config = PlannerConfig(
                 planner_types=planner_types,
-                baseline_models=baseline_models,
+                domain_name=test_domain,
+                num_problems=args.num_test_problems,
+                timeout=30.0,
+                enable_state_monitor=args.monitor,
+                max_plan_length=args.max_plan_length,
+                problems_per_division=args.problems_per_division,
+                eval_planner_name=args.eval_planner_name,
+                train_planner_name=args.train_planner_name,
+                model_hyperparameters=training_hyperparameters,
                 ignore_defaults=ignore_defaults,
+                testing_hyperparameters=test_hypers,
+                learned_search_strat=learned_search_strat,
             )
 
-        tested_epoch_numbers = set()
+            tester = PlannerTester(config)
+            problems_to_solve = list(range(args.starting_test_number,
+                                           args.starting_test_number + args.num_test_problems))
 
-        all_results = {}
-        for model_type in all_model_types:
-            results = run_tests_model_type(model_type, tested_epoch_numbers)
-            all_results[model_type] = results
+            def test_function_v2(curr_models, _tester=tester,
+                                 _problems=problems_to_solve, _md=test_md):
+                return _tester.test_planners(problems_to_solve=_problems,
+                                             models=curr_models,
+                                             graph_metadata=_md)
+
+            curr_test_function = test_function_v2
+            tested_epoch_numbers = set()
+
+            for model_type in all_model_types:
+                results = run_tests(
+                    curr_manager=manager,
+                    model_class=model_class,
+                    train_env_name=train_env_name,
+                    seed=42,
+                    hyperparameters=training_hyperparameters,
+                    test_function=curr_test_function,
+                    metric=model_type,
+                    args=args,
+                    action_space=action_space,
+                    tested_epoch_numbers=tested_epoch_numbers,
+                    num_models_to_test=num_models_to_test,
+                    starting_model_num=starting_model_num,
+                    planner_types=planner_types,
+                    baseline_models=baseline_models,
+                    ignore_defaults=ignore_defaults,
+                )
+                result_key = f"{test_domain}_{model_type}" if len(test_domains) > 1 else model_type
+                all_results[result_key] = results
 
         if args.heldout_domains:
             # Zero-shot eval on held-out domains (C1): same models, union
