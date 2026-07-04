@@ -1358,7 +1358,8 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
     env = pddlgym.make(f"PDDLEnv{train_env_name}-v0")
     action_space = env.action_space
     domain_name = env.domain.domain_name
-    
+    batch_end = min(batch_end, len(env.problems))
+
     # Initialize data containers
     inputs = []         # List of state sequences
     outputs = []        # List of object sets in plans
@@ -1389,7 +1390,7 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
             outputs.append(problem_data[1])
             plans.append(problem_data[2])
             all_groundings.append(problem_data[3])
-            goal_distances.append(problem_data[4])
+            goal_distances.append(problem_data[4] if len(problem_data) > 4 else [])
             
             # Add to processed problems list to track which problems we have data for
             processed_problems.append(problem_idx)
@@ -1490,7 +1491,8 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
                         state_sequence,     # inputs
                         objects_in_plan,    # outputs
                         current_plan,       # plans
-                        state_grounding     # all_groundings
+                        state_grounding,    # all_groundings
+                        goal_dist           # goal_distances
                     ),
                     'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
                 }
