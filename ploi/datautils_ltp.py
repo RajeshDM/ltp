@@ -1377,20 +1377,21 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
         problem_key = f"problem_{problem_idx}"
         
         # Check if this problem is already in the cache
-        if (unified_cache and 
-            'problems' in unified_cache and 
+        if (unified_cache and
+            'problems' in unified_cache and
             problem_key in unified_cache['problems'] and
-            'training_data' in unified_cache['problems'][problem_key]):
-            
+            'training_data' in unified_cache['problems'][problem_key] and
+            len(unified_cache['problems'][problem_key]['training_data']) >= 5):
+
             logger.info(f"Problem {problem_idx} found in cache, loading...")
             problem_data = unified_cache['problems'][problem_key]['training_data']
-            
+
             # Extract data for this problem
             inputs.append(problem_data[0])
             outputs.append(problem_data[1])
             plans.append(problem_data[2])
             all_groundings.append(problem_data[3])
-            goal_distances.append(problem_data[4] if len(problem_data) > 4 else [])
+            goal_distances.append(problem_data[4])
             
             # Add to processed problems list to track which problems we have data for
             processed_problems.append(problem_idx)
