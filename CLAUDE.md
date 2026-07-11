@@ -25,6 +25,149 @@ essential (GABAR-CD), (c) ranking actions beats learning value functions
 
 **The new project extends GABAR from domain-specific to domain-agnostic.**
 
+### 1.1 The live module map (verified 2026-07 by tracing imports and calls)
+
+The repo contains more files than this; everything not reachable from this
+map is legacy (§1.2). Cite files and function names only — line numbers rot
+(§8, rule 9).
+
+```
+main.py                            ← THE entry point (__main__): arg parsing,
+ │                                   multi-domain harness, data section, training,
+ │                                   run_tests loop, held-out zero-shot eval
+ ├─ ploi/argparsers.py             get_ploi_argument_parser (--domains,
+ │                                   --heldout-domains, --featurization;
+ │                                   --all-problems is added inside main.py)
+ ├─ ploi/constants.py              defaults for every flag
+ ├─ ploi/datautils_ltp.py          THE data file: plan collection + per-problem
+ │                                   cache (collect_training_data), unified-cache
+ │                                   orchestration (process_pddl_to_graphs), graph
+ │                                   construction (_create_graph_structure_ltp,
+ │                                   _state_to_graph_ltp), PyG conversion
+ ├─ ploi/multidomain.py            multi-domain helpers: parse_domain_arg,
+ │                                   merge_feature_metadata, merge_action_spaces (C1)
+ ├─ ploi/structural.py             structural featurization: StructuralMap,
+ │                                   build_structural_metadata (C1/C2)
+ ├─ ploi/modelutils_ltp.py         HeteroGNN_global encoder; GNN_GRU decoder
+ │                                   (compute_action_scores / compute_object_scores)
+ │    └─ ploi/attention_layer.py   attention via torch-scatter scatter_softmax
+ ├─ ploi/ablations.py              GNN_non_CD, GNN_non_AG_CD, GNN_Val
+ ├─ ploi/traineval.py              training loops — live:
+ │                                   train_model_graphnetwork_ltp_batch_allows_both
+ │                                   (main ablations) / ..._ltp_batch_val (val)
+ ├─ ploi/model_checkpointing.py    ModelManager — checkpoints keyed by
+ │                                   train_env_name + seed + hyperparameters
+ ├─ ploi/run_planner_with_ltp_v2.py  live test path: PlannerTester.test_planners →
+ │                                   _run_learned_model → _run_greedy_search →
+ │                                   convert_state_and_run_model (self-contained)
+ ├─ ploi/run_planner_with_ltp_v1.py  live ONLY as the source of main.py's
+ │                                   _create_planner import (→ ploi/planning FD)
+ ├─ ploi/test_utils.py             PlannerConfig, PlannerType, metrics,
+ │                                   log_model_metrics (defined 2×; last wins)
+ ├─ ploi/planning/                 FD wrapper (fd.py, pddl_planner.py, validate.py)
+ └─ ploi/baselines/exp_{1,2,3}/    external baselines, only via --exp-baseline* flags
+tests/test_multidomain_metadata.py dependency-free unit tests: union merge,
+                                   structural classes, renaming invariance
+```
+
+### 1.2 What to ignore (legacy — do not read, never edit)
+
+- **Non-LTP method branches** in main.py (`scenegraph`, `hierarchical`,
+  `ploi`) and their modules: `ploi/datautils.py`, `ploi/modelutils.py`,
+  `ploi/guiders.py`, `ploi/guidance/`, `ploi/planning/incremental_*.py`,
+  `scenegraph_planner.py`, `seek_planners.py`. Reachable only with
+  `--method` ≠ ltp; this project never uses them.
+- **Auxiliary scripts:** `main_seek.py`, `visualize_graphs.py`,
+  `analyse_domain_results.py`, `compute_stats.py`,
+  `generate_scrubed_problems.py`, `ploi/scriptable_models.py`,
+  `ploi/profile_manager.py`, `ploi/server_information.py`.
+- **Dead-but-imported:** `_collect_training_data` and
+  `_collect_training_data_ltp` (imported in main.py, never called — live
+  collection is `collect_training_data`); `run_planner_with_gnn_ltp`
+  (imported from v1, never called); `*_old` functions
+  (`graph_dataset_to_pyg_dataset_old`, `compute_action_scores_old`).
+- `VAL-master/` (validator source), `train_test_scripts/`, `cache/`,
+  `models/` (artifacts, not code).
+
+### 1.3 The call paths that matter (file + function granularity)
+
+**A. Data.** main.py data section → `process_pddl_to_graphs`
+(datautils_ltp.py) — per batch: `collect_training_data` (plans + per-problem
+unified cache) → `_create_graph_dataset_ltp` → `_create_graph_structure_ltp`
+(per-domain feature metadata; skipped if `metadata_override` given) +
+`_create_graph_from_state_ltp` → `state_to_graph_wrapper` →
+`_state_to_graph_ltp` → `graph_dataset_to_pyg_dataset`. Multi-domain
+(`--domains`): pass 1 per-domain collection; pass 2 re-featurizes with
+merged/structural metadata via `metadata_override` + `cache_tag`.
+
+**B. Training.** main.py `'ltp'` branch: model_class by `--ablation`
+(main → `GNN_GRU`) → `initialize_model` → `train_func` = 
+`train_model_graphnetwork_ltp_batch_allows_both` (NOT the similarly named
+`..._ltp_batch` — that one is dead on the live path) → checkpoints via
+`ModelManager`.
+
+**C. Testing.** main.py test section: per test domain, `PlannerConfig` +
+`PlannerTester` (run_planner_with_ltp_v2.py) → `run_tests` (main.py) loads
+best models per metric from `ModelManager` → `tester.test_planners` →
+`_run_learned_model` → greedy/DFS search calling
+`convert_state_and_run_model`, which re-featurizes each state with the
+passed `graph_metadata`.
+
+**D. Multi-domain eval (new, C1).** Test loop iterates `train_domain_names`
+individually (composite `MULTI-...` key never reaches `pddlgym.make`);
+held-out loop builds per-domain metadata (structural: own aliases at
+canonical max arities; union: `allow_unknown_symbols=True`) and runs the
+same `run_tests` machinery.
+
+### 1.4 Implicit contracts (preserve them)
+
+1. **Feature widths must agree across domains** for mixed batching:
+   `graph_metadata['num_node_features'/'num_edge_features']` set model input
+   sizes (`args.num_node_features_object` etc. in main.py).
+2. **The decoder is output-lifted:** schema selection =
+   dot(GRU hidden, schema-node embedding) (`compute_action_scores`);
+   parameter selection = dot(hidden, object-node embedding)
+   (`compute_object_scores`). No head is sized by |A| or |O| — keep it that
+   way (§5.7).
+3. **Goal literals are prefixed `WANT`** (`wrap_goal_literal`,
+   datautils_ltp.py); structural.py's goal classes depend on this string.
+4. **graph_metadata is a plain dict** with keys `node_feature_to_index`,
+   `edge_feature_to_index`, `num_node_features`, `num_edge_features`,
+   `all_predicates`, `unary/binary_predicates`, `unary_types` (+ structural
+   mode adds `max_pred_arity`, `max_action_arity`, `featurization`;
+   zero-shot union eval adds `allow_unknown_symbols`). New featurizations
+   must emit the same keys.
+5. **Unified cache layout** (`cache/results/<Domain>_unified_cache_0_<N>.pkl`):
+   raw per-problem 5-tuples `(states, objects, plan, groundings, goal_dists)`
+   are shared across featurization modes; featurized graphs are namespaced
+   by `cache_tag` (`all_graphs<tag>`, `batch_<a>_<b><tag>`,
+   `graph_metadata<tag>`). Loaders reject per-problem tuples shorter than 5.
+
+### 1.5 Repo hazards (conventions that will bite you)
+
+1. **Similar-name traps.** `collect_training_data` (live) vs
+   `_collect_training_data` / `_collect_training_data_ltp` (dead);
+   `train_model_graphnetwork_ltp_batch_allows_both` (live) vs
+   `..._ltp_batch` (dead on the live path); `_create_planner` exists in both
+   v1 (imported by main.py) and v2 (used internally). Before changing "old"
+   code, trace the live path (§8, rule 8).
+2. **Same-name redefinition:** `log_model_metrics` is defined twice in
+   test_utils.py — Python keeps the last. Grep for later definitions before
+   editing any function.
+3. **`args.datafile` is reassigned mid-flow** in main.py (generic
+   `ploi_<domain>.pkl`, then `training_data_<domain>.pkl` inside the ltp
+   branch) — the first existence check gates the whole data section.
+4. **Cache filename keyed by requested problem count**, not actual: asking
+   for 200 problems of a 186-problem domain creates `..._0_200.pkl` whose
+   `all_complete` never becomes true; collection is capped at
+   `len(env.problems)` but the requested count stays in the key.
+5. **`--num-train-problems` applies per domain** in `--domains` mode unless
+   a per-domain `:count` override is given (`parse_domain_arg`).
+6. **Expert-planner failures on hard instances are normal**
+   (`Planning failed for problem N`): satisficing `fd-lama-first` vs optimal
+   `fd-opt-lmcut` differ in reach; failed problems are skipped — watch the
+   per-domain skip count for dataset imbalance.
+
 ## 2. The research goal (the contribution, stated once)
 
 > **Capability claim.** We build the first *cross-domain generalizing policy*
@@ -112,15 +255,15 @@ decoder can rank actions in a domain it has never seen.
 ### 5.1 Current GABAR graph (the starting point; per-domain)
 
 Built in `ploi/datautils_ltp.py`:
-- `_create_graph_structure_ltp` (line ~554): builds per-domain feature
-  dictionaries. **This is where all domain-specificity lives:**
+- `_create_graph_structure_ltp`: builds per-domain feature dictionaries.
+  **This is where all domain-specificity lives:**
   - node features: one-hot over this domain's action schemas
     (`_node_feature_to_index[action]`), predicates (+ goal copies via
     `G(predicate)`), object types → feature width = 3 + |A| + 2|P| + |T|.
   - edge features: `action_object` flag, positional one-hots `pos_i`,
     `pred_pos_i`, and **precondition-satisfaction flags indexed by
-    domain-specific strings** (`precond_str + position`, line ~709).
-- `_state_to_graph_ltp` (line ~212): per-state graph. Nodes = objects ∪
+    domain-specific strings** (`precond_str + position`).
+- `_state_to_graph_ltp`: per-state graph. Nodes = objects ∪
   ground literals (state + goal) ∪ **action-schema nodes** ∪ global. Edges =
   literal–object (with arg positions) and schema–object edges carrying, per
   parameter position, which preconditions that object satisfies in an
@@ -128,9 +271,9 @@ Built in `ploi/datautils_ltp.py`:
 - Model in `ploi/modelutils_ltp.py`: `HeteroGNN_global` encoder (edge → node →
   global updates, attention, global node), `GNN_GRU` decoder. The decoder is
   already output-lifted: schema selection = dot(GRU hidden, schema-node
-  embedding) (`compute_action_scores`, line ~396); parameter selection =
-  dot(hidden, object-node embedding) (`compute_object_scores`, line ~480).
-  No output head is sized by |A|.
+  embedding) (`compute_action_scores`); parameter selection = dot(hidden,
+  object-node embedding) (`compute_object_scores`). No output head is sized
+  by |A|.
 
 Two facts to exploit: GABAR's action nodes are already *schema* nodes (one per
 schema, groundings live on edges), and the decoder needs no mechanistic change.
@@ -273,6 +416,23 @@ few-shot track; aliasing is a theorem, not a bug).
    tuples/dicts over classes — add a class only when state genuinely demands
    it. Extendable for the plans in this file, no speculative structure
    beyond them. Comments concise and only where the code can't say it.
+7. **Caches are versioned, failures are loud.** Raw per-problem data is
+   featurization-independent — collect once, namespace featurized variants
+   by `cache_tag`, key by the training-domain set. When a cached artifact's
+   schema changes (e.g. the per-problem tuple), version the check and reject
+   stale entries loudly — never tolerate them silently (§1.4, contract 5).
+   Cap requested problem counts at what exists, loudly.
+8. **Trace before fixing.** Similar-looking functions coexist (§1.5): before
+   changing "old" code, dry-run the exact target command, confirm the
+   function is on the live path (§1.1/§1.3) and the bug is reachable, and
+   grep the file for a later same-name definition. Treat pre-extension code
+   as an API — extend around it rather than editing behavior in place.
+9. **Keep the map current — file + function granularity, never line
+   numbers.** §1.1–§1.5 are the navigation contract for every future agent.
+   Any commit that adds, deletes, or rewires a live file — or moves a
+   load-bearing function between files — updates the map (and §1.2's ignore
+   list, if a file became legacy) in the same commit. Line numbers rot and
+   must not appear in this document.
 
 ## 9. Glossary
 
