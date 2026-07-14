@@ -36,92 +36,154 @@ Download and build the plan validation tool available at https://github.com/KCL-
 
 ## Running the Code
 
-To run the planner, use `main.py` with the appropriate command-line arguments. The framework supports various learning-based planners and domains.
-
-### Command-line Arguments
-
-```
-usage: main.py [-h] [--seed SEED] [--method {ltp,ltp_no_cd,ltp_no_ag,ltp_no_ag_no_cd,ltp_val,scenegraph,hierarchical,ploi}]
-               [--mode {train,test,train_test,visualize}] [--domain DOMAIN]
-               [--all-problems] [--lr LR] [--n-heads N_HEADS]
-               [--attention-dropout ATTENTION_DROPOUT] [--dropout DROPOUT]
-               [--weight-decay WEIGHT_DECAY] [--wandb {True,False}]
-               [--starting-test-number STARTING_TEST_NUMBER]
-               [--num-train-problems NUM_TRAIN_PROBLEMS]
-               [--num-test-problems NUM_TEST_PROBLEMS]
-               [--epochs EPOCHS] [--gnn-rounds GNN_ROUNDS]
-               [--batch-size BATCH_SIZE] [--max-plan-length MAX_PLAN_LENGTH]
-               [--problems-per-division PROBLEMS_PER_DIVISION]
-               [--run-learned-model {True,False}]
-               [--run-non-optimal {True,False}] [--run-optimal {True,False}]
-               [--monitor {True,False}] [--use-global-node {True,False}]
-               [--ablation {no_ag_no_cd,main_val,main}]
-               [--search-strat {dfs,bfs}] [--test-with-seed {true,false}]
-               [--expid EXPID] [--logdir LOGDIR] [--device {cpu,cuda:0}]
-               [--criterion {bce}] [--pos-weight POS_WEIGHT]
-               [--print-every PRINT_EVERY] [--gamma GAMMA]
-               [--force-collect-data]
-```
-
-### Key Arguments Explained
-
-- `--method`: The planning method to use (options: ltp, ltp_no_cd, ltp_no_ag, ltp_no_ag_no_cd, ltp_val, scenegraph, hierarchical, ploi)
-- `--mode`: Execution mode (options: train, test, train_test, visualize)
-- `--domain`: Name of the pddlgym domain to use
-- `--all-problems`: Use all available problems in the domain
-- `--lr`: Learning rate for training
-- `--n-heads`: Number of attention heads in the model
-- `--dropout` and `--attention-dropout`: Dropout rates for regularization
-- `--weight-decay`: Weight decay parameter for optimizer
-- `--wandb`: Whether to use Weights & Biases for logging (True/False)
-- `--num-train-problems`: Number of training problems to use
-- `--num-test-problems`: Number of test problems to use
-- `--epochs`: Number of training epochs
-- `--gnn-rounds`: Number of message-passing rounds in the GNN
-- `--batch-size`: Batch size for training
-- `--max-plan-length`: Maximum allowed plan length
-- `--run-learned-model`: Whether to run the learned model at test time (True/False)
-- `--run-non-optimal`: Whether to run the non-optimal planner (True/False)
-- `--use-global-node`: Whether to use a global node in the graph (True/False)
-- `--ablation`: Ablation study type (options: no_ag_no_cd, main_val, main)
-- `--search-strat`: Search strategy to use (options: dfs, bfs)
-
-### Example Commands
-
-#### Training and Testing on Blocks Domain
+All training and testing is done through the unified script
+`train_test_scripts/gabar_run.sh`, or directly via `main.py`. The script
+wraps `main.py` with domain presets, run modes, and HP sweep support.
 
 ```sh
-python main.py --method ltp --domain manyblocks_ipcc_big --all-problems --lr 0.0005 --n-heads 1 --attention-dropout 0 --dropout 0 --weight-decay 0.00 --wandb False --num-train-problems 50 --num-test-problems 5 --epochs 300 --gnn-rounds 9 --batch-size 16 --mode train_test --max-plan-length 500 --problems-per-division 10 --run-learned-model True --run-non-optimal True --use-global-node True
+# See all available commands and options
+./train_test_scripts/gabar_run.sh --help
+
+# List predefined domains with their train/test problem counts
+./train_test_scripts/gabar_run.sh list-domains
 ```
 
-This command:
-- Uses the LTP (Learning to Plan) method
-- Trains on the "manyblocks_ipcc_big" domain
-- Uses all available problems with 50 for training and 5 for testing
-- Sets a learning rate of 0.0005
-- Uses a model with 1 attention head and no dropout
-- Disables Weights & Biases logging
-- Trains for 300 epochs with batch size 16
-- Performs 9 message-passing rounds in the GNN
-- Runs in train_test mode (trains then immediately tests)
-- Sets maximum plan length to 500
-- Uses 10 problems per division
-- Runs both the learned model and non-optimal planner
-- Uses a global node in the graph
-
-#### Testing a Pre-trained Model
+### Quick Reference — Single Domain (Published GABAR)
 
 ```sh
-python main.py --method ltp --domain manyblocks_ipcc_big --all-problems --num-test-problems 10 --mode test --max-plan-length 500 --run-learned-model True --use-global-node True
+# 1. Sanity check: verify pipeline runs (CPU, 2 epochs, tiny data, ~30s)
+./train_test_scripts/gabar_run.sh toy --domain blocks
+
+# 2. Full train+test on a single domain
+./train_test_scripts/gabar_run.sh train_test --domain blocks --epochs 300
+
+# 3. Test a pre-trained model only
+./train_test_scripts/gabar_run.sh test --domain blocks --test-problems 10
+
+# 4. Train with ablations
+./train_test_scripts/gabar_run.sh train_test --domain blocks --ablation no_ag_no_cd
 ```
 
-#### Running with Ablations
+### Run Modes (Cost-Saving for Rented GPUs)
+
+Four execution modes control resource usage via `--run-mode`:
+
+| Mode | Epochs | Data | AMP | Device | Checkpointing | Early Stop |
+|------|--------|------|-----|--------|---------------|------------|
+| `toy` | 2 | 50 graphs | off | CPU | existing | off |
+| `sweep` | 5 | 10% | FP16 | GPU | existing | patience=2 |
+| `spot` | as-is | full | FP16 | GPU | every epoch + auto-resume | patience=20 |
+| `default` | as-is | full | off | as-is | existing | off |
 
 ```sh
-python main.py --method ltp_no_ag --domain manyblocks_ipcc_big --all-problems --lr 0.0005 --epochs 300 --mode train --max-plan-length 500 --ablation no_ag_no_cd
+# TOY: local dry-run to catch bugs before renting a GPU ($0)
+./train_test_scripts/gabar_run.sh toy --domain blocks
+
+# SWEEP: HP tuning on free-tier Colab/Kaggle (10% data, 5 epochs per config)
+./train_test_scripts/gabar_run.sh sweep --domain blocks \
+    --sweep-lr "0.0005 0.001" --sweep-heads "1 4"
+
+# SPOT: full production on a $0.20/hr spot instance
+# Auto-resumes if interrupted, shuts down when done (success or crash)
+./train_test_scripts/gabar_run.sh spot --domain blocks --epochs 300 --auto-shutdown
+
+# Override early stopping patience for any mode
+./train_test_scripts/gabar_run.sh train_test --domain blocks --run-mode spot --patience 30
 ```
 
-This runs the planner without action grounding (no_ag) ablation.
+**SPOT workflow:** Spot instances save a `latest_checkpoint.pt` after every
+epoch. If the instance is evicted, restart with the same command — training
+resumes automatically from where it stopped. All stdout/stderr is logged to
+`cache/results/<domain>/<domain>_<timestamp>_<hyperparams>_spot.txt`.
+
+**Auto-shutdown:** `--auto-shutdown` runs `sudo shutdown -h now` on exit
+(success or crash). All output is already in the log file, and your disk
+persists after shutdown on most cloud providers.
+
+### HP Sweep
+
+The `sweep` command loops over hyperparameter combinations. Each run uses
+sweep mode (10% data, 5 epochs, AMP, early stopping).
+
+```sh
+# Sweep over learning rates and attention heads (2x3 = 6 configs)
+./train_test_scripts/gabar_run.sh sweep --domain blocks \
+    --sweep-lr "0.0005 0.001" \
+    --sweep-heads "1 2 4"
+
+# Full sweep with all knobs
+./train_test_scripts/gabar_run.sh sweep --domain blocks \
+    --sweep-lr "0.0005 0.001" \
+    --sweep-heads "1 4" \
+    --sweep-attn-drop "0 0.1" \
+    --sweep-decay "0 0.001"
+
+# Dry-run to see what commands would execute
+./train_test_scripts/gabar_run.sh sweep --domain blocks \
+    --sweep-lr "0.0005 0.001" --sweep-heads "1 4" --dry-run
+```
+
+### Analysing Results
+
+Log files and results live in `cache/results/<domain>/`. Parse them into a
+CSV for comparison:
+
+```sh
+python analyse_domain_results.py cache/results/Manyblocks_ipcc_big/ -o results.csv
+```
+
+### Direct main.py Usage
+
+The script is a convenience wrapper. You can always call `main.py` directly:
+
+```sh
+python main.py --method ltp --domain manyblocks_ipcc_big --all-problems \
+    --lr 0.0005 --n-heads 1 --attention-dropout 0 --dropout 0 \
+    --weight-decay 0 --epochs 300 --gnn-rounds 9 --batch-size 16 \
+    --mode train_test --max-plan-length 500 --run-learned-model True \
+    --run-non-optimal True --use-global-node True --run-mode default
+```
+
+### Key Arguments
+
+- `--method`: Planning method (ltp, ltp_no_cd, ltp_no_ag, ltp_val, etc.)
+- `--mode`: train, test, train_test, visualize
+- `--domain`: pddlgym domain name
+- `--run-mode`: default, toy, sweep, spot
+- `--epochs`, `--lr`, `--n-heads`, `--gnn-rounds`, `--batch-size`: training HPs
+- `--dropout`, `--attention-dropout`, `--weight-decay`: regularization
+- `--ablation`: main, main_val, no_ag_no_cd
+- `--auto-shutdown`: shut down instance on exit
+- `--early-stopping-patience N`: stop after N val-loss checks with no improvement
+
+### Jupyter / Interactive Use
+
+```python
+from ploi.run_modes import notebook_setup
+
+# Load data and metadata (uses cached plans if available)
+graphs, metadata, action_space, args = notebook_setup("manyblocks_ipcc_big")
+
+# Inspect a single graph
+sample = graphs[0]
+print(sample)
+print(f"Node features: {metadata['num_node_features']}")
+print(f"Edge features: {metadata['num_edge_features']}")
+
+# Initialize and load a trained model
+from main import initialize_model
+from ploi.modelutils_ltp import GNN_GRU
+import torch
+
+args.num_node_features = metadata['num_node_features']
+args.num_edge_features = metadata['num_edge_features']
+model = initialize_model(GNN_GRU, args, action_space)
+
+checkpoint = torch.load("models/.../model_e200_....pt", map_location="cpu")
+model.load_state_dict(checkpoint['state_dict'])
+model.eval()
+```
+
 ## Multi-Domain Training (Domain-Agnostic Extension)
 
 Extension of GABAR from per-domain to domain-agnostic policies (see CLAUDE.md
@@ -142,6 +204,11 @@ collision detection, and domain-arg parsing.
 The multi-domain harness must reproduce published single-domain GABAR exactly:
 
 ```sh
+# Via script:
+./train_test_scripts/gabar_run.sh multi --domains "manyblocks_ipcc_big" \
+    --featurization per_domain --epochs 300 --train-problems 50 --test-problems 5
+
+# Or direct:
 python main.py --method ltp --domains manyblocks_ipcc_big --featurization per_domain \
     --all-problems --lr 0.0005 --epochs 300 --gnn-rounds 9 --batch-size 16 \
     --mode train_test --num-train-problems 50 --num-test-problems 5 \
@@ -157,6 +224,12 @@ proceeding. Checkpoints/caches are keyed `MULTI-<domains>`; first run is slow
 ### Step 2 - Union-vocab baseline training (Phase 1, C1 control)
 
 ```sh
+# Via script:
+./train_test_scripts/gabar_run.sh multi \
+    --domains "manyblocks_ipcc_big,gripper_ipcc" \
+    --heldout "spanner_learning" --featurization union --epochs 300
+
+# Or direct:
 python main.py --method ltp --domains manyblocks_ipcc_big,gripper_ipcc \
     --heldout-domains spanner_learning --featurization union --mode train_test [flags as above]
 ```
@@ -183,6 +256,12 @@ is the point - this number is the control that every domain-agnostic method
 ### Step 4 - Structural featurization (Phase 2, first real zero-shot signal)
 
 ```sh
+# Via script:
+./train_test_scripts/gabar_run.sh multi \
+    --domains "manyblocks_ipcc_big,gripper_ipcc" \
+    --heldout "spanner_learning" --featurization structural --epochs 300
+
+# Or direct:
 python main.py --method ltp --domains manyblocks_ipcc_big,gripper_ipcc \
     --heldout-domains spanner_learning --featurization structural --mode train_test [flags]
 ```
