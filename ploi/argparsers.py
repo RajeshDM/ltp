@@ -432,4 +432,26 @@ def get_ploi_argument_parser():
              "training domains (Baseline 0, C1 control), 'structural' = "
              "symbol-free structural classes (CLAUDE.md 5.3, zero-shot capable).")
 
+    parser.add_argument(
+        "--run-mode",
+        type=str,
+        choices=["default", "toy", "sweep", "spot"],
+        default="default",
+        help="Execution mode: 'toy' = 2 epochs on CPU with tiny data subset, "
+             "'sweep' = short runs with AMP and 10%% data for HP tuning, "
+             "'spot' = full training with AMP, per-epoch checkpointing, and "
+             "auto-resume for interruptible instances, 'default' = unchanged.")
+
+    parser.add_argument(
+        "--auto-shutdown",
+        action="store_true",
+        help="Shut down the instance on exit (success or crash). SPOT mode only.")
+
+    parser.add_argument(
+        "--early-stopping-patience",
+        type=int,
+        default=0,
+        help="Stop training after this many val-loss checks with no improvement. "
+             "0 = disabled. Set automatically by --run-mode if not specified.")
+
     return parser

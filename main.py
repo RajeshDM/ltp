@@ -337,6 +337,10 @@ if __name__ == "__main__":
         args.representation_size = 4
         args.batch_size = 1
 
+    # Apply run-mode overrides (toy/sweep/spot) before anything else
+    from ploi.run_modes import apply_run_mode
+    apply_run_mode(args)
+
     # Seed RNG
     set_seed(args)
     #torch.manual_seed(args.seed,args)
@@ -365,7 +369,16 @@ if __name__ == "__main__":
     if args.domain.endswith("scrub"):
         args.datafile = os.path.join(args.logdir, f"ploi_{args.domain[:-5]}.pkl")
 
+    # Set up logging (tee to file for spot/sweep) and auto-shutdown
+    from ploi.run_modes import setup_logging
+    if args.auto_shutdown:
+        import atexit
+        from ploi.run_modes import trigger_auto_shutdown
+        atexit.register(trigger_auto_shutdown)
+    setup_logging(args.domain, args)
+
     print(f"Domain: {args.domain}")
+    print(f"Run mode: {args.run_mode}")
     print(f"Train planner: {args.train_planner_name}")
     print(f"Test planner: {args.eval_planner_name}")
 
@@ -446,8 +459,19 @@ if __name__ == "__main__":
                     args,
                     _create_graph_dataset_ltp,
                 )
+            # Subset data for toy/sweep modes
+            if getattr(args, 'toy_max_graphs', None):
+                from ploi.run_modes import subset_graphs
+                print(f"TOY mode: subsetting {len(all_input_graphs)} graphs to {args.toy_max_graphs}")
+                all_input_graphs = subset_graphs(all_input_graphs, max_count=args.toy_max_graphs, seed=args.seed)
+            elif getattr(args, 'data_fraction', None):
+                from ploi.run_modes import subset_graphs
+                target = max(1, int(len(all_input_graphs) * args.data_fraction))
+                print(f"SWEEP mode: subsetting {len(all_input_graphs)} graphs to {target} ({args.data_fraction:.0%})")
+                all_input_graphs = subset_graphs(all_input_graphs, fraction=args.data_fraction, seed=args.seed)
+
             num_validation = max(1, int(len(all_input_graphs) * 0.1))
-            input_hetero_graphs = all_input_graphs[num_validation:] 
+            input_hetero_graphs = all_input_graphs[num_validation:]
             val_hetero_graphs = all_input_graphs[:num_validation]
             #ic(f"Processed {len(graphs_inp)} training examples")
         else :
@@ -863,10 +887,20 @@ if __name__ == "__main__":
                 optimizer.load_state_dict(_model_state['optimizer'])
                 _starting_epoch = _model_state['epochs'] + 1
 
+            # Spot-mode resume (overrides --continue-training if checkpoint exists)
+            _spot_path = None
+            if getattr(args, 'spot_resume', False):
+                from ploi.run_modes import get_spot_checkpoint_path, load_spot_checkpoint
+                _spot_path = get_spot_checkpoint_path(train_env_name)
+                _device = "cuda:0" if args.use_gpu else "cpu"
+                _resume_epoch = load_spot_checkpoint(_spot_path, _model, optimizer, _device)
+                if _resume_epoch > 0:
+                    args.starting_epoch = _resume_epoch
+
             #criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
             # Train model
-            #model_dict = train_model_graphnetwork_ltp_batch(_model, 
-            train_func(_model, 
+            #model_dict = train_model_graphnetwork_ltp_batch(_model,
+            train_func(_model,
                                     datasets,
                                     #dataloaders,
                                     criterion=criterion, optimizer=optimizer,
@@ -879,7 +913,10 @@ if __name__ == "__main__":
                                     log_wandb=args.wandb,
                                     ablation=args.ablation,
                                     chpkt_manager=manager,
-                                    enable_profiling=enable_profiling)
+                                    enable_profiling=enable_profiling,
+                                    use_amp=getattr(args, 'use_amp', False),
+                                    spot_checkpoint_path=_spot_path,
+                                    patience=getattr(args, 'early_stopping_patience', 0))
             ic (args.attention_dropout)
             ic (args.dropout)
             ic (args.weight_decay)
