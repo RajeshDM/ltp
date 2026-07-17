@@ -972,9 +972,17 @@ class GNN_GRU(EncodeDecode):
         self.max_num_objects = self.object_options
         all_actions_batches,all_actions_scores = self.get_best_action_scores_locations(a_scores_new,self.max_num_actions)
 
+        # Mixed-arity fix: per-action-index arity lookup, used to freeze the
+        # scores of graphs whose action is already fully parameterized while
+        # other graphs in the same beam still need more parameters.
+        # (Comment this + the FIX lines below to restore old behavior.)
+        arity_lookup = torch.tensor(
+            [self.action_parameter_number_dict[i] for i in sorted(self.action_parameter_number_dict)],
+            device=self.device)
+
         # Active beams now contain (token_ids, embeddings, scores)
         active_beams = []
-        
+
         # Storage for completed sequences
         finished_beams = []
         finished_scores = []
@@ -983,9 +991,9 @@ class GNN_GRU(EncodeDecode):
         for action_idx in range(self.max_num_actions):
             decoder_input = self.get_best_action_embeddings(x,all_actions_batches[:,action_idx],n_node,domain_number_actions=self.number_actions)
             #all_curr_action_scores = [elem[action_idx] for elem in all_actions_scores]
-            #active_beams.append(([all_actions_batches[:,action_idx][0]], decoder_input, 
+            #active_beams.append(([all_actions_batches[:,action_idx][0]], decoder_input,
             #                     all_curr_action_scores[0], hidden_state, curr_depth ))
-            active_beams.append(([all_actions_batches[:,action_idx]], decoder_input, 
+            active_beams.append(([all_actions_batches[:,action_idx]], decoder_input,
                                  all_actions_scores[:,action_idx], hidden_state, curr_depth ))
 
         for parameter_number in range(self.max_number_action_parameters):  # replace with the actual maximum sequence length
@@ -1007,7 +1015,7 @@ class GNN_GRU(EncodeDecode):
             #ao_scores_new = torch.zeros_like(ao_scores)
 
             for beam_idx, beam in enumerate(active_beams):
-                ao_scores_new = self.compute_object_scores(x, n_parameters,n_objects, 
+                ao_scores_new = self.compute_object_scores(x, n_parameters,n_objects,
                                                             ao_scores_new,
                                                             #new_hidden_split[beam_idx],
                                                             new_hidden[:, beam_idx*number_graphs :(beam_idx+1)*number_graphs],
@@ -1020,26 +1028,43 @@ class GNN_GRU(EncodeDecode):
                 parameter_locations = torch.arange(parameter_number, all_objects_batches_all_params.shape[0], self.max_number_action_parameters)
                 all_objects_batches = all_objects_batches_all_params[parameter_locations]
                 all_objects_scores = all_objects_scores_all_params[parameter_locations]
+
+                # Mixed-arity fix: which graphs in this beam are already done
+                # (their action needed <= curr_depth params) - their scores are
+                # frozen below. The finish check depends only on the beam's
+                # actions, so it is hoisted out of the object loop.
+                beam_actions = beam[0][0]
+                beam_arities = arity_lookup[beam_actions]
+                done_prev = beam_arities <= curr_depth
+                beam_finished = bool((beam_arities <= curr_depth + 1).all())
+
                 for object_option in range(self.max_num_objects):
-                    all_objects = all_objects_batches[:,object_option] 
+                    all_objects = all_objects_batches[:,object_option]
                     all_curr_obj_scores = all_objects_scores[:,object_option]
-                    new_decoder_input = self.get_best_object_embeddings_ltp(x, 
+                    new_decoder_input = self.get_best_object_embeddings_ltp(x,
                                                                             all_objects,
                                                                              n_node, number_graphs)
-                    
 
-                    curr_sequence = active_beams[beam_idx][0] + [all_objects] 
+
+                    curr_sequence = active_beams[beam_idx][0] + [all_objects]
                     #action = curr_sequence[0].item()
                     actions = curr_sequence[0]
-                    new_score = (current_scores[beam_idx]*(curr_depth+1) + all_curr_obj_scores)/ (curr_depth + 2 )
-                    #if curr_depth + 1 == self.action_parameter_number_dict[action]:
-                    if all([curr_depth + 1 >= self.action_parameter_number_dict[actions[idx].item()] for idx in range(actions.shape[0])]):
+                    # Old version (updates every graph's score even after its
+                    # action is fully parameterized - dilutes early finishers;
+                    # finish check re-done per object option with .item() syncs):
+                    #new_score = (current_scores[beam_idx]*(curr_depth+1) + all_curr_obj_scores)/ (curr_depth + 2 )
+                    ##if curr_depth + 1 == self.action_parameter_number_dict[action]:
+                    #if all([curr_depth + 1 >= self.action_parameter_number_dict[actions[idx].item()] for idx in range(actions.shape[0])]):
+                    # Mixed-arity fix: freeze scores of already-done graphs
+                    new_score_updated = (current_scores[beam_idx]*(curr_depth+1) + all_curr_obj_scores)/ (curr_depth + 2 )
+                    new_score = torch.where(done_prev, current_scores[beam_idx], new_score_updated)
+                    if beam_finished:
                         finished_beams.append(curr_sequence)
                         finished_scores.append(new_score)
                         continue
 
-                    new_active_beams.append((curr_sequence, new_decoder_input, 
-                                             new_score, 
+                    new_active_beams.append((curr_sequence, new_decoder_input,
+                                             new_score,
                                              #new_hidden_split[beam_idx],
                                              new_hidden[:, beam_idx*number_graphs:(beam_idx+1)*number_graphs],
                                              curr_depth+1))
@@ -1098,20 +1123,41 @@ class GNN_GRU(EncodeDecode):
                     else:
                         # Shape is [batch_size, 2] or similar
                         beam_for_batch.append(token_tensor[batch_idx])
+                # Mixed-arity fix: graphs whose action finished before the rest
+                # of the beam carry padding object tokens past their arity -
+                # truncate to (action + its true parameter count).
+                # (Comment the next two lines to restore old behavior.)
+                arity = self.action_parameter_number_dict[int(beam_for_batch[0])]
+                beam_for_batch = beam_for_batch[:1 + arity]
                 batch_beams.append(beam_for_batch)
-            
+
             # Convert scores to tensor for sorting
             scores_tensor = torch.tensor(batch_scores, device=finished_scores_parallel[0].device)
-            
+
             # Sort indices in descending order
             indices = torch.argsort(scores_tensor, descending=True)
-            
+
             # Create sorted beams and scores
             sorted_beams = [batch_beams[i] for i in indices.tolist()]
             sorted_scores = scores_tensor[indices].tolist()
-            
+
             # Create results for this batch
             batch_results = list(zip(sorted_scores, sorted_beams))
+
+            # Mixed-arity fix: truncation makes the padded continuations of an
+            # early-finished graph identical - drop duplicates, keeping the
+            # highest-scored occurrence (list is already sorted descending).
+            # (Comment this block to restore old behavior.)
+            seen_sequences = set()
+            deduped_results = []
+            for score, beam in batch_results:
+                key = tuple(int(t) for t in beam)
+                if key in seen_sequences:
+                    continue
+                seen_sequences.add(key)
+                deduped_results.append((score, beam))
+            batch_results = deduped_results
+
             all_results.append(batch_results)
-        
+
         return all_results
