@@ -305,35 +305,211 @@ that write per-domain programs require solved instances and validator loops
 at test time, addressing a different question from zero-shot execution.
 
 \section{Background and Problem Setup}
-% TODO: Follow GABAR's Problem Setup (Section 2 of the GABAR paper), then
-% extend: the domain description D = (P, A) becomes part of the INPUT.
-% Formal statement: given training domains D_1..D_k with solved instances,
-% learn pi(s, G, D) that maximizes coverage on instances of a domain
-% D_test not in {D_1..D_k}, executed greedily without search.
-% Define: predicates with arities, action schemas with parameters,
-% pre/add/del, grounding, applicability - reuse GABAR notation.
+
+A classical planning problem is a pair $P = \langle D, I \rangle$, where $D$
+is a first-order domain and $I$ contains instance-specific information. The
+domain $D$ consists of a set of predicate symbols $\mathcal{P}$ with
+associated arities and a set of action schemas $\mathcal{A}$. Each schema $a
+\in \mathcal{A}$ is defined by a tuple of parameters $\Delta(a)$ representing
+variables that can be instantiated, preconditions $pre(a)$, add effects
+$add(a)$, and delete effects $del(a)$. The instance information $I$ is a
+tuple $\langle O, s_0, G \rangle$, where $O$ is a finite set of objects,
+$s_0$ is the initial state represented as a set of ground atoms, and $G$ is
+the goal condition, also a set of ground atoms. A ground action $a(o_1,
+\dots, o_k)$ substitutes objects for a schema's parameters; it is applicable
+in state $s$ if $pre(a) \subseteq s$ under the substitution, and yields
+successor $s' = (s \setminus del(a)) \cup add(a)$. A plan is a sequence of
+applicable ground actions transforming $s_0$ into a state satisfying $G$.
+
+GABAR addresses the following problem: given a domain $D$ and solved training
+instances of different sizes, learn a relational policy $\pi_D(s, G)$ that
+solves larger test instances of the \emph{same} domain \citep{gabar}. This
+paper addresses the cross-domain version. Given a set of training domains
+$D_1, \dots, D_n$, each with solved instances of small problems, learn a
+\emph{single} policy $\pi(s, G, D)$ --- taking the domain description itself
+as input --- that solves instances of a test domain $D_{\mathit{test}}
+\notin \{D_1, \dots, D_n\}$, zero-shot. Execution is search-free and follows
+GABAR's protocol: the highest-ranked applicable action is executed, a
+monitor optionally avoids revisiting states, and execution ends at the goal,
+at a dead end, or at a length bound.
+
+\begin{figure*}[t]
+\centering
+% TODO: export figures/fig1_representation.html to PNG at 100% zoom and save
+% as figures/fig1_representation.png (screenshot the SVG area only)
+\includegraphics[width=0.98\textwidth]{figures/fig1_representation.png}
+\caption{The \gadar{} representation for a Blocksworld task. The
+\emph{ground instance layer} (bottom) is GABAR's action-centric graph:
+objects, ground literals of the state and goal (G- prefix), and ground
+action nodes with action--object edges carrying parameter slots. The
+\emph{lifted domain layer} (top) is built from $D$ alone: action schemas,
+their precondition and effect occurrences, and predicate symbols. The two
+novel edge types connect the layers: \emph{binding edges} (green, dashed)
+link an object's slot on an applicable ground action to the lifted
+precondition occurrences that the object satisfies, and
+\emph{instantiation edges} (orange, dotted) link each ground literal to its
+predicate symbol. Filled nodes are ground; outlined nodes are lifted. No
+feature encodes symbol identity, so the representation is invariant to
+renaming by construction.}
+\label{fig:representation}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+% TODO: export figures/fig2_system.html to PNG at 100% zoom and save as
+% figures/fig2_system.png (screenshot the SVG area only)
+\includegraphics[width=0.98\textwidth]{figures/fig2_system.png}
+\caption{\gadar{} system overview. (a) The domain description $D$ and the
+state and goal are converted into the shared two-layer representation of
+Figure~\ref{fig:representation}. (b) Domain conditioning is instantiated in
+two ways: \gadarc{} compiles $D$ once per domain through a schema-encoder
+GNN whose output embeddings become symbol features of the instance graph,
+while \gadarj{} joins the lifted layer into every state graph so that
+message passing contextualizes symbol meaning with the current state and
+goal. (c) The GNN encoder performs $L$ rounds of edge, node, and global
+updates, unchanged from GABAR. (d) The GRU decoder constructs a grounded
+action autoregressively --- schema first, then each argument --- by scoring
+schema- and object-node embeddings; no component is sized by the number of
+schemas or objects.}
+\label{fig:system}
+\end{figure*}
 
 \section{GADAR}
-% TODO: Method section. Structure (from CLAUDE.md 5.x):
-% 1. Overview figure: shared representation + two conditioning methods.
-% 2. Structural featurization (5.3): node-type bits, arity, static-ness,
-%    goal bits, index features for argument positions; no symbol identity.
-%    Renaming invariance by construction (forward-ref Prop 2).
-% 3. The lifted domain layer (5.4): nodes for predicate symbols, schemas,
-%    parameter slots, types; edges for pre/add/del occurrences with
-%    argument bindings. Cite GOOSE honestly; note engineering differences
-%    (positions as edge features, undirected message flow, global node).
-% 4. The grounded-lifted binding layer (5.5) - THE novel component:
-%    schema-object edges annotated with links to the lifted precondition
-%    occurrence nodes they instantiate; instantiation edges from ground
-%    literals to predicate-symbol nodes. Why neither GOOSE nor GABAR
-%    subsumes it.
-% 5. GADAR-C (compiled): schema-encoder GNN runs once per domain; output
-%    embeddings initialize symbol features in the instance graph.
-% 6. GADAR-J (joint): unified graph per state; lifted symbol nodes as
-%    typed information hubs (generalizing the global node).
-% 7. Decoder (5.7): unchanged mechanism; parameter loop to selected
-%    schema's arity under a global max-arity cap; nothing sized by |A|/|O|.
+
+Given a planning instance in PDDL format together with its domain
+description $D$, \gadar{} converts the pair into a graph, processes the
+graph with a GNN encoder, and constructs a grounded action with a GRU-based
+decoder that first selects an action schema and then each of its arguments
+(Figure~\ref{fig:system}). The encoder and decoder are those of GABAR,
+unchanged; what changes is the graph they operate on. This section describes
+the shared representation --- structural features, the lifted domain layer,
+and the binding layer --- and then the two methods by which the domain
+description conditions the policy, \gadarc{} and \gadarj{}.
+
+\subsection{A Domain-Agnostic Graph Representation}
+
+\textbf{Ground instance layer.} The base of the representation is GABAR's
+action-centric graph \citep{gabar}: nodes for objects, for ground literals
+of the current state and the goal (goal literals marked by a flag), and for
+action schemas, together with a global node; edges connect literals to their
+argument objects and schemas to the objects of their applicable groundings,
+with parameter positions on the edges (Figure~\ref{fig:representation},
+bottom). This graph is what makes search-free action construction possible:
+the decoder selects among schema nodes and object nodes that are present in
+the input.
+
+\textbf{Structural features.} GABAR's node features identify symbols: one-hot
+encodings over the domain's schemas, predicates, and types, so feature
+dimensions --- and therefore network weights --- are sized by the domain
+vocabulary. \gadar{} replaces every symbol-identity feature with structural
+ones computable in any domain: the node's kind (object, literal, schema,
+symbol, global), the arity of its predicate or schema, whether the predicate
+is static, whether a literal belongs to the goal, and argument positions
+encoded as index features on edges rather than per-domain position
+vocabularies. Feature widths are now constants independent of the domain, so
+a single network serves every domain, and permuting symbol names leaves the
+input tensors unchanged --- renaming invariance holds by construction
+(Proposition~2).
+
+\textbf{Lifted domain layer.} Structural features alone discard information
+that distinguishes symbols playing different roles. \gadar{} restores that
+information by embedding the domain description itself as a graph
+(Figure~\ref{fig:representation}, top): nodes for predicate symbols and
+action schemas, and for each schema, nodes for the occurrences of predicates
+in its preconditions and effects; edges record which predicate appears in
+which role (precondition, add, or delete) of which schema, with the
+argument-position correspondence carried on the edges. This layer is
+LLG-adjacent, and we credit its lineage: GOOSE first demonstrated that the
+full lifted domain can be an input for learning \citep{goose_v2}. Our
+construction differs in engineering --- argument positions as edge features
+rather than chains of index nodes, undirected message flow, and a retained
+global node --- but its role differs more fundamentally, as we describe
+next.
+
+\textbf{The grounded--lifted binding layer.} The lifted layer describes what
+the domain's actions \emph{could} do; the ground layer describes what
+\emph{can be done now}. Neither prior representation connects the two: LLG
+contains lifted preconditions but no ground actions, while GABAR annotates
+its schema--object edges with precondition-satisfaction flags indexed by
+per-domain strings that do not transfer. The binding layer makes the
+connection explicit, and in a vocabulary that exists in every domain --- the
+domain description's own. For each applicable ground action, its
+schema--object edges are annotated with \emph{binding edges} to the lifted
+precondition-occurrence nodes they instantiate: ``object $o$ at parameter
+slot $j$ satisfies precondition occurrence $p$ of schema $a$''
+(Figure~\ref{fig:representation}, green). In addition, \emph{instantiation
+edges} connect every ground literal to its predicate-symbol node
+(Figure~\ref{fig:representation}, orange). Together these edges let the
+network reason about why an action is applicable and what it will change,
+using only nodes that exist for any domain. In the domain of
+Figure~\ref{fig:representation}, the ground edge placing O3 in Unstack's
+first slot binds to the occurrences \emph{on(x,y)} and \emph{clear(x)} ---
+information that survives unchanged if every symbol in the domain is
+renamed. We show in Proposition~1 that this addition is not merely
+convenient: message-passing networks on the binding-layer graph distinguish
+tasks that are provably indistinguishable on the lifted graph alone.
+
+\subsection{Two Methods for Domain Conditioning}
+
+The shared representation leaves open \emph{when} the domain description is
+processed, and we instantiate both natural answers as first-class methods
+(Figure~\ref{fig:system}b). They embody different hypotheses about what a
+domain's symbols are.
+
+\textbf{\gadarc{} (compiled).} A small schema-encoder GNN runs \emph{once
+per domain} over the lifted layer. Its output embeddings --- one per
+predicate symbol, schema, and occurrence --- are compiled into the instance
+graph as the features of the nodes and edges that reference those symbols,
+including the binding annotations. Per-state graphs then have essentially
+GABAR's size, and per-state inference cost matches per-domain GABAR after a
+one-time, per-domain encoding step. \gadarc{} embodies the hypothesis that
+symbol meaning is \emph{static within a domain}: what \emph{clear} means in
+Blocksworld does not depend on the current state.
+
+\textbf{\gadarj{} (joint).} The lifted layer is joined into every state
+graph, connected to the ground layer by the instantiation and binding edges,
+and the combined graph is encoded as a whole. Message passing then
+contextualizes each symbol node with the current state and goal, and symbol
+nodes double as typed information hubs that aggregate and redistribute
+messages among their ground instances --- generalizing the global node,
+whose importance GABAR's ablations established \citep{gabar}. \gadarj{}
+embodies the hypothesis that symbol meaning is \emph{contextual}: the role
+\emph{clear} plays can depend on what the goal asks. Its per-state cost
+exceeds \gadarc{}'s by domain-sized constants plus one instantiation edge
+per ground literal.
+
+The comparison between the two is an experiment, not a formality. If
+\gadarj{} dominates --- particularly on structurally similar domains, where
+identical structural roles are played by symbols with different semantics
+--- then contextual computation of symbol meaning is necessary. If the two
+are comparable, domain conditioning is amortizable, and the compiled method
+delivers cross-domain generality at per-domain inference cost. We report
+coverage and measured per-state cost for both.
+
+\subsection{Action Construction and Training}
+
+The decoder is GABAR's and we change it only where per-domain constants
+would otherwise appear (Figure~\ref{fig:system}d). From the encoded graph,
+a GRU selects an action schema by scoring the schema-node embeddings against
+its hidden state, then selects each argument in turn by scoring object-node
+embeddings, feeding each selection back as the next input. The argument loop
+runs to the \emph{selected schema's} arity, read from the lifted layer,
+under a global maximum-arity cap --- not a per-domain constant. No component
+of the decoder is sized by the number of schemas, objects, or predicates;
+selection is always a dot product between the decoder state and the
+embedding of a node present in the input graph. This output-lifted decoder
+is what allows the same network to construct actions in a domain whose
+schemas it has never seen.
+
+Training is supervised, as in GABAR: expert plans are collected with a
+classical planner on small instances of each training domain, and the policy
+is trained with cross-entropy to reproduce the expert's schema choice and
+each argument choice at every state along the plans. Because feature widths
+are domain-independent, instances from different domains mix freely within a
+batch. The objective ranks actions \emph{locally within a state}, which is
+what permits a shared network across domains: local rankings are scale-free,
+while a value target would presuppose a scale of goal distances shared
+between domains (see the value-objective ablation).
 
 \section{Theoretical Analysis}
 % TODO: Proposition 1 (binding layer strictly increases expressiveness over
