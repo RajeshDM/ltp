@@ -17,6 +17,7 @@ from ploi.datautils_ltp import (
     graph_dataset_to_pyg_dataset,
 )
 from torch_geometric.loader import DataLoader as pyg_dataloader
+from torch_geometric.data import Batch
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Any
 import numpy as np
@@ -54,9 +55,13 @@ import pymimir as mm
 class StateMonitor:
     def __init__(self):
         self.visited_states = set()
-        
-    def _state_to_hashable(self, state) -> tuple:
-        return tuple(sorted(str(lit) for lit in state.literals))
+
+    def _state_to_hashable(self, state):
+        # Old version (str-converts and sorts every literal, every state):
+        #return tuple(sorted(str(lit) for lit in state.literals))
+        # state.literals is already a frozenset of hashable Literals
+        # (frozenset() on a frozenset returns the same object - no copy)
+        return frozenset(state.literals)
         
     def has_visited(self, state) -> bool:
         return self._state_to_hashable(state) in self.visited_states
@@ -187,7 +192,9 @@ def convert_state_and_run_model(model, state, action_space , device, groundings,
     num_non_action_nodes = len(node_to_objects) - (num_actions) 
                                     
     model_input = convert_graph_to_model_input_v2([g_inp],device)
-    with torch.no_grad() :
+    # Old version:
+    #with torch.no_grad() :
+    with torch.inference_mode() :
         #results = model(model_input, beam_search=True)
         results = model.forward_beam_decode(model_input)
         #results = model.forward_with_parallel_beam_search(model_input, beam_search=True)
@@ -224,8 +231,11 @@ def convert_graph_to_model_input_v1(g_inp, device):
 
 def convert_graph_to_model_input_v2(g_inp, device):
     hetero_graphs = graph_dataset_to_pyg_dataset(g_inp, batch_wise=False)
-    hetero_dataset = pyg_dataloader(hetero_graphs, batch_size=len(g_inp))
-    return next(iter(hetero_dataset)).to(device) 
+    # Old version (constructs a fresh DataLoader per call - pure overhead;
+    # the DataLoader's collate does exactly Batch.from_data_list internally):
+    #hetero_dataset = pyg_dataloader(hetero_graphs, batch_size=len(g_inp))
+    #return next(iter(hetero_dataset)).to(device)
+    return Batch.from_data_list(hetero_graphs).to(device)
 
 def convert_state_and_run_model_val(model, states, action_space ,
                                      device, groundings, 
@@ -240,7 +250,9 @@ def convert_state_and_run_model_val(model, states, action_space ,
         graph_inputs.append(g_inp)
 
     model_input = convert_graph_to_model_input_v2(graph_inputs,device)
-    with torch.no_grad() :
+    # Old version:
+    #with torch.no_grad() :
+    with torch.inference_mode() :
         results = model(model_input).squeeze(1)
     return results
 
@@ -433,10 +445,19 @@ class PlannerTester:
 
     def _is_valid_action(self, action, groundings) -> bool:
         for grounded_action in groundings:
-            if (action.predicate == grounded_action.predicate and 
+            if (action.predicate == grounded_action.predicate and
                 all(v1 == v2 for v1, v2 in zip(action.variables, grounded_action.variables))):
                 return True
         return False
+
+    @staticmethod
+    def _make_grounding_set(groundings):
+        """Precompute a hashable set of groundings for O(1) validity checks."""
+        return {(g.predicate, tuple(g.variables)) for g in groundings}
+
+    @staticmethod
+    def _is_valid_action_fast(action, grounding_set) -> bool:
+        return (action.predicate, tuple(action.variables)) in grounding_set
 
     def _run_learned_model(self, problem_idx: int, action_space: Any, model_epoch: Any, 
                         graph_metadata: Any, use_monitor: bool = False):
@@ -496,9 +517,13 @@ class PlannerTester:
             action_param_list = convert_state_and_run_model(
                 model, state, action_space, self.config.device, groundings, graph_metadata
             )
-            
-            valid_actions = [action for action in action_param_list 
-                        if self._is_valid_action(action, groundings)]
+
+            # Old version (linear scan over all groundings per candidate):
+            #valid_actions = [action for action in action_param_list
+            #            if self._is_valid_action(action, groundings)]
+            grounding_set = self._make_grounding_set(groundings)
+            valid_actions = [action for action in action_param_list
+                        if self._is_valid_action_fast(action, grounding_set)]
             
             # If no valid actions at all, exit
             if not valid_actions:
@@ -617,10 +642,14 @@ class PlannerTester:
         action_param_list = convert_state_and_run_model(
             model, state, action_space, self.config.device, groundings, graph_metadata
         )
-        
+
         # Filter valid actions
-        valid_actions = [action for action in action_param_list 
-                        if self._is_valid_action(action, groundings)]
+        # Old version (linear scan over all groundings per candidate):
+        #valid_actions = [action for action in action_param_list
+        #                if self._is_valid_action(action, groundings)]
+        grounding_set = self._make_grounding_set(groundings)
+        valid_actions = [action for action in action_param_list
+                        if self._is_valid_action_fast(action, grounding_set)]
         
         # If no valid actions, return failure
         if not valid_actions:
@@ -763,7 +792,11 @@ class PlannerTester:
 
 
     def _check_goal_reached(self, state) -> bool:
-        return all(goal in list(state.literals) for goal in state.goal.literals)
+        # Old version (rebuilds a list of all state literals per goal literal,
+        # then does O(n) membership on it):
+        #return all(goal in list(state.literals) for goal in state.goal.literals)
+        # state.literals is a frozenset - O(1) membership, no copy
+        return all(goal in state.literals for goal in state.goal.literals)
 
     def _run_external_planner(self, env, problem_idx, action_space, timeout, optimal=False):
         result = PlanningResult()
@@ -882,14 +915,31 @@ class PlannerTester:
         self.failure_dict = {i:[] for i in range(int(number_divisions) )}
         success_until_now_for_learned = 0
         progress_bar = tqdm(problems_to_solve)
-        
+
+        # Set GABAR_PROFILE_EVAL=1 to cProfile the first learned-model problem
+        # (output goes to stdout, so it lands in the run log too)
+        profile_eval = os.environ.get("GABAR_PROFILE_EVAL", "") == "1"
+        profile_done = False
+
         for problem_idx in progress_bar:
             action_space = self.env.action_space._action_predicate_to_operators
             result = None
-            
+
             for planner_type in self.config.planner_types:
                 if planner_type == PlannerType.LEARNED_MODEL and PlannerType.LEARNED_MODEL in models:
-                    result = self._run_learned_model(problem_idx, action_space, models[planner_type], graph_metadata, use_monitor=self.config.enable_state_monitor)
+                    if profile_eval and not profile_done:
+                        import cProfile, pstats
+                        profiler = cProfile.Profile()
+                        profiler.enable()
+                        result = self._run_learned_model(problem_idx, action_space, models[planner_type], graph_metadata, use_monitor=self.config.enable_state_monitor)
+                        profiler.disable()
+                        profile_done = True
+                        print(f"\n=== cProfile: problem {problem_idx} (learned model) ===")
+                        stats = pstats.Stats(profiler, stream=sys.stdout)
+                        stats.sort_stats('cumulative').print_stats(30)
+                        print("=== end cProfile ===\n")
+                    else:
+                        result = self._run_learned_model(problem_idx, action_space, models[planner_type], graph_metadata, use_monitor=self.config.enable_state_monitor)
                     if result.success :
                         success_until_now_for_learned  += 1
                     #tqdm.set_postfix(success=f"{success_until_now_for_learned}")
