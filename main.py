@@ -547,14 +547,16 @@ if __name__ == "__main__":
             batch_size=batch_size,
             shuffle=shuffle,
             num_workers=num_workers,
-            pin_memory=True
+            pin_memory=True,
+            persistent_workers=(num_workers > 0)
         )
         graph_dataset_val =  PyGDataLoader(
             val_hetero_graphs,
             batch_size=batch_size,
             shuffle=shuffle,
             num_workers=num_workers,
-            pin_memory=True
+            pin_memory=True,
+            persistent_workers=(num_workers > 0)
         )
 
         '''

@@ -512,18 +512,24 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
                     tgt_action_scores = batch_data['target_action_scores'].x
                     tgt_action_object_scores = batch_data['target_action_object_scores'].x
                     tgt_params = batch_data['target_n_parameters'].x
-                    curr_param_counter = 0
-                    required_action_object_scores = []
-                    total_number_params = 0
-
-                    for idx,n_params in enumerate(tgt_params):
-                        n_params = int(n_params)
-                        for correct_index in range(curr_param_counter,curr_param_counter+n_params):
-                            required_action_object_scores.append(correct_index)
-                        curr_param_counter += model.max_number_action_parameters
-                        total_number_params += n_params
-
-                    required_action_object_scores = torch.tensor(required_action_object_scores)
+                    # Old version (Python double loop per batch, with a CPU
+                    # transfer per element of tgt_params):
+                    #curr_param_counter = 0
+                    #required_action_object_scores = []
+                    #total_number_params = 0
+                    #for idx,n_params in enumerate(tgt_params):
+                    #    n_params = int(n_params)
+                    #    for correct_index in range(curr_param_counter,curr_param_counter+n_params):
+                    #        required_action_object_scores.append(correct_index)
+                    #    curr_param_counter += model.max_number_action_parameters
+                    #    total_number_params += n_params
+                    #required_action_object_scores = torch.tensor(required_action_object_scores)
+                    # Vectorized: identical indices, computed on-device
+                    counts = tgt_params.long().flatten()
+                    starts = torch.arange(counts.numel(), device=counts.device) * model.max_number_action_parameters
+                    within = torch.arange(int(counts.sum()), device=counts.device) - \
+                             torch.repeat_interleave(torch.cumsum(counts, 0) - counts, counts)
+                    required_action_object_scores = torch.repeat_interleave(starts, counts) + within
                     target_indices = tgt_action_scores.argmax(dim=1)
                     target_indices_2 = tgt_action_object_scores[required_action_object_scores].argmax(dim=1)
                     tgt_action_scores = tgt_action_scores.squeeze(0)

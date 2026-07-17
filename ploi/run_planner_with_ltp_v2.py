@@ -179,7 +179,58 @@ def _create_planner(planner_name):
         return FD(alias_flag="--alias seq-opt-lmcut")
     raise ValueError(f"Uncrecognized planner name {planner_name}")
 
-def convert_state_and_run_model(model, state, action_space , device, groundings, 
+# State for GABAR_CHECK_PARALLEL_BEAM=1: caches the previous state's graph and
+# v2 results so consecutive rollout states can be batched together through
+# beam_search_parallel and compared per-graph against their v2 outputs.
+# Exercises real mixed-size (and mixed-arity) batches, not just duplicates.
+_beam_check = {"n": 0, "mismatches": 0, "g": None, "res": None, "model_id": None}
+
+def _compare_beam_results(v2_results, par_results, tag):
+    """Compare beam_search_v2 output against one batch entry of beam_search_parallel."""
+    if len(v2_results) != len(par_results):
+        print(f"[parallel-beam-check] {tag}: beam count differs "
+              f"(v2={len(v2_results)}, parallel={len(par_results)})")
+        return False
+    ok = True
+    for rank, ((s2, b2), (sp, bp)) in enumerate(zip(v2_results, par_results)):
+        seq2 = [int(t) for t in b2]
+        seqp = [int(t) for t in bp]
+        score_close = abs(float(s2) - float(sp)) <= 1e-4
+        if seq2 != seqp or not score_close:
+            note = " (equal scores - tie reorder, likely benign)" \
+                if score_close and seq2 != seqp else ""
+            print(f"[parallel-beam-check] {tag}: rank {rank} differs: "
+                  f"v2=({float(s2):.6f}, {seq2}) "
+                  f"parallel=({float(sp):.6f}, {seqp}){note}")
+            ok = False
+            break
+    return ok
+
+def _check_parallel_beam(model, g_inp, v2_results, device):
+    if _beam_check["model_id"] != id(model):
+        _beam_check.update(g=None, res=None, model_id=id(model))
+    if _beam_check["g"] is not None:
+        _beam_check["n"] += 1
+        tag = f"pair {_beam_check['n']}"
+        try:
+            model_input = convert_graph_to_model_input_v2(
+                [_beam_check["g"], g_inp], device)
+            with torch.inference_mode():
+                par_results = model.forward_with_parallel_beam_search(model_input)
+            ok = _compare_beam_results(_beam_check["res"], par_results[0], f"{tag} prev-state") \
+                 and _compare_beam_results(v2_results, par_results[1], f"{tag} curr-state")
+        except Exception as e:
+            print(f"[parallel-beam-check] {tag}: parallel decode raised: {type(e).__name__}: {e}")
+            ok = False
+        if not ok:
+            _beam_check["mismatches"] += 1
+        if _beam_check["n"] % 100 == 0:
+            print(f"[parallel-beam-check] {_beam_check['n']} pairs checked, "
+                  f"{_beam_check['mismatches']} mismatches")
+    _beam_check["g"] = g_inp
+    _beam_check["res"] = v2_results
+
+def convert_state_and_run_model(model, state, action_space , device, groundings,
                                 graph_metadata,cheating_input=None):
     g_inp , _, node_to_objects = state_to_graph_wrapper(state,action_space,groundings,
                                                     prev_actions=None,prev_state=None,
@@ -199,6 +250,11 @@ def convert_state_and_run_model(model, state, action_space , device, groundings,
         results = model.forward_beam_decode(model_input)
         #results = model.forward_with_parallel_beam_search(model_input, beam_search=True)
         #results = results[0]
+
+    # Set GABAR_CHECK_PARALLEL_BEAM=1 to validate beam_search_parallel against
+    # beam_search_v2 on real rollout state pairs (Tier 3 groundwork)
+    if os.environ.get("GABAR_CHECK_PARALLEL_BEAM", "") == "1":
+        _check_parallel_beam(model, g_inp, results, device)
 
     #print (results)
     action_param_list = []
