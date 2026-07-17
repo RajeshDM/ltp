@@ -230,6 +230,47 @@ def _check_parallel_beam(model, g_inp, v2_results, device):
     _beam_check["g"] = g_inp
     _beam_check["res"] = v2_results
 
+# Score tracing (GABAR_TRACE_SCORES=<path>): writes one JSON line per model
+# call with every candidate's (score, token sequence), keyed by
+# (epoch, problem, step). Compare two runs with compare_score_traces.py.
+# Temporary verification apparatus for the batched-eval migration.
+_score_trace = {"file": None, "epoch": None, "problem": None, "step": 0}
+
+def _trace_scores(epoch, problem_idx, step_idx, results):
+    path = os.environ.get("GABAR_TRACE_SCORES", "")
+    if not path:
+        return
+    if _score_trace["file"] is None:
+        _score_trace["file"] = open(path, "w")
+    entry = {"epoch": epoch, "problem": int(problem_idx), "step": int(step_idx),
+             "candidates": [[round(float(s), 6), [int(t) for t in seq]]
+                            for s, seq in results]}
+    _score_trace["file"].write(json.dumps(entry) + "\n")
+    _score_trace["file"].flush()
+
+def decode_beam_results(results, node_to_objects, action_space):
+    """Turn one graph's sorted beam results into ranked pddlgym Literals.
+    Shared by the sequential path and the batched harness."""
+    all_actions = [k for k, v in action_space.items()]
+    num_actions = len(all_actions)
+    num_non_action_nodes = len(node_to_objects) - (num_actions)
+
+    action_param_list = []
+    for action_data in results:
+        action_idx = int(action_data[1][0])
+        number_parameters = len(action_data[1]) - 1
+        decoded_action = node_to_objects[action_idx+num_non_action_nodes]
+        decoded_action_parameters = []
+        for i in range(number_parameters):
+            obj_idx = int(action_data[1][i+1])
+            obj = node_to_objects[obj_idx]
+            decoded_action_parameters.append(obj)
+
+        new_action = pddlgym.structs.Literal(decoded_action,decoded_action_parameters)
+        action_param_list.append(new_action)
+
+    return action_param_list
+
 def convert_state_and_run_model(model, state, action_space , device, groundings,
                                 graph_metadata,cheating_input=None):
     g_inp , _, node_to_objects = state_to_graph_wrapper(state,action_space,groundings,
@@ -247,32 +288,32 @@ def convert_state_and_run_model(model, state, action_space , device, groundings,
     #with torch.no_grad() :
     with torch.inference_mode() :
         #results = model(model_input, beam_search=True)
-        results = model.forward_beam_decode(model_input)
         #results = model.forward_with_parallel_beam_search(model_input, beam_search=True)
         #results = results[0]
+        # Old (single-graph) decoder call:
+        #results = model.forward_beam_decode(model_input)
+        # GABAR_USE_PARALLEL_DECODER=1 routes even single-state calls through
+        # the batched decoder (A/B test of beam_search_parallel; don't combine
+        # with GABAR_CHECK_PARALLEL_BEAM, which assumes v2 results here)
+        if os.environ.get("GABAR_USE_PARALLEL_DECODER", "") == "1":
+            results = model.forward_with_parallel_beam_search(model_input)[0]
+        else:
+            results = model.forward_beam_decode(model_input)
 
     # Set GABAR_CHECK_PARALLEL_BEAM=1 to validate beam_search_parallel against
     # beam_search_v2 on real rollout state pairs (Tier 3 groundwork)
     if os.environ.get("GABAR_CHECK_PARALLEL_BEAM", "") == "1":
         _check_parallel_beam(model, g_inp, results, device)
 
+    if os.environ.get("GABAR_TRACE_SCORES", ""):
+        _trace_scores(_score_trace["epoch"], _score_trace["problem"],
+                      _score_trace["step"], results)
+        _score_trace["step"] += 1
+
     #print (results)
-    action_param_list = []
-
-    for action_data in results : 
-        action_idx = int(action_data[1][0])
-        number_parameters = len(action_data[1]) - 1
-        decoded_action = node_to_objects[action_idx+num_non_action_nodes]
-        decoded_action_parameters = []
-        for i in range(number_parameters):
-            obj_idx = int(action_data[1][i+1])
-            obj = node_to_objects[obj_idx]
-            decoded_action_parameters.append(obj)
-
-        new_action = pddlgym.structs.Literal(decoded_action,decoded_action_parameters)
-        action_param_list.append(new_action)
-
-    return action_param_list 
+    # Old inline decode loop moved verbatim into decode_beam_results (shared
+    # with the batched harness)
+    return decode_beam_results(results, node_to_objects, action_space)
 
 def convert_graph_to_model_input_v1(g_inp, device):
     nfeat = torch.from_numpy(g_inp["nodes"]).float().to(device)
@@ -537,10 +578,15 @@ class PlannerTester:
         if fname in planner_data and False:
             result.success = True
             result.plan_length, result.time_taken = planner_data[fname]
-            return result 
-        
+            return result
+
         if monitor:
             monitor.add_state(state)
+
+        # Context for GABAR_TRACE_SCORES (score-level verification)
+        _score_trace["epoch"] = epoch
+        _score_trace["problem"] = problem_idx
+        _score_trace["step"] = 0
 
         # CURRENLY SINGLE SEARCH TYPE ALLOWED - CAN EXTEND TO ALL LATER IF NEEDED
         strategy = self.config.learned_search_strat[0]
@@ -630,6 +676,143 @@ class PlannerTester:
                 return result
 
         return result
+
+    def _greedy_step_single(self, st, action_param_list, groundings, planner_data, start_time):
+        """One greedy-search round for one problem. Mirrors the body of the
+        while-loop in _run_greedy_search exactly (same candidate order, same
+        monitor/fallback/goal/plan-length logic). Returns True when the
+        problem is finished (success or failure)."""
+        env, state, monitor, result = st["env"], st["state"], st["monitor"], st["result"]
+
+        grounding_set = self._make_grounding_set(groundings)
+        valid_actions = [action for action in action_param_list
+                    if self._is_valid_action_fast(action, grounding_set)]
+
+        if not valid_actions:
+            result.time_taken = time.time() - start_time
+            return True
+
+        action_taken = False
+        for new_action in valid_actions:
+            next_state = env.step(new_action)[0]
+
+            if monitor and monitor.has_visited(next_state):
+                result.repeated_states += 1
+                env.set_state(state)
+                continue
+
+            if monitor:
+                monitor.add_state(next_state)
+            st["state"] = next_state
+            result.plan.append(new_action)
+            action_taken = True
+
+            if self._check_goal_reached(next_state):
+                result.success = True
+                result.time_taken = time.time() - start_time
+                result.plan_length = len(result.plan)
+                planner_data[st["fname"]] = (result.plan_length, result.time_taken)
+                return True
+
+            break
+
+        if not action_taken and valid_actions:
+            new_action = valid_actions[0]
+            st["state"] = env.step(new_action)[0]
+            if monitor:
+                monitor.add_state(st["state"])
+            result.plan.append(new_action)
+
+        if len(result.plan) > self.config.max_plan_length:
+            result.time_taken = time.time() - start_time
+            return True
+
+        return False
+
+    def _run_learned_model_batch(self, problem_idxs, action_space, model_epoch,
+                                 graph_metadata, use_monitor=False):
+        """Greedy search over many problems in lockstep: one batched
+        encoder+decoder call per round via forward_with_parallel_beam_search.
+        Per problem, trajectories match _run_greedy_search exactly when the
+        parallel decoder's scores match beam_search_v2 (verify with
+        GABAR_TRACE_SCORES + compare_score_traces.py).
+
+        Note: result.time_taken is wall-clock from batch start to that
+        problem's finish - not comparable with sequential per-problem times.
+        """
+        model, epoch = model_epoch[0], model_epoch[1]
+        strategy = self.config.learned_search_strat[0]
+        if strategy != LearnedSearchStrat.GREEDY:
+            raise NotImplementedError("GABAR_BATCH_EVAL currently supports greedy search only")
+
+        planner_data = self.planner_data[PlannerType.LEARNED_MODEL]
+        start_time = time.time()
+
+        # One env per problem: identical per-problem semantics to the
+        # sequential path (which fixes one shared env per problem in turn)
+        active, results_by_problem = {}, {}
+        for p in problem_idxs:
+            env = pddlgym.make(f"PDDLEnv{self.config.domain_name}Test-v0")
+            env.fix_problem_index(p)
+            state, _ = env.reset()
+            # prime the action-space grounding cache, as _run_learned_model does
+            list(env.action_space.all_ground_literals(state, reground=True))
+            result = PlanningResult()
+            result.problem_idx = p
+            monitor = StateMonitor() if use_monitor else None
+            if monitor:
+                monitor.add_state(state)
+            fname = env.problems[p].problem_fname
+            fname = "/".join(fname.split("/")[-2:]) + "_" + str(epoch)
+            active[p] = {"env": env, "state": state, "monitor": monitor,
+                         "result": result, "fname": fname, "step": 0}
+            results_by_problem[p] = result
+
+        round_num = 0
+        while active:
+            round_num += 1
+            batch_order = sorted(active.keys())
+
+            graphs, groundings_by_problem = [], {}
+            for p in batch_order:
+                st = active[p]
+                groundings = list(st["env"].action_space.all_ground_literals(st["state"]))
+                groundings_by_problem[p] = groundings
+                g_inp, _, node_to_objects = state_to_graph_wrapper(
+                    st["state"], action_space, groundings,
+                    prev_actions=None, prev_state=None,
+                    graph_metadata=graph_metadata,
+                    curr_action=None, objects=None,
+                    goal_state=st["state"].goal, cheating_input=None)
+                st["node_to_objects"] = node_to_objects
+                graphs.append(g_inp)
+
+            model_input = convert_graph_to_model_input_v2(graphs, self.config.device)
+            with torch.inference_mode():
+                batch_results = model.forward_with_parallel_beam_search(model_input)
+
+            finished = []
+            for i, p in enumerate(batch_order):
+                st = active[p]
+                if os.environ.get("GABAR_TRACE_SCORES", ""):
+                    _trace_scores(epoch, p, st["step"], batch_results[i])
+                st["step"] += 1
+                action_param_list = decode_beam_results(
+                    batch_results[i], st["node_to_objects"], action_space)
+                if self._greedy_step_single(st, action_param_list,
+                                            groundings_by_problem[p],
+                                            planner_data, start_time):
+                    finished.append(p)
+            for p in finished:
+                del active[p]
+
+            if round_num % 50 == 0:
+                print(f"[batch-eval] round {round_num}: {len(active)} problems still active", flush=True)
+
+        n_success = sum(1 for r in results_by_problem.values() if r.success)
+        print(f"[batch-eval] done: {len(problem_idxs)} problems, {n_success} solved, "
+              f"{round_num} rounds, {time.time() - start_time:.1f}s", flush=True)
+        return [results_by_problem[p] for p in problem_idxs]
 
     def _run_iterative_deepening_search(self, state, model, action_space, graph_metadata, monitor,
                                         result, start_time, fname, planner_data, max_depth, prune_factor=3,
@@ -977,13 +1160,30 @@ class PlannerTester:
         profile_eval = os.environ.get("GABAR_PROFILE_EVAL", "") == "1"
         profile_done = False
 
+        # Set GABAR_BATCH_EVAL=1 to run all learned-model problems in lockstep
+        # with one batched model call per round (greedy search only)
+        batch_learned_results = None
+        if (os.environ.get("GABAR_BATCH_EVAL", "") == "1"
+                and models is not None
+                and PlannerType.LEARNED_MODEL in self.config.planner_types
+                and PlannerType.LEARNED_MODEL in models):
+            batch_results_list = self._run_learned_model_batch(
+                list(problems_to_solve),
+                self.env.action_space._action_predicate_to_operators,
+                models[PlannerType.LEARNED_MODEL],
+                graph_metadata,
+                use_monitor=self.config.enable_state_monitor)
+            batch_learned_results = {r.problem_idx: r for r in batch_results_list}
+
         for problem_idx in progress_bar:
             action_space = self.env.action_space._action_predicate_to_operators
             result = None
 
             for planner_type in self.config.planner_types:
                 if planner_type == PlannerType.LEARNED_MODEL and PlannerType.LEARNED_MODEL in models:
-                    if profile_eval and not profile_done:
+                    if batch_learned_results is not None:
+                        result = batch_learned_results[problem_idx]
+                    elif profile_eval and not profile_done:
                         import cProfile, pstats
                         profiler = cProfile.Profile()
                         profiler.enable()

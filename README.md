@@ -123,6 +123,24 @@ sweep mode (10% data, 5 epochs, AMP, early stopping).
     --sweep-lr "0.0005 0.001" --sweep-heads "1 4" --dry-run
 ```
 
+### Batched Evaluation and Verification (temporary apparatus)
+
+Environment variables controlling the evaluation path (all default off):
+
+- `GABAR_BATCH_EVAL=1` - run all learned-model test problems in lockstep with
+  one batched model call per round (greedy search only). Per-problem
+  `time_taken` becomes wall-clock from batch start; success/plan metrics are
+  unchanged.
+- `GABAR_USE_PARALLEL_DECODER=1` - route single-state calls through the
+  batched decoder (`beam_search_parallel`) instead of `beam_search_v2`.
+- `GABAR_TRACE_SCORES=<file>.jsonl` - log every model call's full candidate
+  list (scores + action/object token sequences) keyed by (epoch, problem,
+  step). Compare two runs with
+  `python compare_score_traces.py a.jsonl b.jsonl [--tol 1e-3] [--ignore-order]`.
+- `GABAR_CHECK_PARALLEL_BEAM=1` - per rollout state, batch consecutive state
+  pairs through the parallel decoder and compare against v2 output inline.
+- `GABAR_PROFILE_EVAL=1` - cProfile the first learned-model problem.
+
 ### Analysing Results
 
 Log files and results live in `cache/results/<domain>/`. Parse them into a
