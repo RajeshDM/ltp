@@ -145,22 +145,22 @@
     <rect x="866" y="454" width="13" height="13" transform="rotate(45 872 460)"/>
   </g>
   <g stroke="#1E8449" stroke-width="2.8" stroke-dasharray="9 5" fill="none" opacity="0.95">
-    <!-- Pick-up slot x = O1 satisfies pre clear(x): straight up -->
-    <line x1="466" y1="452" x2="410" y2="192"/>
-    <!-- Unstack slot y = O2 satisfies pre on(x,y): straight up -->
-    <line x1="785" y1="452" x2="768" y2="192"/>
-    <!-- Unstack slot x = O3 satisfies pre clear(x): straight up -->
-    <line x1="876" y1="452" x2="899" y2="192"/>
+    <!-- Pick-up slot x = O1 satisfies pre clear(x): arc left of the Pick-up box -->
+    <path d="M 466 452 C 360 410, 355 300, 398 196"/>
+    <!-- Unstack slot y = O2 satisfies pre on(x,y): arc through the middle channel -->
+    <path d="M 785 452 C 710 410, 700 300, 758 196"/>
+    <!-- Unstack slot x = O3 satisfies pre clear(x): arc right of the Unstack box -->
+    <path d="M 876 452 C 940 410, 940 300, 903 196"/>
   </g>
 
   <!-- ============ INSTANTIATION EDGE (1 exemplar) ============ -->
   <g stroke="#E67E22" stroke-width="2.4" stroke-dasharray="2 6" fill="none" opacity="0.95">
-    <!-- On(O3,O2) -> on : near vertical -->
-    <line x1="800" y1="598" x2="798" y2="282"/>
+    <!-- G-On(O3,O1) -> on : arc through the middle channel -->
+    <path d="M 610 598 C 660 480, 660 360, 780 288"/>
   </g>
 
   <!-- omitted-edges note -->
-  <text x="306" y="702" font-size="12" fill="#888">One binding edge per slot and one instantiation edge shown; every applicable slot binds to the occurrences it satisfies, and every ground literal links to its predicate symbol. No feature encodes symbol identity &#8212; the representation is renaming-invariant by construction.</text>
+  <text x="306" y="702" font-size="12" fill="#888">One binding edge per slot and one instantiation edge (the goal literal G-On links to the same symbol as On) shown; every applicable slot binds to the occurrences it satisfies, and every ground literal links to its predicate symbol. No feature encodes symbol identity &#8212; the representation is renaming-invariant by construction.</text>
 
   <!-- ============ LEGEND ============ -->
   <g font-size="12.5">
