@@ -18,6 +18,9 @@
 %
 % Recommended for better-looking tables
 \usepackage{booktabs}
+\usepackage{multirow}
+\PassOptionsToPackage{table}{xcolor}
+\usepackage{xcolor}
 
 %
 % Keep the \pdfinfo as shown here. There's no need
@@ -512,32 +515,232 @@ while a value target would presuppose a scale of goal distances shared
 between domains (see the value-objective ablation).
 
 \section{Theoretical Analysis}
-% TODO: Proposition 1 (binding layer strictly increases expressiveness over
-% LLG): adapt GOOSE Thm 4.3 counterexample to pairs differing in optimal/
-% applicable actions; show binding annotations break the symmetry.
-% Proposition 2 (renaming invariance + aliasing ceiling): pi invariant under
-% domain isomorphism; corollary: structurally isomorphic, semantically
-% different domains receive identical behavior - motivates few-shot track.
 
-\section{Experiments}
-% TODO: Experimental program (CLAUDE.md 3 + 6):
-% 1. Setup: 8 GABAR domains, leave-one-domain-out; training on N-1, test on
-%    (i) training domains, (ii) held-out domain zero-shot. Metrics:
-%    coverage, plan quality vs reference planner, per-state inference time.
-% 2. Baselines: union-vocabulary control (D-in-weights); per-domain GABAR
-%    as skyline (not a competitor - capability claim); LLM baseline
-%    (methodology from GABAR appendix).
-% 3. Main result: zero-shot coverage GADAR-C / GADAR-J vs union control.
-% 4. Binding-removal ablation (C2).
-% 5. Value-objective ablation (C3).
-% 6. Compiled vs joint analysis (C4): overall + aliasing-prone pairs +
-%    measured per-state cost.
-% 7. Transfer analysis (C5): domain-family analysis, few-shot curves,
-%    PDDLFuse stress test; expressiveness tax on training domains.
-% 8. Renaming-invariance check (unit test result; contrast llm_baseline).
+Two properties frame what the representation can and cannot do. The first
+separates the binding-layer graph from the lifted graph alone; the second
+states the invariance that enables transfer and, in the same breath, its
+ceiling.
+
+\begin{quote}
+\textbf{Proposition 1} (expressiveness separation).
+\emph{There exist pairs of planning tasks $(s, G, D)$ and $(s', G', D')$
+whose sets of optimal actions differ, such that every message-passing
+network produces identical outputs on their lifted graphs
+$\mathrm{LLG}(s,G,D)$ and $\mathrm{LLG}(s',G',D')$, while message-passing
+networks on the corresponding binding-layer graphs distinguish them.}
+\end{quote}
+
+\noindent The construction adapts the counterexample family used by
+\citet{goose_v2} to show that MPNNs on LLG cannot compute $h^{\mathrm{add}}$
+or $h^{\mathrm{max}}$: their task pairs are symmetric to message passing on
+the lifted graph while differing in heuristic value. We adapt the pairs so
+that they differ in which ground actions are applicable and optimal, and
+show that the binding annotations --- which tie each applicable ground
+action's slots to the precondition occurrences they satisfy --- break the
+symmetry that message passing cannot otherwise resolve.
+% TODO (Phase 5): full construction and proof in the appendix; verify the
+% adapted pairs against the exact statement of GOOSE Thm 4.3.
+
+\begin{quote}
+\textbf{Proposition 2} (renaming invariance and its ceiling).
+\emph{$\pi(s, G, D)$ is invariant under isomorphisms of the domain
+description: for any bijective renaming $\sigma$ of predicates, schemas,
+types, and objects, $\pi(\sigma(s), \sigma(G), \sigma(D)) =
+\sigma(\pi(s, G, D))$. Consequently, if two domains are structurally
+isomorphic but semantically different, the policy necessarily behaves
+identically on them.}
+\end{quote}
+
+\noindent Invariance follows by construction: no feature in the
+representation encodes symbol identity, so renamed inputs produce identical
+tensors up to node permutation, and the encoder and decoder are permutation
+equivariant. The consequence is a precise transfer ceiling rather than an
+empirical failure mode: zero-shot behavior on a new domain is determined by
+structure alone, so domains whose structures coincide receive the same
+policy regardless of what their symbols mean. Distinguishing them requires
+data from the new domain, which motivates the few-shot analysis in our
+experiments.
+% TODO (Phase 5): formal statement of the equivariance argument in the
+% appendix, together with the renaming unit test referenced in Experiments.
+
+\section{Experimental Setup}
+
+\textbf{Domains and protocol.} We evaluate on the eight benchmark domains
+used by GABAR --- Blocks, Miconic, Spanner, Gripper, Visitall, Grid,
+Logistics, and Rovers \citep{gabar, pddl-generators} --- in a
+leave-one-domain-out protocol: for each target domain, a single policy is
+trained on solved instances of the remaining seven and evaluated on the
+held-out domain zero-shot, having never seen its predicates, schemas, or
+objects. Test problems follow GABAR's three difficulty levels ---
+easy (E), medium (M), and hard (H) --- defined by problem size relative to
+the training distribution, with hard instances an order of magnitude larger
+than any training problem. Training data consists of plans computed by a
+classical planner \citep{fast_downward} on small instances of each training
+domain; states along each plan are converted to graphs and the policy is
+trained to reproduce the expert action as described above. We additionally
+report performance on the training domains themselves, to measure what the
+removal of symbol-identity features costs where identity is available (the
+price of generality).
+% TODO: exact instance counts per domain and difficulty thresholds; carry
+% over from the GABAR appendix and the collection scripts.
+
+\textbf{Baselines.} Our primary comparison is the \emph{union-vocabulary
+control}: a multi-task model with GADAR's data, architecture, training
+procedure, and budget, whose feature dictionaries are the union of the
+training domains' vocabularies --- the domain stays in the weights, as in
+prior learned policies. Any zero-shot capability GADAR has beyond this
+control is attributable to moving the domain into the input. As
+\emph{per-domain references} we report GABAR \citep{gabar} and ASNets
+\citep{toyer2020asnets}, each trained directly on the held-out domain.
+These references are not competitors --- they see the test domain in
+training and by construction cannot be executed on a domain they were not
+built for --- but they calibrate how much room lies between zero-shot
+transfer and dedicated per-domain training.
+
+\textbf{Ablations.} Two ablations certify the two components whose roles
+the paper claims. \emph{GADAR-NB} (no binding) keeps the full
+representation --- structural features, lifted layer, instantiation edges
+--- but removes the binding edges; if the binding layer is the enabling
+component, zero-shot performance should collapse toward the union control.
+\emph{GADAR-VAL} (value objective) keeps the full representation but
+replaces the ranking objective with regression to expert cost-to-go,
+executing greedily on predicted values; if rankings are what transfers
+across domains, this variant should degrade despite seeing identical
+inputs. Both ablations are run in the same leave-one-domain-out protocol.
+
+\textbf{Metrics and implementation.} Following GABAR, we report coverage
+(C), the percentage of test problems solved within the execution bound, and
+plan quality (P), the ratio of the reference planner's plan length to the
+policy's on jointly solved problems, so higher is better and values above 1
+indicate plans shorter than the reference. Encoder and decoder
+hyperparameters are carried over from GABAR unchanged ($L{=}9$
+message-passing rounds, 64-dimensional representations, GRU decoder); the
+schema encoder of \gadarc{} uses the same layer types.
+% TODO: seeds, learning rate, epochs, hardware, per-state inference times
+% for GADAR-C vs GADAR-J.
+The renaming-invariance property of Proposition~2 is verified as a unit
+test: permuting all symbol names in a domain yields bit-identical input
+tensors. For the few-shot analysis, the trained policy is fine-tuned on
+$k$ solved instances of the held-out domain for increasing $k$, tracing a
+data-efficiency curve against per-domain GABAR trained from scratch.
+
+\section{Results and Discussion}
+% TODO: results prose - written once the numbers exist. Structure:
+% 1. Main zero-shot result (Table 2): GADAR-C/J vs union control; the
+%    capability claim (C1).
+% 2. Binding ablation reading (C2): GADAR-NB collapse.
+% 3. Value ablation reading (C3): GADAR-VAL degradation.
+% 4. Compiled vs joint (C4): overall + aliasing-prone pairs + cost.
+% 5. Price of generality: training-domain performance vs GABAR.
+% 6. Few-shot curves and domain-family analysis (C5).
+
+\begin{table*}[!ht]
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.1}
+\small
+\centering
+\caption{\textbf{[Placeholder values --- to be replaced.]} Zero-shot
+coverage (C) and plan quality ratio (P) on each held-out domain under the
+leave-one-domain-out protocol, across difficulty levels. Per-domain
+reference models ($\dagger$) are trained \emph{on} the held-out domain and
+calibrate the gap to dedicated training; they cannot be run zero-shot.
+Turquoise intensity for C: light 50--74\%, medium 75--89\%, dark
+90--100\%. Violet intensity for P: light 0.5--0.74, medium 0.75--0.99,
+dark $\geq$1.0. Combined rows average across domains.}
+\label{table:main_table}
+\definecolor{turqLight}{HTML}{C8F1EA}
+\definecolor{turqMed}{HTML}{64D1C6}
+\definecolor{turqDark}{HTML}{00A3A1}
+\newcommand{\levelA}{}
+\newcommand{\levelB}{\cellcolor{turqLight}}
+\newcommand{\levelC}{\cellcolor{turqMed}}
+\newcommand{\levelD}{\cellcolor{turqDark!80}}
+\definecolor{plumLight}{HTML}{F4EBFC}
+\definecolor{plumMed}{HTML}{DCC4F6}
+\definecolor{plumDark}{HTML}{BBA0E5}
+\newcommand{\pvalA}{\cellcolor{plumLight}}
+\newcommand{\pvalB}{\cellcolor{plumMed}}
+\newcommand{\pvalC}{\cellcolor{plumDark!80}}
+\newcommand{\pNA}[1]{#1}
+\newcommand{\pA}[1]{\pvalA #1}
+\newcommand{\pB}[1]{\pvalB #1}
+\newcommand{\pC}[1]{\pvalC #1}
+\begin{tabular}{@{}l@{\hspace{2pt}}l|cc|cc|cc|cc|cc|cc|cc@{}}
+\toprule
+\multicolumn{2}{c|}{} & \multicolumn{4}{c|}{\colorbox{blue!8}{Per-domain reference$^\dagger$}} & \multicolumn{6}{c|}{\colorbox{green!10}{Zero-shot}} & \multicolumn{4}{c}{\colorbox{orange!10}{Ablations (zero-shot)}} \\
+\cmidrule(lr){3-6} \cmidrule(lr){7-12} \cmidrule(l){13-16}
+& & \multicolumn{2}{c|}{\scriptsize GABAR} & \multicolumn{2}{c|}{\scriptsize ASNets} & \multicolumn{2}{c|}{\scriptsize Union} & \multicolumn{2}{c|}{\scriptsize \textbf{GADAR-C}} & \multicolumn{2}{c|}{\scriptsize \textbf{GADAR-J}} & \multicolumn{2}{c|}{\scriptsize GADAR-NB} & \multicolumn{2}{c}{\scriptsize GADAR-VAL} \\
+\cmidrule(lr){3-4} \cmidrule(lr){5-6} \cmidrule(lr){7-8} \cmidrule(lr){9-10} \cmidrule(lr){11-12} \cmidrule(lr){13-14} \cmidrule(l){15-16}
+Domain & Diff & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ \\
+\midrule
+\multirow{3}{*}{\makebox[1.4cm][l]{Blocks}}
+& E & \levelD 100 & \pC{1.5} & \levelD 100 & \pC{1.6} & \levelA 6 & \pNA{0.31} & \levelB 68 & \pB{0.82} & \levelC 75 & \pB{0.86} & \levelA 11 & \pNA{0.38} & \levelA 22 & \pA{0.54} \\
+& M & \levelD 100 & \pC{1.6} & \levelD 100 & \pC{1.5} & \levelA 2 & \pNA{0.24} & \levelB 54 & \pA{0.71} & \levelB 62 & \pB{0.78} & \levelA 5 & \pNA{0.29} & \levelA 13 & \pNA{0.42} \\
+& H & \levelD 100 & \pC{1.7} & \levelD 92 & \pC{1.4} & \levelA 0 & - & \levelA 39 & \pA{0.63} & \levelA 47 & \pA{0.69} & \levelA 2 & \pNA{0.21} & \levelA 6 & \pNA{0.33} \\
+\midrule
+\multirow{3}{*}{\makebox[1.4cm][l]{Miconic}}
+& E & \levelD 100 & \pC{1.0} & \levelD 100 & \pC{1.0} & \levelA 8 & \pNA{0.35} & \levelC 76 & \pB{0.85} & \levelC 81 & \pB{0.89} & \levelA 14 & \pNA{0.41} & \levelA 27 & \pA{0.58} \\
+& M & \levelD 100 & \pB{0.97} & \levelD 100 & \pB{0.98} & \levelA 4 & \pNA{0.28} & \levelB 63 & \pA{0.74} & \levelB 70 & \pB{0.80} & \levelA 7 & \pNA{0.32} & \levelA 18 & \pNA{0.46} \\
+& H & \levelD 100 & \pB{0.95} & \levelD 90 & \pB{0.92} & \levelA 1 & \pNA{0.19} & \levelA 48 & \pA{0.66} & \levelB 56 & \pA{0.72} & \levelA 3 & \pNA{0.24} & \levelA 9 & \pNA{0.37} \\
+\midrule
+\multirow{3}{*}{\makebox[1.4cm][l]{Spanner}}
+& E & \levelD 94 & \pC{1.1} & \levelC 78 & \pB{0.86} & \levelA 3 & \pNA{0.22} & \levelB 58 & \pA{0.72} & \levelB 61 & \pA{0.74} & \levelA 6 & \pNA{0.27} & \levelA 15 & \pNA{0.44} \\
+& M & \levelD 93 & \pB{0.99} & \levelB 60 & \pA{0.69} & \levelA 1 & \pNA{0.15} & \levelA 46 & \pA{0.64} & \levelB 51 & \pA{0.68} & \levelA 2 & \pNA{0.18} & \levelA 8 & \pNA{0.35} \\
+& H & \levelC 89 & \pB{0.91} & \levelA 42 & \pA{0.61} & \levelA 0 & - & \levelA 31 & \pA{0.55} & \levelA 36 & \pA{0.59} & \levelA 0 & - & \levelA 3 & \pNA{0.26} \\
+\midrule
+\multirow{3}{*}{\makebox[1.4cm][l]{Gripper}}
+& E & \levelD 100 & \pC{1.1} & \levelC 78 & \pB{0.98} & \levelA 9 & \pNA{0.37} & \levelC 79 & \pB{0.88} & \levelC 84 & \pB{0.92} & \levelA 16 & \pNA{0.43} & \levelA 31 & \pA{0.61} \\
+& M & \levelD 100 & \pB{0.99} & \levelB 54 & \pB{0.91} & \levelA 5 & \pNA{0.29} & \levelB 66 & \pB{0.78} & \levelB 72 & \pB{0.83} & \levelA 8 & \pNA{0.34} & \levelA 20 & \pNA{0.48} \\
+& H & \levelD 100 & \pB{0.96} & \levelA 42 & \pB{0.88} & \levelA 2 & \pNA{0.20} & \levelB 52 & \pA{0.69} & \levelB 58 & \pA{0.73} & \levelA 4 & \pNA{0.25} & \levelA 11 & \pNA{0.39} \\
+\midrule
+\multirow{3}{*}{\makebox[1.4cm][l]{Visitall}}
+& E & \levelD 93 & \pC{1.1} & \levelD 94 & \pB{0.96} & \levelA 12 & \pNA{0.41} & \levelB 71 & \pB{0.84} & \levelB 74 & \pB{0.87} & \levelA 19 & \pNA{0.46} & \levelA 34 & \pA{0.63} \\
+& M & \levelD 91 & \pC{1.0} & \levelC 86 & \pB{0.93} & \levelA 7 & \pNA{0.33} & \levelB 59 & \pA{0.73} & \levelB 63 & \pB{0.77} & \levelA 10 & \pNA{0.37} & \levelA 23 & \pA{0.52} \\
+& H & \levelC 88 & \pC{1.1} & \levelB 64 & \pB{0.81} & \levelA 3 & \pNA{0.23} & \levelA 44 & \pA{0.62} & \levelA 49 & \pA{0.66} & \levelA 5 & \pNA{0.28} & \levelA 14 & \pNA{0.41} \\
+\midrule
+\multirow{3}{*}{\makebox[1.4cm][l]{Grid}}
+& E & \levelD 100 & \pB{0.91} & \levelB 52 & \pB{0.81} & \levelA 4 & \pNA{0.26} & \levelA 49 & \pA{0.65} & \levelB 55 & \pA{0.70} & \levelA 7 & \pNA{0.30} & \levelA 12 & \pNA{0.40} \\
+& M & \levelD 97 & \pB{0.85} & \levelA 45 & \pA{0.66} & \levelA 2 & \pNA{0.18} & \levelA 37 & \pA{0.57} & \levelA 42 & \pA{0.61} & \levelA 3 & \pNA{0.22} & \levelA 7 & \pNA{0.31} \\
+& H & \levelD 92 & \pA{0.74} & \levelA 21 & \pA{0.60} & \levelA 0 & - & \levelA 24 & \pNA{0.48} & \levelA 29 & \pA{0.52} & \levelA 1 & \pNA{0.14} & \levelA 2 & \pNA{0.23} \\
+\midrule
+\multirow{3}{*}{\makebox[1.4cm][l]{Logistics}}
+& E & \levelD 90 & \pA{0.75} & \levelA 39 & \pA{0.71} & \levelA 5 & \pNA{0.27} & \levelA 43 & \pA{0.60} & \levelA 47 & \pA{0.64} & \levelA 8 & \pNA{0.31} & \levelA 13 & \pNA{0.38} \\
+& M & \levelC 76 & \pA{0.65} & \levelA 22 & \pA{0.55} & \levelA 2 & \pNA{0.17} & \levelA 32 & \pA{0.52} & \levelA 36 & \pA{0.56} & \levelA 4 & \pNA{0.21} & \levelA 6 & \pNA{0.29} \\
+& H & \levelB 71 & \pA{0.59} & \levelA 4 & \pNA{0.39} & \levelA 0 & - & \levelA 21 & \pNA{0.44} & \levelA 25 & \pNA{0.47} & \levelA 1 & \pNA{0.12} & \levelA 2 & \pNA{0.19} \\
+\midrule
+\multirow{3}{*}{\makebox[1.4cm][l]{Rovers}}
+& E & \levelC 87 & \pC{1.0} & \levelB 67 & \pB{0.96} & \levelA 6 & \pNA{0.29} & \levelB 53 & \pA{0.68} & \levelB 57 & \pA{0.71} & \levelA 9 & \pNA{0.33} & \levelA 17 & \pNA{0.45} \\
+& M & \levelC 82 & \pB{0.96} & \levelB 56 & \pB{0.87} & \levelA 3 & \pNA{0.21} & \levelA 41 & \pA{0.59} & \levelA 45 & \pA{0.63} & \levelA 4 & \pNA{0.25} & \levelA 10 & \pNA{0.36} \\
+& H & \levelC 77 & \pB{0.97} & \levelA 31 & \pA{0.64} & \levelA 1 & \pNA{0.13} & \levelA 28 & \pNA{0.49} & \levelA 32 & \pA{0.53} & \levelA 1 & \pNA{0.11} & \levelA 4 & \pNA{0.27} \\
+\midrule
+\midrule
+\multirow{3}{*}{\makebox[1.4cm][l]{Combined}}
+& E & \levelD 95.5 & \pC{1.06} & \levelC 76.0 & \pB{0.98} & \levelA 6.6 & \pNA{0.31} & \levelB 62.1 & \pA{0.74} & \levelB 66.8 & \pB{0.78} & \levelA 11.3 & \pNA{0.36} & \levelA 21.4 & \pNA{0.49} \\
+& M & \levelD 92.4 & \pC{1.00} & \levelB 65.4 & \pB{0.88} & \levelA 3.3 & \pNA{0.23} & \levelB 49.8 & \pA{0.66} & \levelB 55.1 & \pA{0.71} & \levelA 5.4 & \pNA{0.27} & \levelA 13.1 & \pNA{0.40} \\
+& H & \levelC 89.6 & \pB{0.99} & \levelA 48.3 & \pA{0.78} & \levelA 0.9 & \pNA{0.19*} & \levelA 35.9 & \pA{0.57} & \levelA 41.5 & \pA{0.61} & \levelA 2.1 & \pNA{0.19*} & \levelA 6.4 & \pNA{0.31} \\
+\bottomrule
+\end{tabular}
+\end{table*}
 
 \section{Conclusion}
-% TODO
+
+We introduced \gadar{}, the first policy for classical planning that takes
+the domain description as input and constructs grounded actions in domains
+never seen in training, without search. The capability rests on a new
+representation --- structural features, the lifted domain description as a
+graph, and the grounded--lifted binding layer connecting ground
+applicability to lifted structure --- while GABAR's encoder, ranking
+decoder, and search-free execution carry over unchanged. Two conditioning
+methods, compiled and joint, instantiate the representation under opposing
+hypotheses about whether a domain's symbols can be given static meaning,
+and their comparison, together with the binding-removal and value-objective
+ablations, ties each empirical result to a specific design commitment.
+% TODO: one sentence summarizing the headline numbers once results exist,
+% and one sentence on the strongest analysis finding (C vs J).
+Zero-shot transfer is bounded by structure --- Proposition~2 makes the
+ceiling precise --- and the few-shot results chart the territory beyond it.
+Extending the approach to lifted successor generation, richer PDDL
+fragments, and probabilistic settings remains future work.
 
 \bibliography{references}
 
