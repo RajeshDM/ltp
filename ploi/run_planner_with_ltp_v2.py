@@ -326,12 +326,25 @@ def convert_graph_to_model_input_v1(g_inp, device):
     ao_scores = torch.from_numpy(g_inp["action_object_scores"]).long().to(device)
     return nfeat, edge_indices, efeat, u, a_scores, ao_scores
 
+def _pad_variable_width_attrs(graphs):
+    """Pad action_object_scores to uniform width across graphs so
+    Batch.from_data_list can stack them. Training does this via
+    _expand_graph_to_max_size_features; this is the test-time equivalent."""
+    if not graphs:
+        return graphs
+    max_width = max(g['action_object_scores'].shape[1] for g in graphs)
+    for g in graphs:
+        ao = g['action_object_scores']
+        if ao.shape[1] < max_width:
+            padded = np.zeros((ao.shape[0], max_width), dtype=ao.dtype)
+            padded[:, :ao.shape[1]] = ao
+            g['action_object_scores'] = padded
+    return graphs
+
+
 def convert_graph_to_model_input_v2(g_inp, device):
+    _pad_variable_width_attrs(g_inp)
     hetero_graphs = graph_dataset_to_pyg_dataset(g_inp, batch_wise=False)
-    # Old version (constructs a fresh DataLoader per call - pure overhead;
-    # the DataLoader's collate does exactly Batch.from_data_list internally):
-    #hetero_dataset = pyg_dataloader(hetero_graphs, batch_size=len(g_inp))
-    #return next(iter(hetero_dataset)).to(device)
     return Batch.from_data_list(hetero_graphs).to(device)
 
 def convert_state_and_run_model_val(model, states, action_space ,
