@@ -759,6 +759,8 @@ class PlannerTester:
             raise NotImplementedError("GABAR_BATCH_EVAL currently supports greedy search only")
 
         planner_data = self.planner_data[PlannerType.LEARNED_MODEL]
+        profile_batch = os.environ.get("GABAR_PROFILE_BATCH", "")
+        use_cuda = self.config.device and 'cuda' in str(self.config.device)
         start_time = time.time()
 
         # One env per problem: identical per-problem semantics to the
@@ -781,11 +783,12 @@ class PlannerTester:
                          "result": result, "fname": fname, "step": 0}
             results_by_problem[p] = result
 
+        t_setup = time.time() - start_time
+
         n_total = len(problem_idxs)
         n_solved = 0
         n_failed = 0
         max_plan = self.config.max_plan_length
-        profile_batch = os.environ.get("GABAR_PROFILE_BATCH", "")
         pbar = tqdm(total=max_plan, desc=f"[batch] 0/{n_total} solved",
                     bar_format="{desc} | step {n}/{total} | {elapsed}<{remaining}")
 
@@ -824,6 +827,8 @@ class PlannerTester:
 
             with torch.inference_mode():
                 batch_results = model.forward_with_parallel_beam_search(model_input)
+            if use_cuda:
+                torch.cuda.synchronize()
             t4 = time.time()
             t_forward += t4 - t3
 
@@ -860,12 +865,18 @@ class PlannerTester:
         print(f"[batch-eval] done: {n_total} problems, {n_solved} solved, "
               f"{n_failed} failed, {round_num} rounds, {total_time:.1f}s", flush=True)
         if profile_batch:
-            print(f"[batch-profile] Time breakdown over {round_num} rounds:")
-            print(f"  grounding:   {t_ground:7.1f}s ({100*t_ground/total_time:.0f}%)")
-            print(f"  graph build: {t_graph:7.1f}s ({100*t_graph/total_time:.0f}%)")
-            print(f"  pyg convert: {t_convert:7.1f}s ({100*t_convert/total_time:.0f}%)")
-            print(f"  forward pass:{t_forward:7.1f}s ({100*t_forward/total_time:.0f}%)")
-            print(f"  decode+step: {t_decode:7.1f}s ({100*t_decode/total_time:.0f}%)")
+            t_accounted = t_setup + t_ground + t_graph + t_convert + t_forward + t_decode
+            t_overhead = total_time - t_accounted
+            print(f"[batch-profile] Time breakdown ({round_num} rounds, {n_total} problems):")
+            print(f"  env setup:    {t_setup:7.2f}s ({100*t_setup/total_time:.1f}%)  <- env create + reset + initial grounding")
+            print(f"  grounding:    {t_ground:7.2f}s ({100*t_ground/total_time:.1f}%)  <- all_ground_literals per active problem")
+            print(f"  graph build:  {t_graph:7.2f}s ({100*t_graph/total_time:.1f}%)  <- state_to_graph_wrapper (numpy loops)")
+            print(f"  pyg convert:  {t_convert:7.2f}s ({100*t_convert/total_time:.1f}%)  <- pad + graph_to_pyg_data + Batch.from_data_list")
+            print(f"  forward pass: {t_forward:7.2f}s ({100*t_forward/total_time:.1f}%)  <- GNN encoder + parallel decoder" +
+                  (" (cuda.synchronize)" if use_cuda else ""))
+            print(f"  decode+step:  {t_decode:7.2f}s ({100*t_decode/total_time:.1f}%)  <- decode_beam_results + env.step + goal check")
+            print(f"  overhead:     {t_overhead:7.2f}s ({100*t_overhead/total_time:.1f}%)  <- tqdm, bookkeeping, Python loop")
+            print(f"  TOTAL:        {total_time:7.2f}s")
         return [results_by_problem[p] for p in problem_idxs]
 
     def _run_iterative_deepening_search(self, state, model, action_space, graph_metadata, monitor,
