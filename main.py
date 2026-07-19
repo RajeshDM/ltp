@@ -6,11 +6,11 @@ import pickle
 import warnings
 
 # Deterministic execution: eliminate FP non-determinism from scatter/cuBLAS ops.
-# Always on by default; set GABAR_NONDETERMINISTIC=1 to disable (faster training).
+# Off by default (faster). Enable with GABAR_DETERMINISTIC=1 for reproducible results.
 os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')
 
 import torch
-if not os.environ.get('GABAR_NONDETERMINISTIC'):
+if os.environ.get('GABAR_DETERMINISTIC'):
     torch.use_deterministic_algorithms(True)
 
 import wandb
