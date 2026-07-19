@@ -42,8 +42,27 @@ def load_trace(path):
     return entries
 
 
-def compare_candidates(a, b, tol, ignore_order):
-    """Return None if the two candidate lists match, else a description."""
+def compare_candidates(a, b, tol, ignore_order, action_only=False):
+    """Return None if the two candidate lists match, else a description.
+
+    action_only: only compare rank 0 (the selected action) - this is what
+    actually determines the trajectory and plan outcome.
+    """
+    if action_only:
+        if not a or not b:
+            return "empty candidate list"
+        sa, qa = a[0]
+        sb, qb = b[0]
+        if qa != qb:
+            if abs(sa - sb) <= tol:
+                return (f"selected action differs: {qa} vs {qb} "
+                        f"(scores {sa:.6f} / {sb:.6f} - TIE within tol)")
+            return (f"selected action differs: {qa} vs {qb} "
+                    f"(scores {sa:.6f} / {sb:.6f})")
+        if abs(sa - sb) > tol:
+            return f"selected action score differs for {qa}: {sa:.6f} vs {sb:.6f}"
+        return None
+
     if ignore_order:
         da = {tuple(seq): score for score, seq in a}
         db = {tuple(seq): score for score, seq in b}
@@ -72,7 +91,7 @@ def compare_candidates(a, b, tol, ignore_order):
 
 
 def compare_pair(trace_a, trace_b, tol, ignore_order, name_a="A", name_b="B",
-                 score_only=False):
+                 score_only=False, action_only=False):
     """Compare two loaded traces.
 
     Returns (problems, calls_compared, divergences, forks) where divergences is a
@@ -83,6 +102,10 @@ def compare_pair(trace_a, trace_b, tol, ignore_order, name_a="A", name_b="B",
     If score_only=True, "candidate sets differ" is treated as a trajectory fork
     (expected from FP tie-break non-determinism), not a real divergence. Only
     flag cases where the same candidates produce different scores.
+
+    If action_only=True, only compare the selected action (rank 0). Two runs
+    that pick the same top action at every step are execution-equivalent even
+    if lower-ranked candidates differ in score or order.
     """
     all_keys = set(trace_a) | set(trace_b)
     problems = sorted({(k[0], k[1]) for k in all_keys},
@@ -97,7 +120,7 @@ def compare_pair(trace_a, trace_b, tol, ignore_order, name_a="A", name_b="B",
         for s in steps:
             key = (epoch, problem, s)
             if key not in trace_a or key not in trace_b:
-                if not score_only:
+                if not score_only and not action_only:
                     which = name_a if key not in trace_a else name_b
                     divergences.append((epoch, problem, s,
                                         f"missing in {which} ({which} finished this problem earlier)"))
@@ -105,9 +128,13 @@ def compare_pair(trace_a, trace_b, tol, ignore_order, name_a="A", name_b="B",
                     forked = True
                 break
             calls_compared += 1
-            diff = compare_candidates(trace_a[key], trace_b[key], tol, ignore_order)
+            diff = compare_candidates(trace_a[key], trace_b[key], tol,
+                                      ignore_order, action_only=action_only)
             if diff:
                 if score_only and "candidate sets differ" in diff:
+                    forked = True
+                    break
+                if action_only and "TIE within tol" in diff:
                     forked = True
                     break
                 divergences.append((epoch, problem, s, diff))
@@ -118,10 +145,10 @@ def compare_pair(trace_a, trace_b, tol, ignore_order, name_a="A", name_b="B",
 
 
 def report_pair_detailed(trace_a, trace_b, tol, ignore_order, name_a, name_b,
-                         score_only=False):
+                         score_only=False, action_only=False):
     problems, calls_compared, divergences, forks = compare_pair(
         trace_a, trace_b, tol, ignore_order, name_a, name_b,
-        score_only=score_only)
+        score_only=score_only, action_only=action_only)
     diverged_keys = {(e, p) for e, p, _, _ in divergences}
     for epoch, problem in problems:
         match = next(((s, d) for e, p, s, d in divergences
@@ -140,14 +167,15 @@ def report_pair_detailed(trace_a, trace_b, tol, ignore_order, name_a, name_b,
     summary = (f"Summary: {len(problems)} (epoch, problem) pairs, "
                f"{calls_compared} model calls compared, "
                f"{len(diverged_keys)} diverged")
-    if score_only:
+    if score_only or action_only:
         summary += (f", {forks} forked (trajectory diverged due to FP "
                     f"tie-breaks — expected, not a bug)")
     print(summary)
     return 1 if diverged_keys else 0
 
 
-def report_matrix(traces, names, tol, ignore_order, score_only=False):
+def report_matrix(traces, names, tol, ignore_order, score_only=False,
+                  action_only=False):
     """Pairwise match matrix + equivalence groups for 3+ traces."""
     n = len(names)
     diverged_counts = {}
@@ -155,7 +183,7 @@ def report_matrix(traces, names, tol, ignore_order, score_only=False):
     for i, j in itertools.combinations(range(n), 2):
         problems, _, divergences, forks = compare_pair(
             traces[i], traces[j], tol, ignore_order, names[i], names[j],
-            score_only=score_only)
+            score_only=score_only, action_only=action_only)
         diverged_counts[(i, j)] = (len({(e, p) for e, p, _, _ in divergences}),
                                    len(problems))
         fork_counts[(i, j)] = forks
@@ -229,6 +257,11 @@ def main():
                         help="only flag score-level bugs; treat trajectory forks "
                              "(candidate sets differ due to FP tie-break "
                              "non-determinism) as expected, not failures")
+    parser.add_argument("--action-only", action="store_true",
+                        help="only compare the selected action (rank 0) at each "
+                             "step; treats ties (same score, different action) as "
+                             "forks, not bugs. This checks what matters: are the "
+                             "same actions being executed?")
     args = parser.parse_args()
 
     if len(args.traces) < 2:
@@ -246,9 +279,11 @@ def main():
     if len(loaded) == 2:
         return report_pair_detailed(loaded[0], loaded[1], args.tol,
                                     args.ignore_order, names[0], names[1],
-                                    score_only=args.score_only)
+                                    score_only=args.score_only,
+                                    action_only=args.action_only)
     return report_matrix(loaded, names, args.tol, args.ignore_order,
-                         score_only=args.score_only)
+                         score_only=args.score_only,
+                         action_only=args.action_only)
 
 
 if __name__ == "__main__":
