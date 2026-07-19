@@ -473,8 +473,15 @@ if __name__ == "__main__":
                         _create_graph_dataset_ltp)
                     per_domain_graphs = {name: graphs}
 
+                # Tag each graph with its domain index for per-domain loss tracking.
                 # Stratified train/val split: 10% from EACH domain goes to
                 # validation, so every domain is proportionally represented.
+                _domain_names_ordered = list(per_domain_graphs.keys())
+                args._domain_names_ordered = _domain_names_ordered
+                for dom_idx, (name, dom_graphs) in enumerate(per_domain_graphs.items()):
+                    for g in dom_graphs:
+                        g['domain_id'].x = torch.tensor([[dom_idx]], dtype=torch.long)
+
                 rng = _random.Random(args.seed)
                 input_hetero_graphs = []
                 val_hetero_graphs = []
@@ -945,23 +952,25 @@ if __name__ == "__main__":
             #criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
             # Train model
             #model_dict = train_model_graphnetwork_ltp_batch(_model,
-            train_func(_model,
-                                    datasets,
-                                    #dataloaders,
-                                    criterion=criterion, optimizer=optimizer,
-                                    use_gpu=args.use_gpu,
-                                    starting_epoch = args.starting_epoch,
-                                    save_folder = save_folder,
-                                    final_epoch= args.epochs,
-                                    train_env_name=train_env_name,seed=args.seed,
-                                    message_string=message_string,
-                                    log_wandb=args.wandb,
-                                    ablation=args.ablation,
-                                    chpkt_manager=manager,
-                                    enable_profiling=enable_profiling,
-                                    use_amp=getattr(args, 'use_amp', False),
-                                    spot_checkpoint_path=_spot_path,
-                                    patience=getattr(args, 'early_stopping_patience', 0))
+            _train_kwargs = dict(
+                criterion=criterion, optimizer=optimizer,
+                use_gpu=args.use_gpu,
+                starting_epoch=args.starting_epoch,
+                save_folder=save_folder,
+                final_epoch=args.epochs,
+                train_env_name=train_env_name, seed=args.seed,
+                message_string=message_string,
+                log_wandb=args.wandb,
+                ablation=args.ablation,
+                chpkt_manager=manager,
+                enable_profiling=enable_profiling,
+                use_amp=getattr(args, 'use_amp', False),
+                spot_checkpoint_path=_spot_path,
+                patience=getattr(args, 'early_stopping_patience', 0),
+            )
+            if hasattr(args, '_domain_names_ordered'):
+                _train_kwargs['domain_names'] = args._domain_names_ordered
+            train_func(_model, datasets, **_train_kwargs)
             ic (args.attention_dropout)
             ic (args.dropout)
             ic (args.weight_decay)

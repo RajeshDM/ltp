@@ -454,7 +454,8 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
                 enable_profiling=False,
                 use_amp=False,
                 spot_checkpoint_path=None,
-                patience=0):
+                patience=0,
+                domain_names=None):
 
     since = time.time()
     min_save_epoch = 0
@@ -470,6 +471,8 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
 
     device_type = 'cuda' if use_gpu else 'cpu'
     scaler = torch.amp.GradScaler(enabled=use_amp and use_gpu)
+
+    n_domains = len(domain_names) if domain_names else 0
 
     epochs = []
     train_loss_values = []
@@ -489,6 +492,9 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
             phases = ['train']
 
         running_loss = {'train':0.0,'val':0.0}
+        if n_domains > 0:
+            domain_loss = {p: [0.0] * n_domains for p in phases}
+            domain_count = {p: [0] * n_domains for p in phases}
 
         for phase in phases:
             if phase == 'train':
@@ -570,12 +576,32 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
                 # statistics
                 running_loss[phase] += total_loss.item()
                 running_num_samples += 1
+
+                if n_domains > 0 and 'domain_id' in batch_data:
+                    with torch.no_grad():
+                        dids = batch_data['domain_id'].x.squeeze(-1).long()
+                        _as = action_scores.detach().float()
+                        _ti = target_indices.detach()
+                        for d in dids.unique().tolist():
+                            mask = (dids == d)
+                            n = mask.sum().item()
+                            domain_count[phase][d] += n
+                            domain_loss[phase][d] += torch.nn.functional.cross_entropy(
+                                _as[mask], _ti[mask]).item() * n
+
             if log_wandb:
                 wandb.log({f"loss_{phase}": running_loss[phase]})
 
         if epoch % print_iter == 0:
             #print("running_loss:", running_loss, flush=True)
             print(f"loss: {running_loss} | time({save_iter}): {time.time() - time_taken_for_save_iter:.2f}s", flush=True)
+            if n_domains > 0:
+                parts = []
+                for d in range(n_domains):
+                    t_avg = domain_loss['train'][d] / max(1, domain_count['train'][d])
+                    v_avg = domain_loss['val'][d] / max(1, domain_count['val'][d])
+                    parts.append(f"{domain_names[d]}:t{t_avg:.3f}/v{v_avg:.3f}")
+                print(f"  domain: {' | '.join(parts)}", flush=True)
             epochs.append(epoch)
             train_loss_values.append(running_loss['train'])
             val_loss_values.append(running_loss['val'])
