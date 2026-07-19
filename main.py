@@ -493,6 +493,12 @@ if __name__ == "__main__":
                 print(f"SWEEP mode: subsetting {len(all_input_graphs)} graphs to {target} ({args.data_fraction:.0%})")
                 all_input_graphs = subset_graphs(all_input_graphs, fraction=args.data_fraction, seed=args.seed)
 
+            # Pad action_object_scores to uniform width across all graphs so
+            # PyG Batch.from_data_list can collate them. Multi-domain graphs
+            # may have different object counts per domain.
+            from ploi.datautils_ltp import pad_pyg_action_scores
+            pad_pyg_action_scores(all_input_graphs)
+
             num_validation = max(1, int(len(all_input_graphs) * 0.1))
             input_hetero_graphs = all_input_graphs[num_validation:]
             val_hetero_graphs = all_input_graphs[:num_validation]

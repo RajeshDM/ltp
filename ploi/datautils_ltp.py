@@ -1546,6 +1546,39 @@ def load_domain_metadata(train_env_name, planner, num_train_problems, args,
     return md, action_space
 
 
+def pad_pyg_action_scores(hetero_graphs):
+    """Pad action_object_scores tensors in PyG HeteroData to uniform width.
+
+    Different domains (or different problems) can have different object counts,
+    producing action_object_scores tensors of shape (max_arity, num_objects)
+    with varying num_objects. PyG Batch.from_data_list requires matching shapes
+    on dimension 1, so we pad to the global max.
+    """
+    if not hetero_graphs:
+        return
+    score_key = 'action_object_scores'
+    target_key = 'target_action_object_scores'
+    max_width = 0
+    for g in hetero_graphs:
+        if score_key in g:
+            max_width = max(max_width, g[score_key].x.shape[1])
+        if target_key in g:
+            max_width = max(max_width, g[target_key].x.shape[1])
+    if max_width == 0:
+        return
+    padded = 0
+    for g in hetero_graphs:
+        for key in (score_key, target_key):
+            if key not in g:
+                continue
+            t = g[key].x
+            if t.shape[1] < max_width:
+                g[key].x = torch.nn.functional.pad(t, (0, max_width - t.shape[1]))
+                padded += 1
+    if padded > 0:
+        logger.info(f"Padded action_object_scores to width {max_width} ({padded} tensors)")
+
+
 def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, create_graph_dataset_func,
                            metadata_override=None, cache_tag=""):
     """
