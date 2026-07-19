@@ -763,14 +763,15 @@ class PlannerTester:
         use_cuda = self.config.device and 'cuda' in str(self.config.device)
         start_time = time.time()
 
-        # One env per problem: identical per-problem semantics to the
-        # sequential path (which fixes one shared env per problem in turn)
+        # Each problem needs its own env instance (env.step mutates internal
+        # state). Use deepcopy from a single template to avoid re-parsing the
+        # PDDL domain file N times (pddlgym.make is the expensive part).
         active, results_by_problem = {}, {}
+        template_env = pddlgym.make(f"PDDLEnv{self.config.domain_name}Test-v0")
         for p in problem_idxs:
-            env = pddlgym.make(f"PDDLEnv{self.config.domain_name}Test-v0")
+            env = copy.deepcopy(template_env)
             env.fix_problem_index(p)
             state, _ = env.reset()
-            # prime the action-space grounding cache, as _run_learned_model does
             list(env.action_space.all_ground_literals(state, reground=True))
             result = PlanningResult()
             result.problem_idx = p
@@ -782,6 +783,7 @@ class PlannerTester:
             active[p] = {"env": env, "state": state, "monitor": monitor,
                          "result": result, "fname": fname, "step": 0}
             results_by_problem[p] = result
+        del template_env
 
         t_setup = time.time() - start_time
 
