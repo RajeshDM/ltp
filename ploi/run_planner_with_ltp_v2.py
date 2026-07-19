@@ -785,31 +785,47 @@ class PlannerTester:
         n_solved = 0
         n_failed = 0
         max_plan = self.config.max_plan_length
+        profile_batch = os.environ.get("GABAR_PROFILE_BATCH", "")
         pbar = tqdm(total=max_plan, desc=f"[batch] 0/{n_total} solved",
                     bar_format="{desc} | step {n}/{total} | {elapsed}<{remaining}")
+
+        t_ground, t_graph, t_convert, t_forward, t_decode = 0., 0., 0., 0., 0.
 
         round_num = 0
         while active:
             round_num += 1
             batch_order = sorted(active.keys())
 
+            t0 = time.time()
             graphs, groundings_by_problem = [], {}
             for p in batch_order:
                 st = active[p]
                 groundings = list(st["env"].action_space.all_ground_literals(st["state"]))
                 groundings_by_problem[p] = groundings
+            t1 = time.time()
+            t_ground += t1 - t0
+
+            for p in batch_order:
+                st = active[p]
                 g_inp, _, node_to_objects = state_to_graph_wrapper(
-                    st["state"], action_space, groundings,
+                    st["state"], action_space, groundings_by_problem[p],
                     prev_actions=None, prev_state=None,
                     graph_metadata=graph_metadata,
                     curr_action=None, objects=None,
                     goal_state=st["state"].goal, cheating_input=None)
                 st["node_to_objects"] = node_to_objects
                 graphs.append(g_inp)
+            t2 = time.time()
+            t_graph += t2 - t1
 
             model_input = convert_graph_to_model_input_v2(graphs, self.config.device)
+            t3 = time.time()
+            t_convert += t3 - t2
+
             with torch.inference_mode():
                 batch_results = model.forward_with_parallel_beam_search(model_input)
+            t4 = time.time()
+            t_forward += t4 - t3
 
             finished = []
             for i, p in enumerate(batch_order):
@@ -823,6 +839,9 @@ class PlannerTester:
                                             groundings_by_problem[p],
                                             planner_data, start_time):
                     finished.append(p)
+            t5 = time.time()
+            t_decode += t5 - t4
+
             for p in finished:
                 if results_by_problem[p].success:
                     n_solved += 1
@@ -837,9 +856,16 @@ class PlannerTester:
             pbar.refresh()
 
         pbar.close()
+        total_time = time.time() - start_time
         print(f"[batch-eval] done: {n_total} problems, {n_solved} solved, "
-              f"{n_failed} failed, {round_num} rounds, "
-              f"{time.time() - start_time:.1f}s", flush=True)
+              f"{n_failed} failed, {round_num} rounds, {total_time:.1f}s", flush=True)
+        if profile_batch:
+            print(f"[batch-profile] Time breakdown over {round_num} rounds:")
+            print(f"  grounding:   {t_ground:7.1f}s ({100*t_ground/total_time:.0f}%)")
+            print(f"  graph build: {t_graph:7.1f}s ({100*t_graph/total_time:.0f}%)")
+            print(f"  pyg convert: {t_convert:7.1f}s ({100*t_convert/total_time:.0f}%)")
+            print(f"  forward pass:{t_forward:7.1f}s ({100*t_forward/total_time:.0f}%)")
+            print(f"  decode+step: {t_decode:7.1f}s ({100*t_decode/total_time:.0f}%)")
         return [results_by_problem[p] for p in problem_idxs]
 
     def _run_iterative_deepening_search(self, state, model, action_space, graph_metadata, monitor,
