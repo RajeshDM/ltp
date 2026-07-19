@@ -39,7 +39,7 @@ echo "════════════════════════�
 echo "=== 1/7: Single-domain BLOCKS (train+test) ==="
 echo "════════════════════════════════════════════════════════════════"
 echo "Started: $(date)"
-./gabar_run.sh train_test --domain blocks $COMMON
+./train_test_scripts/gabar_run.sh train_test --domain blocks $COMMON
 echo "Finished: $(date)"
 echo ""
 
@@ -47,7 +47,7 @@ echo "════════════════════════�
 echo "=== 2/7: Single-domain GRIPPER (train+test) ==="
 echo "════════════════════════════════════════════════════════════════"
 echo "Started: $(date)"
-./gabar_run.sh train_test --domain gripper $COMMON
+./train_test_scripts/gabar_run.sh train_test --domain gripper $COMMON
 echo "Finished: $(date)"
 echo ""
 
@@ -55,7 +55,7 @@ echo "════════════════════════�
 echo "=== 3/7: Single-domain MICONIC (train+test) ==="
 echo "════════════════════════════════════════════════════════════════"
 echo "Started: $(date)"
-./gabar_run.sh train_test --domain miconic $COMMON
+./train_test_scripts/gabar_run.sh train_test --domain miconic $COMMON
 echo "Finished: $(date)"
 echo ""
 
@@ -65,7 +65,7 @@ echo "════════════════════════�
 echo "=== 4/7: Multi-domain ALL THREE (train+test) ==="
 echo "════════════════════════════════════════════════════════════════"
 echo "Started: $(date)"
-./gabar_run.sh multi --domains "manyblocks_ipcc_big,gripper_ipcc,miconic_ipcc" $COMMON
+./train_test_scripts/gabar_run.sh multi --domains "manyblocks_ipcc_big,gripper_ipcc,miconic_ipcc" $COMMON
 echo "Finished: $(date)"
 echo ""
 
@@ -75,7 +75,7 @@ echo "════════════════════════�
 echo "=== 5/7: Multi-domain blocks+gripper, HELD-OUT: miconic ==="
 echo "════════════════════════════════════════════════════════════════"
 echo "Started: $(date)"
-./gabar_run.sh multi --domains "manyblocks_ipcc_big,gripper_ipcc" \
+./train_test_scripts/gabar_run.sh multi --domains "manyblocks_ipcc_big,gripper_ipcc" \
     --heldout "miconic_ipcc" $COMMON
 echo "Finished: $(date)"
 echo ""
@@ -84,7 +84,7 @@ echo "════════════════════════�
 echo "=== 6/7: Multi-domain blocks+miconic, HELD-OUT: gripper ==="
 echo "════════════════════════════════════════════════════════════════"
 echo "Started: $(date)"
-./gabar_run.sh multi --domains "manyblocks_ipcc_big,miconic_ipcc" \
+./train_test_scripts/gabar_run.sh multi --domains "manyblocks_ipcc_big,miconic_ipcc" \
     --heldout "gripper_ipcc" $COMMON
 echo "Finished: $(date)"
 echo ""
@@ -93,7 +93,7 @@ echo "════════════════════════�
 echo "=== 7/7: Multi-domain gripper+miconic, HELD-OUT: blocks ==="
 echo "════════════════════════════════════════════════════════════════"
 echo "Started: $(date)"
-./gabar_run.sh multi --domains "gripper_ipcc,miconic_ipcc" \
+./train_test_scripts/gabar_run.sh multi --domains "gripper_ipcc,miconic_ipcc" \
     --heldout "manyblocks_ipcc_big" $COMMON
 echo "Finished: $(date)"
 echo ""
