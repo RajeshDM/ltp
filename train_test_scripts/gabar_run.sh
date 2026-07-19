@@ -9,6 +9,11 @@
 
 set -euo pipefail
 
+# Deterministic execution: fix Python hash seed so grounding enumeration
+# order is stable across runs. Combined with torch.use_deterministic_algorithms
+# in main.py, this makes inference fully reproducible.
+export PYTHONHASHSEED="${PYTHONHASHSEED:-42}"
+
 # ─── Domain registry ────────────────────────────────────────────────────────
 # name=<pddlgym name>;train=<count>;test=<count>
 declare -A DOMAIN_CONFIGS=(

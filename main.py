@@ -4,7 +4,14 @@ import json
 import os
 import pickle
 import warnings
+
+# Deterministic execution: eliminate FP non-determinism from scatter/cuBLAS ops.
+# CUBLAS_WORKSPACE_CONFIG must be set before any CUDA operation.
+os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')
+
 import torch
+torch.use_deterministic_algorithms(True)
+
 import wandb
 import time
 #from torch.utils.data import DataLoader
