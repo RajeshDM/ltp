@@ -781,6 +781,13 @@ class PlannerTester:
                          "result": result, "fname": fname, "step": 0}
             results_by_problem[p] = result
 
+        n_total = len(problem_idxs)
+        n_solved = 0
+        n_failed = 0
+        max_plan = self.config.max_plan_length
+        pbar = tqdm(total=max_plan, desc=f"[batch] 0/{n_total} solved",
+                    bar_format="{desc} | step {n}/{total} | {elapsed}<{remaining}")
+
         round_num = 0
         while active:
             round_num += 1
@@ -817,14 +824,22 @@ class PlannerTester:
                                             planner_data, start_time):
                     finished.append(p)
             for p in finished:
+                if results_by_problem[p].success:
+                    n_solved += 1
+                else:
+                    n_failed += 1
                 del active[p]
 
-            if round_num % 50 == 0:
-                print(f"[batch-eval] round {round_num}: {len(active)} problems still active", flush=True)
+            pbar.n = round_num
+            pbar.set_description(
+                f"[batch] {n_solved}/{n_total} solved, "
+                f"{len(active)} active, {n_failed} failed")
+            pbar.refresh()
 
-        n_success = sum(1 for r in results_by_problem.values() if r.success)
-        print(f"[batch-eval] done: {len(problem_idxs)} problems, {n_success} solved, "
-              f"{round_num} rounds, {time.time() - start_time:.1f}s", flush=True)
+        pbar.close()
+        print(f"[batch-eval] done: {n_total} problems, {n_solved} solved, "
+              f"{n_failed} failed, {round_num} rounds, "
+              f"{time.time() - start_time:.1f}s", flush=True)
         return [results_by_problem[p] for p in problem_idxs]
 
     def _run_iterative_deepening_search(self, state, model, action_space, graph_metadata, monitor,
@@ -1166,10 +1181,8 @@ class PlannerTester:
         number_divisions = max(int((max(problems_to_solve)) / self.config.problems_per_division), 1) + 1
         self.failure_dict = {i:[] for i in range(int(number_divisions) )}
         success_until_now_for_learned = 0
-        progress_bar = tqdm(problems_to_solve)
 
         # Set GABAR_PROFILE_EVAL=1 to cProfile the first learned-model problem
-        # (output goes to stdout, so it lands in the run log too)
         profile_eval = os.environ.get("GABAR_PROFILE_EVAL", "") == "1"
         profile_done = False
 
@@ -1187,6 +1200,8 @@ class PlannerTester:
                 graph_metadata,
                 use_monitor=self.config.enable_state_monitor)
             batch_learned_results = {r.problem_idx: r for r in batch_results_list}
+
+        progress_bar = tqdm(problems_to_solve, disable=(batch_learned_results is not None))
 
         for problem_idx in progress_bar:
             action_space = self.env.action_space._action_predicate_to_operators
