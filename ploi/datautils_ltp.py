@@ -1509,6 +1509,43 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
     return training_data, None, domain_name, cache_modified, processed_problems
 
 
+def load_domain_metadata(train_env_name, planner, num_train_problems, args,
+                         create_graph_dataset_func):
+    """Load per-domain graph_metadata + action_space without building full graphs.
+
+    Returns (graph_metadata, action_space).  If metadata is already cached in
+    the unified cache file it is returned immediately (no graph construction).
+    Otherwise falls back to a full process_pddl_to_graphs call and discards
+    the graphs.
+    """
+    import os, pickle
+
+    cache_dir = os.path.join(os.getcwd(), "cache", "results")
+    unified_cache_file = os.path.join(
+        cache_dir,
+        f"{train_env_name}_unified_cache_{0}_{num_train_problems}.pkl")
+
+    env = pddlgym.make(f"PDDLEnv{train_env_name}-v0")
+    action_space = env.action_space._action_predicate_to_operators
+
+    if os.path.exists(unified_cache_file):
+        try:
+            with open(unified_cache_file, 'rb') as f:
+                unified_cache = pickle.load(f)
+            md = unified_cache.get('graph_metadata')
+            if md is not None:
+                logger.info(f"Loaded cached metadata for {train_env_name}")
+                return md, action_space
+        except Exception as e:
+            logger.warning(f"Could not load metadata cache for {train_env_name}: {e}")
+
+    logger.info(f"No cached metadata for {train_env_name}, running full collection")
+    _, md, _ = process_pddl_to_graphs(
+        train_env_name, planner, num_train_problems, args,
+        create_graph_dataset_func)
+    return md, action_space
+
+
 def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, create_graph_dataset_func,
                            metadata_override=None, cache_tag=""):
     """

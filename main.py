@@ -409,55 +409,70 @@ if __name__ == "__main__":
                 # Multi-domain path (CLAUDE.md Phase 0/1, C1)
                 from ploi.multidomain import (merge_action_spaces,
                     merge_feature_metadata, parse_domain_arg)
+                from ploi.datautils_ltp import load_domain_metadata
                 import random as _random
 
                 domains = parse_domain_arg(args.domains, args.heldout_domains,
                                            args.num_train_problems)
                 train_domains = [(n, c) for n, c, held_out in domains if not held_out]
 
-                # Pass 1: per-domain collection (cached), gives per-domain metadata
-                per_domain = {}
+                # Domain-set tag: sorted names prevent stale cache when the
+                # domain combination changes (e.g. {A,B} vs {A,B,C}).
+                _domain_set_tag = "_" + "_".join(
+                    sorted(n.lower() for n, _ in train_domains))
+
+                # Pass 1: per-domain metadata + action_space (fast, no graphs)
+                per_domain_meta = {}
                 for name, num_problems in train_domains:
-                    per_domain[name] = process_pddl_to_graphs(
-                        name, train_planner, num_problems, args, _create_graph_dataset_ltp)
+                    md, aspace = load_domain_metadata(
+                        name, train_planner, num_problems, args,
+                        _create_graph_dataset_ltp)
+                    per_domain_meta[name] = (md, aspace)
 
                 if args.featurization == 'union':
                     # Pass 2: re-featurize with shared union vocab (Baseline 0).
-                    # Held-out domains contribute nothing to the union - that's the experiment.
-                    union_md = merge_feature_metadata([md for (_, md, _) in per_domain.values()])
+                    # Held-out domains contribute nothing to the union.
+                    union_md = merge_feature_metadata(
+                        [md for (md, _) in per_domain_meta.values()])
+                    tag = "_union" + _domain_set_tag
                     all_input_graphs = []
                     for name, num_problems in train_domains:
                         graphs, _, _ = process_pddl_to_graphs(
-                            name, train_planner, num_problems, args, _create_graph_dataset_ltp,
-                            metadata_override=union_md, cache_tag="_union")
+                            name, train_planner, num_problems, args,
+                            _create_graph_dataset_ltp,
+                            metadata_override=union_md, cache_tag=tag)
                         all_input_graphs.extend(graphs)
                     graph_metadata = union_md
-                    action_space = merge_action_spaces([a for (_, _, a) in per_domain.values()])
-                    # mix domains before the val split (deterministic in seed)
+                    action_space = merge_action_spaces(
+                        [a for (_, a) in per_domain_meta.values()])
                     _random.Random(args.seed).shuffle(all_input_graphs)
                 elif args.featurization == 'structural':
-                    # Symbol-free structural classes (CLAUDE.md 5.3): each
-                    # domain aliases its own symbols, widths shared by
-                    # canonical max arities taken over the training domains
                     from ploi.structural import build_structural_metadata
-                    kp = max(p.arity for (_, md, _) in per_domain.values()
+                    kp = max(p.arity for (md, _) in per_domain_meta.values()
                              for p in md['all_predicates'])
-                    ka = max(len(op.params) for (_, _, a) in per_domain.values()
+                    ka = max(len(op.params) for (_, a) in per_domain_meta.values()
                              for op in a.values())
+                    tag = "_structural" + _domain_set_tag
                     all_input_graphs = []
                     for name, num_problems in train_domains:
-                        struct_md = build_structural_metadata(per_domain[name][2], kp, ka)
+                        struct_md = build_structural_metadata(
+                            per_domain_meta[name][1], kp, ka)
                         graphs, _, _ = process_pddl_to_graphs(
-                            name, train_planner, num_problems, args, _create_graph_dataset_ltp,
-                            metadata_override=struct_md, cache_tag="_structural")
+                            name, train_planner, num_problems, args,
+                            _create_graph_dataset_ltp,
+                            metadata_override=struct_md, cache_tag=tag)
                         all_input_graphs.extend(graphs)
                     graph_metadata = struct_md
-                    action_space = merge_action_spaces([a for (_, _, a) in per_domain.values()])
+                    action_space = merge_action_spaces(
+                        [a for (_, a) in per_domain_meta.values()])
                     _random.Random(args.seed).shuffle(all_input_graphs)
                 else:
                     if len(train_domains) > 1:
                         raise ValueError("per_domain featurization cannot mix domains; use --featurization union or structural")
-                    all_input_graphs, graph_metadata, action_space = per_domain[train_domains[0][0]]
+                    name = train_domains[0][0]
+                    all_input_graphs, graph_metadata, action_space = process_pddl_to_graphs(
+                        name, train_planner, train_domains[0][1], args,
+                        _create_graph_dataset_ltp)
             else:
                 #graphs_inp , graphs_tgt, graph_metadata,action_space =  process_pddl_to_graphs(
                 all_input_graphs , graph_metadata,action_space =  process_pddl_to_graphs(
