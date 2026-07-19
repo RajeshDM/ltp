@@ -86,6 +86,36 @@ Same action selected at every step: 5018/5018 model calls
 GPU with determinism ≈ CPU without determinism for this small workload.
 GPU advantage grows with larger graphs and more test problems.
 
+### 4.5 Batch vs Sequential at Scale (100 problems, GPU, H100)
+
+| Path | Time (epoch 20) | Time (epoch 10) |
+|------|-----------------|-----------------|
+| GPU batch (100 probs) | 15m22s | 16m05s |
+| GPU sequential (100 probs) | 5m13s | — |
+
+**Sequential is 3x faster** for this workload. Profile breakdown (50 probs,
+GABAR_PROFILE_BATCH=1, with cuda.synchronize):
+
+| Component | Time | % | Notes |
+|-----------|------|---|-------|
+| env setup | 16.1s | 33% | deepcopy of template env + reset + initial grounding |
+| graph build | 8.4s | 17% | state_to_graph_wrapper (numpy loops) |
+| forward pass | 14.4s | 30% | GNN encoder + parallel decoder (cuda synced) |
+| pyg convert | 3.7s | 8% | pad + graph_to_pyg_data + Batch.from_data_list |
+| decode+step | 5.4s | 11% | decode_beam_results + env.step + goal check |
+| grounding | 0.5s | 1% | all_ground_literals per active problem |
+| overhead | 0.4s | 1% | tqdm, bookkeeping |
+
+**Why batch loses:** env setup cost (creating N envs) is paid only by batch;
+sequential reuses one env. The per-round CPU overhead (graph build + pyg
+convert for all active problems) scales linearly and isn't offset by the
+forward-pass savings because these small graphs don't saturate the GPU.
+RTX 8000 ≈ H100 speed confirms the GPU is never the bottleneck.
+
+**Conclusion:** Use sequential for current blocksworld-sized graphs. Batch
+infrastructure (`GABAR_BATCH_EVAL=1`) stays available for when structural
+features make graphs larger and forward pass becomes the bottleneck.
+
 ## 5. Non-Determinism Investigation
 
 ### 5.1 Sources Identified
