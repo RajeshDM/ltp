@@ -66,7 +66,8 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
                 enable_profiling=False,
                 use_amp=False,
                 spot_checkpoint_path=None,
-                patience=0):
+                patience=0,
+                domain_names=None):
 
     since = time.time()
     min_save_epoch = 0
@@ -166,15 +167,18 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
         time_elapsed // 60, time_elapsed % 60), flush=True)
 
 def train_model_graphnetwork_ltp_batch_val_profiling(model, datasets,
-                                 criterion, optimizer, use_gpu, print_iter=10, 
-                                 save_iter=100, save_folder='/tmp', starting_epoch=0, final_epoch=1000, 
+                                 criterion, optimizer, use_gpu, print_iter=10,
+                                 save_iter=100, save_folder='/tmp', starting_epoch=0, final_epoch=1000,
                                  global_criterion=None, return_last_model_weights=True, dagger_train=False,
                                  train_env_name=None, seed=None, message_string='',
-                                 log_wandb=False, 
+                                 log_wandb=False,
                                  ablation="val",
                                  chpkt_manager=None,
-                                 # New profiler parameters
                                  enable_profiling=True,
+                                 use_amp=False,
+                                 spot_checkpoint_path=None,
+                                 patience=0,
+                                 domain_names=None,
                                  profile_log_dir='./profile_logs'):
 
     since = time.time()
@@ -320,14 +324,18 @@ def train_model_graphnetwork_ltp_batch_val_profiling(model, datasets,
 
 def train_model_graphnetwork_ltp_batch(model, datasets,
                                  #dataloaders,
-                                   criterion, optimizer, use_gpu, print_iter=10, 
+                                   criterion, optimizer, use_gpu, print_iter=10,
                 save_iter=100, save_folder='/tmp',starting_epoch=0, final_epoch=1000, global_criterion=None,
                 return_last_model_weights=True,dagger_train=False,train_env_name=None,seed=None,
                 message_string='',
                 log_wandb=False,
                 ablation="main",
                 chpkt_manager=None,
-                enable_profiling=False):
+                enable_profiling=False,
+                use_amp=False,
+                spot_checkpoint_path=None,
+                patience=0,
+                domain_names=None):
 
     since = time.time()
     min_save_epoch = 0
@@ -639,15 +647,18 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
 
 # Modified training function with minimal code duplication
 def train_model_graphnetwork_ltp_batch_profiling(model, datasets,
-                                criterion, optimizer, use_gpu, print_iter=10, 
-                                save_iter=100, save_folder='/tmp', starting_epoch=0, final_epoch=1000, 
+                                criterion, optimizer, use_gpu, print_iter=10,
+                                save_iter=100, save_folder='/tmp', starting_epoch=0, final_epoch=1000,
                                 global_criterion=None, return_last_model_weights=True, dagger_train=False,
                                 train_env_name=None, seed=None, message_string='',
-                                log_wandb=False, 
+                                log_wandb=False,
                                 ablation="main",
-                                chpkt_manager=None, 
-                                # New profiler parameters
-                                enable_profiling=True, 
+                                chpkt_manager=None,
+                                enable_profiling=True,
+                                use_amp=False,
+                                spot_checkpoint_path=None,
+                                patience=0,
+                                domain_names=None,
                                 profile_log_dir='./profile_logs'):
 
     since = time.time()
