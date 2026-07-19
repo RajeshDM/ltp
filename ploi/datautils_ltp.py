@@ -1547,36 +1547,48 @@ def load_domain_metadata(train_env_name, planner, num_train_problems, args,
 
 
 def pad_pyg_action_scores(hetero_graphs):
-    """Pad action_object_scores tensors in PyG HeteroData to uniform width.
+    """Pad variable-width tensors in PyG HeteroData to uniform sizes.
 
-    Different domains (or different problems) can have different object counts,
-    producing action_object_scores tensors of shape (max_arity, num_objects)
-    with varying num_objects. PyG Batch.from_data_list requires matching shapes
-    on dimension 1, so we pad to the global max.
+    Multi-domain graphs differ in: number of action schemas (action_scores
+    dim 1), number of objects (action_object_scores dim 1), and max action
+    arity (action_object_scores dim 0). PyG Batch.from_data_list requires
+    matching shapes on all non-batching dimensions, so we pad to the global
+    max on every dimension.
     """
     if not hetero_graphs:
         return
-    score_key = 'action_object_scores'
-    target_key = 'target_action_object_scores'
-    max_width = 0
-    for g in hetero_graphs:
-        if score_key in g:
-            max_width = max(max_width, g[score_key].x.shape[1])
-        if target_key in g:
-            max_width = max(max_width, g[target_key].x.shape[1])
-    if max_width == 0:
-        return
-    padded = 0
-    for g in hetero_graphs:
-        for key in (score_key, target_key):
-            if key not in g:
-                continue
-            t = g[key].x
-            if t.shape[1] < max_width:
-                g[key].x = torch.nn.functional.pad(t, (0, max_width - t.shape[1]))
-                padded += 1
-    if padded > 0:
-        logger.info(f"Padded action_object_scores to width {max_width} ({padded} tensors)")
+    # Groups of keys that must share the same shape within each group.
+    pad_groups = [
+        ('action_scores', 'target_action_scores'),
+        ('action_object_scores', 'target_action_object_scores'),
+    ]
+    for keys in pad_groups:
+        max_shape = None
+        for g in hetero_graphs:
+            for key in keys:
+                if key in g:
+                    s = g[key].x.shape
+                    if max_shape is None:
+                        max_shape = list(s)
+                    else:
+                        for d in range(len(s)):
+                            max_shape[d] = max(max_shape[d], s[d])
+        if max_shape is None:
+            continue
+        padded = 0
+        for g in hetero_graphs:
+            for key in keys:
+                if key not in g:
+                    continue
+                t = g[key].x
+                if list(t.shape) != max_shape:
+                    pad_args = []
+                    for d in reversed(range(len(max_shape))):
+                        pad_args.extend([0, max_shape[d] - t.shape[d]])
+                    g[key].x = torch.nn.functional.pad(t, pad_args)
+                    padded += 1
+        if padded > 0:
+            logger.info(f"Padded {keys[0]} group to {max_shape} ({padded} tensors)")
 
 
 def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, create_graph_dataset_func,
