@@ -435,17 +435,16 @@ if __name__ == "__main__":
                     union_md = merge_feature_metadata(
                         [md for (md, _) in per_domain_meta.values()])
                     tag = "_union" + _domain_set_tag
-                    all_input_graphs = []
+                    per_domain_graphs = {}
                     for name, num_problems in train_domains:
                         graphs, _, _ = process_pddl_to_graphs(
                             name, train_planner, num_problems, args,
                             _create_graph_dataset_ltp,
                             metadata_override=union_md, cache_tag=tag)
-                        all_input_graphs.extend(graphs)
+                        per_domain_graphs[name] = graphs
                     graph_metadata = union_md
                     action_space = merge_action_spaces(
                         [a for (_, a) in per_domain_meta.values()])
-                    _random.Random(args.seed).shuffle(all_input_graphs)
                 elif args.featurization == 'structural':
                     from ploi.structural import build_structural_metadata
                     kp = max(p.arity for (md, _) in per_domain_meta.values()
@@ -453,7 +452,7 @@ if __name__ == "__main__":
                     ka = max(len(op.params) for (_, a) in per_domain_meta.values()
                              for op in a.values())
                     tag = "_structural" + _domain_set_tag
-                    all_input_graphs = []
+                    per_domain_graphs = {}
                     for name, num_problems in train_domains:
                         struct_md = build_structural_metadata(
                             per_domain_meta[name][1], kp, ka)
@@ -461,20 +460,35 @@ if __name__ == "__main__":
                             name, train_planner, num_problems, args,
                             _create_graph_dataset_ltp,
                             metadata_override=struct_md, cache_tag=tag)
-                        all_input_graphs.extend(graphs)
+                        per_domain_graphs[name] = graphs
                     graph_metadata = struct_md
                     action_space = merge_action_spaces(
                         [a for (_, a) in per_domain_meta.values()])
-                    _random.Random(args.seed).shuffle(all_input_graphs)
                 else:
                     if len(train_domains) > 1:
                         raise ValueError("per_domain featurization cannot mix domains; use --featurization union or structural")
                     name = train_domains[0][0]
-                    all_input_graphs, graph_metadata, action_space = process_pddl_to_graphs(
+                    graphs, graph_metadata, action_space = process_pddl_to_graphs(
                         name, train_planner, train_domains[0][1], args,
                         _create_graph_dataset_ltp)
+                    per_domain_graphs = {name: graphs}
+
+                # Stratified train/val split: 10% from EACH domain goes to
+                # validation, so every domain is proportionally represented.
+                rng = _random.Random(args.seed)
+                input_hetero_graphs = []
+                val_hetero_graphs = []
+                for name, dom_graphs in per_domain_graphs.items():
+                    _random.Random(args.seed).shuffle(dom_graphs)
+                    n_val = max(1, int(len(dom_graphs) * 0.1))
+                    val_hetero_graphs.extend(dom_graphs[:n_val])
+                    input_hetero_graphs.extend(dom_graphs[n_val:])
+                    print(f"  {name}: {len(dom_graphs)} graphs "
+                          f"(train={len(dom_graphs) - n_val}, val={n_val})")
+                rng.shuffle(input_hetero_graphs)
+                rng.shuffle(val_hetero_graphs)
+
             else:
-                #graphs_inp , graphs_tgt, graph_metadata,action_space =  process_pddl_to_graphs(
                 all_input_graphs , graph_metadata,action_space =  process_pddl_to_graphs(
                     args.domain,
                     train_planner,
@@ -482,26 +496,26 @@ if __name__ == "__main__":
                     args,
                     _create_graph_dataset_ltp,
                 )
-            # Subset data for toy/sweep modes
-            if getattr(args, 'toy_max_graphs', None):
-                from ploi.run_modes import subset_graphs
-                print(f"TOY mode: subsetting {len(all_input_graphs)} graphs to {args.toy_max_graphs}")
-                all_input_graphs = subset_graphs(all_input_graphs, max_count=args.toy_max_graphs, seed=args.seed)
-            elif getattr(args, 'data_fraction', None):
-                from ploi.run_modes import subset_graphs
-                target = max(1, int(len(all_input_graphs) * args.data_fraction))
-                print(f"SWEEP mode: subsetting {len(all_input_graphs)} graphs to {target} ({args.data_fraction:.0%})")
-                all_input_graphs = subset_graphs(all_input_graphs, fraction=args.data_fraction, seed=args.seed)
+                # Subset data for toy/sweep modes
+                if getattr(args, 'toy_max_graphs', None):
+                    from ploi.run_modes import subset_graphs
+                    print(f"TOY mode: subsetting {len(all_input_graphs)} graphs to {args.toy_max_graphs}")
+                    all_input_graphs = subset_graphs(all_input_graphs, max_count=args.toy_max_graphs, seed=args.seed)
+                elif getattr(args, 'data_fraction', None):
+                    from ploi.run_modes import subset_graphs
+                    target = max(1, int(len(all_input_graphs) * args.data_fraction))
+                    print(f"SWEEP mode: subsetting {len(all_input_graphs)} graphs to {target} ({args.data_fraction:.0%})")
+                    all_input_graphs = subset_graphs(all_input_graphs, fraction=args.data_fraction, seed=args.seed)
+
+                num_validation = max(1, int(len(all_input_graphs) * 0.1))
+                input_hetero_graphs = all_input_graphs[num_validation:]
+                val_hetero_graphs = all_input_graphs[:num_validation]
 
             # Pad action_object_scores to uniform width across all graphs so
-            # PyG Batch.from_data_list can collate them. Multi-domain graphs
-            # may have different object counts per domain.
+            # PyG Batch.from_data_list can collate them. Different domains (or
+            # problems with different object counts) need uniform tensor widths.
             from ploi.datautils_ltp import pad_pyg_action_scores
-            pad_pyg_action_scores(all_input_graphs)
-
-            num_validation = max(1, int(len(all_input_graphs) * 0.1))
-            input_hetero_graphs = all_input_graphs[num_validation:]
-            val_hetero_graphs = all_input_graphs[:num_validation]
+            pad_pyg_action_scores(input_hetero_graphs + val_hetero_graphs)
             #ic(f"Processed {len(graphs_inp)} training examples")
         else :
             training_data = collect_training_data(
