@@ -11,6 +11,10 @@
 #   gripper: train=147, test=173
 #   miconic: train=228, test=119
 #
+# All runs use --num-train-problems 200 --num-test-problems 200 so the
+# unified cache (keyed by requested count) is shared. Domains with fewer
+# problems cap at what exists (gripper train caps at 147, etc.).
+#
 # Usage: ./train_test_scripts/multi_domain_experiments.sh [device]
 #   Default device: cuda:0
 set -euo pipefail
@@ -18,6 +22,8 @@ set -euo pipefail
 DEVICE=${1:-cuda:0}
 EPOCHS=500
 LR=0.0005
+TRAIN_N=200
+TEST_N=200
 
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║  Multi-Domain Experiment Suite                              ║"
@@ -25,9 +31,9 @@ echo "║  Device: $DEVICE | Epochs: $EPOCHS | LR: $LR               ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
 echo "Plan:"
-echo "  1. Single-domain: blocks (train=200, test=200)"
-echo "  2. Single-domain: gripper (train=147, test=173)"
-echo "  3. Single-domain: miconic (train=228, test=119)"
+echo "  1. Single-domain: blocks (train+test)"
+echo "  2. Single-domain: gripper (train+test)"
+echo "  3. Single-domain: miconic (train+test)"
 echo "  4. Multi-domain: blocks+gripper+miconic (train+test on all 3)"
 echo "  5. Multi-domain: blocks+gripper (train), miconic held-out (zero-shot)"
 echo "  6. Multi-domain: blocks+miconic (train), gripper held-out (zero-shot)"
@@ -36,10 +42,10 @@ echo ""
 echo "Starting at $(date)"
 echo ""
 
-COMMON="--epochs $EPOCHS --lr $LR --device $DEVICE"
+# All runs use same train/test counts so unified caches are shared
+COMMON="--epochs $EPOCHS --lr $LR --device $DEVICE --train-problems $TRAIN_N --test-problems $TEST_N"
 
 # ─── 1. Single-domain baselines ────────────────────────────────────────────
-# gabar_run.sh handles per-domain train/test counts via DOMAIN_CONFIGS
 
 echo "════════════════════════════════════════════════════════════════"
 echo "=== 1/7: Single-domain BLOCKS (train+test) ==="
@@ -66,7 +72,6 @@ echo "Finished: $(date)"
 echo ""
 
 # ─── 2. Multi-domain: train on all 3, test on all 3 ───────────────────────
-# Pass large --train-problems/--test-problems; capped at what each domain has
 
 echo "════════════════════════════════════════════════════════════════"
 echo "=== 4/7: Multi-domain ALL THREE (train+test) ==="
@@ -74,7 +79,6 @@ echo "════════════════════════�
 echo "Started: $(date)"
 ./train_test_scripts/gabar_run.sh multi \
     --domains "manyblocks_ipcc_big,gripper_ipcc,miconic_ipcc" \
-    --train-problems 300 --test-problems 300 \
     $COMMON
 echo "Finished: $(date)"
 echo ""
@@ -88,7 +92,6 @@ echo "Started: $(date)"
 ./train_test_scripts/gabar_run.sh multi \
     --domains "manyblocks_ipcc_big,gripper_ipcc" \
     --heldout "miconic_ipcc" \
-    --train-problems 300 --test-problems 300 \
     $COMMON
 echo "Finished: $(date)"
 echo ""
@@ -100,7 +103,6 @@ echo "Started: $(date)"
 ./train_test_scripts/gabar_run.sh multi \
     --domains "manyblocks_ipcc_big,miconic_ipcc" \
     --heldout "gripper_ipcc" \
-    --train-problems 300 --test-problems 300 \
     $COMMON
 echo "Finished: $(date)"
 echo ""
@@ -112,7 +114,6 @@ echo "Started: $(date)"
 ./train_test_scripts/gabar_run.sh multi \
     --domains "gripper_ipcc,miconic_ipcc" \
     --heldout "manyblocks_ipcc_big" \
-    --train-problems 300 --test-problems 300 \
     $COMMON
 echo "Finished: $(date)"
 echo ""
