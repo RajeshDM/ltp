@@ -480,7 +480,7 @@ if __name__ == "__main__":
                 args._domain_names_ordered = _domain_names_ordered
                 for dom_idx, (name, dom_graphs) in enumerate(per_domain_graphs.items()):
                     for g in dom_graphs:
-                        g['domain_id'].x = torch.tensor([[dom_idx]], dtype=torch.long)
+                        g.domain_id = dom_idx
 
                 rng = _random.Random(args.seed)
                 input_hetero_graphs = []

@@ -585,9 +585,12 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
                 running_loss[phase] += total_loss.item()
                 running_num_samples += 1
 
-                if n_domains > 0 and 'domain_id' in batch_data:
+                if n_domains > 0 and hasattr(batch_data, 'domain_id'):
                     with torch.no_grad():
-                        dids = batch_data['domain_id'].x.squeeze(-1).long()
+                        dids = batch_data.domain_id
+                        if not isinstance(dids, torch.Tensor):
+                            dids = torch.tensor(dids, dtype=torch.long)
+                        dids = dids.long()
                         _as = action_scores.detach().float()
                         _ti = target_indices.detach()
                         for d in dids.unique().tolist():
