@@ -1726,14 +1726,21 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
                 #batch_target_graphs = batch_data['target_graphs']
                 if graph_metadata is None and 'metadata' in batch_data:
                     graph_metadata = batch_data['metadata']
-                
+
+                # Stale batch caches store raw dicts; convert to PyG.
+                if batch_input_graphs and isinstance(batch_input_graphs[0], dict):
+                    batch_input_graphs = graph_dataset_to_pyg_dataset(
+                        batch_input_graphs, batch_wise=False)
+                    batch_data['input_graphs'] = batch_input_graphs
+                    cache_modified = True
+
                 # Add these graphs to our results
                 all_input_graphs.extend(batch_input_graphs)
                 #all_target_graphs.extend(batch_target_graphs)
-                
+
                 batch_graphs_loaded = True
                 logger.info(f"Loaded {len(batch_input_graphs)} graphs for batch {batch_idx+1}")
-                
+
                 # If all problems in this batch are complete, we can skip processing
                 if batch_all_complete:
                     logger.info(f"Skipping processing for batch {batch_idx+1} - all problems complete")
@@ -1813,18 +1820,21 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
     # Log the number of graphs generated
     logger.info(f"Generated {len(batch_input_graphs)} graphs for batch {batch_idx+1}")
     
-    # Store the graphs for this batch in the cache
+    # Convert raw-dict graphs to PyG before caching or accumulating.
+    input_graphs_hetero = graph_dataset_to_pyg_dataset(batch_input_graphs,
+                                                        batch_wise=False)
+
+    # Store PyG objects in the per-batch cache.
     if 'batch_graphs' not in unified_cache:
         unified_cache['batch_graphs'] = {}
-    
+
     unified_cache['batch_graphs'][batch_key] = {
-        'input_graphs': batch_input_graphs,
-        #'target_graphs': batch_target_graphs,
+        'input_graphs': input_graphs_hetero,
         'metadata': batch_metadata,
         'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
     }
     cache_modified = True
-    
+
     # Mark all problems in this batch as processed
     for problem_idx in processed_problems_full:
         if problem_idx not in completed_problems:
@@ -1832,12 +1842,6 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
             unified_cache['metadata']['completed_problems'].append(problem_idx)
             cache_modified = True
 
-    input_graphs_hetero = graph_dataset_to_pyg_dataset(batch_input_graphs,
-                                                        batch_wise=False)
-
-    # Add these graphs to our overall results
-    #all_input_graphs.extend(batch_input_graphs)
-    #all_target_graphs.extend(batch_target_graphs)
     all_input_graphs.extend(input_graphs_hetero)
         
         
