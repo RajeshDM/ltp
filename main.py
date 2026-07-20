@@ -1061,36 +1061,54 @@ if __name__ == "__main__":
         elif args.search_strat == 'mcts' : 
             learned_search_strat.append(LearnedSearchStrat.MCTS)
 
-        # Which domains to evaluate on: for multi-domain, test each training
-        # domain individually; for single-domain, test on args.domain as before.
-        test_domains = train_domain_names if train_domain_names else [args.domain]
+        # Build the list of (domain_name, test_count, is_zero_shot) to eval on.
+        # --test-domains overrides everything; otherwise default to training
+        # domains + held-out domains.
+        from ploi.multidomain import parse_domain_arg
+        _train_set = set(train_domain_names) if train_domain_names else {args.domain}
+
+        eval_plan = []  # [(name, count, is_zero_shot), ...]
+        if args.test_domains:
+            for name, count, _ in parse_domain_arg(args.test_domains, "",
+                                                    args.num_test_problems):
+                is_zs = name not in _train_set
+                eval_plan.append((name, count, is_zs))
+        else:
+            _default_domains = train_domain_names if train_domain_names else [args.domain]
+            for name in _default_domains:
+                eval_plan.append((name, args.num_test_problems, False))
+            if args.heldout_domains:
+                for name, count, _ in parse_domain_arg("", args.heldout_domains,
+                                                        args.num_test_problems):
+                    eval_plan.append((name, count, True))
 
         all_model_types = ['validation','training','combined']
         num_models_to_test = 2
         starting_model_num = 0
         all_results = {}
 
-        for test_domain in test_domains:
-            if len(test_domains) > 1:
-                print(f"\n=== In-domain evaluation: {test_domain} ===")
+        for test_domain, requested_count, is_zero_shot in eval_plan:
+            tag = "zero-shot" if is_zero_shot else "in-domain"
+            print(f"\n=== {tag} evaluation: {test_domain} ===")
 
-            # Per-domain graph metadata for testing
-            if args.domains and args.featurization == 'structural':
+            t_env = pddlgym.make(f"PDDLEnv{test_domain}-v0")
+            domain_test_count = min(requested_count, len(t_env.problems))
+            if domain_test_count < requested_count:
+                print(f"  {test_domain}: capping test at {domain_test_count} "
+                      f"(requested {requested_count})")
+
+            # Build per-domain graph metadata for testing
+            if graph_metadata.get('featurization') == 'structural':
                 from ploi.structural import build_structural_metadata
-                t_env = pddlgym.make(f"PDDLEnv{test_domain}-v0")
                 test_md = build_structural_metadata(
                     t_env.action_space._action_predicate_to_operators,
                     graph_metadata['max_pred_arity'],
                     graph_metadata['max_action_arity'])
+            elif is_zero_shot:
+                test_md = dict(graph_metadata)
+                test_md['allow_unknown_symbols'] = True
             else:
-                t_env = pddlgym.make(f"PDDLEnv{test_domain}-v0")
                 test_md = graph_metadata
-
-            # Cap at actual number of test problems in this domain
-            domain_test_count = min(args.num_test_problems, len(t_env.problems))
-            if domain_test_count < args.num_test_problems:
-                print(f"  {test_domain}: capping test at {domain_test_count} "
-                      f"(requested {args.num_test_problems})")
 
             test_hypers = {**testing_hyperparameters, 'domain_name': test_domain}
             config = PlannerConfig(
@@ -1122,7 +1140,10 @@ if __name__ == "__main__":
             curr_test_function = test_function_v2
             tested_epoch_numbers = set()
 
-            for model_type in all_model_types:
+            # Zero-shot domains only test with best-validation model (one shot)
+            _model_types = ['validation'] if is_zero_shot else all_model_types
+
+            for model_type in _model_types:
                 results = run_tests(
                     curr_manager=manager,
                     model_class=model_class,
@@ -1137,76 +1158,11 @@ if __name__ == "__main__":
                     num_models_to_test=num_models_to_test,
                     starting_model_num=starting_model_num,
                     planner_types=planner_types,
-                    baseline_models=baseline_models,
+                    baseline_models=baseline_models if not is_zero_shot else {},
                     ignore_defaults=ignore_defaults,
                 )
-                result_key = f"{test_domain}_{model_type}" if len(test_domains) > 1 else model_type
-                all_results[result_key] = results
-
-        if args.heldout_domains:
-            # Zero-shot eval on held-out domains (C1): same models, union
-            # metadata with tolerant lookups - unseen symbols get no feature slot
-            from ploi.multidomain import parse_domain_arg
-            heldout_names = [n for n, _, _ in parse_domain_arg("", args.heldout_domains)]
-            for heldout_name in heldout_names:
-                print(f"=== Zero-shot evaluation on held-out domain {heldout_name} (C1) ===")
-                h_env = pddlgym.make(f"PDDLEnv{heldout_name}-v0")
-                if graph_metadata.get('featurization') == 'structural':
-                    from ploi.structural import build_structural_metadata
-                    heldout_md = build_structural_metadata(
-                        h_env.action_space._action_predicate_to_operators,
-                        graph_metadata['max_pred_arity'],
-                        graph_metadata['max_action_arity'])
-                else:
-                    heldout_md = dict(graph_metadata)
-                    heldout_md['allow_unknown_symbols'] = True
-                heldout_test_count = min(args.num_test_problems, len(h_env.problems))
-                if heldout_test_count < args.num_test_problems:
-                    print(f"  {heldout_name}: capping test at {heldout_test_count} "
-                          f"(requested {args.num_test_problems})")
-                heldout_config = PlannerConfig(
-                    planner_types=planner_types,
-                    domain_name=heldout_name,
-                    num_problems=heldout_test_count,
-                    timeout=30.0,
-                    enable_state_monitor=args.monitor,
-                    max_plan_length=args.max_plan_length,
-                    problems_per_division=args.problems_per_division,
-                    eval_planner_name=args.eval_planner_name,
-                    train_planner_name=args.train_planner_name,
-                    model_hyperparameters=training_hyperparameters,
-                    ignore_defaults=ignore_defaults,
-                    testing_hyperparameters={
-                        **testing_hyperparameters,
-                        'domain_name': heldout_name},
-                    learned_search_strat=learned_search_strat,
-                )
-                heldout_tester = PlannerTester(heldout_config)
-                heldout_problems = list(range(heldout_test_count))
-
-                def heldout_test_function(curr_models, _tester=heldout_tester,
-                                          _problems=heldout_problems):
-                    return _tester.test_planners(
-                        problems_to_solve=_problems, models=curr_models,
-                        graph_metadata=heldout_md)
-
-                heldout_results = run_tests(
-                    curr_manager=manager,
-                    model_class=model_class,
-                    train_env_name=train_env_name,
-                    seed=42,
-                    hyperparameters=training_hyperparameters,
-                    test_function=heldout_test_function,
-                    metric='validation',
-                    args=args,
-                    action_space=action_space,
-                    tested_epoch_numbers=set(),
-                    num_models_to_test=num_models_to_test,
-                    starting_model_num=starting_model_num,
-                    planner_types=planner_types,
-                    baseline_models={},
-                    ignore_defaults=ignore_defaults,
-                )
-                all_results[f'heldout_{heldout_name}'] = heldout_results
+                prefix = "zeroshot_" if is_zero_shot else ""
+                suffix = f"_{model_type}" if len(eval_plan) > 1 else model_type
+                all_results[f"{prefix}{test_domain}{suffix}"] = results
 
         _ = log_model_metrics(all_results,args)

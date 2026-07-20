@@ -423,6 +423,16 @@ def get_ploi_argument_parser():
              "for zero-shot evaluation (C1).")
 
     parser.add_argument(
+        "--test-domains",
+        type=str,
+        default="",
+        help="Comma-separated domains to test on, each optionally with a "
+             "problem count, e.g. 'blocks:200,gripper:173,spanner:96'. "
+             "Overrides the default (test on training domains). Domains not "
+             "in the training set are treated as zero-shot. If empty, tests "
+             "on training domains + held-out domains as before.")
+
+    parser.add_argument(
         "--featurization",
         type=str,
         choices=["per_domain", "union", "structural"],

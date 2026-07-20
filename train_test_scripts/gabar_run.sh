@@ -77,9 +77,12 @@ Sweep-only options:
   --sweep-decay "<rates>"       Space-separated weight decay rates
   --sweep-gnn "<rounds>"        Space-separated GNN round counts
 
-Multi-domain options:
+Multi-domain / test options:
   --domains "<d1,d2,...>"        Comma-separated training domains
   --heldout "<d1,d2,...>"        Comma-separated held-out domains
+  --test-domains "<d1:n,...>"    Override test domains with per-domain counts
+                                  (e.g. "manyblocks_ipcc_big:200,gripper_ipcc:173")
+                                  Domains not in training set are auto-detected as zero-shot
   --featurization <mode>         per_domain, union, structural (default: union)
 
 Examples:
@@ -101,6 +104,14 @@ Examples:
 
   # Test a pre-trained model
   ./gabar_run.sh test --domain blocks --test-problems 10
+
+  # Test multi-domain model on specific domains with per-domain counts
+  ./gabar_run.sh test --domains "manyblocks_ipcc_big,gripper_ipcc,miconic_ipcc" \
+      --test-domains "manyblocks_ipcc_big:200,gripper_ipcc:173"
+
+  # Zero-shot test on unseen domain (auto-detected)
+  ./gabar_run.sh test --domains "manyblocks_ipcc_big,gripper_ipcc" \
+      --test-domains "spanner_ipcc:96" --featurization structural
 USAGE
     exit 0
 }
@@ -165,6 +176,7 @@ SWEEP_GNN=""
 # Multi-domain
 DOMAINS=""
 HELDOUT=""
+TEST_DOMAINS=""
 FEATURIZATION="union"
 
 # ─── Handle command aliases ─────────────────────────────────────────────────
@@ -232,6 +244,7 @@ while [[ $# -gt 0 ]]; do
         --sweep-gnn)       SWEEP_GNN="$2"; shift 2 ;;
         --domains)         DOMAINS="$2"; shift 2 ;;
         --heldout)         HELDOUT="$2"; shift 2 ;;
+        --test-domains)    TEST_DOMAINS="$2"; shift 2 ;;
         --featurization)   FEATURIZATION="$2"; shift 2 ;;
         --mode)            MODE="$2"; shift 2 ;;
         --help|-h)         show_usage ;;
@@ -285,6 +298,7 @@ build_cmd() {
         cmd+=" --num-test-problems ${TEST_PROBLEMS}"
     fi
 
+    [ -n "$TEST_DOMAINS" ] && cmd+=" --test-domains ${TEST_DOMAINS}"
     cmd+=" --all-problems"
     cmd+=" --lr ${lr}"
     cmd+=" --n-heads ${heads}"
