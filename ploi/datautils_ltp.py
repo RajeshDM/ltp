@@ -1560,48 +1560,69 @@ def _get_store_tensor(g, key):
 
 
 def pad_pyg_action_scores(hetero_graphs):
-    """Pad variable-width tensors in PyG HeteroData to uniform sizes.
+    """Pad multi-domain score tensors to uniform shapes for batching.
 
-    Multi-domain graphs differ in: number of action schemas (action_scores
-    dim 1), number of objects (action_object_scores dim 1), and max action
-    arity (action_object_scores dim 0). PyG Batch.from_data_list requires
-    matching shapes on all non-batching dimensions, so we pad to the global
-    max on every dimension.
+    The model and loss code assume every graph has the same max_arity
+    (n_parameters) and use stride-based indexing into the concatenated
+    action_object_scores.  Different domains have different max_arity and
+    num_objects, so we must pad both dimensions of action_object_scores and
+    update n_parameters to the global max.  action_scores only varies in
+    dim 1 (num_actions).
     """
     if not hetero_graphs:
         return
-    pad_groups = [
-        ('action_scores', 'target_action_scores'),
-        ('action_object_scores', 'target_action_object_scores'),
-    ]
-    for keys in pad_groups:
-        max_shape = None
-        for g in hetero_graphs:
-            for key in keys:
-                t = _get_store_tensor(g, key)
-                if t is not None:
-                    s = t.shape
-                    if max_shape is None:
-                        max_shape = list(s)
-                    else:
-                        for d in range(len(s)):
-                            max_shape[d] = max(max_shape[d], s[d])
-        if max_shape is None:
-            continue
+
+    # --- action_scores / target_action_scores: pad dim 1 only ---
+    as_keys = ('action_scores', 'target_action_scores')
+    max_dim1 = 0
+    for g in hetero_graphs:
+        for key in as_keys:
+            t = _get_store_tensor(g, key)
+            if t is not None and t.dim() >= 2:
+                max_dim1 = max(max_dim1, t.shape[1])
+    if max_dim1 > 0:
         padded = 0
         for g in hetero_graphs:
-            for key in keys:
+            for key in as_keys:
                 t = _get_store_tensor(g, key)
-                if t is None:
+                if t is None or t.dim() < 2:
                     continue
-                if list(t.shape) != max_shape:
-                    pad_args = []
-                    for d in reversed(range(len(max_shape))):
-                        pad_args.extend([0, max_shape[d] - t.shape[d]])
-                    g[key].x = torch.nn.functional.pad(t, pad_args)
+                if t.shape[1] < max_dim1:
+                    g[key].x = torch.nn.functional.pad(t, (0, max_dim1 - t.shape[1]))
                     padded += 1
         if padded > 0:
-            logger.info(f"Padded {keys[0]} group to {max_shape} ({padded} tensors)")
+            logger.info(f"Padded action_scores dim 1 to {max_dim1} ({padded} tensors)")
+
+    # --- action_object_scores / target: pad BOTH dims + update n_parameters ---
+    ao_keys = ('action_object_scores', 'target_action_object_scores')
+    max_d0, max_d1 = 0, 0
+    for g in hetero_graphs:
+        for key in ao_keys:
+            t = _get_store_tensor(g, key)
+            if t is not None and t.dim() >= 2:
+                max_d0 = max(max_d0, t.shape[0])
+                max_d1 = max(max_d1, t.shape[1])
+    if max_d0 > 0:
+        padded = 0
+        for g in hetero_graphs:
+            for key in ao_keys:
+                t = _get_store_tensor(g, key)
+                if t is None or t.dim() < 2:
+                    continue
+                pad_d0 = max_d0 - t.shape[0]
+                pad_d1 = max_d1 - t.shape[1]
+                if pad_d0 > 0 or pad_d1 > 0:
+                    g[key].x = torch.nn.functional.pad(t, (0, pad_d1, 0, pad_d0))
+                    padded += 1
+            # Keep n_parameters consistent with padded dim 0.
+            np_t = _get_store_tensor(g, 'n_parameters')
+            if np_t is not None:
+                val = int(np_t.item()) if np_t.numel() == 1 else int(np_t.max().item())
+                if val < max_d0:
+                    g['n_parameters'].x = torch.tensor([max_d0], dtype=np_t.dtype)
+        if padded > 0:
+            logger.info(f"Padded action_object_scores to ({max_d0}, {max_d1}) "
+                        f"and n_parameters to {max_d0} ({padded} tensors)")
 
 
 def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, create_graph_dataset_func,
