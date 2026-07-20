@@ -1873,8 +1873,10 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
     
     logger.info(f"Completed batch {batch_idx+1}, total graphs so far: {len(all_input_graphs)}")
 
-    # Check if we processed all problems
-    all_problems_complete = len(completed_problems) >= num_train_problems
+    # Check if we processed all problems. Cap at actual domain size —
+    # requested count may exceed available problems (CLAUDE.md §1.5 pt 4).
+    actual_num_problems = min(num_train_problems, len(env.problems))
+    all_problems_complete = len(completed_problems) >= actual_num_problems
     
     # Update the final results in metadata section
     unified_cache['metadata']['total_problems'] = num_train_problems

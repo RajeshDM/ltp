@@ -473,6 +473,17 @@ if __name__ == "__main__":
                         _create_graph_dataset_ltp)
                     per_domain_graphs = {name: graphs}
 
+                # Update num_global_features from actual graph data: union/
+                # structural metadata predates graph creation, so its value
+                # may not match the wider globals produced by the merged vocab.
+                for _dg in per_domain_graphs.values():
+                    if _dg:
+                        try:
+                            graph_metadata['num_global_features'] = _dg[0]['globals'].x.shape[-1]
+                        except (KeyError, AttributeError, IndexError):
+                            pass
+                        break
+
                 # Tag each graph with its domain index for per-domain loss tracking.
                 # Stratified train/val split: 10% from EACH domain goes to
                 # validation, so every domain is proportionally represented.
