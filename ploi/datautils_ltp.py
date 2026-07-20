@@ -1653,10 +1653,25 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
             if unified_cache.get(all_graphs_key) is not None:
                 all_graphs = unified_cache[all_graphs_key]
                 logger.info(f"Found complete graph data in cache with {len(all_graphs[0])} graphs")
-                
+
                 # Check if the graph count looks correct (significantly more than problem count)
                 expected_min_graphs = num_train_problems  # At minimum, one graph per problem
                 if len(all_graphs[0]) >= expected_min_graphs and unified_cache['metadata'].get('all_complete', False):
+                    # Stale caches may contain raw dicts instead of PyG
+                    # HeteroData objects. Convert them on the fly.
+                    if all_graphs[0] and isinstance(all_graphs[0][0], dict):
+                        logger.info("Converting cached raw-dict graphs to PyG HeteroData")
+                        all_graphs = (
+                            graph_dataset_to_pyg_dataset(all_graphs[0], batch_wise=False),
+                            all_graphs[1],
+                        )
+                        unified_cache[all_graphs_key] = all_graphs
+                        try:
+                            with open(unified_cache_file, 'wb') as f:
+                                pickle.dump(unified_cache, f)
+                            logger.info("Re-saved cache with PyG objects")
+                        except Exception as e:
+                            logger.warning(f"Could not re-save converted cache: {e}")
                     logger.info(f"All graphs are already processed, returning from cache")
                     return all_graphs[0], all_graphs[1], action_space
         except Exception as e:
