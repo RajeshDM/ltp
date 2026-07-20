@@ -534,7 +534,6 @@ if __name__ == "__main__":
             # problems with different object counts) need uniform tensor widths.
             from ploi.datautils_ltp import pad_pyg_action_scores
             pad_pyg_action_scores(input_hetero_graphs + val_hetero_graphs)
-            #ic(f"Processed {len(graphs_inp)} training examples")
         else :
             training_data = collect_training_data(
                 args.domain, train_planner, num_train_problems=args.num_train_problems
