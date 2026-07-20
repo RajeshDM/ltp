@@ -1083,13 +1083,20 @@ if __name__ == "__main__":
                     graph_metadata['max_pred_arity'],
                     graph_metadata['max_action_arity'])
             else:
+                t_env = pddlgym.make(f"PDDLEnv{test_domain}-v0")
                 test_md = graph_metadata
+
+            # Cap at actual number of test problems in this domain
+            domain_test_count = min(args.num_test_problems, len(t_env.problems))
+            if domain_test_count < args.num_test_problems:
+                print(f"  {test_domain}: capping test at {domain_test_count} "
+                      f"(requested {args.num_test_problems})")
 
             test_hypers = {**testing_hyperparameters, 'domain_name': test_domain}
             config = PlannerConfig(
                 planner_types=planner_types,
                 domain_name=test_domain,
-                num_problems=args.num_test_problems,
+                num_problems=domain_test_count,
                 timeout=30.0,
                 enable_state_monitor=args.monitor,
                 max_plan_length=args.max_plan_length,
@@ -1104,7 +1111,7 @@ if __name__ == "__main__":
 
             tester = PlannerTester(config)
             problems_to_solve = list(range(args.starting_test_number,
-                                           args.starting_test_number + args.num_test_problems))
+                                           args.starting_test_number + domain_test_count))
 
             def test_function_v2(curr_models, _tester=tester,
                                  _problems=problems_to_solve, _md=test_md):
@@ -1143,11 +1150,9 @@ if __name__ == "__main__":
             heldout_names = [n for n, _, _ in parse_domain_arg("", args.heldout_domains)]
             for heldout_name in heldout_names:
                 print(f"=== Zero-shot evaluation on held-out domain {heldout_name} (C1) ===")
+                h_env = pddlgym.make(f"PDDLEnv{heldout_name}-v0")
                 if graph_metadata.get('featurization') == 'structural':
-                    # held-out domain featurizes with its own aliases at the
-                    # same widths - all symbols known, no tolerant lookups
                     from ploi.structural import build_structural_metadata
-                    h_env = pddlgym.make(f"PDDLEnv{heldout_name}-v0")
                     heldout_md = build_structural_metadata(
                         h_env.action_space._action_predicate_to_operators,
                         graph_metadata['max_pred_arity'],
@@ -1155,10 +1160,14 @@ if __name__ == "__main__":
                 else:
                     heldout_md = dict(graph_metadata)
                     heldout_md['allow_unknown_symbols'] = True
+                heldout_test_count = min(args.num_test_problems, len(h_env.problems))
+                if heldout_test_count < args.num_test_problems:
+                    print(f"  {heldout_name}: capping test at {heldout_test_count} "
+                          f"(requested {args.num_test_problems})")
                 heldout_config = PlannerConfig(
                     planner_types=planner_types,
                     domain_name=heldout_name,
-                    num_problems=args.num_test_problems,
+                    num_problems=heldout_test_count,
                     timeout=30.0,
                     enable_state_monitor=args.monitor,
                     max_plan_length=args.max_plan_length,
@@ -1173,7 +1182,7 @@ if __name__ == "__main__":
                     learned_search_strat=learned_search_strat,
                 )
                 heldout_tester = PlannerTester(heldout_config)
-                heldout_problems = list(range(args.num_test_problems))
+                heldout_problems = list(range(heldout_test_count))
 
                 def heldout_test_function(curr_models, _tester=heldout_tester,
                                           _problems=heldout_problems):
