@@ -1546,6 +1546,19 @@ def load_domain_metadata(train_env_name, planner, num_train_problems, args,
     return md, action_space
 
 
+def _get_store_tensor(g, key):
+    """Get tensor from a HeteroData node store, or None if absent.
+
+    PyG 2.3.1 HeteroData.__contains__ does not check _node_store_dict,
+    so `key in g` returns False even when the store exists.  Access the
+    store via __getitem__ and catch KeyError instead.
+    """
+    try:
+        return g[key].x
+    except (KeyError, AttributeError):
+        return None
+
+
 def pad_pyg_action_scores(hetero_graphs):
     """Pad variable-width tensors in PyG HeteroData to uniform sizes.
 
@@ -1557,38 +1570,30 @@ def pad_pyg_action_scores(hetero_graphs):
     """
     if not hetero_graphs:
         return
-    logger.info(f"pad_pyg_action_scores: checking {len(hetero_graphs)} graphs, "
-                f"type(g[0])={type(hetero_graphs[0]).__name__}")
-    # Log what keys the first graph has for diagnosis.
-    g0 = hetero_graphs[0]
-    if hasattr(g0, 'node_stores'):
-        g0_keys = [s._key for s in g0.node_stores if hasattr(s, '_key')]
-        logger.info(f"  g[0] node store keys: {g0_keys}")
-    # Groups of keys that must share the same shape within each group.
     pad_groups = [
         ('action_scores', 'target_action_scores'),
         ('action_object_scores', 'target_action_object_scores'),
     ]
     for keys in pad_groups:
         max_shape = None
-        for gi, g in enumerate(hetero_graphs):
+        for g in hetero_graphs:
             for key in keys:
-                if key in g:
-                    s = g[key].x.shape
+                t = _get_store_tensor(g, key)
+                if t is not None:
+                    s = t.shape
                     if max_shape is None:
                         max_shape = list(s)
                     else:
                         for d in range(len(s)):
                             max_shape[d] = max(max_shape[d], s[d])
         if max_shape is None:
-            logger.info(f"  {keys[0]}: no tensors found in any graph")
             continue
         padded = 0
         for g in hetero_graphs:
             for key in keys:
-                if key not in g:
+                t = _get_store_tensor(g, key)
+                if t is None:
                     continue
-                t = g[key].x
                 if list(t.shape) != max_shape:
                     pad_args = []
                     for d in reversed(range(len(max_shape))):
