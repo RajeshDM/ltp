@@ -63,6 +63,8 @@ Options (all commands):
   --no-global-node      Disable global node
   --auto-shutdown       Shut down instance after completion (spot mode)
   --patience <n>        Early stopping patience (0=disabled)
+  --continue-training   Resume from best checkpoint
+  --starting-epoch <n>  Override starting epoch (default: 0)
   --device <dev>        cpu or cuda:0 (default: cuda:0)
   --extra "<flags>"     Extra flags passed verbatim to main.py
   --dry-run             Print the command without running it
@@ -146,6 +148,8 @@ WANDB="False"
 GLOBAL_NODE="True"
 AUTO_SHUTDOWN=""
 PATIENCE=""
+CONTINUE_TRAINING=""
+STARTING_EPOCH=""
 DEVICE="cuda:0"
 EXTRA=""
 DRY_RUN=false
@@ -215,6 +219,8 @@ while [[ $# -gt 0 ]]; do
         --no-global-node)  GLOBAL_NODE="False"; shift ;;
         --auto-shutdown)   AUTO_SHUTDOWN="--auto-shutdown"; shift ;;
         --patience)        PATIENCE="$2"; shift 2 ;;
+        --continue-training) CONTINUE_TRAINING="True"; shift ;;
+        --starting-epoch)  STARTING_EPOCH="$2"; shift 2 ;;
         --device)          DEVICE="$2"; shift 2 ;;
         --extra)           EXTRA="$2"; shift 2 ;;
         --dry-run)         DRY_RUN=true; shift ;;
@@ -300,6 +306,8 @@ build_cmd() {
     cmd+=" --device ${DEVICE}"
     [ -n "$AUTO_SHUTDOWN" ] && cmd+=" ${AUTO_SHUTDOWN}"
     [ -n "$PATIENCE" ] && cmd+=" --early-stopping-patience ${PATIENCE}"
+    [ -n "$CONTINUE_TRAINING" ] && cmd+=" --continue-training ${CONTINUE_TRAINING}"
+    [ -n "$STARTING_EPOCH" ] && cmd+=" --starting-epoch ${STARTING_EPOCH}"
     [ -n "$EXTRA" ] && cmd+=" ${EXTRA}"
 
     echo "$cmd"

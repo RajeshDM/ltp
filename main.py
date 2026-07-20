@@ -942,12 +942,33 @@ if __name__ == "__main__":
                 else :
                     train_func = train_model_graphnetwork_ltp_batch_val
 
-            #optimizer = torch.optim.AdamW(self._model.parameters(), lr=5 * 1e-4,weight_decay=0.01)
-            if continue_training == True and os.path.exists(model_outfile) :
-                _model_state = torch.load(model_outfile)
-                _model.load_state_dict(_model_state['state_dict'])
-                optimizer.load_state_dict(_model_state['optimizer'])
-                _starting_epoch = _model_state['epochs'] + 1
+            if continue_training:
+                _resumed = False
+                # Try ModelManager checkpoints first (current save format)
+                _best = manager.load_best_models(
+                    train_env_name=train_env_name, seed=args.seed,
+                    hyperparameters=training_hyperparameters,
+                    metric='validation', ignore_defaults=ignore_defaults)
+                if _best:
+                    _ckpt = _best[-1]  # best val model (sorted ascending)
+                    _model.load_state_dict(_ckpt['state_dict'])
+                    _ckpt_full = torch.load(_ckpt['save_path'], map_location='cpu')
+                    if 'optimizer' in _ckpt_full:
+                        optimizer.load_state_dict(_ckpt_full['optimizer'])
+                    args.starting_epoch = _ckpt['epoch'] + 1
+                    print(f"Resuming from ModelManager checkpoint epoch {_ckpt['epoch']}")
+                    _resumed = True
+                # Fall back to legacy model_outfile
+                if not _resumed and os.path.exists(model_outfile):
+                    _model_state = torch.load(model_outfile)
+                    _model.load_state_dict(_model_state['state_dict'])
+                    if 'optimizer' in _model_state:
+                        optimizer.load_state_dict(_model_state['optimizer'])
+                    args.starting_epoch = _model_state.get('epoch', 0) + 1
+                    print(f"Resuming from legacy checkpoint epoch {args.starting_epoch - 1}")
+                    _resumed = True
+                if not _resumed:
+                    print("No checkpoint found, starting fresh")
 
             # Spot-mode resume (overrides --continue-training if checkpoint exists)
             _spot_path = None
