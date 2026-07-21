@@ -279,13 +279,15 @@ def run_tests(
             _ = format_metrics(results[-1]['test_results'][planner_type], model_info['epoch'])
             #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
 
-            if PlannerType.NON_OPTIMAL in planner_types : 
+            if PlannerType.NON_OPTIMAL in planner_types :
                  _ = format_metrics(results[-1]['test_results'][PlannerType.NON_OPTIMAL], model_info['epoch'])
-            #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
-            #combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'], PlannerType.LEARNED_MODEL)
-            combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'], planner_type)
-            #print (f"Combined Metrics for {model_type} : ", combnined_metrics)
-            print ("Plan Quality : ", combnined_metrics.plan_quality)
+            # Plan quality is defined relative to the non-optimal planner's
+            # plans; skip when that planner didn't run (--run-non-optimal False)
+            if PlannerType.NON_OPTIMAL in results[-1]['all_plan_results']:
+                combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'], planner_type)
+                print ("Plan Quality : ", combnined_metrics.plan_quality)
+            else:
+                print ("Plan Quality :  n/a (non-optimal planner disabled)")
 
     for baseline in baselines:
         if baseline in planner_types:
