@@ -293,7 +293,10 @@ class EncodeDecode(nn.Module):
     def get_best_action_scores_locations(self, a_scores, k):
         # Get top-k action scores and their indices using tensor operations.
         # Apply topk across all batches at once
-        # Returns (values, indices) both of shape [batch_size, k]
+        # Returns (values, indices) both of shape [batch_size, min(k, num_actions)]
+        # k can exceed the schema count when a multi-domain model decodes a
+        # schema-poor domain (e.g. Visitall has 1 schema): clamp to width.
+        k = min(k, a_scores.shape[1])
         values, indices = torch.topk(a_scores, k, dim=1)
         return indices, values
 
@@ -900,7 +903,10 @@ class GNN_GRU(EncodeDecode):
                     action_idxs):
 
         a_scores_new = self.compute_action_scores(x,n_actions,hidden_state,action_idxs)
-        self.max_num_actions = self.action_options
+        # Clamp to the graph's schema count: a multi-domain model's
+        # action_options can exceed it on schema-poor domains (Visitall: 1),
+        # and the loop below indexes columns up to max_num_actions.
+        self.max_num_actions = min(self.action_options, a_scores_new.shape[1])
         self.max_num_objects = self.object_options
         all_actions_batches,all_actions_scores = self.get_best_action_scores_locations(a_scores_new,self.max_num_actions)
 
@@ -985,7 +991,10 @@ class GNN_GRU(EncodeDecode):
                     action_idxs):
 
         a_scores_new = self.compute_action_scores(x,n_actions,hidden_state,action_idxs)
-        self.max_num_actions = self.action_options
+        # Clamp to the graph's schema count: a multi-domain model's
+        # action_options can exceed it on schema-poor domains (Visitall: 1),
+        # and the loop below indexes columns up to max_num_actions.
+        self.max_num_actions = min(self.action_options, a_scores_new.shape[1])
         self.max_num_objects = self.object_options
         all_actions_batches,all_actions_scores = self.get_best_action_scores_locations(a_scores_new,self.max_num_actions)
 
