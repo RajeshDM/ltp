@@ -1122,10 +1122,10 @@ if __name__ == "__main__":
             # schema position, but the dict is built from the action space the
             # model was initialized with (merged, in multi-domain runs), so
             # any domain after the first maps schemas to the wrong arities and
-            # decodes malformed actions. Only this dict may be swapped:
-            # number_actions / max_number_action_parameters must stay at their
-            # trained (merged) values because the embedding-offset arithmetic
-            # in get_best_action_embeddings was trained with them.
+            # decodes malformed actions. Only this dict is swapped; the
+            # schema-embedding offset is graph-local (per-graph n_action) so
+            # it needs no per-domain handling. Checkpoints trained before the
+            # graph-local offset fix need GABAR_LEGACY_ACTION_OFFSET=1.
             test_action_space = t_env.action_space._action_predicate_to_operators
 
             # Build per-domain graph metadata for testing

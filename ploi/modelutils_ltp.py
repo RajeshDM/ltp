@@ -1,3 +1,4 @@
+import os
 import torch
 from torch import Tensor
 import torch.nn as nn
@@ -357,6 +358,22 @@ class EncodeDecode(nn.Module):
             required_correct_features[a][0] = x[current_number_nodes+action_curr_graph+action][:]
             current_number_nodes += n_node[a]
         return required_correct_features#,number_action_parameters
+
+    def _decode_action_count(self, n_actions):
+        """Schema-node count used to locate the selected schema's embedding.
+
+        Each graph lays out its schema nodes as the LAST n_action nodes, so
+        the per-graph count from the data (n_actions) is the correct offset.
+        Models trained before this fix used len(model action space) instead,
+        which points below the schema block whenever a graph's domain has
+        fewer schemas than the (merged multi-domain) training action space -
+        the GRU was then conditioned on arbitrary literal-node embeddings.
+        Set GABAR_LEGACY_ACTION_OFFSET=1 when testing checkpoints trained
+        with that behavior; train/test offsets must match.
+        """
+        if os.environ.get('GABAR_LEGACY_ACTION_OFFSET', '') == '1':
+            return self.number_actions
+        return n_actions
 
     def get_best_action_embeddings(self,x,all_actions,n_node,domain_number_actions):
         # 1. Calculate the starting index of each graph in the flattened tensor `x`
@@ -838,7 +855,7 @@ class GNN_GRU(EncodeDecode):
         #action_scores_total_time = time.time() - action_scores_time
 
         #computing_best_action_embedding = time.time()
-        decoder_input = self.get_best_action_embeddings(x,all_actions,n_node,domain_number_actions=self.number_actions)
+        decoder_input = self.get_best_action_embeddings(x,all_actions,n_node,domain_number_actions=self._decode_action_count(n_actions))
         #computing_best_action_embedding_time = time.time() - computing_best_action_embedding
 
         #decoder_time = time.time()
@@ -896,7 +913,7 @@ class GNN_GRU(EncodeDecode):
         curr_depth = 0
 
         for action_idx in range(self.max_num_actions):
-            decoder_input = self.get_best_action_embeddings(x,all_actions_batches[:,action_idx],n_node,domain_number_actions=self.number_actions)
+            decoder_input = self.get_best_action_embeddings(x,all_actions_batches[:,action_idx],n_node,domain_number_actions=self._decode_action_count(n_actions))
             all_curr_action_scores = [elem[action_idx] for elem in all_actions_scores]
             active_beams.append(([all_actions_batches[:,action_idx][0]], decoder_input, 
                                  all_curr_action_scores[0], hidden_state, curr_depth ))
@@ -989,7 +1006,7 @@ class GNN_GRU(EncodeDecode):
         curr_depth = 0
 
         for action_idx in range(self.max_num_actions):
-            decoder_input = self.get_best_action_embeddings(x,all_actions_batches[:,action_idx],n_node,domain_number_actions=self.number_actions)
+            decoder_input = self.get_best_action_embeddings(x,all_actions_batches[:,action_idx],n_node,domain_number_actions=self._decode_action_count(n_actions))
             #all_curr_action_scores = [elem[action_idx] for elem in all_actions_scores]
             #active_beams.append(([all_actions_batches[:,action_idx][0]], decoder_input,
             #                     all_curr_action_scores[0], hidden_state, curr_depth ))
