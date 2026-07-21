@@ -60,11 +60,15 @@ def extract_rows(dumps):
                         non_opt = m
                 if learned is None:
                     continue
-                domain = next((z for z in zs_domains if z in result_key), None)
+                # Longest label first so 'X_ipcc' never shadows 'X_ipcc@train'
+                domain = next((z for z in sorted(zs_domains, key=len, reverse=True)
+                               if z in result_key), None)
                 zero_shot = domain is not None
                 if domain is None:
-                    domain = next((e["domain"] for e in d.get("eval_plan", [])
-                                   if e["domain"] in result_key), result_key)
+                    _cands = sorted((e["domain"] for e in d.get("eval_plan", [])),
+                                    key=len, reverse=True)
+                    domain = next((c for c in _cands if c in result_key),
+                                  result_key)
                 metric = next((m for m in ("validation", "training", "combined")
                                if result_key.endswith(m)), "?")
                 rows.append({

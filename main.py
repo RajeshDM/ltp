@@ -1091,20 +1091,28 @@ if __name__ == "__main__":
         from ploi.multidomain import parse_domain_arg
         _train_set = set(train_domain_names) if train_domain_names else {args.domain}
 
-        eval_plan = []  # [(name, count, is_zero_shot), ...]
+        # A '@train' suffix on a test domain evaluates on that domain's TRAIN
+        # env (PDDLEnv<name>-v0: the easy problems) instead of the Test env
+        # (hard, size-generalization problems). For held-out domains those
+        # easy problems are unseen, so this is the zero-shot easy split.
+        eval_plan = []  # [(name, count, is_zero_shot, split), ...]
         if args.test_domains:
             for name, count, _ in parse_domain_arg(args.test_domains, "",
                                                     args.num_test_problems):
+                split = 'test'
+                if name.endswith('@train'):
+                    name = name[:-len('@train')]
+                    split = 'train'
                 is_zs = name not in _train_set
-                eval_plan.append((name, count, is_zs))
+                eval_plan.append((name, count, is_zs, split))
         else:
             _default_domains = train_domain_names if train_domain_names else [args.domain]
             for name in _default_domains:
-                eval_plan.append((name, args.num_test_problems, False))
+                eval_plan.append((name, args.num_test_problems, False, 'test'))
             if args.heldout_domains:
                 for name, count, _ in parse_domain_arg("", args.heldout_domains,
                                                         args.num_test_problems):
-                    eval_plan.append((name, count, True))
+                    eval_plan.append((name, count, True, 'test'))
 
         _valid_metrics = {'validation', 'training', 'combined'}
         all_model_types = [m.strip() for m in args.test_model_metrics.split(',')
@@ -1117,19 +1125,23 @@ if __name__ == "__main__":
         starting_model_num = 0
         all_results = {}
 
-        for test_domain, requested_count, is_zero_shot in eval_plan:
+        for test_domain, requested_count, is_zero_shot, test_split in eval_plan:
             tag = "zero-shot" if is_zero_shot else "in-domain"
-            print(f"\n=== {tag} evaluation: {test_domain} ===")
+            display_name = (test_domain if test_split == 'test'
+                            else f"{test_domain}@train")
+            print(f"\n=== {tag} evaluation: {display_name} ===")
 
-            # PlannerTester evaluates on the Test env, so cap against ITS
-            # problem count (the train env usually has a different count).
+            # Cap against the problem count of the env that will actually be
+            # evaluated ('test' -> PDDLEnv<name>Test-v0; 'train' -> the base
+            # env with the easy problems).
+            _env_suffix = "Test" if test_split == 'test' else ""
             try:
-                t_env = pddlgym.make(f"PDDLEnv{test_domain}Test-v0")
+                t_env = pddlgym.make(f"PDDLEnv{test_domain}{_env_suffix}-v0")
             except Exception:
                 t_env = pddlgym.make(f"PDDLEnv{test_domain}-v0")
             domain_test_count = min(requested_count, len(t_env.problems))
             if domain_test_count < requested_count:
-                print(f"  {test_domain}: capping test at {domain_test_count} "
+                print(f"  {display_name}: capping test at {domain_test_count} "
                       f"(requested {requested_count})")
 
             # The domain's own action space. Used for (a) structural test
@@ -1168,7 +1180,7 @@ if __name__ == "__main__":
             else:
                 test_md = graph_metadata
 
-            test_hypers = {**testing_hyperparameters, 'domain_name': test_domain}
+            test_hypers = {**testing_hyperparameters, 'domain_name': display_name}
             config = PlannerConfig(
                 planner_types=planner_types,
                 domain_name=test_domain,
@@ -1183,6 +1195,7 @@ if __name__ == "__main__":
                 ignore_defaults=ignore_defaults,
                 testing_hyperparameters=test_hypers,
                 learned_search_strat=learned_search_strat,
+                test_split=test_split,
             )
 
             tester = PlannerTester(config)
@@ -1226,7 +1239,7 @@ if __name__ == "__main__":
                 )
                 prefix = "zeroshot_" if is_zero_shot else ""
                 suffix = f"_{model_type}" if len(eval_plan) > 1 else model_type
-                all_results[f"{prefix}{test_domain}{suffix}"] = results
+                all_results[f"{prefix}{display_name}{suffix}"] = results
 
         # Structured results dump for cross-run aggregation
         # (tools/analyze_results.py). One JSON per invocation, keyed by
@@ -1252,7 +1265,9 @@ if __name__ == "__main__":
             'test_model_metrics': all_model_types,
             'num_models_to_test': num_models_to_test,
             'eval_plan': [
-                {'domain': d, 'count': c, 'zero_shot': z} for d, c, z in eval_plan],
+                {'domain': (d if s == 'test' else f"{d}@train"),
+                 'count': c, 'zero_shot': z, 'split': s}
+                for d, c, z, s in eval_plan],
             'results': _summary,
             'timestamp': datetime.now().strftime('%Y%m%d_%H%M%S'),
         }

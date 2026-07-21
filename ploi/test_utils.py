@@ -89,6 +89,10 @@ class PlannerConfig:
     model_hyperparameters: Dict[str, float] = None
     ignore_defaults : Dict[str, Any] = None
     testing_hyperparameters: Dict[str, Any] = None
+    # 'test' = PDDLEnv<name>Test-v0 (hard/size-generalization problems),
+    # 'train' = PDDLEnv<name>-v0 (easy problems - a legitimate zero-shot
+    # eval set for held-out domains, since the model never saw them).
+    test_split: str = "test"
 
 @dataclass
 class PlannerMetrics:

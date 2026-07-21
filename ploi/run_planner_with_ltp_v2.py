@@ -370,7 +370,8 @@ def convert_state_and_run_model_val(model, states, action_space ,
 class PlannerTester:
     def __init__(self, config: PlannerConfig):
         self.config = config
-        self.env = pddlgym.make(f"PDDLEnv{config.domain_name}Test-v0")
+        _suffix = "Test" if getattr(config, "test_split", "test") == "test" else ""
+        self.env = pddlgym.make(f"PDDLEnv{config.domain_name}{_suffix}-v0")
         #self.non_optimal_planner_data = {}
         #self.optimal_planner_data = {}
         # Initialize dictionary to store data for all planner types
@@ -776,7 +777,8 @@ class PlannerTester:
         # state). Use deepcopy from a single template to avoid re-parsing the
         # PDDL domain file N times (pddlgym.make is the expensive part).
         active, results_by_problem = {}, {}
-        template_env = pddlgym.make(f"PDDLEnv{self.config.domain_name}Test-v0")
+        _suffix = "Test" if getattr(self.config, "test_split", "test") == "test" else ""
+        template_env = pddlgym.make(f"PDDLEnv{self.config.domain_name}{_suffix}-v0")
         for p in problem_idxs:
             env = copy.deepcopy(template_env)
             env.fix_problem_index(p)
