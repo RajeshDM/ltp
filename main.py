@@ -190,9 +190,18 @@ def run_tests(
              starting_model_num: int = 0,
              planner_types = [PlannerType.LEARNED_MODEL],
              baseline_models = None,
-             ignore_defaults : Dict[str, Any] = None) -> List[Dict]:
+             ignore_defaults : Dict[str, Any] = None,
+             decode_action_space = None) -> List[Dict]:
     """
     Run tests on best models for a specific configuration
+
+    decode_action_space: the TEST domain's own action space. Beam decoding
+    terminates each beam when its depth reaches the arity of the selected
+    schema, looked up by graph-local schema index. The model's dict is built
+    from the (possibly merged multi-domain) training action space, whose
+    ordering does not match graphs of any domain but the first, so the dict
+    must be rebuilt from the domain being tested. Everything else on the
+    model stays as trained.
     """
     
     # Get best models for this configuration
@@ -228,11 +237,16 @@ def run_tests(
             #model = model_class()
             curr_models = {}
             curr_model = initialize_model(model_class, args, action_space)
-            
+
             # Load model state
             curr_model.load_state_dict(model_info['state_dict'])
             curr_model.to(device)
             curr_model.eval()
+
+            if decode_action_space is not None:
+                curr_model.action_parameter_number_dict = {
+                    i: len(op.params)
+                    for i, op in enumerate(decode_action_space.values())}
 
             if model_info['epoch'] in tested_epoch_numbers:
                 print ("Already tested model from epoch ",model_info['epoch'])
@@ -1091,17 +1105,34 @@ if __name__ == "__main__":
             tag = "zero-shot" if is_zero_shot else "in-domain"
             print(f"\n=== {tag} evaluation: {test_domain} ===")
 
-            t_env = pddlgym.make(f"PDDLEnv{test_domain}-v0")
+            # PlannerTester evaluates on the Test env, so cap against ITS
+            # problem count (the train env usually has a different count).
+            try:
+                t_env = pddlgym.make(f"PDDLEnv{test_domain}Test-v0")
+            except Exception:
+                t_env = pddlgym.make(f"PDDLEnv{test_domain}-v0")
             domain_test_count = min(requested_count, len(t_env.problems))
             if domain_test_count < requested_count:
                 print(f"  {test_domain}: capping test at {domain_test_count} "
                       f"(requested {requested_count})")
 
+            # The domain's own action space. Used for (a) structural test
+            # metadata and (b) overriding the decoder's arity lookup: beam
+            # termination indexes action_parameter_number_dict by GRAPH-LOCAL
+            # schema position, but the dict is built from the action space the
+            # model was initialized with (merged, in multi-domain runs), so
+            # any domain after the first maps schemas to the wrong arities and
+            # decodes malformed actions. Only this dict may be swapped:
+            # number_actions / max_number_action_parameters must stay at their
+            # trained (merged) values because the embedding-offset arithmetic
+            # in get_best_action_embeddings was trained with them.
+            test_action_space = t_env.action_space._action_predicate_to_operators
+
             # Build per-domain graph metadata for testing
             if graph_metadata.get('featurization') == 'structural':
                 from ploi.structural import build_structural_metadata
                 test_md = build_structural_metadata(
-                    t_env.action_space._action_predicate_to_operators,
+                    test_action_space,
                     graph_metadata['max_pred_arity'],
                     graph_metadata['max_action_arity'])
             elif is_zero_shot:
@@ -1154,6 +1185,7 @@ if __name__ == "__main__":
                     metric=model_type,
                     args=args,
                     action_space=action_space,
+                    decode_action_space=test_action_space,
                     tested_epoch_numbers=tested_epoch_numbers,
                     num_models_to_test=num_models_to_test,
                     starting_model_num=starting_model_num,
