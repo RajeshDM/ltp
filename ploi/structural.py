@@ -22,14 +22,23 @@ class StructuralMap(dict):
     effects default to static.
     """
 
-    def __init__(self, index_map, class_of):
+    def __init__(self, index_map, class_of=None):
         super().__init__(index_map)
         self._class_of = class_of
 
     def __missing__(self, key):
+        if self._class_of is None:
+            raise KeyError(key)
         index = self[self._class_of(key)]
         self[key] = index
         return index
+
+    def __reduce__(self):
+        # The class_of closure is not picklable (metadata gets stored in the
+        # unified cache). A reloaded map behaves as a plain dict - fully
+        # populated for its domain - losing only the unseen-symbol fallback,
+        # which test-time metadata (always built fresh) retains.
+        return (StructuralMap, (dict(self), None))
 
 
 def _pred_arity(predicate):

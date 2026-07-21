@@ -237,6 +237,24 @@ def test_renaming_invariance_of_lifted_tensors():
     assert edges1.sum() == edges2.sum()
 
 
+def test_metadata_pickle_roundtrip():
+    """Metadata (incl. StructuralMap) is stored in the unified cache; it must
+    pickle. Reloaded maps act as plain dicts (no unseen-symbol fallback)."""
+    import pickle
+    md = build_lifted_metadata(blocks_action_space(), KP, KA, "joint")
+    blob = pickle.dumps(md)
+    md2 = pickle.loads(blob)
+    assert md2["num_node_features"] == md["num_node_features"]
+    assert md2["edge_feature_to_index"]["instance_of"] == \
+        md["edge_feature_to_index"]["instance_of"]
+    assert md2["lifted_spec"]["schemas"].keys() == md["lifted_spec"]["schemas"].keys()
+    try:
+        md2["node_feature_to_index"]["never_seen_symbol"]
+        raise RuntimeError("reloaded map should not invent classes")
+    except KeyError:
+        pass
+
+
 def _run_all():
     failures = 0
     for name, fn in sorted(globals().items()):

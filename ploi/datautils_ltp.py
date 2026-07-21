@@ -1606,6 +1606,17 @@ def _ensure_pyg_graphs(graphs):
     return graphs, False
 
 
+def _atomic_pickle_dump(obj, path):
+    """Write-then-rename so concurrent runs on shared storage never see a
+    torn file. Last writer wins per whole file: a concurrently-added cache
+    tag can be lost (that run keeps its graphs in memory and a later run
+    just re-featurizes), but a reader can never load a corrupt pickle."""
+    tmp_path = f"{path}.tmp.{os.getpid()}"
+    with open(tmp_path, 'wb') as f:
+        pickle.dump(obj, f)
+    os.replace(tmp_path, path)
+
+
 def _get_store_tensor(g, key):
     """Get tensor from a HeteroData node store, or None if absent.
 
@@ -1752,8 +1763,7 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
                         all_graphs = (graphs_list, all_graphs[1])
                         unified_cache[all_graphs_key] = all_graphs
                         try:
-                            with open(unified_cache_file, 'wb') as f:
-                                pickle.dump(unified_cache, f)
+                            _atomic_pickle_dump(unified_cache, unified_cache_file)
                         except Exception as e:
                             logger.warning(f"Could not re-save converted cache: {e}")
                     logger.info(f"Returning {len(all_graphs[0])} graphs from cache")
@@ -1933,8 +1943,7 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
     unified_cache[all_graphs_key] = (all_input_graphs, graph_metadata)
 
     try:
-        with open(unified_cache_file, 'wb') as f:
-            pickle.dump(unified_cache, f)
+        _atomic_pickle_dump(unified_cache, unified_cache_file)
         logger.info(f"Saved unified cache ({len(all_input_graphs)} graphs)")
     except Exception as e:
         logger.error(f"Error saving unified cache: {e}")
