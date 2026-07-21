@@ -14,7 +14,23 @@ python main.py --config configs/<name>.yaml --device cuda:0
 Machine-specific things (`--device`, `--wandb`, `--continue-training`,
 `--dry-run`) deliberately stay OUT of configs so the same file runs anywhere.
 
-## The paper suite (11 training runs)
+## The headline experiment (C1 Phase-2 gate): 6 train / 2 held-out
+
+| Config | Trains on | Zero-shot tests | Role |
+|---|---|---|---|
+| `heldout2_union.yaml` | blocks, gripper, visitall, grid, logistics, rovers | miconic, spanner | C1 CONTROL (expect ~0) |
+| `heldout2_structural.yaml` | same 6 | miconic, spanner | C1 PRIMARY (must beat control) |
+
+Held-out choice: miconic is transport-family (logistics/gripper are in
+training - tests family transfer, C5); spanner is structurally distinct.
+To change the split, edit `domains:` and the zero-shot set follows
+automatically (any test domain not in `domains:` is zero-shot).
+
+NOTE: first run collects expert plans for visitall/grid/logistics/rovers
+at 200 requested problems - hours of FD time. Do the cache warmup
+(README step in main instructions) BEFORE launching on GPUs.
+
+## The 3-domain suite (11 training runs, proven caches)
 
 | Config | Trains on | Tests | Claim |
 |---|---|---|---|
