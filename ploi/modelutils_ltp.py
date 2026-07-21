@@ -313,36 +313,49 @@ class EncodeDecode(nn.Module):
 
         return all_objects_batches, all_objects_scores
 
-    def get_best_action_object_scores_locations(self, ao_scores, n_node, k):
+    def get_best_action_object_scores_locations(self, ao_scores, n_node, k, n_objects=None):
         """
         Get top-k action-object scores and their indices using tensor operations.
         Args:
             ao_scores: Tensor of shape [batch_size * max_params, max_nodes]
             n_node: Tensor containing total number of nodes per graph (including all node types)
             k: Number of top objects to select
-            
+            n_objects: Per-graph object counts; when given, selection is
+                restricted to object nodes (see comment below). None keeps
+                the legacy all-nodes mask (training targets path).
+
         Returns:
             Tuple of (indices_tensor, values_tensor)
         """
         batch_size = ao_scores.shape[0]
-        
+
         # Create a mask to ignore scores beyond valid nodes for each graph
         max_nodes = ao_scores.shape[1]
-        
+
         # Calculate which graph each row in ao_scores belongs to
-        graph_indices = torch.div(torch.arange(batch_size, device=ao_scores.device), 
+        graph_indices = torch.div(torch.arange(batch_size, device=ao_scores.device),
                                 self.max_number_action_parameters, rounding_mode='floor').long()
-        
+
         # Get number of nodes for each row in ao_scores
         # n_node represents total nodes in the graph (including object, predicate, action nodes)
         row_n_nodes = n_node[graph_indices]
-        
+
         # Create range tensor for masking
         node_indices = torch.arange(max_nodes, device=ao_scores.device).expand(batch_size, -1)
-        
-        # Create mask where valid nodes are True
-        # All node types are valid targets, as n_node includes all node types
-        mask = node_indices < row_n_nodes.unsqueeze(1)
+
+        # Action parameters are always OBJECTS (the first n_objects nodes of
+        # each graph). compute_object_scores writes real scores (which can be
+        # NEGATIVE) only into object columns and leaves literal/schema columns
+        # at exactly 0, so masking by n_node lets topk select a 0-scored
+        # literal node whenever every object scores below zero - producing a
+        # malformed action. Never triggered by trained in-domain scores
+        # (correct objects score positive) but systematic in zero-shot eval.
+        # Pass n_objects to restrict selection to real objects.
+        if n_objects is not None:
+            valid_counts = n_objects[graph_indices]
+        else:
+            valid_counts = row_n_nodes
+        mask = node_indices < valid_counts.unsqueeze(1)
         
         # Apply mask to scores (set invalid scores to -inf)
         masked_scores = torch.where(mask, ao_scores, torch.tensor(float('-inf'), device=ao_scores.device))
@@ -949,7 +962,8 @@ class GNN_GRU(EncodeDecode):
                                                             new_hidden[:, beam_idx:beam_idx+1],
                                                         object_idxs,parameter_number)
                 all_objects_batches_all_params,all_objects_scores_all_params = self.get_best_action_object_scores_locations(
-                                        ao_scores=ao_scores_new, n_node=n_node, k=self.max_num_objects)
+                                        ao_scores=ao_scores_new, n_node=n_node, k=self.max_num_objects,
+                                        n_objects=n_objects)
 
                 all_objects_scores = all_objects_scores_all_params[parameter_number]
                 all_objects_batches = all_objects_batches_all_params[parameter_number]
@@ -1047,7 +1061,8 @@ class GNN_GRU(EncodeDecode):
                                                             new_hidden[:, beam_idx*number_graphs :(beam_idx+1)*number_graphs],
                                                         object_idxs,parameter_number)
                 all_objects_batches_all_params,all_objects_scores_all_params = self.get_best_action_object_scores_locations(
-                                        ao_scores=ao_scores_new, n_node=n_node, k=self.max_num_objects)
+                                        ao_scores=ao_scores_new, n_node=n_node, k=self.max_num_objects,
+                                        n_objects=n_objects)
 
                 #all_objects_scores = all_objects_scores_all_params[parameter_number]
                 #all_objects_batches = all_objects_batches_all_params[parameter_number]

@@ -633,6 +633,15 @@ class PlannerTester:
                 model, state, action_space, self.config.device, groundings, graph_metadata
             )
 
+            # GABAR_DEBUG_PROPOSALS=1: print the model's ranked proposals on
+            # the first step of each problem - distinguishes "no applicable
+            # proposal" failures (instant) from wandering failures.
+            if os.environ.get("GABAR_DEBUG_PROPOSALS", "") and not result.plan:
+                print(f"\n[p{result.problem_idx}] model proposed: "
+                      + " | ".join(str(a) for a in action_param_list[:8]))
+                print(f"[p{result.problem_idx}] applicable ({len(groundings)}): "
+                      + " | ".join(str(g) for g in list(groundings)[:5]))
+
             # Old version (linear scan over all groundings per candidate):
             #valid_actions = [action for action in action_param_list
             #            if self._is_valid_action(action, groundings)]
