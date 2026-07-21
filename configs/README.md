@@ -3,6 +3,36 @@
 One YAML per paper experiment. Keys are argparse dest names (underscores).
 Precedence: `constants.py` < YAML < explicit CLI flags.
 
+## THE PAPER SUITE (8 domains, 4 methods, 36 training runs)
+
+Method-to-featurization mapping:
+
+| Paper name | featurization | What it is |
+|---|---|---|
+| UNION (control) | `union` | symbol one-hots, D in the weights |
+| GADAR-DOM (Method 0) | `structural` | symbol-free structural classes only |
+| GADAR-BIND (B-lite) | `joint_lite` | + lifted domain layer in every state graph |
+| GADAR (full, Method B) | `joint` | + occurrence nodes + binding layer |
+
+Configs: `all8_<feat>.yaml` (train all 8, in-domain eval on all 8) and
+`loo8_<feat>_no_<domain>.yaml` (train 7, test all 8 - the held-out domain
+is auto-detected zero-shot). 4 x (1 + 8) = 36 runs.
+
+Launch one per GPU:
+```bash
+./train_test_scripts/run_config.sh configs/loo8_joint_no_spanner.yaml cuda:0
+```
+Cache warmup first (once, sequential - shared NFS pickle safety):
+```bash
+for f in union structural joint_lite joint; do
+  python main.py --config configs/all8_$f.yaml --mode train --epochs 0 --device cpu --use-gpu False
+  for d in manyblocks gripper miconic visitall grid logistics spanner rovers; do
+    cfg=$(ls configs/loo8_${f}_no_${d}* 2>/dev/null | head -1)
+    [ -n "$cfg" ] && python main.py --config $cfg --mode train --epochs 0 --device cpu --use-gpu False
+  done
+done
+```
+
 Run any config with:
 
 ```bash

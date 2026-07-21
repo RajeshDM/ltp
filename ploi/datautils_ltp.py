@@ -252,8 +252,20 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     all_literals = literals + goal_literals
     #all_literals = literals + goal_literals_without_g
     #all_literals = literals + goal_literals_without_g
+
+    # Lifted domain layer (CLAUDE.md 5.4/5.5): extra nodes between the
+    # literals and the schema block. Objects stay first and schemas stay
+    # last, so all decoder indexing invariants are preserved.
+    _lifted_spec = graph_metadata.get('lifted_spec')
+    if _lifted_spec:
+        from ploi.lifted_layer import lifted_node_keys
+        lifted_keys = lifted_node_keys(_lifted_spec)
+    else:
+        lifted_keys = []
+    num_lifted = len(lifted_keys)
+
     #node_to_objects = dict(enumerate(all_agents + all_objects + _all_predicates + all_actions))
-    node_to_objects = dict(enumerate(all_agents + all_objects + all_literals + all_actions))
+    node_to_objects = dict(enumerate(all_agents + all_objects + all_literals + lifted_keys + all_actions))
     if test == True:
         pass
         #ic (node_to_objects)
@@ -269,7 +281,7 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     num_predicates = len(all_literals)
     #num_globals = len(all_global_nodes)
     #num_nodes = num_objects+ num_actions + num_agents
-    num_nodes = num_objects+ num_actions + num_agents +num_predicates
+    num_nodes = num_objects+ num_actions + num_agents +num_predicates + num_lifted
     #num_nodes = num_objects + num_actions + num_agents + num_globals
 
     action_nodes = []
@@ -311,7 +323,7 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     action_scores = np.zeros((1,num_actions))
     #action_object_scores = np.zeros((1, num_objects)) #TODO - need to think about how to make this variable
     action_object_scores = np.zeros((max_action_arity, num_objects)) #TODO - need to think about how to make this variable
-    n_non_action_nodes = num_objects + num_agents + num_predicates
+    n_non_action_nodes = num_objects + num_agents + num_predicates + num_lifted
     prev_state_copy = None
 
     if prev_state != None :
@@ -365,6 +377,12 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
             goal_index = _node_feature_to_index['goal_pred']
             input_node_features[pred_index, goal_index] = 1
 
+    if _lifted_spec:
+        from ploi.lifted_layer import add_lifted_node_features
+        add_lifted_node_features(input_node_features, lifted_keys, _lifted_spec,
+                                 objects_to_node, _node_feature_to_index,
+                                 graph_metadata['max_pred_arity'])
+
     all_edge_features_stack = np.zeros((max_action_arity,num_nodes, num_nodes,_num_edge_features))
     all_edge_features = all_edge_features_stack[0][:]
 
@@ -374,6 +392,14 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     # self.add_all_predicate_edge_info_in_graph(state,objects_to_node,all_edge_features)
     _add_all_predicate_edge_info_in_graph(all_literals, objects_to_node, all_edge_features,_edge_feature_to_index,
                                           allow_unknown=_allow_unknown)
+
+    if _lifted_spec:
+        from ploi.lifted_layer import add_lifted_layer_edges
+        add_lifted_layer_edges(all_edge_features, all_literals, all_actions,
+                               _lifted_spec, objects_to_node,
+                               _edge_feature_to_index,
+                               graph_metadata['max_pred_arity'],
+                               graph_metadata['max_action_arity'])
 
     node_to_only_actions = dict(enumerate(all_actions))
     action_positions = dict(enumerate(list(range(max_action_arity))))
@@ -404,6 +430,16 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
             all_edge_features_stack[position,action_index, obj_index, position_index] = 1
             all_edge_features_stack[position,obj_index, action_index, position_index] = 1
 
+    # Binding layer (CLAUDE.md 5.5, 'joint' mode only): grounded
+    # applicability edges also link the object to the precondition
+    # OCCURRENCE node it instantiates.
+    _binding_ctx = None
+    if _lifted_spec and _lifted_spec.get('mode') == 'joint':
+        _binding_ctx = {
+            'objects_to_node': objects_to_node,
+            'ka': graph_metadata['max_action_arity'],
+        }
+
     for action, values in actions_to_node_groundings.items():
         action_index = objects_to_node[action]
         for position,objects in values.items():
@@ -412,7 +448,8 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
                 _get_precondition_satisfaction_position(action, state.literals, all_objects, all_edge_features_stack[position],
                                                             action_space, action_index, object_loc,
                                                             position,_edge_feature_to_index,
-                                                            allow_unknown=_allow_unknown)
+                                                            allow_unknown=_allow_unknown,
+                                                            binding_ctx=_binding_ctx)
 
     for action_edge in action_edges :
         for position in range(max_action_arity):
@@ -446,7 +483,7 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     n_edge = np.reshape(n_edge, [1]).astype(np.int64)
     num_actions = np.reshape(num_actions,[1]).astype(np.int64)
     num_objects = np.reshape(num_objects+num_agents,[1]).astype(np.int64)
-    num_non_action_nodes = np.reshape(num_objects+num_agents+num_predicates,[1]).astype(np.int64)
+    num_non_action_nodes = np.reshape(n_non_action_nodes,[1]).astype(np.int64)
     max_action_arity = np.reshape(max_action_arity,[1]).astype(np.int64)
     goal_dist = np.reshape(goal_dist,[1]).astype(np.float64)
 
@@ -544,9 +581,10 @@ def _add_predicate_edge_info_in_graph(lit,objects_to_node,
 def _get_precondition_satisfaction_position(curr_action, all_literals, all_objects,all_edge_features,
                                             action_space, action_index, object_index,
                                             position,_edge_feature_to_index,
-                                            allow_unknown=False):
+                                            allow_unknown=False, binding_ctx=None):
     precond_for_current_action_object_pos_var = []
     precond_for_current_action_object = []
+    precond_for_current_action_object_occ = []
     for action in action_space:
         if action.name == curr_action:
             #ic (curr_action)
@@ -554,15 +592,17 @@ def _get_precondition_satisfaction_position(curr_action, all_literals, all_objec
             param_name = action_space[curr_action].params[position]
             #ic (all_action_preconds)
             #ic (param_name)
-            for precond in all_action_preconds:
+            for occ_k, precond in enumerate(all_action_preconds):
                 if len(precond.variables) == 0 :
                     precond_var = ''
                     precond_for_current_action_object_pos_var.append(precond_var)
                     precond_for_current_action_object.append(precond)
+                    precond_for_current_action_object_occ.append(occ_k)
                 for pos_in_precond, precond_var in enumerate(precond.variables) :
                     if param_name == precond_var :
                         precond_for_current_action_object_pos_var.append(precond_var)
                         precond_for_current_action_object.append(precond)
+                        precond_for_current_action_object_occ.append(occ_k)
 
             for pos,precond in enumerate(precond_for_current_action_object):
                 precond_var = precond_for_current_action_object_pos_var[pos]
@@ -574,11 +614,26 @@ def _get_precondition_satisfaction_position(curr_action, all_literals, all_objec
                 precondition_index = _feature_index(
                     _edge_feature_to_index, precond_str + str(curr_pos),
                     allow_unknown)
-                if precondition_index is None:
-                    continue
-                all_edge_features[action_index, object_index, precondition_index] = 1
-                # action_obj_inversion
-                all_edge_features[object_index, action_index, precondition_index] = 1
+                if precondition_index is not None:
+                    all_edge_features[action_index, object_index, precondition_index] = 1
+                    # action_obj_inversion
+                    all_edge_features[object_index, action_index, precondition_index] = 1
+
+                # Binding layer (joint mode): object <-> the precondition
+                # OCCURRENCE node this applicability fact instantiates.
+                # Precondition k of a schema is occurrence k by the
+                # build_lifted_spec ordering contract.
+                if binding_ctx is not None:
+                    from ploi.lifted_layer import occ_node_key
+                    occ_key = occ_node_key(
+                        getattr(curr_action, 'name', str(curr_action)),
+                        precond_for_current_action_object_occ[pos])
+                    occ_index = binding_ctx['objects_to_node'].get(occ_key)
+                    if occ_index is not None:
+                        slot = min(position, binding_ctx['ka'] - 1)
+                        bind_index = _edge_feature_to_index[f'bind_slot_{slot}']
+                        all_edge_features[occ_index, object_index, bind_index] = 1
+                        all_edge_features[object_index, occ_index, bind_index] = 1
             break
 
 def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent=None,args=None,metadata_override=None):

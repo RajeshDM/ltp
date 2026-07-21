@@ -474,12 +474,15 @@ def get_ploi_argument_parser():
     parser.add_argument(
         "--featurization",
         type=str,
-        choices=["per_domain", "union", "structural"],
+        choices=["per_domain", "union", "structural", "joint_lite", "joint"],
         default="per_domain",
         help="Feature dictionary mode: 'per_domain' = published GABAR "
              "(Phase 0 parity), 'union' = shared union vocabulary across "
              "training domains (Baseline 0, C1 control), 'structural' = "
-             "symbol-free structural classes (CLAUDE.md 5.3, zero-shot capable).")
+             "symbol-free structural classes (Method 0, zero-shot capable), "
+             "'joint_lite' = structural + lifted domain layer in every state "
+             "graph (GADAR-BIND ablation), 'joint' = joint_lite + occurrence "
+             "nodes + binding layer (full GADAR, Method B).")
 
     parser.add_argument(
         "--run-mode",

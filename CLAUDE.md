@@ -51,6 +51,13 @@ main.py                            ← THE entry point (__main__): arg parsing,
  │                                   merge_feature_metadata, merge_action_spaces (C1)
  ├─ ploi/structural.py             structural featurization: StructuralMap,
  │                                   build_structural_metadata (C1/C2)
+ ├─ ploi/lifted_layer.py           lifted domain layer + binding layer (5.4/5.5):
+ │                                   build_lifted_spec / build_lifted_metadata,
+ │                                   lifted_node_keys, add_lifted_node_features,
+ │                                   add_lifted_layer_edges. Featurizations
+ │                                   'joint_lite' (GADAR-BIND) and 'joint'
+ │                                   (full GADAR); binding edges are added in
+ │                                   _get_precondition_satisfaction_position
  ├─ ploi/modelutils_ltp.py         HeteroGNN_global encoder; GNN_GRU decoder
  │                                   (compute_action_scores / compute_object_scores)
  │    └─ ploi/attention_layer.py   attention via torch-scatter scatter_softmax
@@ -76,6 +83,10 @@ tools/analyze_results.py           aggregates the results_*.json dumps main.py
 train_test_scripts/run_config.sh   nohup-launch one config on one GPU
 tests/test_multidomain_metadata.py dependency-free unit tests: union merge,
                                    structural classes, renaming invariance
+tests/test_lifted_layer.py         dependency-free unit tests: lifted spec
+                                   (roles, bindings, occurrence order),
+                                   metadata widths, joint vs joint_lite,
+                                   renaming invariance of lifted tensors
 ```
 
 ### 1.2 What to ignore (legacy — do not read, never edit)

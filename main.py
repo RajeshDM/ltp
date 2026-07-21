@@ -463,17 +463,23 @@ if __name__ == "__main__":
                     graph_metadata = union_md
                     action_space = merge_action_spaces(
                         [a for (_, a) in per_domain_meta.values()])
-                elif args.featurization == 'structural':
+                elif args.featurization in ('structural', 'joint', 'joint_lite'):
                     from ploi.structural import build_structural_metadata
+                    from ploi.lifted_layer import build_lifted_metadata
                     kp = max(p.arity for (md, _) in per_domain_meta.values()
                              for p in md['all_predicates'])
                     ka = max(len(op.params) for (_, a) in per_domain_meta.values()
                              for op in a.values())
-                    tag = "_structural" + _domain_set_tag
+                    tag = f"_{args.featurization}" + _domain_set_tag
                     per_domain_graphs = {}
                     for name, num_problems in train_domains:
-                        struct_md = build_structural_metadata(
-                            per_domain_meta[name][1], kp, ka)
+                        if args.featurization == 'structural':
+                            struct_md = build_structural_metadata(
+                                per_domain_meta[name][1], kp, ka)
+                        else:
+                            struct_md = build_lifted_metadata(
+                                per_domain_meta[name][1], kp, ka,
+                                args.featurization)
                         graphs, _, _ = process_pddl_to_graphs(
                             name, train_planner, num_problems, args,
                             _create_graph_dataset_ltp,
@@ -484,7 +490,7 @@ if __name__ == "__main__":
                         [a for (_, a) in per_domain_meta.values()])
                 else:
                     if len(train_domains) > 1:
-                        raise ValueError("per_domain featurization cannot mix domains; use --featurization union or structural")
+                        raise ValueError("per_domain featurization cannot mix domains; use --featurization union, structural, joint_lite, or joint")
                     name = train_domains[0][0]
                     graphs, graph_metadata, action_space = process_pddl_to_graphs(
                         name, train_planner, train_domains[0][1], args,
@@ -1138,13 +1144,24 @@ if __name__ == "__main__":
             # graph-local offset fix need GABAR_LEGACY_ACTION_OFFSET=1.
             test_action_space = t_env.action_space._action_predicate_to_operators
 
-            # Build per-domain graph metadata for testing
-            if graph_metadata.get('featurization') == 'structural':
+            # Build per-domain graph metadata for testing. Structural/lifted
+            # modes rebuild from the test domain's own action space at the
+            # canonical training arities, so any domain (zero-shot included)
+            # featurizes at the trained widths.
+            _feat = graph_metadata.get('featurization')
+            if _feat == 'structural':
                 from ploi.structural import build_structural_metadata
                 test_md = build_structural_metadata(
                     test_action_space,
                     graph_metadata['max_pred_arity'],
                     graph_metadata['max_action_arity'])
+            elif _feat in ('joint', 'joint_lite'):
+                from ploi.lifted_layer import build_lifted_metadata
+                test_md = build_lifted_metadata(
+                    test_action_space,
+                    graph_metadata['max_pred_arity'],
+                    graph_metadata['max_action_arity'],
+                    _feat)
             elif is_zero_shot:
                 test_md = dict(graph_metadata)
                 test_md['allow_unknown_symbols'] = True
