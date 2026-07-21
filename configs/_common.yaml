@@ -1,0 +1,23 @@
+# NOT a runnable config - reference copy of the settings shared by every
+# experiment in the suite. Each experiment file repeats these explicitly
+# (YAML has no include; explicit beats clever).
+description: shared defaults reference
+
+mode: train_test
+epochs: 500
+lr: 0.0005
+batch_size: 16
+gnn_rounds: 9
+n_heads: 1
+dropout: 0.0
+attention_dropout: 0.0
+weight_decay: 0.0
+max_plan_length: 500
+ablation: main
+search_strat: greedy
+num_train_problems: 200
+num_test_problems: 200
+all_problems: true
+num_models_to_test: 1
+test_model_metrics: validation,training,combined
+wandb: false

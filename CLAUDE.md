@@ -36,8 +36,11 @@ main.py                            ← THE entry point (__main__): arg parsing,
  │                                   multi-domain harness, data section, training,
  │                                   run_tests loop, held-out zero-shot eval
  ├─ ploi/argparsers.py             get_ploi_argument_parser (--domains,
- │                                   --heldout-domains, --featurization;
- │                                   --all-problems is added inside main.py)
+ │                                   --heldout-domains, --test-domains,
+ │                                   --featurization, --num-models-to-test,
+ │                                   --test-model-metrics; --all-problems is
+ │                                   added inside main.py) + apply_config_defaults
+ │                                   (--config YAML layer: constants < YAML < CLI)
  ├─ ploi/constants.py              defaults for every flag
  ├─ ploi/datautils_ltp.py          THE data file: plan collection + per-problem
  │                                   cache (collect_training_data), unified-cache
@@ -66,6 +69,11 @@ main.py                            ← THE entry point (__main__): arg parsing,
  │                                   log_model_metrics (defined 2×; last wins)
  ├─ ploi/planning/                 FD wrapper (fd.py, pddl_planner.py, validate.py)
  └─ ploi/baselines/exp_{1,2,3}/    external baselines, only via --exp-baseline* flags
+configs/                           one YAML per paper experiment (--config);
+                                   README.md maps configs to claims + GPUs
+tools/analyze_results.py           aggregates the results_*.json dumps main.py
+                                   writes after testing into one table/CSV
+train_test_scripts/run_config.sh   nohup-launch one config on one GPU
 tests/test_multidomain_metadata.py dependency-free unit tests: union merge,
                                    structural classes, renaming invariance
 ```

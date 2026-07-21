@@ -318,6 +318,8 @@ if __name__ == "__main__":
         action="store_true",
         help="Run testing on all problems in domain",
     )
+    from ploi.argparsers import apply_config_defaults
+    apply_config_defaults(parser)
     args = parser.parse_args()
 
     if args.wandb:  
@@ -1096,8 +1098,14 @@ if __name__ == "__main__":
                                                         args.num_test_problems):
                     eval_plan.append((name, count, True))
 
-        all_model_types = ['validation','training','combined']
-        num_models_to_test = 2
+        _valid_metrics = {'validation', 'training', 'combined'}
+        all_model_types = [m.strip() for m in args.test_model_metrics.split(',')
+                           if m.strip()]
+        _bad = set(all_model_types) - _valid_metrics
+        if _bad:
+            raise ValueError(f"Invalid --test-model-metrics entries: {sorted(_bad)} "
+                             f"(valid: {sorted(_valid_metrics)})")
+        num_models_to_test = args.num_models_to_test
         starting_model_num = 0
         all_results = {}
 
@@ -1171,8 +1179,12 @@ if __name__ == "__main__":
             curr_test_function = test_function_v2
             tested_epoch_numbers = set()
 
-            # Zero-shot domains only test with best-validation model (one shot)
-            _model_types = ['validation'] if is_zero_shot else all_model_types
+            # Zero-shot domains test one metric only (validation if selected)
+            if is_zero_shot:
+                _model_types = (['validation'] if 'validation' in all_model_types
+                                else all_model_types[:1])
+            else:
+                _model_types = all_model_types
 
             for model_type in _model_types:
                 results = run_tests(
@@ -1196,5 +1208,39 @@ if __name__ == "__main__":
                 prefix = "zeroshot_" if is_zero_shot else ""
                 suffix = f"_{model_type}" if len(eval_plan) > 1 else model_type
                 all_results[f"{prefix}{test_domain}{suffix}"] = results
+
+        # Structured results dump for cross-run aggregation
+        # (tools/analyze_results.py). One JSON per invocation, keyed by
+        # <domain>_<metric>; wandb/stdout logging is unchanged.
+        import dataclasses
+        _summary = {}
+        for _key, _results in all_results.items():
+            _summary[_key] = []
+            for _r in _results:
+                _entry = {
+                    'epoch': _r['epoch'],
+                    'validation_loss': _r.get('validation_loss'),
+                    'training_loss': _r.get('training_loss'),
+                    'metrics': {}
+                }
+                for _ptype, _m in _r['test_results'].items():
+                    _entry['metrics'][str(_ptype)] = dataclasses.asdict(_m)
+                _summary[_key].append(_entry)
+        _dump = {
+            'experiment': args.expid,
+            'train_domain': args.domain,
+            'featurization': args.featurization,
+            'test_model_metrics': all_model_types,
+            'num_models_to_test': num_models_to_test,
+            'eval_plan': [
+                {'domain': d, 'count': c, 'zero_shot': z} for d, c, z in eval_plan],
+            'results': _summary,
+            'timestamp': datetime.now().strftime('%Y%m%d_%H%M%S'),
+        }
+        _dump_path = os.path.join(
+            args.expdir, f"results_{args.domain}_{_dump['timestamp']}.json")
+        with open(_dump_path, 'w') as _f:
+            json.dump(_dump, _f, indent=2, default=str)
+        print(f"\nResults written to {_dump_path}")
 
         _ = log_model_metrics(all_results,args)

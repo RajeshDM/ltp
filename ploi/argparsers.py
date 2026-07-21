@@ -1,5 +1,44 @@
 import argparse
+import sys
 import ploi.constants as constants
+
+
+def apply_config_defaults(parser):
+    """Apply a YAML config file (if --config was passed) as parser defaults.
+
+    Precedence: constants.py < YAML config < explicit CLI flags.  Call after
+    ALL add_argument calls and before parse_args.  YAML keys use the argparse
+    dest names (underscores, e.g. num_train_problems).  Unknown keys are a
+    hard error so a typo cannot silently fall back to a default.
+    """
+    config_path = None
+    argv = sys.argv[1:]
+    for i, tok in enumerate(argv):
+        if tok == "--config" and i + 1 < len(argv):
+            config_path = argv[i + 1]
+        elif tok.startswith("--config="):
+            config_path = tok.split("=", 1)[1]
+    if config_path is None:
+        return
+
+    import yaml
+    with open(config_path) as f:
+        config = yaml.safe_load(f) or {}
+    if not isinstance(config, dict):
+        raise ValueError(f"Config {config_path} must be a mapping, got {type(config)}")
+
+    # 'description' is documentation-only inside experiment configs
+    config.pop('description', None)
+
+    known_dests = {action.dest for action in parser._actions}
+    unknown = set(config) - known_dests
+    if unknown:
+        raise ValueError(
+            f"Unknown keys in {config_path}: {sorted(unknown)}. "
+            f"Keys must match argparse dest names (underscores).")
+
+    parser.set_defaults(**config)
+    print(f"Loaded config: {config_path} ({len(config)} settings)")
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -463,5 +502,27 @@ def get_ploi_argument_parser():
         default=0,
         help="Stop training after this many val-loss checks with no improvement. "
              "0 = disabled. Set automatically by --run-mode if not specified.")
+
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="",
+        help="YAML experiment config. Values become argparse defaults, so "
+             "explicit CLI flags still override. Keys use argparse dest "
+             "names (e.g. num_train_problems, test_domains).")
+
+    parser.add_argument(
+        "--num-models-to-test",
+        type=int,
+        default=1,
+        help="How many of the best checkpoints to test per metric "
+             "(ModelManager keeps 2; 1 = best only).")
+
+    parser.add_argument(
+        "--test-model-metrics",
+        type=str,
+        default="validation,training,combined",
+        help="Comma-separated checkpoint-selection metrics to test "
+             "(subset of validation,training,combined).")
 
     return parser
