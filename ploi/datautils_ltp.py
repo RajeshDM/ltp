@@ -1925,8 +1925,13 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
             graph_metadata = batch_metadata
             unified_cache[graph_metadata_key] = batch_metadata
         else:
+            # Merge int fields across batches, but tolerate keys the fresh
+            # batch metadata doesn't carry: num_global_features (and any other
+            # graph-derived field) is added AFTER this merge, so a
+            # graph_metadata loaded from a partially-cached prior run has it
+            # while batch_metadata does not.
             for key, value in graph_metadata.items():
-                if type(value) is int:
+                if type(value) is int and key in batch_metadata:
                     graph_metadata[key] = max(value, batch_metadata[key])
 
         logger.info(f"Generated {len(raw_graphs)} new graphs")
