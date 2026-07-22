@@ -470,7 +470,15 @@ if __name__ == "__main__":
                              for p in md['all_predicates'])
                     ka = max(len(op.params) for (_, a) in per_domain_meta.values()
                              for op in a.values())
-                    tag = f"_{args.featurization}" + _domain_set_tag
+                    # Structural/lifted metadata for a domain depends on the
+                    # TRAINING SET only through (kp, ka) - each domain is
+                    # featurized from its own action space at those canonical
+                    # arities. So tag sidecars by (feat, kp, ka), NOT the
+                    # domain set: every config whose set shares the same
+                    # arity maxima (in practice, every set containing rovers)
+                    # reuses the same featurized graphs. Union keeps
+                    # domain-set tags (its merged vocab genuinely differs).
+                    tag = f"_{args.featurization}_kp{kp}_ka{ka}"
                     per_domain_graphs = {}
                     for name, num_problems in train_domains:
                         if args.featurization == 'structural':
