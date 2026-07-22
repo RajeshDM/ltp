@@ -557,11 +557,14 @@ def _feature_index(feature_map, key, allow_unknown=False):
     the intended Baseline 0 semantics: unseen symbols land in no trained
     slot, so the control fails by scoring badly - not by crashing.
     """
-    if key in feature_map:
+    # NOTE: must use [] (not `in`): `in` bypasses StructuralMap.__missing__,
+    # which classes unseen symbols on the fly in structural/joint modes.
+    try:
         return feature_map[key]
-    if allow_unknown:
-        return None
-    raise KeyError(key)
+    except KeyError:
+        if allow_unknown:
+            return None
+        raise
 
 def _add_predicate_info_in_edge_in_graph(lit,objects_to_node,all_edge_features,pred_index,lit_index,pos):
     obj_index = objects_to_node[lit.variables[pos]]
