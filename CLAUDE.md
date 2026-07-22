@@ -156,11 +156,18 @@ same `run_tests` machinery.
    mode adds `max_pred_arity`, `max_action_arity`, `featurization`;
    zero-shot union eval adds `allow_unknown_symbols`). New featurizations
    must emit the same keys.
-5. **Unified cache layout** (`cache/results/<Domain>_unified_cache_0_<N>.pkl`):
-   raw per-problem 5-tuples `(states, objects, plan, groundings, goal_dists)`
-   are shared across featurization modes; featurized graphs are namespaced
-   by `cache_tag` (`all_graphs<tag>`, `batch_<a>_<b><tag>`,
-   `graph_metadata<tag>`). Loaders reject per-problem tuples shorter than 5.
+5. **Cache layout — two files.** The shared
+   `cache/results/<Domain>_unified_cache_0_<N>.pkl` holds ONLY raw
+   per-problem 5-tuples `(states, objects, plan, groundings, goal_dists)`
+   plus small metadata (`graph_metadata<tag>`) — it stays small and is
+   loaded/rewritten cheaply. **Featurized graphs live in a per-(domain,tag)
+   sidecar** `cache/results/<Domain>_graphs_0_<N><tag>.pkl` holding
+   `(graph_list, metadata)`. This replaced the old design that accumulated
+   every config's graphs inside the shared pickle (grew to 10+ GB and
+   OOM'd on rewrite). `process_pddl_to_graphs` returns the sidecar directly
+   if present; on load it strips any legacy in-pickle `all_graphs*`/
+   `batch_graphs` blobs (migration). Loaders reject per-problem tuples
+   shorter than 5.
    `<N>` is the ACTUAL collected count: `_effective_problem_count` resolves
    the requested `num_train_problems` (`<=0` = all the domain has) against
    the domain size before the filename is built, so the name is honest and

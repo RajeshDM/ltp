@@ -1756,9 +1756,30 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
     # graph entries inside it are namespaced by cache_tag (C1 union mode).
     unified_cache_file = os.path.join(cache_dir, f"{train_env_name}_unified_cache_{0}_{num_train_problems}.pkl")
     all_graphs_key = 'all_graphs' + cache_tag
-    
-    # Initialize or load the unified cache
-    unified_cache = {'metadata': {'completed_problems': []}, 'problems': {}, 'all_graphs': None}
+    # Featurized graphs for THIS (domain, tag) live in their own sidecar file,
+    # NOT inside the shared unified pickle. Accumulating every config's graphs
+    # in one per-domain pickle made it grow to 10+ GB and OOM on rewrite; a
+    # sidecar per tag keeps each read/write small.
+    graphs_file = os.path.join(
+        cache_dir, f"{train_env_name}_graphs_{0}_{num_train_problems}{cache_tag}.pkl")
+
+    # Fast path: this tag's graphs are already featurized and cached.
+    if os.path.exists(graphs_file):
+        try:
+            with open(graphs_file, 'rb') as f:
+                cached_graphs, cached_md = pickle.load(f)
+            expected_min_graphs = num_train_problems
+            if len(cached_graphs) >= expected_min_graphs:
+                cached_graphs, converted = _ensure_pyg_graphs(cached_graphs)
+                if converted:
+                    _atomic_pickle_dump((cached_graphs, cached_md), graphs_file)
+                logger.info(f"Returning {len(cached_graphs)} graphs from sidecar {os.path.basename(graphs_file)}")
+                return cached_graphs, cached_md, action_space
+        except Exception as e:
+            logger.warning(f"Could not load graph sidecar {graphs_file}: {e}; re-featurizing")
+
+    # Initialize or load the unified cache (raw plans + metadata ONLY)
+    unified_cache = {'metadata': {'completed_problems': []}, 'problems': {}}
     if os.path.exists(unified_cache_file):
         try:
             with open(unified_cache_file, 'rb') as f:
@@ -1768,35 +1789,24 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
                 unified_cache['metadata'] = {'completed_problems': []}
             elif 'completed_problems' not in unified_cache['metadata']:
                 unified_cache['metadata']['completed_problems'] = []
-            if all_graphs_key not in unified_cache:
-                unified_cache[all_graphs_key] = None
-                
+
+            # MIGRATION: drop any legacy in-pickle featurized graphs (the
+            # 'all_graphs*' / 'batch_graphs' blobs that bloated old caches).
+            # They are regenerated into per-tag sidecars; stripping them here
+            # slims the shared pickle back to raw plans on the next write.
+            _stripped = [k for k in list(unified_cache.keys())
+                         if k == 'batch_graphs' or k.startswith('all_graphs')]
+            for k in _stripped:
+                del unified_cache[k]
+            if _stripped:
+                logger.info(f"Migrated cache: dropped {len(_stripped)} legacy in-pickle graph blob(s)")
+
             logger.info(f"Loaded unified cache from {unified_cache_file}")
             logger.info(f"Cache contains data for {len(unified_cache['problems'])} problems")
             logger.info(f"Completed problems: {len(unified_cache['metadata']['completed_problems'])}")
-            
-            # Check if we already have final results in the cache
-            if unified_cache.get(all_graphs_key) is not None:
-                all_graphs = unified_cache[all_graphs_key]
-                logger.info(f"Found complete graph data in cache with {len(all_graphs[0])} graphs")
-
-                # Check if the graph count looks correct (significantly more than problem count)
-                expected_min_graphs = num_train_problems  # At minimum, one graph per problem
-                if len(all_graphs[0]) >= expected_min_graphs and unified_cache['metadata'].get('all_complete', False):
-                    graphs_list, converted = _ensure_pyg_graphs(all_graphs[0])
-                    if converted:
-                        logger.info("Converted stale raw-dict cache to PyG HeteroData")
-                        all_graphs = (graphs_list, all_graphs[1])
-                        unified_cache[all_graphs_key] = all_graphs
-                        try:
-                            _atomic_pickle_dump(unified_cache, unified_cache_file)
-                        except Exception as e:
-                            logger.warning(f"Could not re-save converted cache: {e}")
-                    logger.info(f"Returning {len(all_graphs[0])} graphs from cache")
-                    return all_graphs[0], all_graphs[1], action_space
         except Exception as e:
             logger.error(f"Error loading unified cache: {e}, creating new cache")
-            unified_cache = {'metadata': {'completed_problems': []}, 'problems': {}, 'all_graphs': None}
+            unified_cache = {'metadata': {'completed_problems': []}, 'problems': {}}
     
     # Get domain name from metadata if available
     domain_name = unified_cache['metadata'].get('domain_name', train_env_name)
@@ -1941,15 +1951,6 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
 
         input_graphs_hetero = graph_dataset_to_pyg_dataset(raw_graphs, batch_wise=False)
 
-        if 'batch_graphs' not in unified_cache:
-            unified_cache['batch_graphs'] = {}
-        combined_key = f"batch_0_{num_train_problems}{cache_tag}"
-        unified_cache['batch_graphs'][combined_key] = {
-            'input_graphs': input_graphs_hetero,
-            'metadata': batch_metadata,
-            'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
-        }
-
         for problem_idx in processed_problems_full:
             if problem_idx not in completed_problems:
                 completed_problems.add(problem_idx)
@@ -1970,12 +1971,20 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
         'all_complete': all_problems_complete,
         'last_updated': time.strftime("%Y-%m-%d %H:%M:%S"),
     })
+    # Featurized graphs -> per-tag sidecar (small). Metadata (tiny) also stays
+    # in the shared pickle for load_domain_metadata's fast metadata lookup.
     unified_cache[graph_metadata_key] = graph_metadata
-    unified_cache[all_graphs_key] = (all_input_graphs, graph_metadata)
+    try:
+        _atomic_pickle_dump((all_input_graphs, graph_metadata), graphs_file)
+        logger.info(f"Saved {len(all_input_graphs)} graphs to sidecar "
+                    f"{os.path.basename(graphs_file)}")
+    except Exception as e:
+        logger.error(f"Error saving graph sidecar: {e}")
 
+    # Shared pickle now holds only raw plans + metadata (small).
     try:
         _atomic_pickle_dump(unified_cache, unified_cache_file)
-        logger.info(f"Saved unified cache ({len(all_input_graphs)} graphs)")
+        logger.info(f"Saved unified cache (raw plans + metadata)")
     except Exception as e:
         logger.error(f"Error saving unified cache: {e}")
 
