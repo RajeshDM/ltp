@@ -15,7 +15,7 @@ weight_decay: 0.0
 max_plan_length: 500
 ablation: main
 search_strat: greedy
-num_train_problems: 200
+num_train_problems: 0
 num_test_problems: 200
 all_problems: true
 num_models_to_test: 1

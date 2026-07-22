@@ -161,6 +161,10 @@ same `run_tests` machinery.
    are shared across featurization modes; featurized graphs are namespaced
    by `cache_tag` (`all_graphs<tag>`, `batch_<a>_<b><tag>`,
    `graph_metadata<tag>`). Loaders reject per-problem tuples shorter than 5.
+   `<N>` is the ACTUAL collected count: `_effective_problem_count` resolves
+   the requested `num_train_problems` (`<=0` = all the domain has) against
+   the domain size before the filename is built, so the name is honest and
+   any config requesting `>=` the domain size shares the same cache.
 
 ### 1.5 Repo hazards (conventions that will bite you)
 
@@ -176,10 +180,12 @@ same `run_tests` machinery.
 3. **`args.datafile` is reassigned mid-flow** in main.py (generic
    `ploi_<domain>.pkl`, then `training_data_<domain>.pkl` inside the ltp
    branch) — the first existence check gates the whole data section.
-4. **Cache filename keyed by requested problem count**, not actual: asking
-   for 200 problems of a 186-problem domain creates `..._0_200.pkl` whose
-   `all_complete` never becomes true; collection is capped at
-   `len(env.problems)` but the requested count stays in the key.
+4. **Cache filename keyed by ACTUAL collected count** (`_effective_problem_count`,
+   §1.4 contract 5): requesting 200 of a 147-problem domain yields
+   `..._0_147.pkl`; `num_train_problems <= 0` means "all". Configs request
+   `0` (use all) so the requested count no longer appears in the key. (Was
+   a hazard when the key held the requested count and `all_complete` never
+   turned true for small domains — now retired.)
 5. **`--num-train-problems` applies per domain** in `--domains` mode unless
    a per-domain `:count` override is given (`parse_domain_arg`).
 6. **Expert-planner failures on hard instances are normal**

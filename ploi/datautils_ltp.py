@@ -1577,6 +1577,7 @@ def load_domain_metadata(train_env_name, planner, num_train_problems, args,
     the graphs.
     """
     cache_dir = os.path.join(os.getcwd(), "cache", "results")
+    num_train_problems = _effective_problem_count(train_env_name, num_train_problems)
     unified_cache_file = os.path.join(
         cache_dir,
         f"{train_env_name}_unified_cache_{0}_{num_train_problems}.pkl")
@@ -1607,6 +1608,23 @@ def _ensure_pyg_graphs(graphs):
     if graphs and isinstance(graphs[0], dict):
         return graph_dataset_to_pyg_dataset(graphs, batch_wise=False), True
     return graphs, False
+
+
+def _effective_problem_count(train_env_name, num_train_problems):
+    """Resolve the requested train-problem count against what the domain has.
+
+    num_train_problems <= 0 means "use ALL problems the domain provides".
+    Otherwise cap the request at the domain size. The RESULT is what keys the
+    unified cache filename (_unified_cache_0_<N>.pkl), so the name reflects the
+    ACTUAL problems collected - honest, and shareable across any config that
+    requests >= the domain size (they all resolve to the same N). This also
+    retires the old "requested count in the key, all_complete never true"
+    hazard: the collection now targets exactly what it can reach.
+    """
+    n_available = len(pddlgym.make(f"PDDLEnv{train_env_name}-v0").problems)
+    if num_train_problems is None or num_train_problems <= 0:
+        return n_available
+    return min(num_train_problems, n_available)
 
 
 def _atomic_pickle_dump(obj, path):
@@ -1727,7 +1745,12 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
 
     env = pddlgym.make(f"PDDLEnv{train_env_name}-v0")
     action_space = env.action_space._action_predicate_to_operators
-    
+
+    # Resolve the requested count against the domain size (<=0 = use all), and
+    # key the cache by that ACTUAL count so every downstream calc (batches,
+    # expected_min_graphs, all_complete) targets exactly what can be collected.
+    num_train_problems = _effective_problem_count(train_env_name, num_train_problems)
+
     # Path to the unified cache file. The file is shared across featurization
     # modes (plan collection is mode-independent and expensive); featurized
     # graph entries inside it are namespaced by cache_tag (C1 union mode).
