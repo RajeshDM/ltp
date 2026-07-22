@@ -63,11 +63,22 @@ def merge_feature_metadata(metadatas):
 
 
 def merge_action_spaces(action_spaces):
-    """Union of per-domain action spaces; loud on cross-domain schema collisions."""
+    """Union of per-domain action spaces, used ONLY to size the model
+    (schema count + per-schema/max arity). Keys are not semantic here - each
+    per-state graph is built from its own domain's action space; the merged
+    space just tells the decoder how many schemas and what arities to expect.
+
+    Different domains legitimately reuse a schema NAME (e.g. 'move') with
+    different preconditions/effects - that is the cross-domain aliasing the
+    model must learn to handle, NOT an error. Colliding names from different
+    domains are kept as DISTINCT entries under a namespaced key, so the schema
+    count and arities stay correct instead of silently collapsing.
+    """
     merged = {}
-    for space in action_spaces:
+    for d_idx, space in enumerate(action_spaces):
         for schema, operator in space.items():
             if schema in merged and merged[schema] is not operator:
-                raise ValueError(f"Action schema collision across domains: {schema}")
-            merged[schema] = operator
+                merged[(d_idx, schema)] = operator  # same name, other domain
+            else:
+                merged[schema] = operator
     return merged

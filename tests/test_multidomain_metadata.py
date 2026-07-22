@@ -86,16 +86,26 @@ def test_predicate_lists_are_unioned():
     assert set(merged["all_predicates"]) == {"on", "clear", "at", "free"}
 
 
-def test_action_space_merge_and_collision():
+def test_action_space_merge_distinct_names():
     op_a, op_b = object(), object()
     merged = merge_action_spaces([{"pickup": op_a}, {"move": op_b}])
     assert merged == {"pickup": op_a, "move": op_b}
-    try:
-        merge_action_spaces([{"pickup": op_a}, {"pickup": op_b}])
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("Expected collision to raise ValueError")
+
+
+def test_action_space_name_collision_keeps_both():
+    # Different domains reusing a schema name (e.g. 'move') is expected
+    # cross-domain aliasing, not an error: both schemas are kept as distinct
+    # entries so the model's schema count and arities stay correct.
+    op_a, op_b = object(), object()
+    merged = merge_action_spaces([{"move": op_a}, {"move": op_b}])
+    assert len(merged) == 2
+    assert op_a in merged.values() and op_b in merged.values()
+
+
+def test_action_space_same_operator_not_duplicated():
+    op = object()
+    merged = merge_action_spaces([{"move": op}, {"move": op}])
+    assert merged == {"move": op}
 
 
 def test_parse_domain_arg():
