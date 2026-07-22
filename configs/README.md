@@ -22,6 +22,15 @@ Launch one per GPU:
 ```bash
 ./train_test_scripts/run_config.sh configs/loo8_joint_no_spanner.yaml cuda:0
 ```
+
+Toy end-to-end check (GPU - the test path is GPU-only by design):
+```bash
+python main.py --domains manyblocks_ipcc_big,gripper_ipcc --featurization joint \
+    --num-train-problems 5 --num-test-problems 2 --all-problems \
+    --test-domains "manyblocks_ipcc_big:2,gripper_ipcc:2,miconic_ipcc:2,miconic_ipcc@train:2" \
+    --epochs 3 --mode train_test --device cuda:0 --use-gpu True --expid toy_joint \
+    --run-non-optimal False --wandb False
+```
 Cache warmup first (once, sequential - shared NFS pickle safety):
 ```bash
 for f in union structural joint_lite joint; do
