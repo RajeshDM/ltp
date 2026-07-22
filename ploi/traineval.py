@@ -601,12 +601,27 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
                         dids = dids.long()
                         _as = action_scores.detach().float()
                         _ti = target_indices.detach()
+                        # Object-selection rows are ordered graph-by-graph
+                        # (counts = true arity per graph), so expanding the
+                        # per-graph domain ids by counts aligns rows->domain.
+                        _ao = action_object_scores[required_action_object_scores].detach().float()
+                        _ti2 = target_indices_2.detach()
+                        _row_dids = torch.repeat_interleave(dids, counts)
                         for d in dids.unique().tolist():
                             mask = (dids == d)
                             n = mask.sum().item()
                             domain_count[phase][d] += n
-                            domain_loss[phase][d] += torch.nn.functional.cross_entropy(
-                                _as[mask], _ti[mask]).item() * n
+                            # action CE + object CE: the full ranking loss
+                            # for this domain (a single-schema domain like
+                            # Visitall has action CE == 0 by construction;
+                            # its learning signal is entirely in objects).
+                            _dl = torch.nn.functional.cross_entropy(
+                                _as[mask], _ti[mask]).item()
+                            rmask = (_row_dids == d)
+                            if rmask.any():
+                                _dl += torch.nn.functional.cross_entropy(
+                                    _ao[rmask], _ti2[rmask]).item()
+                            domain_loss[phase][d] += _dl * n
 
             if log_wandb:
                 wandb.log({f"loss_{phase}": running_loss[phase]})
