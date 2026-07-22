@@ -10,6 +10,14 @@ import pddlgym
 import torch
 import torch.nn as nn
 
+# GradScaler moved from torch.cuda.amp (<=2.2) to torch.amp (>=2.4). Import
+# defensively so the same code runs on both the 2.6 and 2.2 environments
+# (autocast lives at torch.amp.autocast in both, so it needs no shim).
+try:
+    from torch.amp import GradScaler as _GradScaler
+except (ImportError, AttributeError):
+    from torch.cuda.amp import GradScaler as _GradScaler
+
 import ploi.constants as constants
 import matplotlib.pyplot as plt
 from icecream import ic
@@ -82,7 +90,7 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
         device = "cpu"
 
     device_type = 'cuda' if use_gpu else 'cpu'
-    scaler = torch.amp.GradScaler(enabled=use_amp and use_gpu)
+    scaler = _GradScaler(enabled=use_amp and use_gpu)
 
     epochs = []
     train_loss_values = []
@@ -478,7 +486,7 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
         device = "cpu"
 
     device_type = 'cuda' if use_gpu else 'cpu'
-    scaler = torch.amp.GradScaler(enabled=use_amp and use_gpu)
+    scaler = _GradScaler(enabled=use_amp and use_gpu)
 
     n_domains = len(domain_names) if domain_names else 0
 
