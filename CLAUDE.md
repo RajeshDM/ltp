@@ -40,7 +40,8 @@ main.py                            ← THE entry point (__main__): arg parsing,
  │                                   --featurization, --num-models-to-test,
  │                                   --test-model-metrics; --all-problems is
  │                                   added inside main.py) + apply_config_defaults
- │                                   (--config YAML layer: constants < YAML < CLI)
+ │                                   (--config YAML layer with base: inheritance:
+ │                                   constants < base < experiment YAML < CLI)
  ├─ ploi/constants.py              defaults for every flag
  ├─ ploi/datautils_ltp.py          THE data file: plan collection + per-problem
  │                                   cache (collect_training_data), unified-cache
@@ -77,7 +78,8 @@ main.py                            ← THE entry point (__main__): arg parsing,
  ├─ ploi/planning/                 FD wrapper (fd.py, pddl_planner.py, validate.py)
  └─ ploi/baselines/exp_{1,2,3}/    external baselines, only via --exp-baseline* flags
 configs/                           one YAML per paper experiment (--config);
-                                   README.md maps configs to claims + GPUs
+                                   suite files are deltas over _common.yaml
+                                   (base: key); README.md maps configs to claims
 tools/analyze_results.py           aggregates the results_*.json dumps main.py
                                    writes after testing into one table/CSV
 train_test_scripts/run_config.sh   nohup-launch one config on one GPU

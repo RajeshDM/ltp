@@ -21,11 +21,27 @@ def apply_config_defaults(parser):
     if config_path is None:
         return
 
+    import os
     import yaml
     with open(config_path) as f:
         config = yaml.safe_load(f) or {}
     if not isinstance(config, dict):
         raise ValueError(f"Config {config_path} must be a mapping, got {type(config)}")
+
+    # 'base' layers a shared-defaults file under this config (one level only):
+    # precedence constants < base < experiment file < CLI flags.  Path is
+    # relative to the experiment file's directory.
+    base_name = config.pop('base', None)
+    if base_name is not None:
+        base_path = os.path.join(os.path.dirname(config_path), base_name)
+        with open(base_path) as f:
+            base = yaml.safe_load(f) or {}
+        if not isinstance(base, dict):
+            raise ValueError(f"Base {base_path} must be a mapping, got {type(base)}")
+        if 'base' in base:
+            raise ValueError(f"Base {base_path} may not itself have a 'base' key")
+        base.pop('description', None)
+        config = {**base, **config}
 
     # 'description' is documentation-only inside experiment configs
     config.pop('description', None)

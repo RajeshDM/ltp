@@ -1,7 +1,15 @@
 # Experiment configs
 
 One YAML per paper experiment. Keys are argparse dest names (underscores).
-Precedence: `constants.py` < YAML < explicit CLI flags.
+
+**Layering:** shared settings live once in `_common.yaml`; each suite config
+declares `base: _common.yaml` and contains only its delta (expid, domains,
+featurization, test_domains, + any overrides). Precedence:
+`constants.py` < `_common.yaml` < experiment file < explicit CLI flags.
+To change a shared default (e.g. batch size, epochs), edit `_common.yaml`
+once. To override it for one experiment, add the key to that file.
+Suite-wide default batch_size is 64 (probed 2026-07: ~3.3x faster than 16
+at equal quality per wall-clock; ~9 GB GPU memory).
 
 ## THE PAPER SUITE (8 domains, 4 methods, 36 training runs)
 
