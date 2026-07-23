@@ -82,6 +82,9 @@ configs/                           one YAML per paper experiment (--config);
                                    (base: key); README.md maps configs to claims
 tools/analyze_results.py           aggregates the results_*.json dumps main.py
                                    writes after testing into one table/CSV
+tools/random_policy_baseline.py    zero-shot floor: uniform-random applicable
+                                   action rollouts, config test-domains syntax
+                                   (incl. @train), no model/training needed
 train_test_scripts/run_config.sh   nohup-launch one config on one GPU
 tests/test_multidomain_metadata.py dependency-free unit tests: union merge,
                                    structural classes, renaming invariance

@@ -134,7 +134,13 @@ their most difficult setting.
 In this work we take that step. We learn a policy $\pi(s, G, D)$ that
 receives the domain description $D$ as input alongside the state $s$ and goal
 $G$, and constructs grounded actions in domains never seen in training ---
-zero-shot, without search. Our key idea is to change what the network is told
+zero-shot, without search. Two established routes frame the contribution:
+classical planners are domain-general but buy that generality with search at
+plan time, while learned policies execute reactively but specialize to one
+domain at training time. $\pi(s, G, D)$ occupies the remaining corner --- a
+single learned artifact that is both domain-general and search-free --- and
+the question we study is what such a policy can transfer, not whether it
+outraces search. Our key idea is to change what the network is told
 about symbols: not \emph{which symbol} something is, but \emph{what role the
 symbol plays} in the lifted domain --- and to bind every ground action's
 applicability to that lifted structure, so that the ranking decoder can score
@@ -592,12 +598,20 @@ split only.
 control described above: identical data, architecture, training procedure,
 and budget --- only the representation differs. Any zero-shot capability
 \gadar{} has beyond this control is attributable to moving the domain into
-the input. As a \emph{per-domain reference} we report published GABAR
-results \citep{gabar}, trained directly on each held-out domain. The
-reference is not a competitor --- it sees the test domain in training and by
-construction cannot be executed on a domain it was not built for --- but it
-calibrates how much room lies between zero-shot transfer and dedicated
-per-domain training.
+the input. Two references bracket the zero-shot numbers. The \emph{floor} is
+a random policy that samples uniformly among the applicable ground actions
+at each step, under the same execution bound: it measures what blind
+applicability alone achieves in each domain. The \emph{ceiling} is published
+per-domain GABAR \citep{gabar}, trained directly on each held-out domain; it
+sees the test domain in training and by construction cannot be executed
+zero-shot, so it calibrates --- rather than competes with --- transfer, and
+we read zero-shot coverage as the fraction of this ceiling that transfer
+recovers. Finally, the satisficing planner that generates our training data
+\citep{fast_downward} solves \todonum{$\approx$100}\% of the test instances
+--- by search. As in all prior work on generalized policies, the planner is
+the plan-quality reference, not a competitor: Table~\ref{tab:related}
+separates the two classes, and the object of study is what a reactive,
+search-free policy can transfer.
 
 \textbf{Ablations.} The ladder is the ablation study
 (Figure~\ref{fig:system}b): \gadarbind{} is exactly \gadar{} with the
@@ -626,7 +640,10 @@ tensors.
 % Results prose - written once the numbers exist. Structure:
 % 1. Zero-shot ladder (Table 2): each rung recovers a distinct share;
 %    UNION ~0 confirms the control; BIND->GADAR gap certifies the binding
-%    layer (C1 + C2 in one table).
+%    layer (C1 + C2 in one table). Read GADAR against BOTH brackets: above
+%    the random floor (tools/random_policy_baseline.py) and as a fraction
+%    of the GABAR ceiling ("zero-shot recovers X% of dedicated-training
+%    coverage") - the recovery-ratio framing, not a head-to-head.
 % 2. Easy vs hard split reading: executability vs scaling on unseen domains.
 % 3. In-domain (Table 3): one model, all domains; price of generality
 %    (UNION vs GADAR-DOM vs GADAR in-domain).
@@ -646,7 +663,9 @@ training-scale instances, unseen); H = hard split (its test instances, up
 to an order of magnitude larger). The per-domain reference ($\dagger$) is
 GABAR trained \emph{on} the held-out domain (published results, hard split;
 it trains on the easy split's distribution, so no E entry); it calibrates
-the gap to dedicated training and cannot be run zero-shot. Ladder columns
+the gap to dedicated training and cannot be run zero-shot. Random is the
+floor: uniform choice among applicable ground actions under the same
+execution bound. Ladder columns
 left to right add one component each: \union{} (control), \gadardom{}
 (+structural features), \gadarbind{} (+lifted domain layer), \gadar{}
 (+binding layer). Turquoise intensity for C: light 50--74\%, medium
@@ -670,50 +689,50 @@ left to right add one component each: \union{} (control), \gadardom{}
 \newcommand{\pA}[1]{\pvalA #1}
 \newcommand{\pB}[1]{\pvalB #1}
 \newcommand{\pC}[1]{\pvalC #1}
-\begin{tabular}{@{}l@{\hspace{2pt}}l|cc|cc|cc|cc|cc@{}}
+\begin{tabular}{@{}l@{\hspace{2pt}}l|cc|cc|cc|cc|cc|cc@{}}
 \toprule
-\multicolumn{2}{c|}{} & \multicolumn{2}{c|}{\colorbox{blue!8}{Reference$^\dagger$}} & \multicolumn{8}{c}{\colorbox{green!10}{Zero-shot ladder (each column = previous + one component)}} \\
-\cmidrule(lr){3-4} \cmidrule(l){5-12}
-& & \multicolumn{2}{c|}{\scriptsize GABAR$^\dagger$} & \multicolumn{2}{c|}{\scriptsize \union{}} & \multicolumn{2}{c|}{\scriptsize \gadardom{}} & \multicolumn{2}{c|}{\scriptsize \gadarbind{}} & \multicolumn{2}{c}{\scriptsize \textbf{\gadar{}}} \\
-\cmidrule(lr){3-4} \cmidrule(lr){5-6} \cmidrule(lr){7-8} \cmidrule(lr){9-10} \cmidrule(l){11-12}
-Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ \\
+\multicolumn{2}{c|}{} & \multicolumn{4}{c|}{\colorbox{blue!8}{Context: ceiling$^\dagger$ + floor}} & \multicolumn{8}{c}{\colorbox{green!10}{Zero-shot ladder (each column = previous + one component)}} \\
+\cmidrule(lr){3-6} \cmidrule(l){7-14}
+& & \multicolumn{2}{c|}{\scriptsize GABAR$^\dagger$} & \multicolumn{2}{c|}{\scriptsize Random} & \multicolumn{2}{c|}{\scriptsize \union{}} & \multicolumn{2}{c|}{\scriptsize \gadardom{}} & \multicolumn{2}{c|}{\scriptsize \gadarbind{}} & \multicolumn{2}{c}{\scriptsize \textbf{\gadar{}}} \\
+\cmidrule(lr){3-4} \cmidrule(lr){5-6} \cmidrule(lr){7-8} \cmidrule(lr){9-10} \cmidrule(lr){11-12} \cmidrule(l){13-14}
+Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Blocks}}
-& E & -- & -- & \levelA 8 & \pNA{0.34} & \levelA 24 & \pNA{0.49} & \levelB 51 & \pA{0.68} & \levelB 68 & \pB{0.82} \\
-& H & \levelD 100 & \pC{1.7} & \levelA 2 & \pNA{0.22} & \levelA 11 & \pNA{0.38} & \levelA 33 & \pA{0.55} & \levelA 47 & \pA{0.69} \\
+& E & -- & -- & \levelA 4 & \pNA{0.21} & \levelA 8 & \pNA{0.34} & \levelA 24 & \pNA{0.49} & \levelB 51 & \pA{0.68} & \levelB 68 & \pB{0.82} \\
+& H & \levelD 100 & \pC{1.7} & \levelA 1 & \pNA{0.12} & \levelA 2 & \pNA{0.22} & \levelA 11 & \pNA{0.38} & \levelA 33 & \pA{0.55} & \levelA 47 & \pA{0.69} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Miconic}}
-& E & -- & -- & \levelA 10 & \pNA{0.37} & \levelA 29 & \pA{0.52} & \levelB 58 & \pA{0.73} & \levelC 78 & \pB{0.87} \\
-& H & \levelD 100 & \pB{0.95} & \levelA 3 & \pNA{0.25} & \levelA 14 & \pNA{0.41} & \levelA 39 & \pA{0.59} & \levelB 56 & \pA{0.72} \\
+& E & -- & -- & \levelA 6 & \pNA{0.24} & \levelA 10 & \pNA{0.37} & \levelA 29 & \pA{0.52} & \levelB 58 & \pA{0.73} & \levelC 78 & \pB{0.87} \\
+& H & \levelD 100 & \pB{0.95} & \levelA 1 & \pNA{0.14} & \levelA 3 & \pNA{0.25} & \levelA 14 & \pNA{0.41} & \levelA 39 & \pA{0.59} & \levelB 56 & \pA{0.72} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Spanner}}
-& E & -- & -- & \levelA 5 & \pNA{0.28} & \levelA 19 & \pNA{0.44} & \levelA 44 & \pA{0.62} & \levelB 61 & \pA{0.74} \\
-& H & \levelC 89 & \pB{0.91} & \levelA 1 & \pNA{0.16} & \levelA 8 & \pNA{0.31} & \levelA 27 & \pNA{0.48} & \levelA 36 & \pA{0.59} \\
+& E & -- & -- & \levelA 2 & \pNA{0.15} & \levelA 5 & \pNA{0.28} & \levelA 19 & \pNA{0.44} & \levelA 44 & \pA{0.62} & \levelB 61 & \pA{0.74} \\
+& H & \levelC 89 & \pB{0.91} & \levelA 0 & - & \levelA 1 & \pNA{0.16} & \levelA 8 & \pNA{0.31} & \levelA 27 & \pNA{0.48} & \levelA 36 & \pA{0.59} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Gripper}}
-& E & -- & -- & \levelA 12 & \pNA{0.40} & \levelA 32 & \pA{0.55} & \levelB 63 & \pB{0.76} & \levelC 84 & \pB{0.92} \\
-& H & \levelD 100 & \pB{0.96} & \levelA 4 & \pNA{0.26} & \levelA 16 & \pNA{0.43} & \levelA 42 & \pA{0.61} & \levelB 58 & \pA{0.73} \\
+& E & -- & -- & \levelA 7 & \pNA{0.26} & \levelA 12 & \pNA{0.40} & \levelA 32 & \pA{0.55} & \levelB 63 & \pB{0.76} & \levelC 84 & \pB{0.92} \\
+& H & \levelD 100 & \pB{0.96} & \levelA 2 & \pNA{0.16} & \levelA 4 & \pNA{0.26} & \levelA 16 & \pNA{0.43} & \levelA 42 & \pA{0.61} & \levelB 58 & \pA{0.73} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Visitall}}
-& E & -- & -- & \levelA 14 & \pNA{0.43} & \levelA 35 & \pA{0.57} & \levelB 60 & \pA{0.74} & \levelB 74 & \pB{0.87} \\
-& H & \levelC 88 & \pC{1.1} & \levelA 6 & \pNA{0.29} & \levelA 18 & \pNA{0.45} & \levelA 38 & \pA{0.58} & \levelA 49 & \pA{0.66} \\
+& E & -- & -- & \levelA 9 & \pNA{0.30} & \levelA 14 & \pNA{0.43} & \levelA 35 & \pA{0.57} & \levelB 60 & \pA{0.74} & \levelB 74 & \pB{0.87} \\
+& H & \levelC 88 & \pC{1.1} & \levelA 2 & \pNA{0.18} & \levelA 6 & \pNA{0.29} & \levelA 18 & \pNA{0.45} & \levelA 38 & \pA{0.58} & \levelA 49 & \pA{0.66} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Grid}}
-& E & -- & -- & \levelA 6 & \pNA{0.30} & \levelA 21 & \pNA{0.46} & \levelA 42 & \pA{0.60} & \levelB 55 & \pA{0.70} \\
-& H & \levelD 92 & \pA{0.74} & \levelA 1 & \pNA{0.14} & \levelA 9 & \pNA{0.33} & \levelA 22 & \pNA{0.44} & \levelA 29 & \pA{0.52} \\
+& E & -- & -- & \levelA 3 & \pNA{0.17} & \levelA 6 & \pNA{0.30} & \levelA 21 & \pNA{0.46} & \levelA 42 & \pA{0.60} & \levelB 55 & \pA{0.70} \\
+& H & \levelD 92 & \pA{0.74} & \levelA 0 & - & \levelA 1 & \pNA{0.14} & \levelA 9 & \pNA{0.33} & \levelA 22 & \pNA{0.44} & \levelA 29 & \pA{0.52} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Logistics}}
-& E & -- & -- & \levelA 7 & \pNA{0.31} & \levelA 20 & \pNA{0.45} & \levelA 36 & \pA{0.55} & \levelA 47 & \pA{0.64} \\
-& H & \levelB 71 & \pA{0.59} & \levelA 1 & \pNA{0.13} & \levelA 7 & \pNA{0.29} & \levelA 18 & \pNA{0.40} & \levelA 25 & \pNA{0.47} \\
+& E & -- & -- & \levelA 2 & \pNA{0.14} & \levelA 7 & \pNA{0.31} & \levelA 20 & \pNA{0.45} & \levelA 36 & \pA{0.55} & \levelA 47 & \pA{0.64} \\
+& H & \levelB 71 & \pA{0.59} & \levelA 0 & - & \levelA 1 & \pNA{0.13} & \levelA 7 & \pNA{0.29} & \levelA 18 & \pNA{0.40} & \levelA 25 & \pNA{0.47} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Rovers}}
-& E & -- & -- & \levelA 7 & \pNA{0.32} & \levelA 22 & \pNA{0.47} & \levelA 41 & \pA{0.60} & \levelB 57 & \pA{0.71} \\
-& H & \levelC 77 & \pB{0.97} & \levelA 2 & \pNA{0.17} & \levelA 10 & \pNA{0.35} & \levelA 24 & \pNA{0.45} & \levelA 32 & \pA{0.53} \\
+& E & -- & -- & \levelA 3 & \pNA{0.18} & \levelA 7 & \pNA{0.32} & \levelA 22 & \pNA{0.47} & \levelA 41 & \pA{0.60} & \levelB 57 & \pA{0.71} \\
+& H & \levelC 77 & \pB{0.97} & \levelA 1 & \pNA{0.11} & \levelA 2 & \pNA{0.17} & \levelA 10 & \pNA{0.35} & \levelA 24 & \pNA{0.45} & \levelA 32 & \pA{0.53} \\
 \midrule
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Combined}}
-& E & -- & -- & \levelA 8.6 & \pNA{0.34} & \levelA 25.3 & \pNA{0.49} & \levelB 49.4 & \pA{0.66} & \levelB 65.5 & \pB{0.78} \\
-& H & \levelC 89.6 & \pB{0.99} & \levelA 2.5 & \pNA{0.20} & \levelA 11.6 & \pNA{0.37} & \levelA 30.4 & \pA{0.51} & \levelA 41.5 & \pA{0.61} \\
+& E & -- & -- & \levelA 4.5 & \pNA{0.21} & \levelA 8.6 & \pNA{0.34} & \levelA 25.3 & \pNA{0.49} & \levelB 49.4 & \pA{0.66} & \levelB 65.5 & \pB{0.78} \\
+& H & \levelC 89.6 & \pB{0.99} & \levelA 0.9 & \pNA{0.14} & \levelA 2.5 & \pNA{0.20} & \levelA 11.6 & \pNA{0.37} & \levelA 30.4 & \pA{0.51} & \levelA 41.5 & \pA{0.61} \\
 \bottomrule
 \end{tabular}
 \end{table*}
