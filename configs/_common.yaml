@@ -21,5 +21,7 @@ num_train_problems: 0
 num_test_problems: 200
 all_problems: true
 num_models_to_test: 1
-test_model_metrics: validation,training,combined
+# combined = the paper's stated (test-blind) selection rule; single metric
+# also cuts the multi-hour test phase ~3x. See train_test_scripts/RUNBOOK.md.
+test_model_metrics: combined
 wandb: false

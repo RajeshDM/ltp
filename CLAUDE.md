@@ -86,6 +86,8 @@ tools/random_policy_baseline.py    zero-shot floor: uniform-random applicable
                                    action rollouts, config test-domains syntax
                                    (incl. @train), no model/training needed
 train_test_scripts/run_config.sh   nohup-launch one config on one GPU
+train_test_scripts/RUNBOOK.md      results-to-claims matrix, prioritized
+                                   launch commands, cut order
 tests/test_multidomain_metadata.py dependency-free unit tests: union merge,
                                    structural classes, renaming invariance
 tests/test_lifted_layer.py         dependency-free unit tests: lifted spec
