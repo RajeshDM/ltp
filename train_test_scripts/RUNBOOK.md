@@ -1,28 +1,39 @@
 # RUNBOOK — every result the paper needs, prioritized
 
 One place to look up: which runs feed which claim/table, in what order to
-launch them, and the exact commands. Written 2026-07-23, ~1 week to
-submission. Budget reality: at batch 64 a run is ~8.5 h training +
-several hours testing → plan ~1 run/GPU/day (a bit more with
-combined-only testing, see below).
+launch them, and the exact commands. Updated 2026-07-23 after trimming
+(ablation rungs on 4 representative LOO splits; diversity from 2 runs;
+all8 endpoints only). Precedent for trimming: GOOSE-DI evaluates on a
+SINGLE fixed held-out split — our LOO x8 for the headline systems is
+already stricter than the field standard, so subsets for ablations are
+normal practice (and the paper says so).
 
-## Results-to-claims matrix
+Budget reality: at batch 64 a run is ~8.5 h training + testing (now ~3x
+shorter with combined-only selection) → ~1-1.3 runs/GPU/day.
+
+## Results-to-claims matrix (trimmed)
 
 | Paper artifact | Claim | Runs required | Count |
 |---|---|---|---|
-| Table 2 (LOO zero-shot ladder) | C1 + C2 | `loo8_{union,structural,joint_lite,joint}_no_*` | 32 |
-| Table 2 Random column (floor) | C1 integrity | `tools/random_policy_baseline.py` (CPU) | 1 cmd |
-| Table 2 GABAR† column (ceiling) | calibration | published GABAR numbers | 0 |
-| Table 3 (in-domain, price of generality) | C1(c) | `all8_{union,structural,joint_lite,joint}` | 4 |
-| Diversity figure (4→6→7 train domains) | C5 | `ho4_joint`, `ho2_joint_*`×4, `ho4_union` (anchor) | 6 |
-| Diversity, remaining rungs (optional) | C5 (nice) | `ho2_union_*`×4, ho2/ho4 structural + joint_lite | 14 |
-| Planner ≈100% + plan-quality refs | framing | already inside every run's results JSON (`run_non_optimal`) | 0 |
-| Per-state inference time DOM/BIND/GADAR | cost note | extract from test logs of runs above | 0 |
-| Renaming invariance | Prop. 2 | `python tests/test_lifted_layer.py` (CI) | 0 |
+| Table 2: GADAR + UNION columns, all 8 LOO splits | C1 | `loo8_joint_no_*` x8, `loo8_union_no_*` x8 | 16 |
+| Table 2: DOM + BIND columns, 4 splits | C2 + ladder | `loo8_{structural,joint_lite}_no_{manyblocks,miconic,spanner,rovers}` | 8 |
+| Table 2: Random floor | C1 integrity | `tools/random_policy_baseline.py` (CPU) | 1 cmd |
+| Table 2: GABAR† ceiling | calibration | published numbers | 0 |
+| Table 3: price of generality (endpoints) | C1(c) | `all8_union`, `all8_joint` | 2 |
+| Diversity figure (4→6→7; Miconic + Spanner curves) | C5 | `ho4_joint`, `ho2_joint_miconic_spanner` | 2 |
+| Planner ≈100%, plan-quality refs, inference times | framing | inside every run's results JSON | 0 |
+| Renaming invariance | Prop. 2 | `python tests/test_lifted_layer.py` | 0 |
 
-Total GPU runs for a complete paper: **42** (32 + 4 + 6). Already in
-flight: `loo8_joint` ×8 → **34 to launch.** The optional 14 complete the
-diversity curve for every rung; cut them first.
+**28 GPU runs for the complete paper. 8 (`loo8_joint`) in flight → 20 to
+launch.** The ablation subset {manyblocks, miconic, spanner, rovers} =
+canonical / family-transfer / structurally-distinct / largest-vocabulary;
+it is named in the paper's Ablations paragraph — keep them in sync if you
+swap a domain.
+
+Optional strengtheners, only if GPUs idle (in order of value):
+`ho2_joint_blocks_rovers` (adds a Rovers diversity curve),
+`all8_structural` + `all8_joint_lite` (fills Table 3's middle columns),
+`ho2_joint_gripper_grid` (adds a Grid curve), remaining ho2/ho4.
 
 ## Priority order (launch top-down as GPUs free up)
 
@@ -32,7 +43,7 @@ diversity curve for every rung; cut them first.
   manyblocks_ipcc_big:200,gripper_ipcc:173,miconic_ipcc:119,visitall_ipcc:50,grid_ipcc:48,logistics_ipcc:96,spanner_ipcc:96,rovers_ipcc:54,manyblocks_ipcc_big@train:200,gripper_ipcc@train:147,miconic_ipcc@train:228,visitall_ipcc@train:125,grid_ipcc@train:192,logistics_ipcc@train:156,spanner_ipcc@train:234,rovers_ipcc@train:312 \
   > logs/random_baseline.log 2>&1 &
   ```
-- **P1 — UNION control column (existential: C1 is measured against it):**
+- **P1 — UNION control column, all 8 (existential: C1 is measured against it):**
   ```bash
   ./train_test_scripts/run_config.sh configs/loo8_union_no_manyblocks.yaml cuda:0
   ./train_test_scripts/run_config.sh configs/loo8_union_no_gripper.yaml    cuda:0
@@ -43,17 +54,25 @@ diversity curve for every rung; cut them first.
   ./train_test_scripts/run_config.sh configs/loo8_union_no_spanner.yaml    cuda:0
   ./train_test_scripts/run_config.sh configs/loo8_union_no_rovers.yaml     cuda:0
   ```
-- **P2 — BIND column (certifies the binding layer, C2):** same 8 commands
-  with `loo8_joint_lite_no_*`.
-- **P3 — DOM column (completes the ladder):** same with
-  `loo8_structural_no_*`.
-- **P4 — in-domain all8 (Table 3):** endpoints first —
-  `all8_union`, `all8_joint`, then `all8_structural`, `all8_joint_lite`.
-- **P5 — diversity minimum (C5):** `ho4_joint`, `ho2_joint_blocks_rovers`,
-  `ho2_joint_gripper_grid`, `ho2_joint_miconic_spanner`,
-  `ho2_joint_visitall_logistics`, `ho4_union`.
-- **P6 — only if GPUs idle:** `ho2_union_*`×4, then ho2/ho4 for
-  structural and joint_lite.
+- **P2 — BIND ablation, 4 splits (certifies the binding layer, C2):**
+  ```bash
+  ./train_test_scripts/run_config.sh configs/loo8_joint_lite_no_manyblocks.yaml cuda:0
+  ./train_test_scripts/run_config.sh configs/loo8_joint_lite_no_miconic.yaml    cuda:0
+  ./train_test_scripts/run_config.sh configs/loo8_joint_lite_no_spanner.yaml    cuda:0
+  ./train_test_scripts/run_config.sh configs/loo8_joint_lite_no_rovers.yaml     cuda:0
+  ```
+- **P3 — DOM ablation, same 4 splits:** as P2 with `loo8_structural_no_*`.
+- **P4 — Table 3 endpoints:**
+  ```bash
+  ./train_test_scripts/run_config.sh configs/all8_union.yaml cuda:0
+  ./train_test_scripts/run_config.sh configs/all8_joint.yaml cuda:0
+  ```
+- **P5 — diversity (C5):**
+  ```bash
+  ./train_test_scripts/run_config.sh configs/ho4_joint.yaml                cuda:0
+  ./train_test_scripts/run_config.sh configs/ho2_joint_miconic_spanner.yaml cuda:0
+  ```
+- **P6 — optional strengtheners** (list above), only if GPUs idle.
 
 ## Per-filesystem prerequisites (once, before launching there)
 
@@ -80,7 +99,7 @@ configs, not processes. `pkill` is per-machine.
 ## Checkpoint selection — decided
 
 The paper states selection by **combined** train+val loss (test-blind).
-`_common.yaml` now sets `test_model_metrics: combined`, which also cuts the
+`_common.yaml` sets `test_model_metrics: combined`, which also cuts the
 multi-hour test phase ~3x for every run launched from here on. In-flight
 runs testing all three metrics are fine — report their combined-selected
 numbers. Do not cherry-pick a different metric per run.
@@ -97,12 +116,13 @@ python tools/analyze_results.py --csv paper_numbers.csv
 Per-state inference times (GADAR vs BIND vs DOM cost note) come from the
 Time column in the same JSONs — no extra runs.
 
-## If time runs out — cut in this order
+## If time still runs out — cut in this order
 
-1. Drop P6 (diversity curve becomes GADAR + UNION-anchor only — still a figure).
-2. Drop `ho2_joint_*` (curve becomes 2 points, 4→7; still supports C5, weaker).
-3. Shrink Table 3 to UNION vs GADAR columns (endpoints price generality;
-   middle rungs' in-domain numbers can cite the LOO runs' training-domain
-   rows in the appendix).
-4. Never cut: P0, P1, P2 — without the floor, the control, and the
-   binding ablation there is no paper.
+1. Drop P5's `ho2_joint_miconic_spanner` (curve becomes 2 points, 4→7;
+   still supports C5, weaker).
+2. Drop `all8_union` (Table 3 becomes GADAR vs GABAR† only; UNION's
+   in-domain competence can cite the loo8_union training-domain rows).
+3. Shrink the ablation subset from 4 LOO splits to 2 (keep miconic +
+   spanner; update the paper's Ablations paragraph to match).
+4. Never cut: P0, P1, and at least 2 splits of P2 — without the floor,
+   the control, and the binding ablation there is no paper.

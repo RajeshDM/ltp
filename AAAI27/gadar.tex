@@ -461,6 +461,48 @@ merely convenient: message-passing networks on the binding-layer graph
 distinguish tasks that are provably indistinguishable on the lifted graph
 alone.
 
+\begin{table}[t]
+\small
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & LLG \citep{goose_v2} & \gadar{} graph \\
+\midrule
+Lifted domain $D$ & yes & yes \\
+Argument positions & index-node chains & edge features \\
+State and goal atoms & yes & yes \\
+Ground actions & no & schema + grounding edges \\
+Applicability & none & binding edges \\
+Output read from & global readout & schema / object nodes \\
+Provable limits & no $h^{\mathrm{add}}$ (Thm 4.3) & separates LLG (Prop.~1) \\
+\bottomrule
+\end{tabular}
+\caption{The \gadar{} graph against GOOSE's lifted learning graph. The
+shared part --- the lifted domain as input --- is GOOSE's contribution and
+suffices for a heuristic, which emits one scalar from a global readout. A
+ranking policy must \emph{contain} its outputs: nodes for the schemas and
+objects the decoder scores, and the information that distinguishes
+applicable groundings --- which is exactly what the binding layer adds.}
+\label{tab:llg}
+\end{table}
+
+\textbf{Relation to GOOSE's LLG.} Since our contribution is a graph, we
+state precisely how it differs from the closest prior graph
+(Table~\ref{tab:llg}). LLG and our lifted layer agree on the essential
+idea --- the domain description as input --- and differ in encoding
+(argument positions as edge features rather than chains of index nodes;
+occurrence nodes carrying exact argument-to-slot pairs). The fundamental
+difference is what the graph is \emph{for}. A heuristic graph must support
+one number, read from a global embedding; LLG therefore contains no ground
+actions and no applicability information, and \citet{goose_v2} prove that
+message passing on it cannot even compute $h^{\mathrm{add}}$. A policy
+graph must contain the decoder's targets --- schema nodes and object nodes
+to score --- and the evidence for scoring them: which groundings are
+applicable and why. GABAR showed the first half (ground actions in the
+graph) with per-domain annotations that do not transfer; the binding layer
+supplies the second half in $D$'s own vocabulary, and Proposition~1 shows
+the addition strictly increases what message passing can distinguish.
+
 \subsection{A Ladder of Domain Conditioning}
 
 The four systems we evaluate stand in a strict subset relation, each the
@@ -583,9 +625,12 @@ the held-out domain zero-shot, having never seen its predicates, schemas, or
 objects. (ii)~\emph{In-domain}: one policy trained on all eight domains and
 evaluated on each, measuring what a shared domain-conditioned policy costs
 relative to per-domain training (the price of generality).
-(iii)~\emph{Training-set diversity}: policies trained on four and on six
-domains, evaluated zero-shot on the held-out domains, tracing how transfer
-scales with the diversity of the training collection. Held-out domains are
+(iii)~\emph{Training-set diversity}: the full system additionally trained
+on four and on six of the eight domains and evaluated zero-shot on domains
+held out at every size, tracing how transfer scales with the diversity of
+the training collection. Leave-one-domain-out is stricter than the single
+fixed train/held-out split used in prior domain-independent evaluation
+\citep{goose_v2}. Held-out domains are
 evaluated on two splits: the \emph{hard} split is the domain's test set,
 with instances up to an order of magnitude larger than training-scale
 problems; the \emph{easy} split consists of the held-out domain's own
@@ -618,7 +663,12 @@ search-free policy can transfer.
 binding layer removed, and \gadardom{} is exactly \gadarbind{} with the
 lifted domain layer removed. No separate ablation systems are needed; every
 component's contribution is read off adjacent columns of
-Table~\ref{table:main_table}.
+Table~\ref{table:main_table}. \gadar{} and the \union{} control are run on
+all eight leave-one-out splits; the intermediate rungs are evaluated on
+four representative held-out domains --- Blocks (canonical), Miconic
+(transport family, testing family transfer), Spanner (structurally
+distinct), and Rovers (largest vocabulary) --- following standard ablation
+practice.
 
 \textbf{Metrics and implementation.} Following GABAR, we report coverage
 (C), the percentage of test problems solved within the execution bound, and
@@ -671,7 +721,10 @@ floor: uniform choice among applicable ground actions under the same
 execution bound. Ladder columns
 left to right add one component each: \union{} (control), \gadardom{}
 (+structural features), \gadarbind{} (+lifted domain layer), \gadar{}
-(+binding layer). Turquoise intensity for C: light 50--74\%, medium
+(+binding layer). \gadardom{} and \gadarbind{} are evaluated on the four
+representative held-out domains named in the setup (-- elsewhere);
+Combined rows average the evaluated domains of each column.
+Turquoise intensity for C: light 50--74\%, medium
 75--89\%, dark 90--100\%. Violet intensity for P: light 0.5--0.74, medium
 0.75--0.99, dark $\geq$1.0. Combined rows average across domains.}
 \label{table:main_table}
@@ -713,20 +766,20 @@ Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\upar
 & H & \levelC 89 & \pB{0.91} & \levelA 0 & - & \levelA 1 & \pNA{0.16} & \levelA 8 & \pNA{0.31} & \levelA 27 & \pNA{0.48} & \levelA 36 & \pA{0.59} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Gripper}}
-& E & -- & -- & \levelA 7 & \pNA{0.26} & \levelA 12 & \pNA{0.40} & \levelA 32 & \pA{0.55} & \levelB 63 & \pB{0.76} & \levelC 84 & \pB{0.92} \\
-& H & \levelD 100 & \pB{0.96} & \levelA 2 & \pNA{0.16} & \levelA 4 & \pNA{0.26} & \levelA 16 & \pNA{0.43} & \levelA 42 & \pA{0.61} & \levelB 58 & \pA{0.73} \\
+& E & -- & -- & \levelA 7 & \pNA{0.26} & \levelA 12 & \pNA{0.40} & -- & -- & -- & -- & \levelC 84 & \pB{0.92} \\
+& H & \levelD 100 & \pB{0.96} & \levelA 2 & \pNA{0.16} & \levelA 4 & \pNA{0.26} & -- & -- & -- & -- & \levelB 58 & \pA{0.73} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Visitall}}
-& E & -- & -- & \levelA 9 & \pNA{0.30} & \levelA 14 & \pNA{0.43} & \levelA 35 & \pA{0.57} & \levelB 60 & \pA{0.74} & \levelB 74 & \pB{0.87} \\
-& H & \levelC 88 & \pC{1.1} & \levelA 2 & \pNA{0.18} & \levelA 6 & \pNA{0.29} & \levelA 18 & \pNA{0.45} & \levelA 38 & \pA{0.58} & \levelA 49 & \pA{0.66} \\
+& E & -- & -- & \levelA 9 & \pNA{0.30} & \levelA 14 & \pNA{0.43} & -- & -- & -- & -- & \levelB 74 & \pB{0.87} \\
+& H & \levelC 88 & \pC{1.1} & \levelA 2 & \pNA{0.18} & \levelA 6 & \pNA{0.29} & -- & -- & -- & -- & \levelA 49 & \pA{0.66} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Grid}}
-& E & -- & -- & \levelA 3 & \pNA{0.17} & \levelA 6 & \pNA{0.30} & \levelA 21 & \pNA{0.46} & \levelA 42 & \pA{0.60} & \levelB 55 & \pA{0.70} \\
-& H & \levelD 92 & \pA{0.74} & \levelA 0 & - & \levelA 1 & \pNA{0.14} & \levelA 9 & \pNA{0.33} & \levelA 22 & \pNA{0.44} & \levelA 29 & \pA{0.52} \\
+& E & -- & -- & \levelA 3 & \pNA{0.17} & \levelA 6 & \pNA{0.30} & -- & -- & -- & -- & \levelB 55 & \pA{0.70} \\
+& H & \levelD 92 & \pA{0.74} & \levelA 0 & - & \levelA 1 & \pNA{0.14} & -- & -- & -- & -- & \levelA 29 & \pA{0.52} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Logistics}}
-& E & -- & -- & \levelA 2 & \pNA{0.14} & \levelA 7 & \pNA{0.31} & \levelA 20 & \pNA{0.45} & \levelA 36 & \pA{0.55} & \levelA 47 & \pA{0.64} \\
-& H & \levelB 71 & \pA{0.59} & \levelA 0 & - & \levelA 1 & \pNA{0.13} & \levelA 7 & \pNA{0.29} & \levelA 18 & \pNA{0.40} & \levelA 25 & \pNA{0.47} \\
+& E & -- & -- & \levelA 2 & \pNA{0.14} & \levelA 7 & \pNA{0.31} & -- & -- & -- & -- & \levelA 47 & \pA{0.64} \\
+& H & \levelB 71 & \pA{0.59} & \levelA 0 & - & \levelA 1 & \pNA{0.13} & -- & -- & -- & -- & \levelA 25 & \pNA{0.47} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Rovers}}
 & E & -- & -- & \levelA 3 & \pNA{0.18} & \levelA 7 & \pNA{0.32} & \levelA 22 & \pNA{0.47} & \levelA 41 & \pA{0.60} & \levelB 57 & \pA{0.71} \\
@@ -772,12 +825,13 @@ Combined  & 89.6 & 83.6 & 75.5 & 79.4 & 82.4 \\
 
 \begin{figure}[!ht]
 \centering
-% TODO: diversity curve --- x-axis: number of training domains (4, 6, 7,
-% from the 4-train, 6-train, and leave-one-out settings); y-axis: mean
-% zero-shot coverage on the held-out domains (hard split), one line per
-% ladder rung (UNION expected flat near zero; GADAR expected to rise).
-% Data: ho4 / ho2 / loo8 runs. Generate with tools/analyze_results.py once
-% all runs land.
+% TODO: diversity curve --- x-axis: number of training domains (4, 6, 7);
+% y-axis: zero-shot coverage (hard split) for GADAR on domains held out at
+% every size. Data: ho4_joint (holds out miconic/grid/spanner/rovers),
+% ho2_joint_miconic_spanner, and loo8_joint -> full 3-point curves for
+% Miconic and Spanner (add ho2_joint_blocks_rovers for a Rovers curve if
+% run). UNION's floor comes from loo8_union (flat ~0; cite in caption, no
+% extra runs). Generate with tools/analyze_results.py.
 % \includegraphics[width=0.95\columnwidth]{Figures/gadar_diversity_v1.png}
 \fbox{\parbox{0.9\columnwidth}{\centering\vspace{2.2cm}
 \todonum{Figure: zero-shot coverage vs.\ number of training domains
