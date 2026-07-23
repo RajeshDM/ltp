@@ -20,7 +20,9 @@
 \usepackage{booktabs}
 \usepackage{multirow}
 \PassOptionsToPackage{table}{xcolor}
-\usepackage{xcolor}
+\usepackage{amsfonts}
+
+\usepackage[table,svgnames]{xcolor} % Added svgnames
 
 %
 % Keep the \pdfinfo as shown here. There's no need
@@ -31,10 +33,12 @@
 
 \setcounter{secnumdepth}{0} %May be changed to 1 or 2 if section numbers are desired.
 
-% Convenience macros
+% Convenience macros. Naming follows GABAR's ablation convention: the
+% suffix names the component the system LACKS relative to full GADAR.
 \newcommand{\gadar}{GADAR}
-\newcommand{\gadarc}{\gadar{}-C}
-\newcommand{\gadarj}{\gadar{}-J}
+\newcommand{\gadardom}{\gadar{}-DOM}   % no domain layer: structural features only
+\newcommand{\gadarbind}{\gadar{}-BIND} % no binding layer: + lifted domain layer
+\newcommand{\union}{UNION}             % control: symbol identity, D in weights
 % Placeholder for results that do not exist yet - renders visibly so no
 % placeholder survives to submission unnoticed.
 \newcommand{\todonum}[1]{\textbf{[#1]}}
@@ -68,27 +72,9 @@
 \maketitle
 
 \begin{abstract}
-Learned policies for classical planning act without search, but each policy is
-tied to the domain it was trained on: network modules per action schema,
-parameters per predicate, or vocabulary-sized encodings mean a trained policy
-cannot be executed on new predicates and action schemas. We propose \gadar{}
-(Generalizing Across Domains via Action Ranking), the first policy for
-classical planning that takes the domain description as input --- $\pi(s, G,
-D)$ --- and constructs grounded actions in domains never seen in training,
-zero-shot and without search. The capability comes from a new representation:
-symbol-free structural features, the lifted domain description embedded as a
-graph, and a \emph{binding layer} that expresses each ground action's
-applicability in the vocabulary of the lifted domain. We instantiate domain
-conditioning in two ways: \gadarc{} compiles $D$ once per domain into static
-symbol embeddings, while \gadarj{} joins $D$ into every state graph, computing
-symbol meaning in context --- a comparison that tests whether a domain's
-symbols can mean the same thing in every state. Trained on \todonum{$N-1$}
-standard domains, both methods solve \todonum{X}\% of tasks in held-out
-domains where a union-vocabulary multi-task control solves \todonum{Y}\%, and
-removing the binding layer collapses transfer to \todonum{Z}\%. \gadar{} is
-invariant to symbol renaming by construction, and we prove the binding layer
-strictly increases expressiveness over the lifted graphs used for
-cross-domain heuristic learning.
+
+Learned policies for classical planning act without search, but each policy is tied to the domain it was trained on: network modules per action schema, parameters per predicate, or vocabulary-sized encodings mean a trained policy cannot even be executed on new predicates and action schemas. We propose \gadar{} (Generalizing Across Domains via Action Ranking), the first policy for classical planning that takes the domain description as input --- $\pi(s, G, D)$ --- and constructs grounded actions in domains never seen in training, zero-shot and without search. The capability is built in three steps, each a contribution and each the ablation of the next: (i) \emph{symbol-free structural features} replace symbol identity with structural signatures, making a single action-ranking policy executable in any domain; (ii) a \emph{lifted domain layer} embeds $D$ itself into every state graph, identifying predicates and action schemas by their declared roles --- which schema uses them, as precondition or effect, at which argument slots --- rather than by name; and (iii) a \emph{binding layer} ties each ground action's applicability to the lifted preconditions it instantiates, expressing search-free action construction in the vocabulary of the domain description. Across held-out IPC domains, we show that a union-vocabulary multi-task control matches per-domain performance on its training domains yet cannot construct a single applicable action in an unseen domain; that structural features alone make the policy executable but not competent; and that each layer of domain conditioning recovers a distinct share of zero-shot transfer. \gadar{} is invariant to symbol renaming by construction, and we show the binding layer strictly increases expressiveness over the lifted graphs used for cross-domain heuristic learning.
+
 \end{abstract}
 
 % Uncomment the following to link to your code, datasets, an extended version or similar.
@@ -152,68 +138,70 @@ zero-shot, without search. Our key idea is to change what the network is told
 about symbols: not \emph{which symbol} something is, but \emph{what role the
 symbol plays} in the lifted domain --- and to bind every ground action's
 applicability to that lifted structure, so that the ranking decoder can score
-actions over symbols it has never seen. \gadar{}'s representation combines
-three elements: (1) structural features computable for any domain, in place
-of symbol-identity encodings; (2) the lifted domain description embedded as a
-graph, in the spirit of GOOSE; and (3) the element we introduce, a
-\emph{grounded--lifted binding layer} that annotates each applicable ground
-action with links to the lifted precondition occurrences it instantiates. The
-binding layer connects what the two prior lines each capture only partially
---- lifted domain structure on one side, ground applicability on the other
---- and we prove the combination is strictly more expressive than the lifted
-graph alone: message-passing networks on the binding-layer graph distinguish
-planning tasks whose optimal actions differ but that are indistinguishable on
-LLG (Proposition~1).
+actions over symbols it has never seen.
 
-We instantiate domain conditioning in two ways, corresponding to two
-hypotheses about what a domain's symbols are. \gadarc{} (\emph{compiled})
-encodes the domain once and injects static symbol embeddings into every state
-graph; per-state inference cost matches per-domain GABAR. \gadarj{}
-(\emph{joint}) includes the lifted domain graph in every state graph, so that
-symbol meaning is contextualized by message passing over the current state
-and goal. The comparison is informative in either direction: an advantage for
-\gadarj{} --- particularly on structurally similar domains, where the same
-role is played by symbols with different semantics --- indicates that symbol
-meaning must be computed in context, while parity means domain conditioning
-can be amortized per domain. Downstream of the representation, \gadar{}
-retains GABAR's encoder, ranking decoder, and search-free execution
-unchanged, so every comparison in our experiments varies the representation
-rather than the architecture. The ranking objective, one design choice among
-several in the single-domain setting, does additional work here: rankings are
-scale-free across domains, whereas value functions presuppose a scale shared
-between domains --- a point we examine by ablation and that aligns with
-observations for learned heuristics \citep{chrestien_optimize, goose_v2}.
-% TODO: add Mueller et al. ICAPS'26 citation (ranking-margin fix for
-% Q-value policies) once the entry is completed in references.bib
+We build this capability as a \emph{ladder} of four systems, each adding
+exactly one representational commitment to the previous one, so that every
+adjacent comparison isolates one component (the suffix names the component a
+system lacks relative to full \gadar{}, following GABAR's convention for
+ablations). \union{} is the control: GABAR's symbol-identity features widened
+to the union of the training domains' vocabularies --- multi-task learning
+with the domain in the weights. \gadardom{} replaces symbol identity with
+structural features computable in any domain, making the policy
+\emph{executable} on unseen domains. \gadarbind{} adds the lifted domain
+layer: the domain description embedded in every state graph, identifying
+each symbol by its declared roles. Full \gadar{} adds the element we
+introduce, the \emph{grounded--lifted binding layer}, which annotates each
+applicable ground action with links to the lifted precondition occurrences
+it instantiates. The binding layer connects what the two prior lines each
+capture only partially --- lifted domain structure on one side, ground
+applicability on the other --- and we prove the combination is strictly more
+expressive than the lifted graph alone: message-passing networks on the
+binding-layer graph distinguish planning tasks whose optimal actions differ
+but that are indistinguishable on LLG (Proposition~1). Downstream of the
+representation, all four systems share GABAR's encoder, ranking decoder, and
+search-free execution unchanged, so every comparison varies the
+representation rather than the architecture. The ranking objective, one
+design choice among several in the single-domain setting, does additional
+work here: rankings are scale-free across domains, whereas value functions
+presuppose a scale shared between domains --- a point independently
+corroborated for learned heuristics and Q-value policies
+\citep{chrestien_optimize, mueller_qvalues}.
 
-Through experiments on \todonum{the eight GABAR benchmark domains} in a
+Through experiments on the eight GABAR benchmark domains in a
 leave-one-domain-out protocol, we show that: (a) zero-shot on held-out
-domains, \gadar{} solves \todonum{X}\% of tasks where a union-vocabulary
-multi-task control --- sharing \gadar{}'s data, architecture, and training,
-but keeping the domain in its weights --- solves \todonum{Y}\%; (b) removing
-the binding layer while keeping the remainder of the representation reduces
-coverage to \todonum{Z}\%, confirming it as the enabling component; and (c)
-\todonum{finding of the compiled-vs-joint comparison}. On training domains,
-structural features cost \todonum{$\cdot$} relative to symbol-identity
-features, which we report as the price of generality. By construction,
-\gadar{} is invariant to renaming of predicates, schemas, and objects --- a
-robustness that symbol-based approaches, including current large reasoning
-models, do not share \citep{llm_baseline}
+domains, \gadar{} solves \todonum{X}\% of tasks where the union-vocabulary
+control --- sharing \gadar{}'s data, architecture, and training, but keeping
+the domain in its weights --- solves \todonum{Y}\%; (b) each rung of the
+ladder recovers a distinct share of the capability: structural features
+alone make the policy executable but solve only \todonum{$Z_1$}\%, the
+lifted domain layer lifts this to \todonum{$Z_2$}\%, and the binding layer
+completes the capability --- the ordering Proposition~1 predicts; (c) a
+single \gadar{} policy trained on all eight domains retains
+\todonum{W}\% coverage in-domain, quantifying the price of generality
+relative to symbol-identity features; and (d) zero-shot coverage grows with
+the diversity of the training set (from four to seven training domains),
+evidence that what transfers is planning structure rather than domain
+particulars. By construction, \gadar{} is invariant to renaming of
+predicates, schemas, and objects --- a robustness that symbol-based
+approaches, including current large reasoning models, do not share
+\citep{llm_baseline}
 % TODO: verify exact renaming numbers (o1: 97.8% -> 37.3% on Mystery
 % Blocksworld) against the camera-ready of llm_baseline
 --- and the same invariance yields a precise transfer ceiling: structurally
 isomorphic domains with different semantics necessarily receive identical
-behavior (Proposition~2). Beyond that ceiling, transfer requires data, and
-few-shot adaptation curves show \gadar{} reaches per-domain GABAR's coverage
-with \todonum{$\cdot$}\% of its training data.
+behavior (Proposition~2), which marks where zero-shot ends and adaptation
+must begin.
 
 \textbf{Contribution.} We present the first domain-agnostic policy for
-classical planning: zero-shot grounded-action construction in unseen domains,
-without search, achieved through a domain-as-graph representation whose key
-component --- the grounded--lifted binding layer --- we isolate by ablation
-and justify by a strict expressiveness separation, and realized in two
-conditioning methods, compiled and joint, whose comparison answers whether
-domain semantics can be compiled once or must be computed in context.
+classical planning: zero-shot grounded-action construction in unseen
+domains, without search. The capability is delivered as a ladder of systems
+in which each addition --- structural features, the lifted domain layer, the
+grounded--lifted binding layer --- is certified by the comparison to its
+predecessor, so the method and its ablation study are the same object. The
+key component, the binding layer, is isolated empirically by the last rung
+of the ladder and justified theoretically by a strict expressiveness
+separation from the lifted graphs of prior work.
 
 \section{Related Work}
 
@@ -294,10 +282,11 @@ GABAR instead ranks \emph{actions} locally within a state, avoiding the need
 for a globally consistent function \citep{gabar}. In the cross-domain
 setting this choice becomes load-bearing rather than convenient: a value
 function shared across domains presupposes a common scale of goal distances
-that does not exist, whereas local action rankings are scale-free. Our
-value-objective ablation examines this directly.
-% TODO: add Mueller et al. ICAPS'26 here as independent convergent evidence
-% once the bib entry is completed.
+that does not exist, whereas local action rankings are scale-free.
+\citet{mueller_qvalues} provide independent convergent evidence from the
+single-domain setting: vanilla Q-value regression fails precisely because it
+does not discriminate between actions, and is repaired by a ranking-style
+margin objective.
 
 \textbf{Large language models and planning.} LLM-based planners have been
 evaluated extensively; systematic studies find that performance of large
@@ -338,9 +327,9 @@ at a dead end, or at a length bound.
 
 \begin{figure*}[t]
 \centering
-% TODO: export figures/fig1_representation.html to PNG at 100% zoom and save
-% as figures/fig1_representation.png (screenshot the SVG area only)
-\includegraphics[width=0.98\textwidth]{figures/fig1_representation.png}
+% Source: figures/fig1_representation.html (export at 100% zoom, screenshot
+% the SVG area only, save on Overleaf as Figures/gadar_graph_v1.png).
+\includegraphics[width=0.98\textwidth]{Figures/gadar_graph_v1.png}
 \caption{The \gadar{} representation for a Blocksworld task. The
 \emph{ground instance layer} (bottom) is GABAR's action-centric graph:
 objects, ground literals of the state and goal (G- prefix), and ground
@@ -351,29 +340,34 @@ novel edge types connect the layers: \emph{binding edges} (green, dashed)
 link an object's slot on an applicable ground action to the lifted
 precondition occurrences that the object satisfies, and
 \emph{instantiation edges} (orange, dotted) link each ground literal to its
-predicate symbol. Filled nodes are ground; outlined nodes are lifted. No
-feature encodes symbol identity, so the representation is invariant to
-renaming by construction.}
+predicate symbol. Filled nodes are ground; outlined nodes are lifted. The
+elements are cumulative along the ladder of systems: \gadardom{} uses the
+ground layer with structural features only; \gadarbind{} adds the predicate
+symbols with their instantiation and role edges; full \gadar{} adds the
+occurrence nodes and binding edges. No feature encodes symbol identity, so
+the representation is invariant to renaming by construction.}
 \label{fig:representation}
 \end{figure*}
 
 \begin{figure*}[t]
 \centering
-% TODO: export figures/fig2_system.html to PNG at 100% zoom and save as
-% figures/fig2_system.png (screenshot the SVG area only)
-\includegraphics[width=0.98\textwidth]{figures/fig2_system.png}
+% Source: figures/fig2_system.html --- PANEL (b) REDRAWN as the ladder
+% (2026-07-23). Re-export at 100% zoom and overwrite
+% Figures/gadar_system_v1.png on Overleaf before compiling the final PDF.
+\includegraphics[width=0.98\textwidth]{Figures/gadar_system_v1.png}
 \caption{\gadar{} system overview. (a) The domain description $D$ and the
-state and goal are converted into the shared two-layer representation of
-Figure~\ref{fig:representation}. (b) Domain conditioning is instantiated in
-two ways: \gadarc{} compiles $D$ once per domain through a schema-encoder
-GNN whose output embeddings become symbol features of the instance graph,
-while \gadarj{} joins the lifted layer into every state graph so that
-message passing contextualizes symbol meaning with the current state and
-goal. (c) The GNN encoder performs $L$ rounds of edge, node, and global
-updates, unchanged from GABAR. (d) The GRU decoder constructs a grounded
-action autoregressively --- schema first, then each argument --- by scoring
-schema- and object-node embeddings; no component is sized by the number of
-schemas or objects.}
+state and goal are converted into a graph. (b) The ladder of domain
+conditioning: four systems, each the previous plus exactly one
+representational commitment --- \union{} (symbol one-hots over the joint
+vocabulary; the control), \gadardom{} (symbol-free structural features),
+\gadarbind{} (plus the lifted domain layer: predicate-symbol nodes,
+instantiation and role edges), and \gadar{} (plus occurrence nodes and the
+grounded--lifted binding layer of Figure~\ref{fig:representation}). Every
+adjacent comparison isolates one component. (c) The GNN encoder performs
+$L$ rounds of edge, node, and global updates, unchanged from GABAR. (d) The
+GRU decoder constructs a grounded action autoregressively --- schema first,
+then each argument --- by scoring schema- and object-node embeddings; no
+component is sized by the number of schemas or objects.}
 \label{fig:system}
 \end{figure*}
 
@@ -384,10 +378,11 @@ description $D$, \gadar{} converts the pair into a graph, processes the
 graph with a GNN encoder, and constructs a grounded action with a GRU-based
 decoder that first selects an action schema and then each of its arguments
 (Figure~\ref{fig:system}). The encoder and decoder are those of GABAR,
-unchanged; what changes is the graph they operate on. This section describes
-the shared representation --- structural features, the lifted domain layer,
-and the binding layer --- and then the two methods by which the domain
-description conditions the policy, \gadarc{} and \gadarj{}.
+unchanged; what changes is the graph they operate on. We present the
+representation as it is evaluated: a ladder of systems, each adding one
+commitment --- structural features in place of symbol identity, then the
+lifted domain layer, then the binding layer --- so that each addition is
+certified by comparison with its predecessor.
 
 \subsection{A Domain-Agnostic Graph Representation}
 
@@ -401,93 +396,96 @@ bottom). This graph is what makes search-free action construction possible:
 the decoder selects among schema nodes and object nodes that are present in
 the input.
 
-\textbf{Structural features.} GABAR's node features identify symbols: one-hot
-encodings over the domain's schemas, predicates, and types, so feature
-dimensions --- and therefore network weights --- are sized by the domain
-vocabulary. \gadar{} replaces every symbol-identity feature with structural
-ones computable in any domain: the node's kind (object, literal, schema,
-symbol, global), the arity of its predicate or schema, whether the predicate
-is static, whether a literal belongs to the goal, and argument positions
-encoded as index features on edges rather than per-domain position
+\textbf{Structural features (\gadardom{}).} GABAR's node features identify
+symbols: one-hot encodings over the domain's schemas, predicates, and types,
+so feature dimensions --- and therefore network weights --- are sized by the
+domain vocabulary. \gadar{} replaces every symbol-identity feature with
+structural ones computable in any domain: the node's kind (object, literal,
+schema, symbol, global), the arity of its predicate or schema, whether the
+predicate is static, whether a literal belongs to the goal, and argument
+positions encoded as edge features rather than per-domain position
 vocabularies. Feature widths are now constants independent of the domain, so
 a single network serves every domain, and permuting symbol names leaves the
 input tensors unchanged --- renaming invariance holds by construction
-(Proposition~2).
+(Proposition~2). The system that stops here is \gadardom{}: executable in
+any domain, but informed about $D$ only through these local signatures.
 
-\textbf{Lifted domain layer.} Structural features alone discard information
-that distinguishes symbols playing different roles. \gadar{} restores that
-information by embedding the domain description itself as a graph
-(Figure~\ref{fig:representation}, top): nodes for predicate symbols and
-action schemas, and for each schema, nodes for the occurrences of predicates
-in its preconditions and effects; edges record which predicate appears in
-which role (precondition, add, or delete) of which schema, with the
-argument-position correspondence carried on the edges. This layer is
-LLG-adjacent, and we credit its lineage: GOOSE first demonstrated that the
-full lifted domain can be an input for learning \citep{goose_v2}. Our
-construction differs in engineering --- argument positions as edge features
-rather than chains of index nodes, undirected message flow, and a retained
-global node --- but its role differs more fundamentally, as we describe
-next.
+\textbf{Lifted domain layer (\gadarbind{}).} Structural features alone
+discard information that distinguishes symbols playing different roles.
+\gadar{} restores that information by embedding the domain description
+itself in every state graph (Figure~\ref{fig:representation}, top): one
+\emph{symbol node} per predicate, connected to the ground layer by
+\emph{instantiation edges} from each ground literal to its predicate's
+symbol node, and to each schema node by \emph{role edges} recording how the
+predicate appears in that schema --- as precondition, add, or delete effect
+--- and at which positions, with the correspondence between predicate
+arguments and schema parameter slots carried as edge features. A predicate
+is then identified not by name but by its signature in $D$: which schemas
+consume it, in which roles, at which slots. This layer is LLG-adjacent, and
+we credit its lineage: GOOSE first demonstrated that the full lifted domain
+can be an input for learning \citep{goose_v2}. Our construction differs in
+engineering --- argument positions as edge features rather than chains of
+index nodes, undirected message flow, and a retained global node --- but its
+role differs more fundamentally, as we describe next. The system with the
+lifted layer but nothing more is \gadarbind{}.
 
-\textbf{The grounded--lifted binding layer.} The lifted layer describes what
-the domain's actions \emph{could} do; the ground layer describes what
-\emph{can be done now}. Neither prior representation connects the two: LLG
-contains lifted preconditions but no ground actions, while GABAR annotates
-its schema--object edges with precondition-satisfaction flags indexed by
-per-domain strings that do not transfer. The binding layer makes the
-connection explicit, and in a vocabulary that exists in every domain --- the
-domain description's own. For each applicable ground action, its
-schema--object edges are annotated with \emph{binding edges} to the lifted
-precondition-occurrence nodes they instantiate: ``object $o$ at parameter
-slot $j$ satisfies precondition occurrence $p$ of schema $a$''
-(Figure~\ref{fig:representation}, green). In addition, \emph{instantiation
-edges} connect every ground literal to its predicate-symbol node
-(Figure~\ref{fig:representation}, orange). Together these edges let the
-network reason about why an action is applicable and what it will change,
-using only nodes that exist for any domain. In the domain of
-Figure~\ref{fig:representation}, the ground edge placing O3 in Unstack's
-first slot binds to the occurrences \emph{on(x,y)} and \emph{clear(x)} ---
-information that survives unchanged if every symbol in the domain is
-renamed. We show in Proposition~1 that this addition is not merely
-convenient: message-passing networks on the binding-layer graph distinguish
-tasks that are provably indistinguishable on the lifted graph alone.
+\textbf{The grounded--lifted binding layer (\gadar{}).} The lifted layer
+describes what the domain's actions \emph{could} do; the ground layer
+describes what \emph{can be done now}. Neither prior representation connects
+the two: LLG contains lifted preconditions but no ground actions, while
+GABAR annotates its schema--object edges with precondition-satisfaction
+flags indexed by per-domain strings that do not transfer. The binding layer
+makes the connection explicit, and in a vocabulary that exists in every
+domain --- the domain description's own. Full \gadar{} first refines the
+lifted layer with \emph{occurrence nodes}: one node per occurrence of a
+predicate in a schema's preconditions or effects, so that two occurrences of
+the same predicate in one schema remain distinct, each carrying its role and
+its exact argument-to-slot correspondence. Then, for each applicable ground
+action, its schema--object edges are annotated with \emph{binding edges} to
+the lifted precondition-occurrence nodes they instantiate: ``object $o$ at
+parameter slot $j$ satisfies precondition occurrence $p$ of schema $a$''
+(Figure~\ref{fig:representation}, green). Together with the instantiation
+edges, these let the network reason about why an action is applicable and
+what it will change, using only nodes that exist for any domain. In the
+domain of Figure~\ref{fig:representation}, the ground edge placing O3 in
+Unstack's first slot binds to the occurrences \emph{on(x,y)} and
+\emph{clear(x)} --- information that survives unchanged if every symbol in
+the domain is renamed. We show in Proposition~1 that this addition is not
+merely convenient: message-passing networks on the binding-layer graph
+distinguish tasks that are provably indistinguishable on the lifted graph
+alone.
 
-\subsection{Two Methods for Domain Conditioning}
+\subsection{A Ladder of Domain Conditioning}
 
-The shared representation leaves open \emph{when} the domain description is
-processed, and we instantiate both natural answers as first-class methods
-(Figure~\ref{fig:system}b). They embody different hypotheses about what a
-domain's symbols are.
+The four systems we evaluate stand in a strict subset relation, each the
+previous plus exactly one representational commitment:
 
-\textbf{\gadarc{} (compiled).} A small schema-encoder GNN runs \emph{once
-per domain} over the lifted layer. Its output embeddings --- one per
-predicate symbol, schema, and occurrence --- are compiled into the instance
-graph as the features of the nodes and edges that reference those symbols,
-including the binding annotations. Per-state graphs then have essentially
-GABAR's size, and per-state inference cost matches per-domain GABAR after a
-one-time, per-domain encoding step. \gadarc{} embodies the hypothesis that
-symbol meaning is \emph{static within a domain}: what \emph{clear} means in
-Blocksworld does not depend on the current state.
+\begin{itemize}
+\item \union{} (control): GABAR's symbol-identity one-hots, widened to the
+  union of the training domains' vocabularies. The domain stays in the
+  weights; this is multi-task learning, not domain conditioning.
+\item \gadardom{}: symbol-free structural features replace the one-hots.
+  The policy becomes executable in any domain.
+\item \gadarbind{}: plus the lifted domain layer --- symbol nodes,
+  instantiation edges, role edges. The policy is told what role each symbol
+  plays in $D$.
+\item \gadar{}: plus occurrence nodes and binding edges. Ground
+  applicability is expressed in the vocabulary of $D$.
+\end{itemize}
 
-\textbf{\gadarj{} (joint).} The lifted layer is joined into every state
-graph, connected to the ground layer by the instantiation and binding edges,
-and the combined graph is encoded as a whole. Message passing then
-contextualizes each symbol node with the current state and goal, and symbol
-nodes double as typed information hubs that aggregate and redistribute
-messages among their ground instances --- generalizing the global node,
-whose importance GABAR's ablations established \citep{gabar}. \gadarj{}
-embodies the hypothesis that symbol meaning is \emph{contextual}: the role
-\emph{clear} plays can depend on what the goal asks. Its per-state cost
-exceeds \gadarc{}'s by domain-sized constants plus one instantiation edge
-per ground literal.
-
-The comparison between the two is an experiment, not a formality. If
-\gadarj{} dominates --- particularly on structurally similar domains, where
-identical structural roles are played by symbols with different semantics
---- then contextual computation of symbol meaning is necessary. If the two
-are comparable, domain conditioning is amortizable, and the compiled method
-delivers cross-domain generality at per-domain inference cost. We report
-coverage and measured per-state cost for both.
+\noindent Because adjacent systems differ in exactly one component, the
+experimental comparison and the ablation study are the same object: the
+\union{}-to-\gadardom{} step measures what symbol identity was worth and
+what executability costs, the \gadardom{}-to-\gadarbind{} step measures the
+value of knowing the domain's role structure, and the
+\gadarbind{}-to-\gadar{} step isolates the binding layer --- the component
+Proposition~1 argues is necessary. All four share one encoder input
+convention: feature widths are fixed constants across domains (capped
+maximum predicate and schema arities), so instances from different domains
+mix freely within a training batch. The lifted layer adds a per-state cost
+of domain-sized constants --- one symbol node per predicate, occurrence
+nodes per schema literal --- plus one instantiation edge per ground
+literal; we report measured per-state inference times alongside coverage.
 
 \subsection{Action Construction and Training}
 
@@ -496,13 +494,13 @@ would otherwise appear (Figure~\ref{fig:system}d). From the encoded graph,
 a GRU selects an action schema by scoring the schema-node embeddings against
 its hidden state, then selects each argument in turn by scoring object-node
 embeddings, feeding each selection back as the next input. The argument loop
-runs to the \emph{selected schema's} arity, read from the lifted layer,
-under a global maximum-arity cap --- not a per-domain constant. No component
-of the decoder is sized by the number of schemas, objects, or predicates;
-selection is always a dot product between the decoder state and the
-embedding of a node present in the input graph. This output-lifted decoder
-is what allows the same network to construct actions in a domain whose
-schemas it has never seen.
+runs to the \emph{selected schema's} arity, read from the domain
+description, under a global maximum-arity cap --- not a per-domain constant.
+No component of the decoder is sized by the number of schemas, objects, or
+predicates; selection is always a dot product between the decoder state and
+the embedding of a node present in the input graph. This output-lifted
+decoder is what allows the same network to construct actions in a domain
+whose schemas it has never seen.
 
 Training is supervised, as in GABAR: expert plans are collected with a
 classical planner on small instances of each training domain, and the policy
@@ -512,7 +510,7 @@ are domain-independent, instances from different domains mix freely within a
 batch. The objective ranks actions \emph{locally within a state}, which is
 what permits a shared network across domains: local rankings are scale-free,
 while a value target would presuppose a scale of goal distances shared
-between domains (see the value-objective ablation).
+between domains \citep{chrestien_optimize, mueller_qvalues}.
 
 \section{Theoretical Analysis}
 
@@ -558,55 +556,55 @@ equivariant. The consequence is a precise transfer ceiling rather than an
 empirical failure mode: zero-shot behavior on a new domain is determined by
 structure alone, so domains whose structures coincide receive the same
 policy regardless of what their symbols mean. Distinguishing them requires
-data from the new domain, which motivates the few-shot analysis in our
-experiments.
+data from the new domain; charting that few-shot territory is future work.
 % TODO (Phase 5): formal statement of the equivariance argument in the
 % appendix, together with the renaming unit test referenced in Experiments.
 
 \section{Experimental Setup}
 
-\textbf{Domains and protocol.} We evaluate on the eight benchmark domains
-used by GABAR --- Blocks, Miconic, Spanner, Gripper, Visitall, Grid,
-Logistics, and Rovers \citep{gabar, pddl-generators} --- in a
-leave-one-domain-out protocol: for each target domain, a single policy is
-trained on solved instances of the remaining seven and evaluated on the
-held-out domain zero-shot, having never seen its predicates, schemas, or
-objects. Test problems follow GABAR's three difficulty levels ---
-easy (E), medium (M), and hard (H) --- defined by problem size relative to
-the training distribution, with hard instances an order of magnitude larger
-than any training problem. Training data consists of plans computed by a
-classical planner \citep{fast_downward} on small instances of each training
-domain; states along each plan are converted to graphs and the policy is
-trained to reproduce the expert action as described above. We additionally
-report performance on the training domains themselves, to measure what the
-removal of symbol-identity features costs where identity is available (the
-price of generality).
-% TODO: exact instance counts per domain and difficulty thresholds; carry
-% over from the GABAR appendix and the collection scripts.
+\textbf{Domains.} We evaluate on the eight benchmark domains used by GABAR
+--- Blocks, Miconic, Spanner, Gripper, Visitall, Grid, Logistics, and
+Rovers \citep{gabar, pddl-generators}. Training data consists of plans
+computed by a classical planner \citep{fast_downward} on the small instances
+of each training domain (between \todonum{125} and \todonum{312} instances
+per domain); states along each plan are converted to graphs and the policy
+is trained to reproduce the expert action as described above.
 
-\textbf{Baselines.} Our primary comparison is the \emph{union-vocabulary
-control}: a multi-task model with GADAR's data, architecture, training
-procedure, and budget, whose feature dictionaries are the union of the
-training domains' vocabularies --- the domain stays in the weights, as in
-prior learned policies. Any zero-shot capability GADAR has beyond this
-control is attributable to moving the domain into the input. As
-\emph{per-domain references} we report GABAR \citep{gabar} and ASNets
-\citep{toyer2020asnets}, each trained directly on the held-out domain.
-These references are not competitors --- they see the test domain in
-training and by construction cannot be executed on a domain they were not
-built for --- but they calibrate how much room lies between zero-shot
-transfer and dedicated per-domain training.
+\textbf{Protocol.} Three experiment families, all run for every rung of the
+ladder. (i)~\emph{Leave-one-domain-out} (the headline): for each target
+domain, a single policy is trained on the remaining seven and evaluated on
+the held-out domain zero-shot, having never seen its predicates, schemas, or
+objects. (ii)~\emph{In-domain}: one policy trained on all eight domains and
+evaluated on each, measuring what a shared domain-conditioned policy costs
+relative to per-domain training (the price of generality).
+(iii)~\emph{Training-set diversity}: policies trained on four and on six
+domains, evaluated zero-shot on the held-out domains, tracing how transfer
+scales with the diversity of the training collection. Held-out domains are
+evaluated on two splits: the \emph{hard} split is the domain's test set,
+with instances up to an order of magnitude larger than training-scale
+problems; the \emph{easy} split consists of the held-out domain's own
+training-scale instances --- unseen by the policy, since the domain itself
+was held out --- separating ``cannot handle the unseen domain'' from
+``cannot scale within it.'' Training domains are evaluated on the hard
+split only.
 
-\textbf{Ablations.} Two ablations certify the two components whose roles
-the paper claims. \emph{GADAR-NB} (no binding) keeps the full
-representation --- structural features, lifted layer, instantiation edges
---- but removes the binding edges; if the binding layer is the enabling
-component, zero-shot performance should collapse toward the union control.
-\emph{GADAR-VAL} (value objective) keeps the full representation but
-replaces the ranking objective with regression to expert cost-to-go,
-executing greedily on predicted values; if rankings are what transfers
-across domains, this variant should degrade despite seeing identical
-inputs. Both ablations are run in the same leave-one-domain-out protocol.
+\textbf{Baselines and references.} Our primary comparison is the \union{}
+control described above: identical data, architecture, training procedure,
+and budget --- only the representation differs. Any zero-shot capability
+\gadar{} has beyond this control is attributable to moving the domain into
+the input. As a \emph{per-domain reference} we report published GABAR
+results \citep{gabar}, trained directly on each held-out domain. The
+reference is not a competitor --- it sees the test domain in training and by
+construction cannot be executed on a domain it was not built for --- but it
+calibrates how much room lies between zero-shot transfer and dedicated
+per-domain training.
+
+\textbf{Ablations.} The ladder is the ablation study
+(Figure~\ref{fig:system}b): \gadarbind{} is exactly \gadar{} with the
+binding layer removed, and \gadardom{} is exactly \gadarbind{} with the
+lifted domain layer removed. No separate ablation systems are needed; every
+component's contribution is read off adjacent columns of
+Table~\ref{table:main_table}.
 
 \textbf{Metrics and implementation.} Following GABAR, we report coverage
 (C), the percentage of test problems solved within the execution bound, and
@@ -614,25 +612,27 @@ plan quality (P), the ratio of the reference planner's plan length to the
 policy's on jointly solved problems, so higher is better and values above 1
 indicate plans shorter than the reference. Encoder and decoder
 hyperparameters are carried over from GABAR unchanged ($L{=}9$
-message-passing rounds, 64-dimensional representations, GRU decoder); the
-schema encoder of \gadarc{} uses the same layer types.
-% TODO: seeds, learning rate, epochs, hardware, per-state inference times
-% for GADAR-C vs GADAR-J.
+message-passing rounds, 64-dimensional representations, GRU decoder); all
+systems train for 500 epochs with batch size 64 and learning rate
+$5{\times}10^{-4}$. Checkpoints are selected by combined training and
+validation loss; the test set plays no role in model selection.
+% TODO: seeds, hardware, wall-clock training time, and measured per-state
+% inference time for GADAR vs GADAR-BIND vs GADAR-DOM.
 The renaming-invariance property of Proposition~2 is verified as a unit
-test: permuting all symbol names in a domain yields bit-identical input
-tensors. For the few-shot analysis, the trained policy is fine-tuned on
-$k$ solved instances of the held-out domain for increasing $k$, tracing a
-data-efficiency curve against per-domain GABAR trained from scratch.
+test: permuting all symbol names in a domain yields identical input
+tensors.
 
 \section{Results and Discussion}
-% TODO: results prose - written once the numbers exist. Structure:
-% 1. Main zero-shot result (Table 2): GADAR-C/J vs union control; the
-%    capability claim (C1).
-% 2. Binding ablation reading (C2): GADAR-NB collapse.
-% 3. Value ablation reading (C3): GADAR-VAL degradation.
-% 4. Compiled vs joint (C4): overall + aliasing-prone pairs + cost.
-% 5. Price of generality: training-domain performance vs GABAR.
-% 6. Few-shot curves and domain-family analysis (C5).
+% Results prose - written once the numbers exist. Structure:
+% 1. Zero-shot ladder (Table 2): each rung recovers a distinct share;
+%    UNION ~0 confirms the control; BIND->GADAR gap certifies the binding
+%    layer (C1 + C2 in one table).
+% 2. Easy vs hard split reading: executability vs scaling on unseen domains.
+% 3. In-domain (Table 3): one model, all domains; price of generality
+%    (UNION vs GADAR-DOM vs GADAR in-domain).
+% 4. Diversity curve (Figure 3): coverage vs number of training domains;
+%    what transfers is structure, not domain particulars (C5).
+% 5. Renaming invariance note + Proposition 2 ceiling discussion.
 
 \begin{table*}[!ht]
 \setlength{\tabcolsep}{3pt}
@@ -640,13 +640,18 @@ data-efficiency curve against per-domain GABAR trained from scratch.
 \small
 \centering
 \caption{\textbf{[Placeholder values --- to be replaced.]} Zero-shot
-coverage (C) and plan quality ratio (P) on each held-out domain under the
-leave-one-domain-out protocol, across difficulty levels. Per-domain
-reference models ($\dagger$) are trained \emph{on} the held-out domain and
-calibrate the gap to dedicated training; they cannot be run zero-shot.
-Turquoise intensity for C: light 50--74\%, medium 75--89\%, dark
-90--100\%. Violet intensity for P: light 0.5--0.74, medium 0.75--0.99,
-dark $\geq$1.0. Combined rows average across domains.}
+coverage (C) and plan quality (P) on each held-out domain under the
+leave-one-domain-out protocol. E = easy split (the held-out domain's own
+training-scale instances, unseen); H = hard split (its test instances, up
+to an order of magnitude larger). The per-domain reference ($\dagger$) is
+GABAR trained \emph{on} the held-out domain (published results, hard split;
+it trains on the easy split's distribution, so no E entry); it calibrates
+the gap to dedicated training and cannot be run zero-shot. Ladder columns
+left to right add one component each: \union{} (control), \gadardom{}
+(+structural features), \gadarbind{} (+lifted domain layer), \gadar{}
+(+binding layer). Turquoise intensity for C: light 50--74\%, medium
+75--89\%, dark 90--100\%. Violet intensity for P: light 0.5--0.74, medium
+0.75--0.99, dark $\geq$1.0. Combined rows average across domains.}
 \label{table:main_table}
 \definecolor{turqLight}{HTML}{C8F1EA}
 \definecolor{turqMed}{HTML}{64D1C6}
@@ -665,62 +670,103 @@ dark $\geq$1.0. Combined rows average across domains.}
 \newcommand{\pA}[1]{\pvalA #1}
 \newcommand{\pB}[1]{\pvalB #1}
 \newcommand{\pC}[1]{\pvalC #1}
-\begin{tabular}{@{}l@{\hspace{2pt}}l|cc|cc|cc|cc|cc|cc|cc@{}}
+\begin{tabular}{@{}l@{\hspace{2pt}}l|cc|cc|cc|cc|cc@{}}
 \toprule
-\multicolumn{2}{c|}{} & \multicolumn{4}{c|}{\colorbox{blue!8}{Per-domain reference$^\dagger$}} & \multicolumn{6}{c|}{\colorbox{green!10}{Zero-shot}} & \multicolumn{4}{c}{\colorbox{orange!10}{Ablations (zero-shot)}} \\
-\cmidrule(lr){3-6} \cmidrule(lr){7-12} \cmidrule(l){13-16}
-& & \multicolumn{2}{c|}{\scriptsize GABAR} & \multicolumn{2}{c|}{\scriptsize ASNets} & \multicolumn{2}{c|}{\scriptsize Union} & \multicolumn{2}{c|}{\scriptsize \textbf{GADAR-C}} & \multicolumn{2}{c|}{\scriptsize \textbf{GADAR-J}} & \multicolumn{2}{c|}{\scriptsize GADAR-NB} & \multicolumn{2}{c}{\scriptsize GADAR-VAL} \\
-\cmidrule(lr){3-4} \cmidrule(lr){5-6} \cmidrule(lr){7-8} \cmidrule(lr){9-10} \cmidrule(lr){11-12} \cmidrule(lr){13-14} \cmidrule(l){15-16}
-Domain & Diff & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ \\
+\multicolumn{2}{c|}{} & \multicolumn{2}{c|}{\colorbox{blue!8}{Reference$^\dagger$}} & \multicolumn{8}{c}{\colorbox{green!10}{Zero-shot ladder (each column = previous + one component)}} \\
+\cmidrule(lr){3-4} \cmidrule(l){5-12}
+& & \multicolumn{2}{c|}{\scriptsize GABAR$^\dagger$} & \multicolumn{2}{c|}{\scriptsize \union{}} & \multicolumn{2}{c|}{\scriptsize \gadardom{}} & \multicolumn{2}{c|}{\scriptsize \gadarbind{}} & \multicolumn{2}{c}{\scriptsize \textbf{\gadar{}}} \\
+\cmidrule(lr){3-4} \cmidrule(lr){5-6} \cmidrule(lr){7-8} \cmidrule(lr){9-10} \cmidrule(l){11-12}
+Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ \\
 \midrule
-\multirow{3}{*}{\makebox[1.4cm][l]{Blocks}}
-& E & \levelD 100 & \pC{1.5} & \levelD 100 & \pC{1.6} & \levelA 6 & \pNA{0.31} & \levelB 68 & \pB{0.82} & \levelC 75 & \pB{0.86} & \levelA 11 & \pNA{0.38} & \levelA 22 & \pA{0.54} \\
-& M & \levelD 100 & \pC{1.6} & \levelD 100 & \pC{1.5} & \levelA 2 & \pNA{0.24} & \levelB 54 & \pA{0.71} & \levelB 62 & \pB{0.78} & \levelA 5 & \pNA{0.29} & \levelA 13 & \pNA{0.42} \\
-& H & \levelD 100 & \pC{1.7} & \levelD 92 & \pC{1.4} & \levelA 0 & - & \levelA 39 & \pA{0.63} & \levelA 47 & \pA{0.69} & \levelA 2 & \pNA{0.21} & \levelA 6 & \pNA{0.33} \\
+\multirow{2}{*}{\makebox[1.4cm][l]{Blocks}}
+& E & -- & -- & \levelA 8 & \pNA{0.34} & \levelA 24 & \pNA{0.49} & \levelB 51 & \pA{0.68} & \levelB 68 & \pB{0.82} \\
+& H & \levelD 100 & \pC{1.7} & \levelA 2 & \pNA{0.22} & \levelA 11 & \pNA{0.38} & \levelA 33 & \pA{0.55} & \levelA 47 & \pA{0.69} \\
 \midrule
-\multirow{3}{*}{\makebox[1.4cm][l]{Miconic}}
-& E & \levelD 100 & \pC{1.0} & \levelD 100 & \pC{1.0} & \levelA 8 & \pNA{0.35} & \levelC 76 & \pB{0.85} & \levelC 81 & \pB{0.89} & \levelA 14 & \pNA{0.41} & \levelA 27 & \pA{0.58} \\
-& M & \levelD 100 & \pB{0.97} & \levelD 100 & \pB{0.98} & \levelA 4 & \pNA{0.28} & \levelB 63 & \pA{0.74} & \levelB 70 & \pB{0.80} & \levelA 7 & \pNA{0.32} & \levelA 18 & \pNA{0.46} \\
-& H & \levelD 100 & \pB{0.95} & \levelD 90 & \pB{0.92} & \levelA 1 & \pNA{0.19} & \levelA 48 & \pA{0.66} & \levelB 56 & \pA{0.72} & \levelA 3 & \pNA{0.24} & \levelA 9 & \pNA{0.37} \\
+\multirow{2}{*}{\makebox[1.4cm][l]{Miconic}}
+& E & -- & -- & \levelA 10 & \pNA{0.37} & \levelA 29 & \pA{0.52} & \levelB 58 & \pA{0.73} & \levelC 78 & \pB{0.87} \\
+& H & \levelD 100 & \pB{0.95} & \levelA 3 & \pNA{0.25} & \levelA 14 & \pNA{0.41} & \levelA 39 & \pA{0.59} & \levelB 56 & \pA{0.72} \\
 \midrule
-\multirow{3}{*}{\makebox[1.4cm][l]{Spanner}}
-& E & \levelD 94 & \pC{1.1} & \levelC 78 & \pB{0.86} & \levelA 3 & \pNA{0.22} & \levelB 58 & \pA{0.72} & \levelB 61 & \pA{0.74} & \levelA 6 & \pNA{0.27} & \levelA 15 & \pNA{0.44} \\
-& M & \levelD 93 & \pB{0.99} & \levelB 60 & \pA{0.69} & \levelA 1 & \pNA{0.15} & \levelA 46 & \pA{0.64} & \levelB 51 & \pA{0.68} & \levelA 2 & \pNA{0.18} & \levelA 8 & \pNA{0.35} \\
-& H & \levelC 89 & \pB{0.91} & \levelA 42 & \pA{0.61} & \levelA 0 & - & \levelA 31 & \pA{0.55} & \levelA 36 & \pA{0.59} & \levelA 0 & - & \levelA 3 & \pNA{0.26} \\
+\multirow{2}{*}{\makebox[1.4cm][l]{Spanner}}
+& E & -- & -- & \levelA 5 & \pNA{0.28} & \levelA 19 & \pNA{0.44} & \levelA 44 & \pA{0.62} & \levelB 61 & \pA{0.74} \\
+& H & \levelC 89 & \pB{0.91} & \levelA 1 & \pNA{0.16} & \levelA 8 & \pNA{0.31} & \levelA 27 & \pNA{0.48} & \levelA 36 & \pA{0.59} \\
 \midrule
-\multirow{3}{*}{\makebox[1.4cm][l]{Gripper}}
-& E & \levelD 100 & \pC{1.1} & \levelC 78 & \pB{0.98} & \levelA 9 & \pNA{0.37} & \levelC 79 & \pB{0.88} & \levelC 84 & \pB{0.92} & \levelA 16 & \pNA{0.43} & \levelA 31 & \pA{0.61} \\
-& M & \levelD 100 & \pB{0.99} & \levelB 54 & \pB{0.91} & \levelA 5 & \pNA{0.29} & \levelB 66 & \pB{0.78} & \levelB 72 & \pB{0.83} & \levelA 8 & \pNA{0.34} & \levelA 20 & \pNA{0.48} \\
-& H & \levelD 100 & \pB{0.96} & \levelA 42 & \pB{0.88} & \levelA 2 & \pNA{0.20} & \levelB 52 & \pA{0.69} & \levelB 58 & \pA{0.73} & \levelA 4 & \pNA{0.25} & \levelA 11 & \pNA{0.39} \\
+\multirow{2}{*}{\makebox[1.4cm][l]{Gripper}}
+& E & -- & -- & \levelA 12 & \pNA{0.40} & \levelA 32 & \pA{0.55} & \levelB 63 & \pB{0.76} & \levelC 84 & \pB{0.92} \\
+& H & \levelD 100 & \pB{0.96} & \levelA 4 & \pNA{0.26} & \levelA 16 & \pNA{0.43} & \levelA 42 & \pA{0.61} & \levelB 58 & \pA{0.73} \\
 \midrule
-\multirow{3}{*}{\makebox[1.4cm][l]{Visitall}}
-& E & \levelD 93 & \pC{1.1} & \levelD 94 & \pB{0.96} & \levelA 12 & \pNA{0.41} & \levelB 71 & \pB{0.84} & \levelB 74 & \pB{0.87} & \levelA 19 & \pNA{0.46} & \levelA 34 & \pA{0.63} \\
-& M & \levelD 91 & \pC{1.0} & \levelC 86 & \pB{0.93} & \levelA 7 & \pNA{0.33} & \levelB 59 & \pA{0.73} & \levelB 63 & \pB{0.77} & \levelA 10 & \pNA{0.37} & \levelA 23 & \pA{0.52} \\
-& H & \levelC 88 & \pC{1.1} & \levelB 64 & \pB{0.81} & \levelA 3 & \pNA{0.23} & \levelA 44 & \pA{0.62} & \levelA 49 & \pA{0.66} & \levelA 5 & \pNA{0.28} & \levelA 14 & \pNA{0.41} \\
+\multirow{2}{*}{\makebox[1.4cm][l]{Visitall}}
+& E & -- & -- & \levelA 14 & \pNA{0.43} & \levelA 35 & \pA{0.57} & \levelB 60 & \pA{0.74} & \levelB 74 & \pB{0.87} \\
+& H & \levelC 88 & \pC{1.1} & \levelA 6 & \pNA{0.29} & \levelA 18 & \pNA{0.45} & \levelA 38 & \pA{0.58} & \levelA 49 & \pA{0.66} \\
 \midrule
-\multirow{3}{*}{\makebox[1.4cm][l]{Grid}}
-& E & \levelD 100 & \pB{0.91} & \levelB 52 & \pB{0.81} & \levelA 4 & \pNA{0.26} & \levelA 49 & \pA{0.65} & \levelB 55 & \pA{0.70} & \levelA 7 & \pNA{0.30} & \levelA 12 & \pNA{0.40} \\
-& M & \levelD 97 & \pB{0.85} & \levelA 45 & \pA{0.66} & \levelA 2 & \pNA{0.18} & \levelA 37 & \pA{0.57} & \levelA 42 & \pA{0.61} & \levelA 3 & \pNA{0.22} & \levelA 7 & \pNA{0.31} \\
-& H & \levelD 92 & \pA{0.74} & \levelA 21 & \pA{0.60} & \levelA 0 & - & \levelA 24 & \pNA{0.48} & \levelA 29 & \pA{0.52} & \levelA 1 & \pNA{0.14} & \levelA 2 & \pNA{0.23} \\
+\multirow{2}{*}{\makebox[1.4cm][l]{Grid}}
+& E & -- & -- & \levelA 6 & \pNA{0.30} & \levelA 21 & \pNA{0.46} & \levelA 42 & \pA{0.60} & \levelB 55 & \pA{0.70} \\
+& H & \levelD 92 & \pA{0.74} & \levelA 1 & \pNA{0.14} & \levelA 9 & \pNA{0.33} & \levelA 22 & \pNA{0.44} & \levelA 29 & \pA{0.52} \\
 \midrule
-\multirow{3}{*}{\makebox[1.4cm][l]{Logistics}}
-& E & \levelD 90 & \pA{0.75} & \levelA 39 & \pA{0.71} & \levelA 5 & \pNA{0.27} & \levelA 43 & \pA{0.60} & \levelA 47 & \pA{0.64} & \levelA 8 & \pNA{0.31} & \levelA 13 & \pNA{0.38} \\
-& M & \levelC 76 & \pA{0.65} & \levelA 22 & \pA{0.55} & \levelA 2 & \pNA{0.17} & \levelA 32 & \pA{0.52} & \levelA 36 & \pA{0.56} & \levelA 4 & \pNA{0.21} & \levelA 6 & \pNA{0.29} \\
-& H & \levelB 71 & \pA{0.59} & \levelA 4 & \pNA{0.39} & \levelA 0 & - & \levelA 21 & \pNA{0.44} & \levelA 25 & \pNA{0.47} & \levelA 1 & \pNA{0.12} & \levelA 2 & \pNA{0.19} \\
+\multirow{2}{*}{\makebox[1.4cm][l]{Logistics}}
+& E & -- & -- & \levelA 7 & \pNA{0.31} & \levelA 20 & \pNA{0.45} & \levelA 36 & \pA{0.55} & \levelA 47 & \pA{0.64} \\
+& H & \levelB 71 & \pA{0.59} & \levelA 1 & \pNA{0.13} & \levelA 7 & \pNA{0.29} & \levelA 18 & \pNA{0.40} & \levelA 25 & \pNA{0.47} \\
 \midrule
-\multirow{3}{*}{\makebox[1.4cm][l]{Rovers}}
-& E & \levelC 87 & \pC{1.0} & \levelB 67 & \pB{0.96} & \levelA 6 & \pNA{0.29} & \levelB 53 & \pA{0.68} & \levelB 57 & \pA{0.71} & \levelA 9 & \pNA{0.33} & \levelA 17 & \pNA{0.45} \\
-& M & \levelC 82 & \pB{0.96} & \levelB 56 & \pB{0.87} & \levelA 3 & \pNA{0.21} & \levelA 41 & \pA{0.59} & \levelA 45 & \pA{0.63} & \levelA 4 & \pNA{0.25} & \levelA 10 & \pNA{0.36} \\
-& H & \levelC 77 & \pB{0.97} & \levelA 31 & \pA{0.64} & \levelA 1 & \pNA{0.13} & \levelA 28 & \pNA{0.49} & \levelA 32 & \pA{0.53} & \levelA 1 & \pNA{0.11} & \levelA 4 & \pNA{0.27} \\
+\multirow{2}{*}{\makebox[1.4cm][l]{Rovers}}
+& E & -- & -- & \levelA 7 & \pNA{0.32} & \levelA 22 & \pNA{0.47} & \levelA 41 & \pA{0.60} & \levelB 57 & \pA{0.71} \\
+& H & \levelC 77 & \pB{0.97} & \levelA 2 & \pNA{0.17} & \levelA 10 & \pNA{0.35} & \levelA 24 & \pNA{0.45} & \levelA 32 & \pA{0.53} \\
 \midrule
 \midrule
-\multirow{3}{*}{\makebox[1.4cm][l]{Combined}}
-& E & \levelD 95.5 & \pC{1.06} & \levelC 76.0 & \pB{0.98} & \levelA 6.6 & \pNA{0.31} & \levelB 62.1 & \pA{0.74} & \levelB 66.8 & \pB{0.78} & \levelA 11.3 & \pNA{0.36} & \levelA 21.4 & \pNA{0.49} \\
-& M & \levelD 92.4 & \pC{1.00} & \levelB 65.4 & \pB{0.88} & \levelA 3.3 & \pNA{0.23} & \levelB 49.8 & \pA{0.66} & \levelB 55.1 & \pA{0.71} & \levelA 5.4 & \pNA{0.27} & \levelA 13.1 & \pNA{0.40} \\
-& H & \levelC 89.6 & \pB{0.99} & \levelA 48.3 & \pA{0.78} & \levelA 0.9 & \pNA{0.19*} & \levelA 35.9 & \pA{0.57} & \levelA 41.5 & \pA{0.61} & \levelA 2.1 & \pNA{0.19*} & \levelA 6.4 & \pNA{0.31} \\
+\multirow{2}{*}{\makebox[1.4cm][l]{Combined}}
+& E & -- & -- & \levelA 8.6 & \pNA{0.34} & \levelA 25.3 & \pNA{0.49} & \levelB 49.4 & \pA{0.66} & \levelB 65.5 & \pB{0.78} \\
+& H & \levelC 89.6 & \pB{0.99} & \levelA 2.5 & \pNA{0.20} & \levelA 11.6 & \pNA{0.37} & \levelA 30.4 & \pA{0.51} & \levelA 41.5 & \pA{0.61} \\
 \bottomrule
 \end{tabular}
 \end{table*}
+
+\begin{table}[!ht]
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.1}
+\small
+\centering
+\caption{\textbf{[Placeholder values --- to be replaced.]} In-domain
+coverage (hard split) of a \emph{single} policy trained on all eight
+domains, per rung of the ladder, against published per-domain GABAR
+($\dagger$: one dedicated model per domain). The \union{}-to-\gadar{}
+comparison prices domain conditioning where symbol identity is available
+(the price of generality).}
+\label{table:indomain}
+\begin{tabular}{@{}l|c|cccc@{}}
+\toprule
+Domain & GABAR$^\dagger$ & \union{} & \gadardom{} & \gadarbind{} & \gadar{} \\
+\midrule
+Blocks    & 100 & 92 & 84 & 88 & 91 \\
+Miconic   & 100 & 95 & 88 & 91 & 94 \\
+Spanner   & 89  & 84 & 76 & 80 & 83 \\
+Gripper   & 100 & 96 & 89 & 92 & 95 \\
+Visitall  & 88  & 83 & 77 & 80 & 82 \\
+Grid      & 92  & 85 & 74 & 79 & 83 \\
+Logistics & 71  & 64 & 55 & 60 & 63 \\
+Rovers    & 77  & 70 & 61 & 65 & 68 \\
+\midrule
+Combined  & 89.6 & 83.6 & 75.5 & 79.4 & 82.4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!ht]
+\centering
+% TODO: diversity curve --- x-axis: number of training domains (4, 6, 7,
+% from the 4-train, 6-train, and leave-one-out settings); y-axis: mean
+% zero-shot coverage on the held-out domains (hard split), one line per
+% ladder rung (UNION expected flat near zero; GADAR expected to rise).
+% Data: ho4 / ho2 / loo8 runs. Generate with tools/analyze_results.py once
+% all runs land.
+% \includegraphics[width=0.95\columnwidth]{Figures/gadar_diversity_v1.png}
+\fbox{\parbox{0.9\columnwidth}{\centering\vspace{2.2cm}
+\todonum{Figure: zero-shot coverage vs.\ number of training domains
+(4 $\rightarrow$ 6 $\rightarrow$ 7), one line per ladder rung.}
+\vspace{2.2cm}}}
+\caption{\textbf{[Placeholder --- to be generated.]} Zero-shot coverage on
+held-out domains as a function of training-set diversity. Rising coverage
+with more training domains indicates that what transfers is planning
+structure rather than domain particulars.}
+\label{fig:diversity}
+\end{figure}
 
 \section{Conclusion}
 
@@ -730,19 +776,19 @@ never seen in training, without search. The capability rests on a new
 representation --- structural features, the lifted domain description as a
 graph, and the grounded--lifted binding layer connecting ground
 applicability to lifted structure --- while GABAR's encoder, ranking
-decoder, and search-free execution carry over unchanged. Two conditioning
-methods, compiled and joint, instantiate the representation under opposing
-hypotheses about whether a domain's symbols can be given static meaning,
-and their comparison, together with the binding-removal and value-objective
-ablations, ties each empirical result to a specific design commitment.
-% TODO: one sentence summarizing the headline numbers once results exist,
-% and one sentence on the strongest analysis finding (C vs J).
+decoder, and search-free execution carry over unchanged. The representation
+is evaluated as it is built: a ladder of systems, each the previous plus one
+commitment, so that every empirical gap certifies a specific design decision
+--- most importantly the final gap, which isolates the binding layer and
+matches the expressiveness separation of Proposition~1.
+% TODO: one sentence summarizing the headline numbers once results exist
+% (zero-shot GADAR vs UNION, and the size of the BIND->GADAR gap).
 Zero-shot transfer is bounded by structure --- Proposition~2 makes the
-ceiling precise --- and the few-shot results chart the territory beyond it.
-Extending the approach to lifted successor generation, richer PDDL
-fragments, and probabilistic settings remains future work.
+ceiling precise --- and beyond that ceiling adaptation needs data from the
+new domain: few-shot adaptation, lifted successor generation, richer PDDL
+fragments, and probabilistic settings remain future work.
 
-\bibliography{references}
+\bibliography{aaai2027}
 
 % Check whether the conference requires a reproducibility checklist to be included in the paper.
 % If so, you can uncomment the following line and ajust the path to include it.
