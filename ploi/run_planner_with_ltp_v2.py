@@ -640,7 +640,13 @@ class PlannerTester:
             # GABAR_DEBUG_PROPOSALS=1: print the model's ranked proposals on
             # the first step of each problem - distinguishes "no applicable
             # proposal" failures (instant) from wandering failures.
-            if os.environ.get("GABAR_DEBUG_PROPOSALS", "") and not result.plan:
+            # GABAR_DEBUG_PROPOSALS=N (N>1): ALSO print every N steps, to see
+            # whether a needed schema (e.g. the deliver-analog) is ever
+            # proposed mid-rollout, valid or not.
+            _dbg_props = os.environ.get("GABAR_DEBUG_PROPOSALS", "")
+            if _dbg_props and (not result.plan or (
+                    _dbg_props.isdigit() and int(_dbg_props) > 1
+                    and len(result.plan) % int(_dbg_props) == 0)):
                 print(f"\n[p{result.problem_idx}] model proposed: "
                       + " | ".join(str(a) for a in action_param_list[:8]))
                 print(f"[p{result.problem_idx}] applicable ({len(groundings)}): "
