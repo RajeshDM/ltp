@@ -1,0 +1,384 @@
+<meta charset="utf-8">
+<title>GADAR — representation study: GABAR vs GADAR graphs + options</title>
+<style>
+  html,body{background:#ffffff;margin:0;padding:24px;font-family:Helvetica,Arial,sans-serif}
+  .wrap{width:1420px;margin:0 auto;background:#ffffff}
+</style>
+<div class="wrap">
+<svg width="1420" height="2040" viewBox="0 0 1420 2040" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#888"/>
+    </marker>
+  </defs>
+
+  <!-- ============ shared example header ============ -->
+  <text x="30" y="34" font-size="17" font-weight="bold" fill="#222">Working example (tiny gripper): state = at(ball1,roomA), at-robby(roomA), free(grip1) &#160;|&#160; goal = at(ball1,roomB) &#160;|&#160; applicable = pick(ball1,roomA,grip1), move(roomA,roomB)</text>
+
+  <!-- ================= PANEL 1: GABAR ================= -->
+  <rect x="30" y="52" width="1360" height="540" rx="12" fill="#FDFEFE" stroke="#B2BABB" stroke-width="1.5"/>
+  <text x="50" y="84" font-size="15.5" font-weight="bold" fill="#1A5276">1&#160;&#160;GABAR (published, per-domain)</text>
+
+  <g font-size="12" fill="#333">
+    <text x="50" y="112">&#8226; Node features = ONE-HOT over this domain's</text>
+    <text x="62" y="128">vocabulary: {move,pick,drop} &#8746; {at,at-robby,</text>
+    <text x="62" y="144">free,carry} &#8746; goal copies &#8746; types.</text>
+    <text x="50" y="168">&#8226; Width = 3+|A|+2|P|+|T| &#8594; sized by the domain.</text>
+    <text x="50" y="192">&#8226; Action&#8211;object edges carry slot one-hots AND</text>
+    <text x="62" y="208">precondition-satisfaction flags keyed by domain</text>
+    <text x="62" y="224">STRINGS ('at0', 'free2') &#8594; untransferable.</text>
+    <text x="50" y="248">&#8226; A new domain's symbols have no slots in the</text>
+    <text x="62" y="264">feature space: the model cannot even RUN.</text>
+    <text x="50" y="296" font-size="11.5" font-style="italic" fill="#777">One-hot glyph beside each node kind; global node</text>
+    <text x="50" y="311" font-size="11.5" font-style="italic" fill="#777">edges omitted for clarity (connects to everything).</text>
+  </g>
+
+  <!-- schemas -->
+  <g font-size="12.5" text-anchor="middle" font-weight="bold">
+    <rect x="520" y="100" width="86" height="32" rx="8" fill="#4A90D9" stroke="#2C6FB5" stroke-width="2"/>
+    <text x="563" y="121" fill="#fff">move</text>
+    <rect x="740" y="100" width="86" height="32" rx="8" fill="#4A90D9" stroke="#2C6FB5" stroke-width="2"/>
+    <text x="783" y="121" fill="#fff">pick</text>
+    <rect x="960" y="100" width="86" height="32" rx="8" fill="#4A90D9" stroke="#2C6FB5" stroke-width="2"/>
+    <text x="1003" y="121" fill="#fff">drop</text>
+    <text x="1105" y="121" fill="#888" font-weight="normal" font-size="11">(no applicable grounding &#8594; no edges)</text>
+  </g>
+  <!-- one-hot glyph for pick -->
+  <g>
+    <rect x="838" y="98" width="11" height="11" fill="#EAECEE" stroke="#B2BABB"/>
+    <rect x="850" y="98" width="11" height="11" fill="#2C6FB5"/>
+    <rect x="862" y="98" width="11" height="11" fill="#EAECEE" stroke="#B2BABB"/>
+    <text x="884" y="108" font-size="10" fill="#777">[0,1,0,&#8230;]</text>
+  </g>
+
+  <!-- objects -->
+  <g font-size="12.5" text-anchor="middle" font-weight="bold">
+    <ellipse cx="500" cy="330" rx="42" ry="20" fill="#FAE5A0" stroke="#B7950B" stroke-width="2"/>
+    <text x="500" y="335">ball1</text>
+    <ellipse cx="680" cy="330" rx="44" ry="20" fill="#FAE5A0" stroke="#B7950B" stroke-width="2"/>
+    <text x="680" y="335">roomA</text>
+    <ellipse cx="860" cy="330" rx="44" ry="20" fill="#FAE5A0" stroke="#B7950B" stroke-width="2"/>
+    <text x="860" y="335">roomB</text>
+    <ellipse cx="1040" cy="330" rx="42" ry="20" fill="#FAE5A0" stroke="#B7950B" stroke-width="2"/>
+    <text x="1040" y="335">grip1</text>
+  </g>
+
+  <!-- literals -->
+  <g font-size="11.5" text-anchor="middle" font-weight="bold">
+    <rect x="420" y="500" width="128" height="30" rx="8" fill="#CB4335" stroke="#943126" stroke-width="2"/>
+    <text x="484" y="520" fill="#fff">at(ball1,roomA)</text>
+    <rect x="600" y="500" width="128" height="30" rx="8" fill="#CB4335" stroke="#943126" stroke-width="2"/>
+    <text x="664" y="520" fill="#fff">at-robby(roomA)</text>
+    <rect x="780" y="500" width="110" height="30" rx="8" fill="#CB4335" stroke="#943126" stroke-width="2"/>
+    <text x="835" y="520" fill="#fff">free(grip1)</text>
+    <rect x="960" y="500" width="150" height="30" rx="8" fill="#7B241C" stroke="#4A0F08" stroke-width="2.5"/>
+    <text x="1035" y="520" fill="#FAD7A0">G-at(ball1,roomB)</text>
+  </g>
+
+  <!-- literal-object edges -->
+  <g stroke="#5DADE2" stroke-width="1.6" fill="none">
+    <line x1="484" y1="500" x2="500" y2="350"/>
+    <line x1="510" y1="500" x2="666" y2="350"/>
+    <line x1="664" y1="500" x2="678" y2="350"/>
+    <line x1="835" y1="500" x2="1030" y2="350"/>
+    <line x1="1005" y1="500" x2="520" y2="348"/>
+    <line x1="1060" y1="500" x2="872" y2="350"/>
+  </g>
+  <g font-size="9.5" fill="#2874A6">
+    <text x="482" y="430">pos0</text>
+    <text x="575" y="430">pos1</text>
+  </g>
+
+  <!-- action-object edges (applicable groundings) -->
+  <g stroke="#1A5276" stroke-width="2.4" fill="none">
+    <line x1="770" y1="132" x2="510" y2="312"/>
+    <line x1="783" y1="132" x2="690" y2="310"/>
+    <line x1="796" y1="132" x2="1030" y2="312"/>
+    <line x1="553" y1="132" x2="672" y2="310"/>
+    <line x1="573" y1="132" x2="850" y2="310"/>
+  </g>
+  <g font-size="10" fill="#1A5276" font-weight="bold">
+    <text x="600" y="240">slot0 + 'at0'</text>
+    <text x="723" y="212">slot1 + 'at1','at-robby0'</text>
+    <text x="908" y="240">slot2 + 'free0'</text>
+    <text x="580" y="176">slot0</text>
+    <text x="690" y="176">slot1</text>
+  </g>
+  <!-- global node -->
+  <circle cx="1270" cy="330" r="26" fill="#EAECEE" stroke="#7F8C8D" stroke-width="2"/>
+  <text x="1270" y="335" font-size="11" text-anchor="middle" fill="#555" font-weight="bold">global</text>
+
+  <!-- ================= PANEL 2: GADAR full (joint) ================= -->
+  <rect x="30" y="612" width="1360" height="780" rx="12" fill="#FDFEFE" stroke="#B2BABB" stroke-width="1.5"/>
+  <text x="50" y="644" font-size="15.5" font-weight="bold" fill="#196F3D">2&#160;&#160;GADAR full (joint): structural features + lifted domain layer + occurrence nodes + binding edges</text>
+
+  <g font-size="12" fill="#333">
+    <text x="50" y="672">&#8226; NO symbol names anywhere. Node features =</text>
+    <text x="62" y="688">kind + arity + static/goal bits; positions are</text>
+    <text x="62" y="704">edge features. Widths fixed across domains.</text>
+    <text x="50" y="728">&#8226; Lifted layer FROM D: one symbol node per</text>
+    <text x="62" y="744">predicate; occurrence nodes per schema literal</text>
+    <text x="62" y="760">(pre / add / del) with arg&#8596;slot pair features.</text>
+    <text x="50" y="784">&#8226; EFFECTS ARE ALREADY HERE: add:carry(pick),</text>
+    <text x="62" y="800">add:at(drop) &#8230; as occurrence nodes.</text>
+    <text x="50" y="824">&#8226; Binding (green): object at slot j &#8594; the pre-</text>
+    <text x="62" y="840">occurrence it satisfies, per applicable grounding.</text>
+    <text x="50" y="874" font-size="12" font-weight="bold" fill="#B03A2E">What transfers (measured): applicability,</text>
+    <text x="50" y="890" font-size="12" font-weight="bold" fill="#B03A2E">construction (V1 &#8804; 75%). What doesn't: goal</text>
+    <text x="50" y="906" font-size="12" font-weight="bold" fill="#B03A2E">attraction &#8212; nothing pulls the rollout toward</text>
+    <text x="50" y="922" font-size="12" font-weight="bold" fill="#B03A2E">roomB (oracle ceiling 0&#8211;5%).</text>
+  </g>
+
+  <!-- lifted: predicate symbols -->
+  <g font-size="12" text-anchor="middle" font-weight="bold">
+    <ellipse cx="620" cy="700" rx="40" ry="19" fill="#fff" stroke="#7D3C98" stroke-width="2.2"/>
+    <text x="620" y="705" fill="#7D3C98">at</text>
+    <ellipse cx="800" cy="700" rx="52" ry="19" fill="#fff" stroke="#7D3C98" stroke-width="2.2"/>
+    <text x="800" y="705" fill="#7D3C98">at-robby</text>
+    <ellipse cx="980" cy="700" rx="40" ry="19" fill="#fff" stroke="#7D3C98" stroke-width="2.2"/>
+    <text x="980" y="705" fill="#7D3C98">free</text>
+    <ellipse cx="1140" cy="700" rx="42" ry="19" fill="#fff" stroke="#7D3C98" stroke-width="2.2"/>
+    <text x="1140" y="705" fill="#7D3C98">carry</text>
+    <text x="1250" y="705" font-size="10.5" fill="#888" font-weight="normal">predicate symbols (lifted)</text>
+  </g>
+
+  <!-- occurrence nodes -->
+  <g font-size="10" text-anchor="middle">
+    <rect x="470" y="810" width="96" height="26" rx="10" fill="#fff" stroke="#CB4335" stroke-width="1.8"/>
+    <text x="518" y="827" fill="#B03A2E">pick pre: at(o,r)</text>
+    <rect x="590" y="810" width="118" height="26" rx="10" fill="#fff" stroke="#CB4335" stroke-width="1.8"/>
+    <text x="649" y="827" fill="#B03A2E">pick pre: at-robby(r)</text>
+    <rect x="732" y="810" width="96" height="26" rx="10" fill="#fff" stroke="#CB4335" stroke-width="1.8"/>
+    <text x="780" y="827" fill="#B03A2E">pick pre: free(g)</text>
+    <rect x="852" y="810" width="106" height="26" rx="10" fill="#fff" stroke="#1E8449" stroke-width="1.8"/>
+    <text x="905" y="827" fill="#1E8449">pick add: carry(o,g)</text>
+    <rect x="982" y="810" width="100" height="26" rx="10" fill="#FCF3CF" stroke="#B7950B" stroke-width="2.4"/>
+    <text x="1032" y="827" fill="#7D6608" font-weight="bold">drop add: at(o,r)</text>
+    <rect x="1106" y="810" width="150" height="26" rx="10" fill="#fff" stroke="#B2BABB" stroke-width="1.4" stroke-dasharray="4 3"/>
+    <text x="1181" y="827" fill="#888">&#8230; dels, move occs &#8230;</text>
+  </g>
+
+  <!-- occ_of edges: occurrence -> predicate symbol -->
+  <g stroke="#8E44AD" stroke-width="1.3" fill="none">
+    <line x1="518" y1="810" x2="608" y2="718"/>
+    <line x1="649" y1="810" x2="794" y2="719"/>
+    <line x1="780" y1="810" x2="972" y2="719"/>
+    <line x1="905" y1="810" x2="1130" y2="719"/>
+    <line x1="1032" y1="810" x2="638" y2="716"/>
+  </g>
+  <text x="560" y="770" font-size="9.5" fill="#8E44AD" font-style="italic">occ_of</text>
+
+  <!-- schemas -->
+  <g font-size="12.5" text-anchor="middle" font-weight="bold">
+    <rect x="520" y="920" width="86" height="32" rx="8" fill="#4A90D9" stroke="#2C6FB5" stroke-width="2"/>
+    <text x="563" y="941" fill="#fff">move</text>
+    <rect x="740" y="920" width="86" height="32" rx="8" fill="#4A90D9" stroke="#2C6FB5" stroke-width="2"/>
+    <text x="783" y="941" fill="#fff">pick</text>
+    <rect x="1000" y="920" width="86" height="32" rx="8" fill="#4A90D9" stroke="#2C6FB5" stroke-width="2"/>
+    <text x="1043" y="941" fill="#fff">drop</text>
+  </g>
+  <!-- occ -> schema role edges -->
+  <g stroke="#C0392B" stroke-width="1.2" fill="none" opacity="0.75">
+    <line x1="518" y1="836" x2="770" y2="920"/>
+    <line x1="649" y1="836" x2="778" y2="920"/>
+    <line x1="780" y1="836" x2="786" y2="920"/>
+    <line x1="905" y1="836" x2="800" y2="920"/>
+    <line x1="1032" y1="836" x2="1043" y2="920"/>
+  </g>
+  <text x="880" y="880" font-size="9.5" fill="#C0392B" font-style="italic">role + (arg,slot) pairs</text>
+
+  <!-- objects -->
+  <g font-size="12.5" text-anchor="middle" font-weight="bold">
+    <ellipse cx="500" cy="1120" rx="42" ry="20" fill="#FAE5A0" stroke="#B7950B" stroke-width="2"/>
+    <text x="500" y="1125">ball1</text>
+    <ellipse cx="680" cy="1120" rx="44" ry="20" fill="#FAE5A0" stroke="#B7950B" stroke-width="2"/>
+    <text x="680" y="1125">roomA</text>
+    <ellipse cx="860" cy="1120" rx="44" ry="20" fill="#FAE5A0" stroke="#B7950B" stroke-width="2"/>
+    <text x="860" y="1125">roomB</text>
+    <ellipse cx="1040" cy="1120" rx="42" ry="20" fill="#FAE5A0" stroke="#B7950B" stroke-width="2"/>
+    <text x="1040" y="1125">grip1</text>
+  </g>
+
+  <!-- action-object edges -->
+  <g stroke="#1A5276" stroke-width="2.2" fill="none">
+    <line x1="770" y1="952" x2="510" y2="1102"/>
+    <line x1="783" y1="952" x2="690" y2="1100"/>
+    <line x1="796" y1="952" x2="1030" y2="1102"/>
+    <line x1="553" y1="952" x2="672" y2="1100"/>
+    <line x1="573" y1="952" x2="850" y2="1100"/>
+  </g>
+
+  <!-- binding edges: object -> precondition occurrence -->
+  <g stroke="#1E8449" stroke-width="2.4" stroke-dasharray="7 4" fill="none">
+    <path d="M 492 1100 C 430 960 440 880 500 838"/>
+    <path d="M 668 1100 C 620 1000 610 900 640 838"/>
+    <path d="M 1035 1100 C 1000 1010 900 890 800 838"/>
+  </g>
+  <text x="430" y="960" font-size="10.5" fill="#1E8449" font-weight="bold">bind: o-slot</text>
+  <text x="575" y="990" font-size="10.5" fill="#1E8449" font-weight="bold">bind: r-slot</text>
+  <text x="945" y="1010" font-size="10.5" fill="#1E8449" font-weight="bold">bind: g-slot</text>
+
+  <!-- literals -->
+  <g font-size="11.5" text-anchor="middle" font-weight="bold">
+    <rect x="420" y="1290" width="128" height="30" rx="8" fill="#CB4335" stroke="#943126" stroke-width="2"/>
+    <text x="484" y="1310" fill="#fff">at(ball1,roomA)</text>
+    <rect x="600" y="1290" width="128" height="30" rx="8" fill="#CB4335" stroke="#943126" stroke-width="2"/>
+    <text x="664" y="1310" fill="#fff">at-robby(roomA)</text>
+    <rect x="780" y="1290" width="110" height="30" rx="8" fill="#CB4335" stroke="#943126" stroke-width="2"/>
+    <text x="835" y="1310" fill="#fff">free(grip1)</text>
+    <rect x="960" y="1290" width="150" height="30" rx="8" fill="#7B241C" stroke="#4A0F08" stroke-width="2.5"/>
+    <text x="1035" y="1310" fill="#FAD7A0">G-at(ball1,roomB)</text>
+  </g>
+  <!-- literal-object edges -->
+  <g stroke="#5DADE2" stroke-width="1.5" fill="none">
+    <line x1="484" y1="1290" x2="500" y2="1140"/>
+    <line x1="510" y1="1290" x2="666" y2="1140"/>
+    <line x1="664" y1="1290" x2="678" y2="1140"/>
+    <line x1="835" y1="1290" x2="1030" y2="1140"/>
+    <line x1="1005" y1="1290" x2="520" y2="1138"/>
+    <line x1="1060" y1="1290" x2="872" y2="1140"/>
+  </g>
+  <!-- instantiation edges: literal -> predicate symbol (long, orange dotted) -->
+  <g stroke="#E67E22" stroke-width="1.8" stroke-dasharray="2 4" fill="none">
+    <path d="M 430 1290 C 330 1050 400 800 590 712"/>
+    <path d="M 610 1290 C 540 1120 560 850 760 714"/>
+    <path d="M 890 1300 C 1240 1220 1200 850 1010 712"/>
+    <path d="M 1108 1300 C 1360 1150 1300 760 660 700"/>
+  </g>
+  <text x="330" y="1040" font-size="10.5" fill="#E67E22" font-weight="bold">instance_of</text>
+  <text x="1315" y="1150" font-size="10.5" fill="#E67E22" font-weight="bold">instance_of</text>
+
+  <!-- THE 2-HOP OBSERVATION callout -->
+  <rect x="1080" y="990" width="290" height="86" rx="10" fill="#FCF3CF" stroke="#B7950B" stroke-width="2"/>
+  <text x="1094" y="1012" font-size="11.5" font-weight="bold" fill="#7D6608">Goal relevance of drop exists here &#8212;</text>
+  <text x="1094" y="1028" font-size="11" fill="#7D6608">G-at &#8594;(instance_of)&#8594; [at] &#8592;(occ_of)&#8592; drop add:at</text>
+  <text x="1094" y="1046" font-size="11" fill="#7D6608">&#8230; but only at SYMBOL level, 2 hops, never</text>
+  <text x="1094" y="1062" font-size="11" fill="#7D6608">grounded to ball1/roomB. Nothing says WHERE.</text>
+
+  <!-- ================= PANEL 3: OPTIONS ================= -->
+  <rect x="30" y="1412" width="1360" height="600" rx="12" fill="#FDFEFE" stroke="#B2BABB" stroke-width="1.5"/>
+  <text x="50" y="1444" font-size="15.5" font-weight="bold" fill="#6C3483">3&#160;&#160;Candidate additions &#8212; each judged against the measured gap: goal ATTRACTION (direction), not goal identification</text>
+
+  <!-- card A -->
+  <rect x="50" y="1464" width="430" height="250" rx="10" fill="#F8F9F9" stroke="#AAB7B8" stroke-width="1.4"/>
+  <text x="66" y="1490" font-size="13" font-weight="bold" fill="#333">A. Schema-level goal-relevance bit</text>
+  <g font-size="11" fill="#444">
+    <text x="66" y="1512">Collapse the 2-hop path into 1 bit / edge:</text>
+    <text x="66" y="1528">"this schema ADDs a predicate that appears</text>
+    <text x="66" y="1544">in the goal." Marks drop / depart as special.</text>
+  </g>
+  <rect x="90" y="1560" width="70" height="26" rx="7" fill="#4A90D9"/>
+  <text x="125" y="1578" font-size="11" fill="#fff" text-anchor="middle" font-weight="bold">drop</text>
+  <rect x="250" y="1560" width="130" height="26" rx="7" fill="#7B241C"/>
+  <text x="315" y="1578" font-size="10.5" fill="#FAD7A0" text-anchor="middle">G-at(ball1,roomB)</text>
+  <line x1="160" y1="1573" x2="246" y2="1573" stroke="#B7950B" stroke-width="2.6" stroke-dasharray="5 3"/>
+  <g font-size="11">
+    <text x="66" y="1620" fill="#196F3D" font-weight="bold">Cost: ~free (featurization only).</text>
+    <text x="66" y="1638" fill="#B03A2E">Evidence: helps schema choice (depart never</text>
+    <text x="66" y="1654" fill="#B03A2E">proposed) but gives no WHERE &#8212; oracle says</text>
+    <text x="66" y="1670" fill="#B03A2E">the trigger alone caps at 0&#8211;5%.</text>
+  </g>
+
+  <!-- card B -->
+  <rect x="496" y="1464" width="430" height="250" rx="10" fill="#F8F9F9" stroke="#AAB7B8" stroke-width="1.4"/>
+  <text x="512" y="1490" font-size="13" font-weight="bold" fill="#333">B. Grounding-level goal-binding edges</text>
+  <g font-size="11" fill="#444">
+    <text x="512" y="1512">Mirror of precondition binding: applicable</text>
+    <text x="512" y="1528">grounding &#8594; the goal literal its add effects</text>
+    <text x="512" y="1544">would produce. Sparse (O(#goal literals)).</text>
+  </g>
+  <ellipse cx="570" cy="1580" rx="36" ry="16" fill="#FAE5A0" stroke="#B7950B"/>
+  <text x="570" y="1585" font-size="10.5" text-anchor="middle" font-weight="bold">ball1</text>
+  <rect x="700" y="1566" width="130" height="26" rx="7" fill="#7B241C"/>
+  <text x="765" y="1584" font-size="10.5" fill="#FAD7A0" text-anchor="middle">G-at(ball1,roomB)</text>
+  <line x1="606" y1="1580" x2="696" y2="1580" stroke="#1E8449" stroke-width="2.6" stroke-dasharray="7 4"/>
+  <g font-size="11">
+    <text x="512" y="1620" fill="#196F3D" font-weight="bold">Cost: 1 day + retrain fleet.</text>
+    <text x="512" y="1638" fill="#B03A2E" font-weight="bold">FALSIFIED as sufficient: oracle gave the</text>
+    <text x="512" y="1654" fill="#B03A2E" font-weight="bold">perfect version of this signal for free &#8594;</text>
+    <text x="512" y="1670" fill="#B03A2E" font-weight="bold">0&#8211;5%. Useful only WITH C/D/E.</text>
+  </g>
+
+  <!-- card C -->
+  <rect x="942" y="1464" width="430" height="250" rx="10" fill="#EAF7EF" stroke="#1E8449" stroke-width="2"/>
+  <text x="958" y="1490" font-size="13" font-weight="bold" fill="#145A32">C. Helpful-action flags (FF relaxed plan)</text>
+  <g font-size="11" fill="#1D4D33">
+    <text x="958" y="1512">Per state, compute the delete-relaxed plan</text>
+    <text x="958" y="1528">(poly time, NO search) and flag applicable</text>
+    <text x="958" y="1544">groundings that appear in it. Injects goal</text>
+    <text x="958" y="1560">DIRECTION &#8212; the measured missing piece:</text>
+    <text x="958" y="1576">the relaxed plan contains move(A,B), then drop.</text>
+  </g>
+  <rect x="980" y="1592" width="180" height="24" rx="7" fill="#fff" stroke="#1E8449" stroke-width="1.8"/>
+  <text x="1070" y="1608" font-size="10.5" text-anchor="middle" fill="#145A32" font-weight="bold">move(roomA,roomB) &#10004; in &#928;&#775;&#691;</text>
+  <g font-size="11">
+    <text x="958" y="1640" fill="#196F3D" font-weight="bold">Precedent: ASNets input heuristic features;</text>
+    <text x="958" y="1656" fill="#196F3D" font-weight="bold">GOOSE = heuristics FOR search; this =</text>
+    <text x="958" y="1672" fill="#196F3D" font-weight="bold">heuristic FEATURES for a search-free policy.</text>
+    <text x="958" y="1694" fill="#7D6608" font-weight="bold">Strongest candidate. Still search-free.</text>
+  </g>
+
+  <!-- card D -->
+  <rect x="50" y="1732" width="430" height="250" rx="10" fill="#F8F9F9" stroke="#AAB7B8" stroke-width="1.4"/>
+  <text x="66" y="1758" font-size="13" font-weight="bold" fill="#333">D. Numeric distance features (h-add per literal)</text>
+  <g font-size="11" fill="#444">
+    <text x="66" y="1780">Delete-relaxation cost-to-achieve as a numeric</text>
+    <text x="66" y="1796">feature on every literal node (goal literals get</text>
+    <text x="66" y="1812">finite, decreasing values along good rollouts).</text>
+    <text x="66" y="1828">Creates a gradient field toward the goal that</text>
+    <text x="66" y="1844">message passing can spread to objects/actions.</text>
+  </g>
+  <g font-size="10" text-anchor="middle">
+    <rect x="90" y="1862" width="120" height="24" rx="7" fill="#CB4335"/>
+    <text x="150" y="1878" fill="#fff">G-at &#8226; h=2</text>
+    <rect x="230" y="1862" width="120" height="24" rx="7" fill="#CB4335" opacity="0.65"/>
+    <text x="290" y="1878" fill="#fff">at-robby(A) &#8226; h=0</text>
+  </g>
+  <g font-size="11">
+    <text x="66" y="1920" fill="#196F3D" font-weight="bold">Cost: featurize-time + test-time h-add calls.</text>
+    <text x="66" y="1938" fill="#555">Complements C; GOOSE-flavored numerics.</text>
+    <text x="66" y="1956" fill="#555">Risk: numeric scale varies across domains (C3!).</text>
+  </g>
+
+  <!-- card E -->
+  <rect x="496" y="1732" width="430" height="250" rx="10" fill="#F8F9F9" stroke="#AAB7B8" stroke-width="1.4"/>
+  <text x="512" y="1758" font-size="13" font-weight="bold" fill="#333">E. Fact landmarks (LAMA machinery)</text>
+  <g font-size="11" fill="#444">
+    <text x="512" y="1780">Flag literal nodes that are landmarks (must be</text>
+    <text x="512" y="1796">true on every plan) + mark actions achieving</text>
+    <text x="512" y="1812">the next unreached landmark. Discrete, scale-</text>
+    <text x="512" y="1828">free goal direction (no C3 scale problem).</text>
+  </g>
+  <g font-size="10" text-anchor="middle">
+    <rect x="540" y="1850" width="150" height="24" rx="7" fill="#CB4335"/>
+    <text x="615" y="1866" fill="#fff">carry(ball1,grip1) &#9873; LM</text>
+    <rect x="710" y="1850" width="130" height="24" rx="7" fill="#7B241C"/>
+    <text x="775" y="1866" fill="#FAD7A0">G-at &#9873; LM</text>
+  </g>
+  <g font-size="11">
+    <text x="512" y="1908" fill="#196F3D" font-weight="bold">Precedent: ASNets use LM-cut landmark</text>
+    <text x="512" y="1924" fill="#196F3D" font-weight="bold">features; LAMA computes them cheaply.</text>
+    <text x="512" y="1946" fill="#555">Subgoal ladder = intermediate attraction, not</text>
+    <text x="512" y="1962" fill="#555">just terminal.</text>
+  </g>
+
+  <!-- card F -->
+  <rect x="942" y="1732" width="430" height="250" rx="10" fill="#FDF2E3" stroke="#CA6F1E" stroke-width="1.8"/>
+  <text x="958" y="1758" font-size="13" font-weight="bold" fill="#A04000">F. FIRST: cheating-input ceiling test (your method)</text>
+  <g font-size="11" fill="#6E2C00">
+    <text x="958" y="1780">Before building ANY of C/D/E: inject the expert</text>
+    <text x="958" y="1796">action as an input feature (flag on the correct</text>
+    <text x="958" y="1812">grounding's edges), train multi-domain, test</text>
+    <text x="958" y="1828">zero-shot WITH the flag. If zero-shot &#8776;100%:</text>
+    <text x="958" y="1844">the architecture can exploit explicit guidance</text>
+    <text x="958" y="1860">across domains &#8594; C/D/E have a path. If not:</text>
+    <text x="958" y="1876">the bottleneck is deeper than features.</text>
+  </g>
+  <g font-size="11">
+    <text x="958" y="1908" fill="#196F3D" font-weight="bold">Cost: 1 featurization flag + 1&#8211;2 training runs.</text>
+    <text x="958" y="1926" fill="#196F3D" font-weight="bold">Decides whether C/D/E are worth building,</text>
+    <text x="958" y="1944" fill="#196F3D" font-weight="bold">exactly like your 16&#8594;64 / attention era tests.</text>
+  </g>
+
+</svg>
+</div>
