@@ -629,13 +629,40 @@ class PlannerTester:
         else:
             raise ValueError(f"Unknown search strategy: {strategy}")
 
+    def _find_goal_achieving_action(self, state, groundings):
+        """DIAGNOSTIC (GABAR_ORACLE_ACHIEVE=1): an applicable grounding whose
+        execution directly satisfies an unsatisfied goal literal, else None.
+        Upper-bounds what any terminal-achievement trigger (e.g. goal-binding
+        edges) could recover with the current model doing everything else."""
+        goal = state.goal
+        goal_lits = set(getattr(goal, 'literals', [goal]))
+        unsat = [g for g in goal_lits if g not in state.literals]
+        if not unsat:
+            return None
+        for g in groundings:
+            next_state = self.env.step(g)[0]
+            self.env.set_state(state)
+            if any(l in next_state.literals for l in unsat):
+                return g
+        return None
+
     def _run_greedy_search(self, state, model, action_space, graph_metadata,monitor,
                             result,start_time, fname, planner_data):
+        _oracle = os.environ.get("GABAR_ORACLE_ACHIEVE", "")
         while True:
             groundings = list(self.env.action_space.all_ground_literals(state))
             action_param_list = convert_state_and_run_model(
                 model, state, action_space, self.config.device, groundings, graph_metadata
             )
+
+            # Oracle terminal trigger: prepend the goal-achieving action so
+            # the normal executor (validity, monitor, goal check) takes it.
+            # Diagnostic only - never a reported method. V1 is not meaningful
+            # under this flag.
+            if _oracle:
+                achieving = self._find_goal_achieving_action(state, groundings)
+                if achieving is not None:
+                    action_param_list = [achieving] + list(action_param_list)
 
             # GABAR_DEBUG_PROPOSALS=1: print the model's ranked proposals on
             # the first step of each problem - distinguishes "no applicable
