@@ -379,6 +379,9 @@ class PlannerTester:
         self.learned_search_strat = config.learned_search_strat
 
         self.load_planner_data()
+        # Seeded once per tester: revisit-trap fallback samples among the
+        # model's valid proposals (reproducible across runs).
+        self._fallback_rng = random.Random(42)
         self.opt_planner = _create_planner(config.train_planner_name)
         self.non_opt_planner = _create_planner(config.eval_planner_name)
         self.metrics = {}
@@ -701,9 +704,15 @@ class PlannerTester:
                     
                 break  # Break to get new action predictions for new state
             
-            # If all actions led to repeated states, just take the first valid action and continue
+            # If all actions led to repeated states, take a RANDOM valid
+            # action. Deterministic valid_actions[0] created permanent
+            # 2-cycles (observed zero-shot: room3<->room4 for 495 steps once
+            # both successors were visited) because the model re-ranks the
+            # same candidates in the toggling state. Sampling makes the
+            # trapped executor a random walk over the model's valid
+            # proposals instead - same protocol for every system.
             if not action_taken and valid_actions:
-                new_action = valid_actions[0]
+                new_action = self._fallback_rng.choice(valid_actions)
                 state = self.env.step(new_action)[0]
                 if monitor:
                     monitor.add_state(state)
@@ -764,7 +773,7 @@ class PlannerTester:
             break
 
         if not action_taken and valid_actions:
-            new_action = valid_actions[0]
+            new_action = self._fallback_rng.choice(valid_actions)
             st["state"] = env.step(new_action)[0]
             if monitor:
                 monitor.add_state(st["state"])
