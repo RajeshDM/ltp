@@ -999,18 +999,21 @@ def state_to_graph_wrapper(state,action_space,grounding,prev_actions,prev_state,
     graph_target = copy_info_from_graph(graph_input)
 
     if objects is not None :
-        add_extra_info_in_graph(graph_input, action_scores, num_actions,action_object_scores, objects, 
-                                num_objects, max_number_action_parameters,action_index,cheating_input,objects_to_node)
+        add_extra_info_in_graph(graph_input, action_scores, num_actions,action_object_scores, objects,
+                                num_objects, max_number_action_parameters,action_index,cheating_input,objects_to_node,
+                                graph_metadata=graph_metadata)
 
         add_extra_info_in_graph(graph_target, action_scores, num_actions,action_object_scores, objects,
-                                    num_objects, max_number_action_parameters,action_index,cheating_input,objects_to_node)
+                                    num_objects, max_number_action_parameters,action_index,cheating_input,objects_to_node,
+                                    graph_metadata=graph_metadata)
 
     return graph_input, graph_target, node_to_objects
 
 
 def add_extra_info_in_graph(graph_input, action_scores, num_actions,action_object_scores,
                              objects, num_objects, max_number_action_parameters,
-                             action_index,cheating_input,objects_to_node):
+                             action_index,cheating_input,objects_to_node,
+                             graph_metadata=None):
     graph_input['action_scores'] = np.reshape(np.array(action_scores),[1,num_actions]).astype(np.int64)
     graph_input['action_object_scores'] = np.reshape(np.array(action_object_scores),[max_number_action_parameters,num_objects]).astype(np.int64)
     graph_input['n_parameters'] = np.reshape(max_number_action_parameters,[1]).astype(np.int64)
@@ -1020,10 +1023,26 @@ def add_extra_info_in_graph(graph_input, action_scores, num_actions,action_objec
     The Cheating encoding experiment 
     '''
     if cheating_input == True :
-        graph_input['nodes'][action_index][-3] = 1
-        for c,curr_object in enumerate(reversed(objects)):
+        # Name-based column lookup: the legacy positional writes ([-3],
+        # [-1-c] over reversed objects) assumed the 3 hardcoded per-domain
+        # columns and arity <= 2, silently clobbering real features in
+        # structural/joint metadata. Fail loudly if the metadata was not
+        # built with cheating columns.
+        nf = graph_metadata['node_feature_to_index'] if graph_metadata else None
+        if nf is None or 'is_correct_action' not in nf:
+            raise RuntimeError(
+                "--cheating-input requires metadata built with cheating "
+                "columns (structural/joint featurization passes "
+                "cheating=True; rebuild caches with the _cheat tag).")
+        graph_input['nodes'][action_index][nf['is_correct_action']] = 1
+        for c, curr_object in enumerate(objects):
             obj_index = objects_to_node[curr_object]
-            graph_input['nodes'][obj_index][-1-c] =1
+            col = nf.get(f'is_correct_obj_{c + 1}')
+            if col is None:
+                raise RuntimeError(
+                    f"cheating column is_correct_obj_{c + 1} missing "
+                    f"(expert action arity exceeds registered ka columns)")
+            graph_input['nodes'][obj_index][col] = 1
 
 def copy_info_from_graph(graph_input):
     graph_target = {

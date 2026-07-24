@@ -525,15 +525,19 @@ if __name__ == "__main__":
                     # reuses the same featurized graphs. Union keeps
                     # domain-set tags (its merged vocab genuinely differs).
                     tag = f"_{args.featurization}_kp{kp}_ka{ka}"
+                    if args.cheating_input:
+                        tag += "_cheat"  # widths differ: never share sidecars
                     per_domain_graphs = {}
                     for name, num_problems in train_domains:
                         if args.featurization == 'structural':
                             struct_md = build_structural_metadata(
-                                per_domain_meta[name][1], kp, ka)
+                                per_domain_meta[name][1], kp, ka,
+                                cheating=args.cheating_input)
                         else:
                             struct_md = build_lifted_metadata(
                                 per_domain_meta[name][1], kp, ka,
-                                args.featurization)
+                                args.featurization,
+                                cheating=args.cheating_input)
                         graphs, _, _ = process_pddl_to_graphs(
                             name, train_planner, num_problems, args,
                             _create_graph_dataset_ltp,
@@ -1216,19 +1220,23 @@ if __name__ == "__main__":
             # canonical training arities, so any domain (zero-shot included)
             # featurizes at the trained widths.
             _feat = graph_metadata.get('featurization')
+            _cheat_cols = ('node_feature_to_index' in graph_metadata and
+                           'is_correct_action' in graph_metadata['node_feature_to_index'])
             if _feat == 'structural':
                 from ploi.structural import build_structural_metadata
                 test_md = build_structural_metadata(
                     test_action_space,
                     graph_metadata['max_pred_arity'],
-                    graph_metadata['max_action_arity'])
+                    graph_metadata['max_action_arity'],
+                    cheating=_cheat_cols)
             elif _feat in ('joint', 'joint_lite'):
                 from ploi.lifted_layer import build_lifted_metadata
                 test_md = build_lifted_metadata(
                     test_action_space,
                     graph_metadata['max_pred_arity'],
                     graph_metadata['max_action_arity'],
-                    _feat)
+                    _feat,
+                    cheating=_cheat_cols)
             elif is_zero_shot:
                 test_md = dict(graph_metadata)
                 test_md['allow_unknown_symbols'] = True

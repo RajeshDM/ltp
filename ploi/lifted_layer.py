@@ -105,7 +105,7 @@ def build_lifted_spec(action_space):
 
 
 def build_lifted_metadata(action_space, max_pred_arity, max_action_arity, mode,
-                          goal_prefix="WANT"):
+                          goal_prefix="WANT", cheating=False):
     """Structural metadata (Method 0) extended with the lifted-layer classes.
 
     Widths depend only on (max_pred_arity, max_action_arity, mode-independent
@@ -115,7 +115,8 @@ def build_lifted_metadata(action_space, max_pred_arity, max_action_arity, mode,
     """
     assert mode in ("joint", "joint_lite"), mode
     kp, ka = max_pred_arity, max_action_arity
-    md = build_structural_metadata(action_space, kp, ka, goal_prefix=goal_prefix)
+    md = build_structural_metadata(action_space, kp, ka, goal_prefix=goal_prefix,
+                                   cheating=cheating)
 
     node_extra = ["lifted_pred_node", "occ_node_pre", "occ_node_add",
                   "occ_node_del"]

@@ -46,11 +46,15 @@ def _pred_arity(predicate):
 
 
 def build_structural_metadata(action_space, max_pred_arity, max_action_arity,
-                              goal_prefix="WANT"):
+                              goal_prefix="WANT", cheating=False):
     """Build symbol-free graph metadata for one domain from its action space.
 
     Same signature dicts as _create_graph_structure_ltp, so the graph code is
     unchanged; widths are fixed by (max_pred_arity, max_action_arity) alone.
+
+    cheating=True (ceiling test): registers columns marking the expert's
+    schema and per-slot objects, sized to ka (the legacy per-domain path
+    hardcoded 2 object columns and wrote positionally).
     """
     kp, ka = max_pred_arity, max_action_arity
 
@@ -60,6 +64,9 @@ def build_structural_metadata(action_space, max_pred_arity, max_action_arity,
     node_classes += [f"act_a{k}" for k in range(ka + 1)]
     node_classes += [f"pred_a{k}_s{s}" for k in range(kp + 1) for s in (0, 1)]
     node_classes += [f"gpred_a{k}_s{s}" for k in range(kp + 1) for s in (0, 1)]
+    if cheating:
+        node_classes += ["is_correct_action"]
+        node_classes += [f"is_correct_obj_{i + 1}" for i in range(ka)]
     edge_classes = ["action_object"]
     edge_classes += [f"pos_{k}" for k in range(ka)]
     edge_classes += [f"pred_pos_{k}" for k in range(kp)]
