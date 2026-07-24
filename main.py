@@ -174,6 +174,21 @@ def initialize_model(model_class, args, action_space):
     )
 
 
+def _apply_arity_override(model, args):
+    """Lift the decoder's parameter capacity to --max-action-arity.
+
+    The capacity is derived from the training action space at init; a wider
+    override (used to featurize at canonical arities above the training
+    set's, so a high-arity held-out domain decodes at full width) must
+    extend the beam loop bound too. No weights are sized by it - the
+    parameter loop is length-only (CLAUDE.md 5.7).
+    """
+    if getattr(args, 'max_action_arity', 0) > 0:
+        model.max_number_action_parameters = max(
+            model.max_number_action_parameters, args.max_action_arity)
+    return model
+
+
 def run_tests(
             curr_manager,
             model_class,
@@ -236,7 +251,8 @@ def run_tests(
             # Create fresh model instance
             #model = model_class()
             curr_models = {}
-            curr_model = initialize_model(model_class, args, action_space)
+            curr_model = _apply_arity_override(
+                initialize_model(model_class, args, action_space), args)
 
             # Load model state
             curr_model.load_state_dict(model_info['state_dict'])
@@ -244,8 +260,24 @@ def run_tests(
             curr_model.eval()
 
             if decode_action_space is not None:
+                # Clamp to the model's trained parameter capacity: a test
+                # domain with higher-arity schemas (e.g. Rovers under a
+                # ka=4-trained model) would otherwise never satisfy the beam
+                # finish condition and index past the padded parameter dim
+                # (CUDA device-side assert). Clamped schemas decode truncated
+                # groundings -> invalid actions -> counted as failures, not
+                # crashes.
+                _cap = curr_model.max_number_action_parameters
+                _clamped = [str(schema) for schema, op in
+                            decode_action_space.items()
+                            if len(op.params) > _cap]
+                if _clamped:
+                    print(f"WARNING: schemas exceed the model's parameter "
+                          f"capacity ({_cap}) and cannot be fully decoded "
+                          f"zero-shot: {_clamped}. Train with "
+                          f"--max-action-arity >= their arity to lift this.")
                 curr_model.action_parameter_number_dict = {
-                    i: len(op.params)
+                    i: min(len(op.params), _cap)
                     for i, op in enumerate(decode_action_space.values())}
 
             if model_info['epoch'] in tested_epoch_numbers:
@@ -274,7 +306,12 @@ def run_tests(
             })
             #metrics = results[-1]['test_results'][PlannerType.LEARNED_MODEL]
             metrics = results[-1]['test_results'][planner_type]
-            print ("failed : ",metrics.failures)
+            _fails = metrics.failures
+            _per_div = {d: len(v) for d, v in _fails.items() if v}
+            print(f"failed: {sum(_per_div.values())} problems | "
+                  f"per division: {_per_div}")
+            if args.debug_level > 0:
+                print("failed problem ids: ", _fails)
             #_ = format_metrics(results[-1]['test_results'][PlannerType.LEARNED_MODEL], model_info['epoch'])
             _ = format_metrics(results[-1]['test_results'][planner_type], model_info['epoch'])
             #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
@@ -470,6 +507,15 @@ if __name__ == "__main__":
                              for p in md['all_predicates'])
                     ka = max(len(op.params) for (_, a) in per_domain_meta.values()
                              for op in a.values())
+                    # Optional overrides: train at wider canonical arities
+                    # than the training set needs, so a held-out domain with
+                    # higher-arity symbols (e.g. Rovers under a no-rovers
+                    # set) featurizes and decodes at full width. Sidecars are
+                    # shared with any set computing the same (kp, ka).
+                    if args.max_pred_arity > 0:
+                        kp = max(kp, args.max_pred_arity)
+                    if args.max_action_arity > 0:
+                        ka = max(ka, args.max_action_arity)
                     # Structural/lifted metadata for a domain depends on the
                     # TRAINING SET only through (kp, ka) - each domain is
                     # featurized from its own action space at those canonical
@@ -909,7 +955,8 @@ if __name__ == "__main__":
         elif args.ablation == 'val' :
             model_class = GNN_Val
 
-        _model = initialize_model(model_class, args, action_space)
+        _model = _apply_arity_override(
+            initialize_model(model_class, args, action_space), args)
 
         training_hyperparameters = {
             'lr': args.lr,

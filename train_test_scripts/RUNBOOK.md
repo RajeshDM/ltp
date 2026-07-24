@@ -74,6 +74,18 @@ Optional strengtheners, only if GPUs idle (in order of value):
   ```
 - **P6 — optional strengtheners** (list above), only if GPUs idle.
 
+## Rovers arity note (2026-07-23)
+
+Rovers has schemas of arity up to 6; every other domain tops out at 4, so
+rovers-held-out models used to train at ka=4 and CRASHED (CUDA assert) or
+silently could not decode rovers' high-arity schemas. Fixed two ways: the
+decoder now clamps gracefully (warning instead of crash), and every config
+that holds out rovers (`*_no_rovers`, `ho2_*_blocks_rovers`, `ho4_*`) sets
+`max_action_arity: 6` so the model trains at full width — reusing the
+existing `kp3_ka6` sidecars, zero refeaturization. **The already-finished
+`loo8_joint_no_rovers` run was trained at ka=4 and must be retrained after
+pulling** (its rovers zero-shot numbers would be structurally handicapped).
+
 ## Per-filesystem prerequisites (once, before launching there)
 
 ```bash

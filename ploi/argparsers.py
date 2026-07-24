@@ -523,6 +523,24 @@ def get_ploi_argument_parser():
              "0 = disabled. Set automatically by --run-mode if not specified.")
 
     parser.add_argument(
+        "--max-pred-arity",
+        type=int,
+        default=0,
+        help="Lower bound on the canonical max predicate arity used for "
+             "structural/joint featurization (0 = derive from the training "
+             "set). Raise it when a held-out test domain has higher-arity "
+             "predicates than any training domain.")
+
+    parser.add_argument(
+        "--max-action-arity",
+        type=int,
+        default=0,
+        help="Lower bound on the canonical max schema arity for "
+             "structural/joint featurization (0 = derive from the training "
+             "set). Raise it when a held-out test domain has higher-arity "
+             "schemas (e.g. Rovers under a no-rovers training set).")
+
+    parser.add_argument(
         "--config",
         type=str,
         default="",
