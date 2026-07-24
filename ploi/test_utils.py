@@ -107,6 +107,11 @@ class PlannerMetrics:
     max_time_taken: float = 0
     plan_quality: float = 0
     median_plan_length: float = 0
+    # Fraction of rollout steps where the model's TOP-RANKED proposal was an
+    # applicable ground action. Measures zero-shot action-construction
+    # validity independently of plan completion (C1/C2 intermediate signal).
+    # -1 = not tracked (external planners).
+    top1_valid_rate: float = -1
 
 class PlanningResult:
     def __init__(self):
@@ -114,8 +119,10 @@ class PlanningResult:
         self.time_taken = 0
         self.success = False
         self.plan_length = 0
-        self.repeated_states = 0 
+        self.repeated_states = 0
         self.problem_idx = -1
+        self.steps = 0
+        self.top1_valid = 0
         self.nodes_expanded = 0
         self.cutoffs = 0
 
@@ -153,8 +160,13 @@ def compute_metrics(problems_per_division,
             median_plan_length = 0
             
         total_repeated_states = sum(r.repeated_states for r in planner_results)
-        
+
+        total_steps = sum(getattr(r, 'steps', 0) for r in planner_results)
+        top1_valid_rate = (sum(getattr(r, 'top1_valid', 0) for r in planner_results)
+                           / total_steps) if total_steps else -1
+
         metrics[planner_type] = PlannerMetrics(
+            top1_valid_rate=top1_valid_rate,
             success_rate_with_monitor=len(successful_results_with_monitor) / num_problems,
             success_rate_without_monitor=len(successful_results_without_monitor) / num_problems,
             avg_plan_length=avg_plan_length,
@@ -269,6 +281,8 @@ def format_metrics(metrics, epoch=None):
         'Plan': f"{metrics.avg_plan_length:.1f}/{metrics.median_plan_length:.1f}/{metrics.max_plan_length}",
         'Time': f"{metrics.avg_time_taken:.2f}/{metrics.max_time_taken:.2f}"
     }
+    if getattr(metrics, 'top1_valid_rate', -1) >= 0:
+        formatted_metrics['V1'] = f"{metrics.top1_valid_rate:.1%}"
 
     # Print header and metrics in one line
     if epoch is not None:

@@ -649,7 +649,20 @@ class PlannerTester:
             grounding_set = self._make_grounding_set(groundings)
             valid_actions = [action for action in action_param_list
                         if self._is_valid_action_fast(action, grounding_set)]
-            
+
+            # Track top-1 proposal validity: measures zero-shot
+            # action-construction independently of plan completion.
+            result.steps += 1
+            if action_param_list and self._is_valid_action_fast(
+                    action_param_list[0], grounding_set):
+                result.top1_valid += 1
+
+            # GABAR_DEBUG_TRACE=1: print the goal once and every executed
+            # action - distinguishes wandering from looping after step 1.
+            _trace = os.environ.get("GABAR_DEBUG_TRACE", "")
+            if _trace and not result.plan:
+                print(f"\n[p{result.problem_idx}] goal: {state.goal}")
+
             # If no valid actions at all, exit
             if not valid_actions:
                 result.time_taken = time.time() - start_time
@@ -675,7 +688,10 @@ class PlannerTester:
                 state = next_state
                 result.plan.append(new_action)
                 action_taken = True
-                
+                if _trace:
+                    print(f"[p{result.problem_idx}] step {len(result.plan)}: "
+                          f"{new_action}")
+
                 if self._check_goal_reached(state):
                     result.success = True
                     result.time_taken = time.time() - start_time
@@ -692,7 +708,10 @@ class PlannerTester:
                 if monitor:
                     monitor.add_state(state)
                 result.plan.append(new_action)
-            
+                if _trace:
+                    print(f"[p{result.problem_idx}] step {len(result.plan)}: "
+                          f"{new_action} (all-candidates-revisit fallback)")
+
             # Check if plan is too long
             if len(result.plan) > self.config.max_plan_length:
                 result.time_taken = time.time() - start_time
@@ -710,6 +729,11 @@ class PlannerTester:
         grounding_set = self._make_grounding_set(groundings)
         valid_actions = [action for action in action_param_list
                     if self._is_valid_action_fast(action, grounding_set)]
+
+        result.steps += 1
+        if action_param_list and self._is_valid_action_fast(
+                action_param_list[0], grounding_set):
+            result.top1_valid += 1
 
         if not valid_actions:
             result.time_taken = time.time() - start_time
