@@ -56,9 +56,13 @@ def run_problem(env, idx, max_len, rollouts, seed):
         rng = random.Random(seed + 1000 * idx + r)
         env.fix_problem_index(idx)
         state, _ = env.reset()
+        # Reground ONCE per problem (builds pddlgym's ground-action cache for
+        # the new instance), then use the cached path per step - same as the
+        # learned tester's greedy loop. Regrounding every step is O(|O|^arity)
+        # work per step and dominated everything (~0.4s/step on hard Visitall).
+        env.action_space.all_ground_literals(state, reground=True)
         for step in range(max_len):
-            groundings = list(
-                env.action_space.all_ground_literals(state, reground=True))
+            groundings = list(env.action_space.all_ground_literals(state))
             if not groundings:
                 break  # dead end
             action = rng.choice(sorted(groundings))
