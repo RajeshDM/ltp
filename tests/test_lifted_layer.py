@@ -270,3 +270,79 @@ def _run_all():
 
 if __name__ == "__main__":
     sys.exit(1 if _run_all() else 0)
+
+# --- schema chaining (#4): enables/threatens + goal distances ---
+
+from ploi.lifted_layer import build_chain_spec, schema_goal_distances
+
+
+class _CPred:
+    def __init__(self, name, arity=1):
+        self.name, self.arity = name, arity
+class _CLit:
+    def __init__(self, pred, is_anti=False):
+        self.predicate, self.is_anti, self.variables = pred, is_anti, []
+class _CConj:
+    def __init__(self, lits):
+        self.literals = lits
+class _COp:
+    def __init__(self, pre, add, dele):
+        self.params = []
+        self.preconds = _CConj([_CLit(_CPred(p)) for p in pre])
+        self.effects = _CConj([_CLit(_CPred(p)) for p in add]
+                              + [_CLit(_CPred(p), True) for p in dele])
+
+
+def _gripper_like_space():
+    return {
+        "pick": _COp(pre=["at", "at-robby", "free"], add=["carry"],
+                     dele=["at", "free"]),
+        "drop": _COp(pre=["carry", "at-robby"], add=["at", "free"],
+                     dele=["carry"]),
+        "move": _COp(pre=["at-robby"], add=["at-robby"], dele=["at-robby"]),
+    }
+
+
+def test_chain_enables_and_threatens():
+    spec = build_lifted_spec(_gripper_like_space())
+    chain = build_chain_spec(spec)
+    pairs = {(a, b) for (a, _, b, _) in chain["enables"]}
+    assert ("pick", "drop") in pairs      # pick.add:carry -> drop.pre:carry
+    assert ("drop", "pick") in pairs      # drop.add:at -> pick.pre:at
+    assert ("move", "pick") in pairs      # move.add:at-robby -> pick.pre:at-robby
+    tpairs = {(a, b) for (a, _, b, _) in chain["threatens"]}
+    assert ("pick", "pick") in tpairs     # pick.del:at -> pick.pre:at
+    assert ("drop", "drop") in tpairs     # drop.del:carry -> drop.pre:carry
+
+
+def test_chain_goal_distances():
+    spec = build_lifted_spec(_gripper_like_space())
+    chain = build_chain_spec(spec)
+    d = schema_goal_distances(spec, chain, {"at"})
+    assert d["drop"] == 0                  # achieves the goal predicate
+    assert d["pick"] == 1                  # enables drop (carry)
+    assert d["move"] == 1                  # enables drop (at-robby)
+    d2 = schema_goal_distances(spec, chain, {"carry"})
+    assert d2["pick"] == 0 and d2["drop"] == 1 and d2["move"] == 1
+    d3 = schema_goal_distances(spec, chain, {"unrelated"}, max_dist=3)
+    assert all(v == 3 for v in d3.values())   # not goal-connected bucket
+
+
+def test_chain_renaming_invariance():
+    def renamed(space, mapping):
+        out = {}
+        for s, op in space.items():
+            out[s + "_x"] = _COp(
+                pre=[mapping[l.predicate.name] for l in op.preconds.literals],
+                add=[mapping[l.predicate.name] for l in op.effects.literals
+                     if not l.is_anti],
+                dele=[mapping[l.predicate.name] for l in op.effects.literals
+                      if l.is_anti])
+        return out
+    space = _gripper_like_space()
+    mapping = {"at": "p1", "at-robby": "p2", "free": "p3", "carry": "p4"}
+    c1 = build_chain_spec(build_lifted_spec(space))
+    c2 = build_chain_spec(build_lifted_spec(renamed(space, mapping)))
+    strip = lambda c: sorted((a.replace("_x", ""), i, b.replace("_x", ""), j)
+                             for (a, i, b, j) in c["enables"])
+    assert strip(c1) == strip(c2)

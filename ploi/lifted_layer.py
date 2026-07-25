@@ -104,6 +104,64 @@ def build_lifted_spec(action_space):
     }
 
 
+def build_chain_spec(spec):
+    """Schema-chaining pairs over an existing lifted spec (#4, class-1 fix).
+
+    enables:   (A, i, B, j) - occurrence i of schema A has role 'add' for
+               predicate p, occurrence j of schema B has role 'pre' for p.
+               "A produces what B needs": gripper pick.add:carry ->
+               drop.pre:carry; miconic board.add:boarded -> depart.pre:boarded.
+    threatens: (A, i, B, j) - same with role 'del' at A: "A destroys what
+               B needs" (lifted delete reasoning).
+
+    Pure function of the domain description; computed once, stored in
+    metadata, zero per-state cost.
+    """
+    adds, pres, dels = {}, {}, {}
+    for schema, occs in spec["schemas"].items():
+        for k, occ in enumerate(occs):
+            bucket = {"add": adds, "pre": pres, "del": dels}[occ["role"]]
+            bucket.setdefault(occ["pred"], []).append((schema, k))
+    enables = [(sa, ka_, sb, kb)
+               for pred, producers in adds.items()
+               for (sa, ka_) in producers
+               for (sb, kb) in pres.get(pred, [])]
+    threatens = [(sa, ka_, sb, kb)
+                 for pred, deleters in dels.items()
+                 for (sa, ka_) in deleters
+                 for (sb, kb) in pres.get(pred, [])]
+    return {"enables": enables, "threatens": threatens}
+
+
+def schema_goal_distances(spec, chain, goal_pred_names, max_dist=3):
+    """Per-schema hop count to a goal-achieving schema (#4's number, #5a at 0).
+
+    Distance 0: schema has an add occurrence of a goal predicate. Distance
+    d+1: schema enables (via any occurrence pair) a distance-d schema.
+    Clamped to max_dist; schemas with no path get max_dist (a real bucket:
+    'not goal-connected'). Depends only on WHICH predicates are goals - one
+    computation per (domain, goal signature), not per state.
+    """
+    dist = {}
+    for schema, occs in spec["schemas"].items():
+        if any(o["role"] == "add" and o["pred"] in goal_pred_names
+               for o in occs):
+            dist[schema] = 0
+    frontier = set(dist)
+    d = 0
+    while frontier and d < max_dist:
+        d += 1
+        nxt = set()
+        for (sa, _ka, sb, _kb) in chain["enables"]:
+            if sb in frontier and sa not in dist:
+                dist[sa] = d
+                nxt.add(sa)
+        frontier = nxt
+    for schema in spec["schemas"]:
+        dist.setdefault(schema, max_dist)
+    return dist
+
+
 def build_lifted_metadata(action_space, max_pred_arity, max_action_arity, mode,
                           goal_prefix="WANT", cheating=False):
     """Structural metadata (Method 0) extended with the lifted-layer classes.
