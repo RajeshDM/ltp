@@ -959,8 +959,13 @@ if __name__ == "__main__":
         elif args.ablation == 'val' :
             model_class = GNN_Val
 
-        _model = _apply_arity_override(
-            initialize_model(model_class, args, action_space), args)
+        # NOTE: no _apply_arity_override here. Training data has exactly
+        # as many parameter slots as the TRAINING action space's max arity;
+        # the decode loop indexes action_object_scores by slot, so raising
+        # capacity above the data's width indexes out of bounds (CUDA
+        # device-side assert). The override is test-time only, where graphs
+        # come from the test domain's own action space.
+        _model = initialize_model(model_class, args, action_space)
 
         training_hyperparameters = {
             'lr': args.lr,
