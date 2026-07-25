@@ -255,22 +255,6 @@ def test_metadata_pickle_roundtrip():
         pass
 
 
-def _run_all():
-    failures = 0
-    for name, fn in sorted(globals().items()):
-        if name.startswith("test_") and callable(fn):
-            try:
-                fn()
-                print(f"PASS {name}")
-            except AssertionError as e:
-                failures += 1
-                print(f"FAIL {name}: {e}")
-    return failures
-
-
-if __name__ == "__main__":
-    sys.exit(1 if _run_all() else 0)
-
 # --- schema chaining (#4): enables/threatens + goal distances ---
 
 from ploi.lifted_layer import build_chain_spec, schema_goal_distances
@@ -346,3 +330,178 @@ def test_chain_renaming_invariance():
     strip = lambda c: sorted((a.replace("_x", ""), i, b.replace("_x", ""), j)
                              for (a, i, b, j) in c["enables"])
     assert strip(c1) == strip(c2)
+
+
+# --- 'joint_chain' featurization: metadata, graph features, edges ---
+
+from ploi.lifted_layer import (
+    add_chain_node_features,
+    add_grounded_effect_edges,
+)
+
+_CHAIN_NODE_CLASSES = ("adds_goal_pred", "goal_relevant_obj",
+                       "gdist_0", "gdist_1", "gdist_2", "gdist_3plus")
+_CHAIN_EDGE_CLASSES = ("enables", "threatens", "achieves_goal", "deletes_true")
+
+
+def test_joint_chain_metadata_has_new_classes_joint_does_not():
+    mdc = build_lifted_metadata(blocks_action_space(), KP, KA, "joint_chain")
+    mdj = build_lifted_metadata(blocks_action_space(), KP, KA, "joint")
+    for cls in _CHAIN_NODE_CLASSES:
+        assert cls in mdc["node_feature_to_index"], cls
+        assert cls not in mdj["node_feature_to_index"], cls
+    for cls in _CHAIN_EDGE_CLASSES:
+        assert cls in mdc["edge_feature_to_index"], cls
+        assert cls not in mdj["edge_feature_to_index"], cls
+    # joint_chain = joint + exactly the new classes; joint indices unchanged.
+    assert mdc["num_node_features"] == mdj["num_node_features"] + 6
+    assert mdc["num_edge_features"] == mdj["num_edge_features"] + 4
+    for cls, i in mdj["edge_feature_to_index"].items():
+        assert mdc["edge_feature_to_index"][cls] == i
+    assert "chain" in mdc["lifted_spec"]
+    assert "chain" not in mdj["lifted_spec"]
+    assert set(mdc["lifted_spec"]["chain"]) == {"enables", "threatens"}
+
+
+def test_joint_chain_widths_deterministic_across_renaming():
+    md1 = build_lifted_metadata(blocks_action_space(), KP, KA, "joint_chain")
+    md2 = build_lifted_metadata(renamed_blocks_action_space(), KP, KA,
+                                "joint_chain")
+    assert md1["num_node_features"] == md2["num_node_features"]
+    assert md1["num_edge_features"] == md2["num_edge_features"]
+    assert md1["node_feature_to_index"]["gdist_0"] == \
+        md2["node_feature_to_index"]["gdist_0"]
+
+
+def test_joint_chain_has_occurrence_nodes():
+    md = build_lifted_metadata(blocks_action_space(), KP, KA, "joint_chain")
+    keys = lifted_node_keys(md["lifted_spec"])
+    assert any(k.startswith("LIFTED_OCC::") for k in keys)
+
+
+def _build_chain_graph(action_space, on_name, holding_name):
+    """Tiny 'joint_chain' state: objects a,b; on(a,b) true; goal holding(a)
+    unsatisfied; one applicable grounding of the schema that adds holding."""
+    md = build_lifted_metadata(action_space, KP, KA, "joint_chain")
+    spec = md["lifted_spec"]
+    keys = lifted_node_keys(spec)
+    all_actions = list(action_space.keys())
+    pred_objs = {l.predicate.name: l.predicate
+                 for op in action_space.values() for l in op.preconds.literals}
+    state_lit = MockLiteral(pred_objs[on_name], ["a", "b"])
+    goal_lit = MockLiteral(pred_objs[holding_name], ["a"])
+    goal_node = "WANT_GOAL_NODE"  # stands in for the wrapped WANT literal
+    node_order = ["a", "b", state_lit, goal_node] + keys + all_actions
+    o2n = {v: i for i, v in enumerate(node_order)}
+    n = len(node_order)
+    feats = np.zeros((n, md["num_node_features"]))
+    edges = np.zeros((n, n, md["num_edge_features"]))
+    add_lifted_node_features(feats, keys, spec, o2n,
+                             md["node_feature_to_index"], KP)
+    add_chain_node_features(feats, spec, all_actions, [state_lit], [goal_lit],
+                            o2n, md["node_feature_to_index"])
+    add_lifted_layer_edges(edges, [state_lit], all_actions, spec, o2n,
+                           md["edge_feature_to_index"], KP, KA)
+    achiever = next(a for a in all_actions
+                    if any(o["role"] == "add" and o["pred"] == holding_name
+                           for o in spec["schemas"][a.name]))
+    grounding = MockLiteral(achiever, ["a", "b"])
+    unsat_goal_nodes = {(holding_name, ("a",)): o2n[goal_node]}
+    true_literal_nodes = {(on_name, ("a", "b")): o2n[state_lit]}
+    add_grounded_effect_edges(edges, [grounding], action_space,
+                              unsat_goal_nodes, true_literal_nodes, o2n,
+                              md["edge_feature_to_index"])
+    return md, spec, o2n, feats, edges, state_lit, goal_node, all_actions
+
+
+def test_chain_gdist_and_goal_node_features():
+    md, spec, o2n, feats, edges, lit, goal_node, actions = _build_chain_graph(
+        blocks_action_space(), "on", "holding")
+    N = md["node_feature_to_index"]
+    unstack = next(a for a in actions if a.name == "unstack")  # adds holding
+    stack = next(a for a in actions if a.name == "stack")      # enables it
+    assert feats[o2n[unstack], N["gdist_0"]] == 1
+    assert feats[o2n[unstack], N["adds_goal_pred"]] == 1
+    assert feats[o2n[stack], N["gdist_1"]] == 1
+    assert feats[o2n[stack], N["adds_goal_pred"]] == 0
+    # holding(a) is an unsatisfied goal: a is goal-relevant, b is not.
+    assert feats[o2n["a"], N["goal_relevant_obj"]] == 1
+    assert feats[o2n["b"], N["goal_relevant_obj"]] == 0
+
+
+def test_chain_edges_between_occurrence_nodes():
+    md, spec, o2n, feats, edges, _, _, _ = _build_chain_graph(
+        blocks_action_space(), "on", "holding")
+    E = md["edge_feature_to_index"]
+    # stack occ 2 = add on -> unstack occ 0 = pre on: enables (both ways).
+    a, b = o2n[occ_node_key("stack", 2)], o2n[occ_node_key("unstack", 0)]
+    assert edges[a, b, E["enables"]] == 1 and edges[b, a, E["enables"]] == 1
+    # unstack occ 2 = del on -> unstack occ 0 = pre on: threatens.
+    t = o2n[occ_node_key("unstack", 2)]
+    assert edges[t, b, E["threatens"]] == 1
+    assert edges[a, b, E["threatens"]] == 0
+
+
+def test_chain_grounded_effect_edges():
+    md, spec, o2n, feats, edges, lit, goal_node, _ = _build_chain_graph(
+        blocks_action_space(), "on", "holding")
+    E = md["edge_feature_to_index"]
+    # unstack(a,b) adds holding(a) == unsatisfied goal: a <-> goal node.
+    assert edges[o2n["a"], o2n[goal_node], E["achieves_goal"]] == 1
+    assert edges[o2n[goal_node], o2n["a"], E["achieves_goal"]] == 1
+    assert edges[o2n["b"], o2n[goal_node], E["achieves_goal"]] == 0
+    # unstack(a,b) deletes on(a,b) == true literal: a,b <-> that literal.
+    assert edges[o2n["a"], o2n[lit], E["deletes_true"]] == 1
+    assert edges[o2n["b"], o2n[lit], E["deletes_true"]] == 1
+
+
+def test_chain_satisfied_goal_atom_is_inert():
+    """A goal atom already true yields no goal_relevant_obj bit (and the
+    call site excludes it from the achieves_goal lookup)."""
+    space = blocks_action_space()
+    md = build_lifted_metadata(space, KP, KA, "joint_chain")
+    spec = md["lifted_spec"]
+    keys = lifted_node_keys(spec)
+    all_actions = list(space.keys())
+    on = next(l.predicate for op in space.values()
+              for l in op.preconds.literals if l.predicate.name == "on")
+    lit = MockLiteral(on, ["a", "b"])  # same object serves as state AND goal
+    node_order = ["a", "b", lit] + keys + all_actions
+    o2n = {v: i for i, v in enumerate(node_order)}
+    feats = np.zeros((len(node_order), md["num_node_features"]))
+    add_chain_node_features(feats, spec, all_actions, [lit], [lit], o2n,
+                            md["node_feature_to_index"])
+    N = md["node_feature_to_index"]
+    assert feats[o2n["a"], N["goal_relevant_obj"]] == 0
+    assert feats[o2n["b"], N["goal_relevant_obj"]] == 0
+
+
+def test_chain_renaming_invariance_of_graph_tensors():
+    md1, spec1, o2n1, feats1, edges1, _, _, _ = _build_chain_graph(
+        blocks_action_space(), "on", "holding")
+    md2, spec2, o2n2, feats2, edges2, _, _, _ = _build_chain_graph(
+        renamed_blocks_action_space(), "zzz_rel", "mmm_grip")
+    rows1 = sorted(tuple(r) for r in feats1)
+    rows2 = sorted(tuple(r) for r in feats2)
+    assert rows1 == rows2
+    assert edges1.sum() == edges2.sum()
+    E1, E2 = md1["edge_feature_to_index"], md2["edge_feature_to_index"]
+    for cls in _CHAIN_EDGE_CLASSES:
+        assert edges1[:, :, E1[cls]].sum() == edges2[:, :, E2[cls]].sum(), cls
+
+
+def _run_all():
+    failures = 0
+    for name, fn in sorted(globals().items()):
+        if name.startswith("test_") and callable(fn):
+            try:
+                fn()
+                print(f"PASS {name}")
+            except AssertionError as e:
+                failures += 1
+                print(f"FAIL {name}: {e}")
+    return failures
+
+
+if __name__ == "__main__":
+    sys.exit(1 if _run_all() else 0)

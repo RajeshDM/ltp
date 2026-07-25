@@ -382,6 +382,16 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
         add_lifted_node_features(input_node_features, lifted_keys, _lifted_spec,
                                  objects_to_node, _node_feature_to_index,
                                  graph_metadata['max_pred_arity'])
+        if _lifted_spec.get('mode') == 'joint_chain':
+            # Goal-conditioned features (#5): schema goal-distance buckets +
+            # adds_goal_pred, goal_relevant_obj on unsatisfied-goal objects.
+            # Goal atoms are passed UNWRAPPED (no WANT prefix) so they compare
+            # against state literals directly.
+            from ploi.lifted_layer import add_chain_node_features
+            add_chain_node_features(input_node_features, _lifted_spec,
+                                    all_actions, literals,
+                                    sorted(goal_state.literals),
+                                    objects_to_node, _node_feature_to_index)
 
     all_edge_features_stack = np.zeros((max_action_arity,num_nodes, num_nodes,_num_edge_features))
     all_edge_features = all_edge_features_stack[0][:]
@@ -430,11 +440,11 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
             all_edge_features_stack[position,action_index, obj_index, position_index] = 1
             all_edge_features_stack[position,obj_index, action_index, position_index] = 1
 
-    # Binding layer (CLAUDE.md 5.5, 'joint' mode only): grounded
+    # Binding layer (CLAUDE.md 5.5, 'joint'/'joint_chain' modes): grounded
     # applicability edges also link the object to the precondition
     # OCCURRENCE node it instantiates.
     _binding_ctx = None
-    if _lifted_spec and _lifted_spec.get('mode') == 'joint':
+    if _lifted_spec and _lifted_spec.get('mode') in ('joint', 'joint_chain'):
         _binding_ctx = {
             'objects_to_node': objects_to_node,
             'ka': graph_metadata['max_action_arity'],
@@ -450,6 +460,27 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
                                                             position,_edge_feature_to_index,
                                                             allow_unknown=_allow_unknown,
                                                             binding_ctx=_binding_ctx)
+
+    # Grounded effect edges ('joint_chain' only, #6): each applicable
+    # grounding's add effects hitting an unsatisfied goal atom / delete
+    # effects hitting a true state atom link the participating objects to
+    # that existing literal node. Atoms without a node are skipped inside.
+    if _lifted_spec and _lifted_spec.get('mode') == 'joint_chain':
+        from ploi.lifted_layer import add_grounded_effect_edges
+        _true_literal_nodes = {
+            (l.predicate.name, tuple(l.variables)): objects_to_node[l]
+            for l in literals}
+        _unsat_goal_nodes = {}
+        # goal_literals was built as [G(g) for g in sorted(goal_state.literals)]
+        # -- zip recovers each unwrapped goal atom's WANT node index.
+        for _g, _wrapped in zip(sorted(goal_state.literals), goal_literals):
+            if _g not in state.literals:
+                _unsat_goal_nodes[(_g.predicate.name, tuple(_g.variables))] = \
+                    objects_to_node[_wrapped]
+        add_grounded_effect_edges(all_edge_features, all_groundings,
+                                  action_space, _unsat_goal_nodes,
+                                  _true_literal_nodes, objects_to_node,
+                                  _edge_feature_to_index)
 
     for action_edge in action_edges :
         for position in range(max_action_arity):

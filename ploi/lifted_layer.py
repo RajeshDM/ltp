@@ -16,6 +16,14 @@ Two featurization modes build on the structural substrate (Method 0):
   (object o at slot j satisfies a precondition) becomes an edge from the
   object to the precondition-occurrence node it instantiates.
 
+- 'joint_chain': everything 'joint' has, plus schema chaining and goal
+  relevance. Chain edges between occurrence nodes ('enables'/'threatens',
+  build_chain_spec); per-schema goal-distance buckets + 'adds_goal_pred'
+  and 'goal_relevant_obj' node features (add_chain_node_features,
+  schema_goal_distances); grounded effect edges 'achieves_goal'/
+  'deletes_true' from applicable groundings (add_grounded_effect_edges).
+  Wider metadata than 'joint' -> its own cache sidecar tag.
+
 Everything is symbol-free (roles + positions only), so renaming
 invariance and fixed cross-domain feature widths carry over from the
 structural substrate. Node ordering in the state graph stays
@@ -168,10 +176,12 @@ def build_lifted_metadata(action_space, max_pred_arity, max_action_arity, mode,
 
     Widths depend only on (max_pred_arity, max_action_arity, mode-independent
     class list), so graphs from different domains batch together and a
-    held-out domain featurizes at the same widths -- both modes share ONE
-    width so joint vs joint_lite is a pure graph-content ablation.
+    held-out domain featurizes at the same widths. 'joint' and 'joint_lite'
+    share ONE width so joint vs joint_lite is a pure graph-content ablation;
+    'joint_chain' appends its extra classes after them and is strictly wider
+    (it gets its own cache sidecar tag).
     """
-    assert mode in ("joint", "joint_lite"), mode
+    assert mode in ("joint", "joint_lite", "joint_chain"), mode
     kp, ka = max_pred_arity, max_action_arity
     md = build_structural_metadata(action_space, kp, ka, goal_prefix=goal_prefix,
                                    cheating=cheating)
@@ -183,6 +193,14 @@ def build_lifted_metadata(action_space, max_pred_arity, max_action_arity, mode,
                   + [f"parg_{i}" for i in range(kp)]
                   + [f"pair_p{i}_s{j}" for i in range(kp) for j in range(ka)]
                   + [f"bind_slot_{j}" for j in range(ka)])
+    if mode == "joint_chain":
+        # Appended AFTER the joint classes: joint/joint_lite indices and
+        # widths stay byte-identical; joint_chain is strictly wider.
+        node_extra = node_extra + ["adds_goal_pred", "goal_relevant_obj",
+                                   "gdist_0", "gdist_1", "gdist_2",
+                                   "gdist_3plus"]
+        edge_extra = edge_extra + ["enables", "threatens", "achieves_goal",
+                                   "deletes_true"]
 
     node_map = md["node_feature_to_index"]
     next_node = md["num_node_features"]
@@ -201,6 +219,8 @@ def build_lifted_metadata(action_space, max_pred_arity, max_action_arity, mode,
     md["num_edge_features"] = next_edge
 
     md["lifted_spec"] = build_lifted_spec(action_space)
+    if mode == "joint_chain":
+        md["lifted_spec"]["chain"] = build_chain_spec(md["lifted_spec"])
     md["lifted_spec"]["mode"] = mode
     md["featurization"] = mode
     return md
@@ -209,11 +229,12 @@ def build_lifted_metadata(action_space, max_pred_arity, max_action_arity, mode,
 def lifted_node_keys(spec):
     """Deterministic node keys for the lifted layer of one state graph.
 
-    Predicate symbol nodes first (pred_order), then -- 'joint' mode only --
-    occurrence nodes per schema in schema_order, occurrence index order.
+    Predicate symbol nodes first (pred_order), then -- 'joint'/'joint_chain'
+    only -- occurrence nodes per schema in schema_order, occurrence index
+    order.
     """
     keys = [pred_node_key(name) for name in spec["pred_order"]]
-    if spec.get("mode") == "joint":
+    if spec.get("mode") in ("joint", "joint_chain"):
         for schema_name in spec["schema_order"]:
             for k in range(len(spec["schemas"][schema_name])):
                 keys.append(occ_node_key(schema_name, k))
@@ -248,12 +269,14 @@ def _set_edge(all_edge_features, a, b, feature_index):
 def add_lifted_layer_edges(all_edge_features, all_literals, all_actions,
                            spec, objects_to_node, edge_feature_to_index,
                            kp, ka, goal_prefix="WANT"):
-    """Instantiation + role (+ occurrence, in 'joint' mode) edges.
+    """Instantiation + role (+ occurrence, in 'joint'/'joint_chain') edges.
 
     - ground literal <-> its predicate's symbol node        [instance_of]
     - predicate symbol <-> schema node                      [role_* + parg_i + slot_j]
-    - 'joint': occurrence <-> predicate symbol              [occ_of]
+    - 'joint'/'joint_chain':
+               occurrence <-> predicate symbol              [occ_of]
                occurrence <-> schema node                   [role_* + pair_pi_sj]
+    - 'joint_chain': occurrence <-> occurrence              [enables / threatens]
     Binding edges (object <-> occurrence) are added where grounded
     applicability is computed; see _get_precondition_satisfaction_position.
     """
@@ -269,7 +292,7 @@ def add_lifted_layer_edges(all_edge_features, all_literals, all_actions,
         _set_edge(all_edge_features, objects_to_node[lit],
                   objects_to_node[key], E["instance_of"])
 
-    joint = spec.get("mode") == "joint"
+    joint = spec.get("mode") in ("joint", "joint_chain")
     for action in all_actions:
         schema_name = _schema_name(action)
         if schema_name not in spec["schemas"]:
@@ -291,3 +314,101 @@ def add_lifted_layer_edges(all_edge_features, all_literals, all_actions,
                     ci, cj = min(i, kp - 1), min(j, ka - 1)
                     _set_edge(all_edge_features, occ_idx, schema_idx,
                               E[f"pair_p{ci}_s{cj}"])
+
+    # Chain edges ('joint_chain'): occurrence pairs from build_chain_spec.
+    if spec.get("mode") == "joint_chain":
+        chain = spec.get("chain")
+        if chain is None:
+            raise RuntimeError(
+                "lifted_spec has mode 'joint_chain' but no 'chain' key -- "
+                "metadata must come from build_lifted_metadata(..., "
+                "'joint_chain')")
+        for kind in ("enables", "threatens"):
+            feat = E[kind]
+            for (sa, occ_a, sb, occ_b) in chain[kind]:
+                _set_edge(all_edge_features,
+                          objects_to_node[occ_node_key(sa, occ_a)],
+                          objects_to_node[occ_node_key(sb, occ_b)], feat)
+
+
+_GDIST_MAX = 3  # buckets gdist_0..gdist_2 + gdist_3plus; fixed by metadata
+
+
+def add_chain_node_features(input_node_features, spec, all_actions,
+                            state_literals, goal_literals, objects_to_node,
+                            node_feature_to_index):
+    """Goal-conditioned node features, 'joint_chain' only (#5).
+
+    Schema nodes get their schema_goal_distances bucket (gdist_0..gdist_3plus)
+    plus 'adds_goal_pred' at distance 0. Objects appearing in an UNSATISFIED
+    goal atom get 'goal_relevant_obj'. goal_literals are the UNWRAPPED goal
+    atoms (no goal prefix), comparable against state_literals.
+    """
+    chain = spec.get("chain")
+    if chain is None:
+        raise RuntimeError(
+            "add_chain_node_features needs spec['chain'] -- metadata must "
+            "come from build_lifted_metadata(..., 'joint_chain')")
+    N = node_feature_to_index
+    goal_pred_names = {g.predicate.name for g in goal_literals}
+    dist = schema_goal_distances(spec, chain, goal_pred_names,
+                                 max_dist=_GDIST_MAX)
+    for action in all_actions:
+        name = _schema_name(action)
+        if name not in dist:
+            continue
+        idx = objects_to_node[action]
+        d = dist[name]
+        cls = "gdist_3plus" if d >= _GDIST_MAX else f"gdist_{d}"
+        input_node_features[idx, N[cls]] = 1
+        if d == 0:
+            input_node_features[idx, N["adds_goal_pred"]] = 1
+
+    true_now = set(state_literals)
+    for goal_lit in goal_literals:
+        if goal_lit in true_now:
+            continue
+        for var in getattr(goal_lit, "variables", []):
+            input_node_features[objects_to_node[var],
+                                N["goal_relevant_obj"]] = 1
+
+
+def add_grounded_effect_edges(all_edge_features, all_groundings, action_space,
+                              unsat_goal_nodes, true_literal_nodes,
+                              objects_to_node, edge_feature_to_index):
+    """Grounded effect edges, 'joint_chain' only (#6).
+
+    For each applicable grounding, substitute its parameter bindings into the
+    schema's effects. An add effect that equals an UNSATISFIED goal atom links
+    every participating object to that goal-literal node [achieves_goal]; a
+    delete effect that equals a TRUE state atom links objects to that literal
+    node [deletes_true]. The lookups map (pred_name, arg_tuple) -> node index;
+    a computed atom without a node is expected (most effects touch neither
+    goal nor a tracked literal) and skipped silently.
+    """
+    E = edge_feature_to_index
+    achieves, deletes = E["achieves_goal"], E["deletes_true"]
+    for grounding in all_groundings:
+        try:
+            op = action_space[grounding.predicate]
+        except KeyError:
+            continue
+        binding = dict(zip(list(getattr(op, "params", [])),
+                           grounding.variables))
+        for lit in getattr(getattr(op, "effects", None), "literals", []) or []:
+            # binding.get(v, v): schema params ground via the binding,
+            # anything else (a constant) already is an object.
+            args = tuple(binding.get(v, v)
+                         for v in getattr(lit, "variables", []))
+            key = (_positive_predicate(lit).name, args)
+            if getattr(lit, "is_anti", False):
+                lit_idx = true_literal_nodes.get(key)
+                feat = deletes
+            else:
+                lit_idx = unsat_goal_nodes.get(key)
+                feat = achieves
+            if lit_idx is None:
+                continue
+            for obj in args:
+                _set_edge(all_edge_features, objects_to_node[obj], lit_idx,
+                          feat)
