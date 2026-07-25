@@ -103,9 +103,9 @@ def main():
             per_problem.append({"idx": idx, "success_rate": rate,
                                 "plan_lengths": lengths,
                                 "time": round(secs, 2)})
-            if (idx + 1) % 10 == 0 or idx == n - 1:
-                cov = 100 * sum(p["success_rate"] for p in per_problem) / len(per_problem)
-                print(f"  [{idx + 1}/{n}] running coverage {cov:.1f}%")
+            cov = 100 * sum(p["success_rate"] for p in per_problem) / len(per_problem)
+            print(f"  [{idx + 1}/{n}] {secs:6.1f}s  running coverage {cov:.1f}%",
+                  flush=True)
 
         coverage = 100 * sum(p["success_rate"] for p in per_problem) / n
         all_lengths = [l for p in per_problem for l in p["plan_lengths"]]

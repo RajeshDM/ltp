@@ -744,12 +744,15 @@ def _create_graph_structure_ltp(training_data,dom_file=None,domain_name=None,age
     cheating_input = args.cheating_input
 
     if cheating_input == True :
+        # One column per parameter slot up to this domain's max schema
+        # arity (was hardcoded to 2 - crashed on arity-3+ schemas).
+        _max_arity = max((len(op.params) for op in action_space.values()),
+                         default=2)
         _node_feature_to_index['is_correct_action'] = index
         index += 1
-        _node_feature_to_index['is_correct_obj_1'] = index
-        index += 1
-        _node_feature_to_index['is_correct_obj_2'] = index
-        index += 1
+        for _i in range(_max_arity):
+            _node_feature_to_index[f'is_correct_obj_{_i + 1}'] = index
+            index += 1
 
     # Initialize edge features
     _edge_feature_to_index = {}
