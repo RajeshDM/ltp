@@ -48,8 +48,15 @@ def parse_domains(spec):
     return entries
 
 
-def run_problem(env, idx, max_len, rollouts, seed):
-    """Random rollouts on problem idx. Returns (success_rate, lengths, secs)."""
+def run_problem(env, idx, max_len, rollouts, seed, proposals=8, monitor=True):
+    """Random rollouts on problem idx. Returns (success_rate, lengths, secs).
+
+    Protocol parity with the learned tester (_run_greedy_search): the only
+    difference is WHERE the ranked proposal list comes from - a random sample
+    of applicable actions instead of the model's beam. Same list size, same
+    revisit monitor, same 'all candidates revisit -> take a random one'
+    fallback, same step bound. proposals=0 means rank all applicable actions.
+    """
     successes, lengths = 0, []
     start = time.time()
     for r in range(rollouts):
@@ -61,12 +68,31 @@ def run_problem(env, idx, max_len, rollouts, seed):
         # learned tester's greedy loop. Regrounding every step is O(|O|^arity)
         # work per step and dominated everything (~0.4s/step on hard Visitall).
         env.action_space.all_ground_literals(state, reground=True)
+        visited = {frozenset(state.literals)} if monitor else None
         for step in range(max_len):
-            groundings = list(env.action_space.all_ground_literals(state))
+            groundings = sorted(env.action_space.all_ground_literals(state))
             if not groundings:
                 break  # dead end
-            action = rng.choice(sorted(groundings))
-            state, _, done, _ = env.step(action)
+            ranked = groundings[:]
+            rng.shuffle(ranked)
+            if proposals > 0:
+                ranked = ranked[:proposals]
+
+            chosen, next_state, done = None, None, False
+            for cand in ranked:
+                ns, _, d, _ = env.step(cand)
+                if monitor and not d and frozenset(ns.literals) in visited:
+                    env.set_state(state)   # revert, try next candidate
+                    continue
+                chosen, next_state, done = cand, ns, d
+                break
+            if chosen is None:      # every candidate revisits: take one anyway
+                chosen = ranked[0]
+                next_state, _, done, _ = env.step(chosen)
+
+            state = next_state
+            if monitor:
+                visited.add(frozenset(state.literals))
             if done:
                 successes += 1
                 lengths.append(step + 1)
@@ -83,6 +109,14 @@ def main():
     parser.add_argument("--rollouts", type=int, default=3,
                         help="Rollouts per problem; coverage averages over them")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--proposals", type=int, default=8,
+                        help="Size of the random 'ranked proposal' list per "
+                             "step, matching the learned beam's candidate "
+                             "count (action_options x object_options). "
+                             "0 = rank every applicable action.")
+    parser.add_argument("--no-monitor", dest="monitor", action="store_false",
+                        help="Disable the revisited-state monitor. Default ON "
+                             "for parity with the learned tester.")
     parser.add_argument("--output", type=str,
                         default="cache/results/results_random_policy.json")
     args = parser.parse_args()
@@ -98,12 +132,14 @@ def main():
         n = len(env.problems) if count <= 0 else min(count, len(env.problems))
         key = f"{name}@{split}"
         print(f"=== {key}: {n} problems, {args.rollouts} rollout(s), "
-              f"cap {args.max_plan_length} ===")
+              f"cap {args.max_plan_length} steps, proposals="
+              f"{args.proposals or 'all'}, monitor={args.monitor} ===")
 
         per_problem = []
         for idx in range(n):
             rate, lengths, secs = run_problem(
-                env, idx, args.max_plan_length, args.rollouts, args.seed)
+                env, idx, args.max_plan_length, args.rollouts, args.seed,
+                proposals=args.proposals, monitor=args.monitor)
             per_problem.append({"idx": idx, "success_rate": rate,
                                 "plan_lengths": lengths,
                                 "time": round(secs, 2)})
@@ -116,6 +152,7 @@ def main():
         avg_len = sum(all_lengths) / len(all_lengths) if all_lengths else None
         results[key] = {
             "policy": "random_applicable",
+            "proposals": args.proposals, "monitor": args.monitor,
             "split": split, "problems": n, "rollouts": args.rollouts,
             "max_plan_length": args.max_plan_length, "seed": args.seed,
             "coverage": round(coverage, 2),
