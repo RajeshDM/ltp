@@ -26,6 +26,7 @@ import time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pddlgym
+from tqdm import tqdm
 
 
 def parse_domains(spec):
@@ -119,6 +120,10 @@ def main():
                              "for parity with the learned tester.")
     parser.add_argument("--output", type=str,
                         default="cache/results/results_random_policy.json")
+    parser.add_argument("--summary", type=str,
+                        default="cache/results/random_floor_summary.txt",
+                        help="Fixed-width table of all results so far; "
+                             "rewritten after each domain.")
     args = parser.parse_args()
 
     results = {}
@@ -136,7 +141,8 @@ def main():
               f"{args.proposals or 'all'}, monitor={args.monitor} ===")
 
         per_problem = []
-        for idx in range(n):
+        bar = tqdm(range(n), desc=f"{key:32s}", unit="prob")
+        for idx in bar:
             rate, lengths, secs = run_problem(
                 env, idx, args.max_plan_length, args.rollouts, args.seed,
                 proposals=args.proposals, monitor=args.monitor)
@@ -144,8 +150,8 @@ def main():
                                 "plan_lengths": lengths,
                                 "time": round(secs, 2)})
             cov = 100 * sum(p["success_rate"] for p in per_problem) / len(per_problem)
-            print(f"  [{idx + 1}/{n}] {secs:6.1f}s  running coverage {cov:.1f}%",
-                  flush=True)
+            bar.set_postfix(cov=f"{cov:.1f}%")
+        bar.close()
 
         coverage = 100 * sum(p["success_rate"] for p in per_problem) / n
         all_lengths = [l for p in per_problem for l in p["plan_lengths"]]
@@ -167,10 +173,28 @@ def main():
         with open(tmp, "w") as f:
             json.dump(results, f, indent=2)
         os.replace(tmp, args.output)
+        write_summary(results, args.summary)   # after every domain: partials readable
 
-    print(f"\nSaved to {args.output}")
+    print(f"\nSaved to {args.output}\nSummary: {args.summary}")
+    print(open(args.summary).read())
+
+
+def write_summary(results, path):
+    """Paper-ready fixed-width table (cat this straight into the draft)."""
+    lines = ["# Random-policy floor (uniform choice among applicable ground",
+             "# actions, same executor/monitor/step-bound as the learned policy)",
+             "#",
+             f"# {'domain':28s} {'split':6s} {'probs':>5s} {'roll':>4s} "
+             f"{'cov%':>7s} {'avg_len':>8s}"]
     for key in sorted(results):
-        print(f"  {key:45s} {results[key]['coverage']:6.2f}%")
+        r = results[key]
+        dom, split = key.rsplit("@", 1)
+        avg = f"{r['avg_plan_length']:.1f}" if r.get("avg_plan_length") else "-"
+        lines.append(f"  {dom:28s} {split:6s} {r['problems']:5d} "
+                     f"{r['rollouts']:4d} {r['coverage']:7.2f} {avg:>8s}")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        f.write("\n".join(lines) + "\n")
 
 
 if __name__ == "__main__":
