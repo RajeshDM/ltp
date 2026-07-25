@@ -56,8 +56,12 @@ main.py                            ← THE entry point (__main__): arg parsing,
  │                                   build_lifted_spec / build_lifted_metadata,
  │                                   lifted_node_keys, add_lifted_node_features,
  │                                   add_lifted_layer_edges. Featurizations
- │                                   'joint_lite' (GADAR-BIND) and 'joint'
- │                                   (full GADAR); binding edges are added in
+ │                                   'joint_lite' (GADAR-BIND), 'joint'
+ │                                   (full GADAR), and 'joint_chain' (joint +
+ │                                   build_chain_spec / schema_goal_distances
+ │                                   chaining edges, add_chain_node_features
+ │                                   goal features, add_grounded_effect_edges);
+ │                                   binding edges are added in
  │                                   _get_precondition_satisfaction_position
  ├─ ploi/modelutils_ltp.py         HeteroGNN_global encoder; GNN_GRU decoder
  │                                   (compute_action_scores / compute_object_scores)
@@ -93,6 +97,7 @@ tests/test_multidomain_metadata.py dependency-free unit tests: union merge,
 tests/test_lifted_layer.py         dependency-free unit tests: lifted spec
                                    (roles, bindings, occurrence order),
                                    metadata widths, joint vs joint_lite,
+                                   joint_chain chaining/goal features,
                                    renaming invariance of lifted tensors
 ```
 

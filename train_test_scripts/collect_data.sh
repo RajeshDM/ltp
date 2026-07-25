@@ -38,8 +38,8 @@ done
 for feat in "${FEATS[@]}"; do
     for cfg in configs/loo8_${feat}_no_*.yaml configs/ho2_${feat}_*.yaml configs/ho4_${feat}.yaml; do
         [ -f "$cfg" ] || continue
-        # 'joint' globs also match 'joint_lite' files - skip those
-        if [ "$feat" = "joint" ] && [[ "$(basename "$cfg")" == *"joint_lite"* ]]; then
+        # 'joint' globs also match 'joint_lite'/'joint_chain' files - skip those
+        if [ "$feat" = "joint" ] && [[ "$(basename "$cfg")" == *"joint_lite"* || "$(basename "$cfg")" == *"joint_chain"* ]]; then
             continue
         fi
         CONFIGS+=("$cfg")

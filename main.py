@@ -500,7 +500,8 @@ if __name__ == "__main__":
                     graph_metadata = union_md
                     action_space = merge_action_spaces(
                         [a for (_, a) in per_domain_meta.values()])
-                elif args.featurization in ('structural', 'joint', 'joint_lite'):
+                elif args.featurization in ('structural', 'joint', 'joint_lite',
+                                            'joint_chain'):
                     from ploi.structural import build_structural_metadata
                     from ploi.lifted_layer import build_lifted_metadata
                     kp = max(p.arity for (md, _) in per_domain_meta.values()
@@ -548,7 +549,7 @@ if __name__ == "__main__":
                         [a for (_, a) in per_domain_meta.values()])
                 else:
                     if len(train_domains) > 1:
-                        raise ValueError("per_domain featurization cannot mix domains; use --featurization union, structural, joint_lite, or joint")
+                        raise ValueError("per_domain featurization cannot mix domains; use --featurization union, structural, joint_lite, joint, or joint_chain")
                     name = train_domains[0][0]
                     graphs, graph_metadata, action_space = process_pddl_to_graphs(
                         name, train_planner, train_domains[0][1], args,
@@ -1234,7 +1235,7 @@ if __name__ == "__main__":
                     graph_metadata['max_pred_arity'],
                     graph_metadata['max_action_arity'],
                     cheating=_cheat_cols)
-            elif _feat in ('joint', 'joint_lite'):
+            elif _feat in ('joint', 'joint_lite', 'joint_chain'):
                 from ploi.lifted_layer import build_lifted_metadata
                 test_md = build_lifted_metadata(
                     test_action_space,
