@@ -119,6 +119,9 @@ def main():
 
     train_domains = [n for n, _, _ in parse_domain_arg(
         args.domains, args.heldout_domains, args.num_train_problems)]
+    if args.domains:
+        # Checkpoints are keyed by the composite multi-domain env name.
+        args.domain = "MULTI-" + "-".join(train_domains)
     if args.eval_domains:
         eval_names = [d.split(":")[0].split("@")[0].strip().capitalize()
                       for d in args.eval_domains.split(",") if d.strip()]
