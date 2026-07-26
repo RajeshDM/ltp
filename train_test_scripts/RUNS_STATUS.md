@@ -20,7 +20,7 @@ column is measured on those same 4 splits so comparisons are matched.
 | 6 | `loo8_structural_no_visitall` | train_test | RUNNING | over-conditioning test |
 | 7 | `all8_union` | train_test | RUNNING | in-domain control (price of generality) |
 | 8 | `loo8_joint_chain_no_gripper` | train | RUNNING | chain readout (class 1+3) |
-| 9 | `loo8_joint_chain_no_visitall` | train | RUNNING | chain readout (class 2) |
+| 9 | `loo8_joint_chain_no_visitall` | train | **TRAINED + READ OUT** | **easy 100.0% (E190, V1 99.2%, PQ 0.97); hard 7/7 so far vs floor 6.0% and joint 4%** |
 | 10 | `loo8_joint_chain_no_manyblocks` | train | RUNNING | chain, table cell |
 | 11 | `loo8_joint_chain_no_miconic` | train | RUNNING | chain, table cell |
 | 12 | `loo8_structural_no_manyblocks` | train_test | RUNNING | completes structural column |
@@ -77,3 +77,21 @@ GABAR_DEBUG_PROPOSALS=25 GABAR_DEBUG_TRACE=1 python main.py \
 
 Visitall's easy-split floor is degenerate (a monitored random walk ~= optimal
 exploration); read Visitall on the hard split and on plan quality.
+
+## RESULT 2026-07-26: joint_chain works
+
+`loo8_joint_chain_no_visitall`, zero-shot on a domain never trained on:
+
+| split | joint (old) | joint_chain | random floor | oracle ceiling |
+|---|---|---|---|---|
+| visitall@train (easy) | 16% (E260) | **100%** (E190) | 99.73% | 50% |
+| visitall (hard) | 4% | **7/7 running** | 6.00% | - |
+
+Plan quality 0.97 (mean 30.1 vs LAMA 29.2), V1 99.2%. Chain exceeds the
+oracle ceiling, i.e. the learned goal/chaining features do more than the
+hand-coded terminal trigger. Checkpoint spikiness persists and EARLIER is
+better again (E190 100% / V1 99.2 vs E330 97.6% / V1 68.7).
+
+Consequence: joint_chain becomes the method (GADAR); joint becomes the
+ablation (GADAR minus chaining). Diversity configs (`ho4_joint_chain`,
+`ho2_joint_chain_*`) are now worth creating.
