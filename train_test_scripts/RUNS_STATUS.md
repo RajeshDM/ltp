@@ -5,7 +5,7 @@ the 4 representative held-out domains: **manyblocks, gripper, miconic,
 visitall** (documented failure modes + low random floors). Every method
 column is measured on those same 4 splits so comparisons are matched.
 
-14 launched 2026-07-26. Cost: ~9-10 h train + ~12 h full test sweep per run (batch 64).
+16 launched 2026-07-26. Cost: ~9-10 h train + ~12 h full test sweep per run (batch 64).
 `--mode train` skips the test phase; targeted `@train` readouts take ~10 min.
 
 ## Ledger
@@ -26,6 +26,8 @@ column is measured on those same 4 splits so comparisons are matched.
 | 12 | `loo8_structural_no_manyblocks` | train_test | RUNNING | completes structural column |
 | 13 | `loo8_structural_no_miconic` | train_test | RUNNING | completes structural column |
 | 14 | `all8_structural` | train_test | RUNNING | in-domain: expressiveness tax |
+| 15 | `loo8_joint_lite_no_visitall` | train_test | RUNNING | BIND rung -> isolates the binding layer (C2) |
+| 16 | `loo8_joint_lite_no_gripper` | train_test | RUNNING | BIND rung (C2) |
 | - | `loo8_joint_no_*` x8 | - | **DONE** | GADAR column (covers all 4 rows + 4 extra) |
 | - | `all8_joint` | - | DONE (verify) | GADAR in-domain row |
 | - | random floor, all 8 x 2 splits | - | **DONE** | `cache/results/random_floor_summary.txt` |
@@ -35,7 +37,7 @@ Deferred until the chain readout is positive: `all8_joint_chain`,
 `ho4_joint_chain`, `ho2_joint_chain_*` (diversity curve, C5). A diversity
 curve for a system that does not transfer measures noise.
 
-Dropped: all `joint_lite`, `ho2`/`ho4` for union/structural, the other 4
+Re-added (GPUs freed up): `joint_lite` BIND rung. Dropped: `ho2`/`ho4` for union/structural, the other 4
 splits of every ablation column. 42 -> 13.
 
 ## Readouts
