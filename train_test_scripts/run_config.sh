@@ -26,6 +26,15 @@ NAME=$(basename "$CFG" .yaml)
 mkdir -p logs
 export PYTHONHASHSEED="${PYTHONHASHSEED:-42}"
 
+# Never clobber a previous run's log: the same config is often re-run with
+# different flags (--representation-size, --gnn-rounds, --seed ...), and the
+# stdout log is the ONLY place the loss curve lives (metrics survive in the
+# results JSON, checkpoints in models/). Rotate instead of truncating.
+if [ -f "logs/${NAME}.log" ]; then
+    mv "logs/${NAME}.log" "logs/${NAME}.$(date +%Y%m%d_%H%M%S).log"
+    echo "  rotated previous log -> logs/${NAME}.$(date +%Y%m%d_%H%M%S).log"
+fi
+
 nohup python main.py --config "$CFG" --device "$DEV" "$@" \
     > "logs/${NAME}.log" 2>&1 &
 PID=$!
