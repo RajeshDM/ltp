@@ -28,7 +28,9 @@ for track in sorted(glob.glob(os.path.join(a.dir, "*", "model_tracking.json"))):
     rows = []
     for cfg_hash, metrics in data.items():
         for metric, ckpts in metrics.items():
-            for c in ckpts:
+            for entry in ckpts:
+                # tracking format: {loss, checkpoint: {epoch, *_loss, save_path}}
+                c = entry.get("checkpoint", entry)
                 p = c.get("save_path", "")
                 exists = os.path.exists(p)
                 mtime = (time.strftime("%m-%d %H:%M", time.localtime(os.path.getmtime(p)))
