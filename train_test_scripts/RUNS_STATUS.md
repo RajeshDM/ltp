@@ -27,7 +27,7 @@ column is measured on those same 4 splits so comparisons are matched.
 | 13 | `loo8_structural_no_miconic` | train_test | RUNNING | completes structural column |
 | 14 | `all8_structural` | train_test | RUNNING | in-domain: expressiveness tax |
 | 15 | `all8_joint_chain` | train_test | RUNNING | chain in-domain row + dilution test (informative either way) |
-| 16 | `loo8_joint_no_visitall` @ gnn_rounds 15 | train_test | RUNNING | receptive-field probe: is the bottleneck reach, not features? |
+| 16 | `loo8_joint_no_visitall` @ repr 128, seed 12 | train_test | RUNNING | capacity probe: is 64-dim saturated by the wider feature set? (reach is NOT the issue - the global node makes the diameter 2) |
 | - | `loo8_joint_no_*` x8 | - | **DONE** | GADAR column (covers all 4 rows + 4 extra) |
 | - | `all8_joint` | - | DONE (verify) | GADAR in-domain row |
 | - | random floor, all 8 x 2 splits | - | **DONE** | `cache/results/random_floor_summary.txt` |
