@@ -254,8 +254,22 @@ def run_tests(
             curr_model = _apply_arity_override(
                 initialize_model(model_class, args, action_space), args)
 
-            # Load model state
-            curr_model.load_state_dict(model_info['state_dict'])
+            # Load model state. Checkpoints from configs that share the
+            # training-domain set + seed + hyperparameters land in the SAME
+            # model dir and tracking list, because `featurization` is not part
+            # of the ModelManager key - so a union checkpoint (wide symbol
+            # vocabulary) can be offered to a structural model (narrow fixed
+            # width). Widths differ per featurization, so skip mismatches
+            # loudly and keep looking instead of crashing the whole test run.
+            try:
+                curr_model.load_state_dict(model_info['state_dict'])
+            except RuntimeError as _e:
+                if 'size mismatch' not in str(_e):
+                    raise
+                print(f"SKIP checkpoint epoch {model_info['epoch']}: built for "
+                      f"a different featurization (width mismatch). Looking "
+                      f"for one matching --featurization {args.featurization}.")
+                continue
             curr_model.to(device)
             curr_model.eval()
 
