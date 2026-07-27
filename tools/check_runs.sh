@@ -38,7 +38,11 @@ for n in $RUNS; do
 
     AGE=$(( NOW - $(stat -c %Y "$L" 2>/dev/null || echo "$NOW") ))
     LAST=$(grep '^Epoch' "$L" | tail -1)
-    NTYPE=$(grep -c 'lifted layer \[' "$L")
+    # Match BOTH the logger line 'lifted layer (joint_chain):' and the
+    # print 'lifted layer [joint_chain]:'. print() is block-buffered under
+    # nohup, so early in a run only the logger line exists and counting just
+    # the print made a featurizing run look like it had not started.
+    NTYPE=$(grep -cE 'lifted layer [\[(]' "$L")
 
     if [ -n "$LAST" ]; then
         case "$LAST" in
@@ -78,7 +82,8 @@ for n in $RUNS; do
 
     echo "  sidecars _ty2:    $(grep -c '_ty2' "$L") lines"
     echo "  type warnings:    $(grep -c 'WARNING: declared type' "$L")"
-    grep -o 'lifted layer \[.*' "$L" | sort | uniq -c | sed 's/^/    /'
+    grep -oE 'lifted layer [\[(].*' "$L" | sed 's/.*(\([0-9]*\) type-compiled.*/  \1 type(s)/;s/.*: \([0-9]*\) declared.*/  \1 type(s)/' \
+        | sort | uniq -c | sed 's/^/    /'
     echo "  last epoch:       ${LAST:-none yet}"
     FAIL=$(grep -ciE 'traceback|CUDA error|out of memory|size mismatch' "$L")
     [ "$FAIL" != "0" ] && echo "  *** $FAIL error lines -- grep -iE 'traceback|cuda error' $L"

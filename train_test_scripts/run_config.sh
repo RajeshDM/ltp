@@ -25,6 +25,10 @@ fi
 NAME=$(basename "$CFG" .yaml)
 mkdir -p logs
 export PYTHONHASHSEED="${PYTHONHASHSEED:-42}"
+# print() is block-buffered when stdout is a file, so progress lines lag the
+# logger's by many minutes and a healthy run looks stalled. Logging is the
+# only window into a nohup'd job; keep it in order.
+export PYTHONUNBUFFERED=1
 
 # Never clobber a previous run's log: the same config is often re-run with
 # different flags (--representation-size, --gnn-rounds, --seed ...), and the
