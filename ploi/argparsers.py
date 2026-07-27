@@ -526,6 +526,16 @@ def get_ploi_argument_parser():
              "0 = disabled. Set automatically by --run-mode if not specified.")
 
     parser.add_argument(
+        "--keep-checkpoints",
+        type=int,
+        default=2,
+        help="Checkpoints retained per selection metric (ModelManager). The "
+             "default 2 can lose the EARLY epochs that transfer best - "
+             "zero-shot peaks well before training loss bottoms out - "
+             "especially when an older run's checkpoints squat the list. "
+             "Use 6+ for zero-shot runs.")
+
+    parser.add_argument(
         "--max-pred-arity",
         type=int,
         default=0,

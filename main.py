@@ -1014,6 +1014,7 @@ if __name__ == "__main__":
         dataset_size = len(input_hetero_graphs) + len(val_hetero_graphs)#len(training_data[0])
         save_folder = os.path.join(Path.cwd(),"models")
         manager = ModelManager(save_folder, hyperparameters=training_hyperparameters,
+                               max_checkpoints_per_metric=args.keep_checkpoints,
                                train_env_name=train_env_name,seed=args.seed, ignore_defaults=ignore_defaults)
 
         model_outfile, message_string,save_folder = get_filenames(dataset_size,train_env_name,
