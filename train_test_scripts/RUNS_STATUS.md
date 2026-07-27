@@ -67,21 +67,29 @@ grep "lifted layer" <log> | sort -u
 ## Standing rule for every new zero-shot run
 
 Two independent failure modes have already voided runs, and both are silent
-until you inspect provenance. Launch every zero-shot run with BOTH:
+until you inspect provenance. Launch every zero-shot run with:
 
 ```
---seed <fresh> --keep-checkpoints 6
+--seed <fresh> --keep-checkpoints 6 --checkpoint-every 50
 ```
+and read it out with `--test-model-metrics periodic`.
 
 1. **Squatting.** `ModelManager`'s key is `train_env_name + seed +
    hyperparameters` and does NOT include `featurization`, so an older run on
    the same domain set shares the directory. If its losses are lower, the new
    run's checkpoints are never written. A fresh `--seed` gives a virgin
    directory. (Post-deadline fix: put featurization in the key.)
-2. **Tail-only retention.** With the default 2 slots you keep the two
-   lowest-loss epochs, which are always late. Zero-shot transfer peaks EARLY
-   and decays while training loss keeps falling (visitall: E190 100% ->
-   E330 97.6% -> E500 3.3%). Six slots keep the epochs that actually transfer.
+2. **Tail-only retention.** Every loss-ranked slot ends up holding a late
+   epoch, because the loss keeps falling: with the default 2 slots on a
+   500-epoch run you keep E490 and E500, and widening to 6 only widens the
+   tail. Zero-shot transfer peaks EARLY and decays while the loss keeps
+   improving (visitall: E190 100% -> E330 97.6% -> E500 3.3%), so the epochs
+   worth testing are precisely the ones loss ranking discards. That is what
+   `--checkpoint-every 50` fixes: an unconditional snapshot every 50 epochs
+   into a fourth `periodic` metric, ordered EARLIEST first, capped by
+   dropping the latest (which the loss-ranked metrics already keep).
+   `--keep-checkpoints 6` still helps against squatting; it is not a
+   substitute for periodic.
 
 Before trusting any zero-shot number, confirm which epochs exist and who
 wrote them:

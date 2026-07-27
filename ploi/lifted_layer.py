@@ -404,28 +404,48 @@ def add_lifted_layer_edges(all_edge_features, all_literals, all_actions,
 
 
 def add_type_edges(all_edge_features, all_objects, spec, objects_to_node,
-                   edge_feature_to_index):
-    """object <-> its type's synthetic predicate symbol node  [has_type].
+                   edge_feature_to_index, state_literals=()):
+    """object <-> the symbol node of the type it belongs to  [has_type].
 
-    The compiled counterpart of the ground literal `(block b1)` that a
-    predicate-typed domain would carry: it puts the object on the same
-    symbol node the schema's type-precondition occurrence hangs off, so the
-    binding layer can relate slot constraints to object types without ever
-    naming a type. Objects whose type no schema parameter declares have no
-    symbol node and are skipped (the type constrains nothing).
+    Both directions of the compilation, so the edge means the same thing in
+    either family of domain:
+
+    - declared types: the compiled counterpart of the ground literal
+      `(block b1)` a predicate-typed domain would carry, linking the object
+      to the same symbol node the schema's type-precondition occurrence
+      hangs off.
+    - predicate-typed domains: a TRUE unary STATIC literal is a type
+      declaration written by hand -- `(room r1)`, `(truck t1)`. Nothing in
+      the domain can add or delete it, so it partitions the objects exactly
+      as a declared type does. Emitting the edge here too means a model
+      trained mostly on one family does not meet an unfamiliar edge class on
+      the other.
+
+    Objects whose type no schema parameter declares have no symbol node and
+    are skipped -- the type constrains nothing.
     """
-    type_preds = spec.get("type_preds")
-    if not type_preds:
-        return
     feat = edge_feature_to_index["has_type"]
+    predicates = spec.get("predicates", {})
+
+    def link(obj, pred_name):
+        pred_idx = objects_to_node.get(pred_node_key(pred_name))
+        obj_idx = objects_to_node.get(obj)
+        if pred_idx is not None and obj_idx is not None:
+            _set_edge(all_edge_features, obj_idx, pred_idx, feat)
+
+    type_preds = spec.get("type_preds") or {}
     for obj in all_objects:
         pred_name = type_preds.get(declared_type(obj))
-        if pred_name is None:
+        if pred_name is not None:
+            link(obj, pred_name)
+
+    for lit in state_literals:
+        info = predicates.get(lit.predicate.name)
+        if info is None or info["arity"] != 1 or not info["static"]:
             continue
-        pred_idx = objects_to_node.get(pred_node_key(pred_name))
-        if pred_idx is None:
-            continue
-        _set_edge(all_edge_features, objects_to_node[obj], pred_idx, feat)
+        variables = getattr(lit, "variables", [])
+        if variables:
+            link(variables[0], lit.predicate.name)
 
 
 _GDIST_MAX = 3  # buckets gdist_0..gdist_2 + gdist_3plus; fixed by metadata

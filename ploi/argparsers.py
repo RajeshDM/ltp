@@ -573,6 +573,14 @@ def get_ploi_argument_parser():
         type=str,
         default="validation,training,combined",
         help="Comma-separated checkpoint-selection metrics to test "
-             "(subset of validation,training,combined).")
+             "(subset of validation,training,combined,periodic). 'periodic' "
+             "needs --checkpoint-every and is ordered EARLIEST epoch first.")
+
+    parser.add_argument(
+        "--checkpoint-every", type=int, default=0,
+        help="Also snapshot every N epochs regardless of loss, into the "
+             "'periodic' metric. Loss-ranked slots always end up holding "
+             "late epochs; zero-shot transfer peaks early. Use 50 for "
+             "zero-shot runs, then test --test-model-metrics periodic.")
 
     return parser

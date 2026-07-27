@@ -413,8 +413,11 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
         # Type compilation: object <-> its declared type's symbol node. The
         # compiled stand-in for the ground type literal a predicate-typed
         # domain would have. No-op for untyped/predicate-typed domains.
+        # `literals`, not `all_literals`: goal atoms are WANT-prefixed and are
+        # not assertions about the current state.
         add_type_edges(all_edge_features, all_objects, _lifted_spec,
-                       objects_to_node, _edge_feature_to_index)
+                       objects_to_node, _edge_feature_to_index,
+                       state_literals=literals)
 
     node_to_only_actions = dict(enumerate(all_actions))
     action_positions = dict(enumerate(list(range(max_action_arity))))

@@ -605,6 +605,32 @@ def test_has_type_edge_links_object_to_its_type_symbol():
     assert edges[o2n["x"], :, E].sum() == 0
 
 
+def test_has_type_edge_also_fires_for_predicate_typed_domains():
+    """A true unary static literal is a hand-written type declaration; it must
+    produce the same edge class the compiled types do, or a model trained on
+    one family meets an unfamiliar edge on the other."""
+    space = _predicate_typed_space()
+    md = build_lifted_metadata(space, KP, KA, "joint_chain")
+    spec = md["lifted_spec"]
+    assert spec["type_preds"] == {}          # nothing to compile here
+    assert spec["predicates"]["room"] == {"arity": 1, "static": True}
+    keys = lifted_node_keys(spec)
+    robot_p = MockPred("robot", 1)
+    at = MockPred("at", 2)
+    objs = ["r1", "rm1"]
+    state = [MockLiteral(robot_p, ["r1"]), MockLiteral(at, ["r1", "rm1"])]
+    node_order = objs + state + keys + list(space)
+    o2n = {v: i for i, v in enumerate(node_order)}
+    edges = np.zeros((len(node_order), len(node_order), md["num_edge_features"]))
+    add_type_edges(edges, objs, spec, o2n, md["edge_feature_to_index"],
+                   state_literals=state)
+    E = md["edge_feature_to_index"]["has_type"]
+    assert edges[o2n["r1"], o2n[pred_node_key("robot")], E] == 1
+    # `at` is binary and dynamic: not a type declaration
+    assert edges[o2n["r1"], o2n[pred_node_key("at")], E] == 0
+    assert edges[o2n["rm1"], :, E].sum() == 0   # no room(rm1) literal in state
+
+
 def test_type_compilation_is_renaming_invariant():
     """Renaming the types must not change the tensors -- types are symbols
     too, and C1 depends on none of them reaching the features."""

@@ -1021,6 +1021,7 @@ if __name__ == "__main__":
         save_folder = os.path.join(Path.cwd(),"models")
         manager = ModelManager(save_folder, hyperparameters=training_hyperparameters,
                                max_checkpoints_per_metric=args.keep_checkpoints,
+                               periodic_every=args.checkpoint_every,
                                train_env_name=train_env_name,seed=args.seed, ignore_defaults=ignore_defaults)
 
         model_outfile, message_string,save_folder = get_filenames(dataset_size,train_env_name,
@@ -1200,7 +1201,7 @@ if __name__ == "__main__":
                                                         args.num_test_problems):
                     eval_plan.append((name, count, True, 'test'))
 
-        _valid_metrics = {'validation', 'training', 'combined'}
+        _valid_metrics = {'validation', 'training', 'combined', 'periodic'}
         all_model_types = [m.strip() for m in args.test_model_metrics.split(',')
                            if m.strip()]
         _bad = set(all_model_types) - _valid_metrics

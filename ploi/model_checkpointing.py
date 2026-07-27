@@ -45,26 +45,39 @@ class ModelCheckpoint:
         """Create checkpoint from dictionary"""
         return cls(**data)
 
+# 'periodic' is not loss-ranked: see save_checkpoint.
+METRICS = ['validation', 'training', 'combined', 'periodic']
+
+
 class ModelManager:
     """Model manager for saving and loading best models with persistent tracking"""
-    
-    def __init__(self, 
+
+    def __init__(self,
                  base_dir: str,
                  max_checkpoints_per_metric: int = 2,
                  hyperparameters: Dict = None,
                  train_env_name: str = None,
                  seed: int = None,
-                 ignore_defaults: Dict[str, Any] = None):
+                 ignore_defaults: Dict[str, Any] = None,
+                 periodic_every: int = 0,
+                 max_periodic: int = 12):
         """
         Initialize the model manager
-        
+
         Args:
             base_dir: Base directory for model storage
             max_checkpoints_per_metric: Number of best models to keep per metric
+            periodic_every: If > 0, also snapshot every N epochs regardless of
+                loss, into the 'periodic' metric (0 disables).
+            max_periodic: Cap on retained periodic snapshots; the LATEST are
+                dropped first, because the loss-ranked metrics already keep
+                those and the early epochs are what zero-shot transfer needs.
         """
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.max_checkpoints = max_checkpoints_per_metric
+        self.periodic_every = periodic_every
+        self.max_periodic = max_periodic
         self.best_models: Dict[str, Dict] = {}  # config_hash -> metric_type -> checkpoints
         self.hyperparameters = hyperparameters
         self.ignore_defaults = ignore_defaults
@@ -218,13 +231,11 @@ class ModelManager:
                 
                 # Reconstruct best_models dictionary
                 for config_hash, metrics in tracking_data.items():
-                    self.best_models[config_hash] = {
-                        'validation': [],
-                        'training': [],
-                        'combined': []
-                    }
-                    
+                    self.best_models[config_hash] = {m: [] for m in METRICS}
+
                     for metric, checkpoints in metrics.items():
+                        if metric not in self.best_models[config_hash]:
+                            continue
                         for ckpt_data in checkpoints:
                             checkpoint = ModelCheckpoint.from_dict(ckpt_data['checkpoint'])
                             loss = ckpt_data['loss']
@@ -242,12 +253,10 @@ class ModelManager:
             tracking_data = {}
             for config_hash, metrics in self.best_models.items():
                 tracking_data[config_hash] = {
-                    'validation': [{'loss': loss, 'checkpoint': ckpt.to_dict()} 
-                                 for loss, ckpt in sorted(metrics['validation'])],
-                    'training': [{'loss': loss, 'checkpoint': ckpt.to_dict()} 
-                               for loss, ckpt in sorted(metrics['training'])],
-                    'combined': [{'loss': loss, 'checkpoint': ckpt.to_dict()} 
-                               for loss, ckpt in sorted(metrics['combined'])]
+                    metric: [{'loss': loss, 'checkpoint': ckpt.to_dict()}
+                             for loss, ckpt in sorted(metrics.get(metric, []),
+                                                      key=lambda item: item[0])]
+                    for metric in METRICS
                 }
             
             with open(self.tracking_file, 'w') as f:
@@ -260,11 +269,9 @@ class ModelManager:
     def _initialize_best_models(self, config_hash: str):
         """Initialize tracking for a new configuration"""
         if config_hash not in self.best_models:
-            self.best_models[config_hash] = {
-                'validation': [],
-                'training': [],
-                'combined': []
-            }
+            self.best_models[config_hash] = {m: [] for m in METRICS}
+        for metric in METRICS:
+            self.best_models[config_hash].setdefault(metric, [])
     
     def _update_best_models(self, checkpoint: ModelCheckpoint, 
                           config_hash: str) -> List[str]:
@@ -291,7 +298,24 @@ class ModelManager:
         
         return metrics_updated
     
-    def _update_metric_models(self, checkpoint: ModelCheckpoint, 
+    def _update_periodic(self, checkpoint: ModelCheckpoint,
+                         config_hash: str) -> bool:
+        """Retain an every-N-epochs snapshot, EARLIEST first.
+
+        Loss-ranked slots cannot hold an early epoch: the loss keeps falling,
+        so the survivors are always from the tail of the run. Zero-shot
+        transfer peaks long before that (measured: E190 100% -> E500 3.3% on
+        held-out Visitall), so the epochs worth testing are exactly the ones
+        loss ranking discards. Keyed by epoch, capped by dropping the LATEST,
+        which the loss-ranked metrics already cover.
+        """
+        bucket = self.best_models[config_hash]['periodic']
+        bucket.append((float(checkpoint.epoch), checkpoint))
+        bucket.sort(key=lambda item: item[0])
+        del bucket[self.max_periodic:]
+        return any(c is checkpoint for _, c in bucket)
+
+    def _update_metric_models(self, checkpoint: ModelCheckpoint,
                             model_list: List, 
                             key_func) -> bool:
         """Update models for a specific metric"""
@@ -343,7 +367,11 @@ class ModelManager:
         
         # Update best models tracking
         metrics_updated = self._update_best_models(checkpoint, config_hash)
-        
+
+        if self.periodic_every > 0 and epoch % self.periodic_every == 0:
+            if self._update_periodic(checkpoint, config_hash):
+                metrics_updated.append('periodic')
+
         if metrics_updated:
             # Save model state
             state_save = {
@@ -385,7 +413,9 @@ class ModelManager:
                 return {}
             
             info = {}
-            for metric in ['validation', 'training', 'combined']:
+            for metric in METRICS:
+                # 'periodic' is keyed by epoch, so sorting by 'loss' already
+                # yields earliest-first -- the order worth testing.
                 info[metric] = [
                     {
                         'epoch': ckpt['checkpoint']['epoch'],
@@ -394,7 +424,7 @@ class ModelManager:
                         'combined_loss': ckpt['checkpoint']['combined_loss'],
                         'save_path': ckpt['checkpoint']['save_path']
                     }
-                    for ckpt in sorted(tracking_data[config_hash][metric],
+                    for ckpt in sorted(tracking_data[config_hash].get(metric, []),
                                      key=lambda x: x['loss'])
                 ]
             
