@@ -21,7 +21,7 @@ column is measured on those same 4 splits so comparisons are matched.
 | 7 | `all8_union` | train_test | RUNNING | in-domain control (price of generality) |
 | 8 | `loo8_joint_chain_no_gripper` | train | RUNNING | chain readout (class 1+3) |
 | 9 | `loo8_joint_chain_no_visitall` | train | **TRAINED + READ OUT** | **easy 100.0% (E190, V1 99.2%, PQ 0.97); hard 7/7 so far vs floor 6.0% and joint 4%** |
-| 10 | `loo8_joint_chain_no_manyblocks` | train | RUNNING | chain, table cell |
+| 10 | `loo8_joint_chain_no_manyblocks` | train | **VOID - re-run** | 0/128 zero-shot, but CONFOUNDED: best val 14.45 @ E290 was never saved (07-23 joint squatters held both validation slots at 13.397/13.500), so only E470/490/500 existed to test. Re-run with `--seed 30 --keep-checkpoints 6`. |
 | 11 | `loo8_joint_chain_no_miconic` | train | RUNNING | chain, table cell |
 | 12 | `loo8_structural_no_manyblocks` | train_test | RUNNING | completes structural column |
 | 13 | `loo8_structural_no_miconic` | train_test | RUNNING | completes structural column |
@@ -41,6 +41,35 @@ Dropped: `joint_lite` (BIND) - attribution between two ~0 zero-shot rungs is
 vacuous, and if chain becomes the method the ladder re-anchors on chain
 (chain-minus-X), which joint_lite does not serve. Also dropped: `ho2`/`ho4` for union/structural, the other 4
 splits of every ablation column. 42 -> 13.
+
+## Standing rule for every new zero-shot run
+
+Two independent failure modes have already voided runs, and both are silent
+until you inspect provenance. Launch every zero-shot run with BOTH:
+
+```
+--seed <fresh> --keep-checkpoints 6
+```
+
+1. **Squatting.** `ModelManager`'s key is `train_env_name + seed +
+   hyperparameters` and does NOT include `featurization`, so an older run on
+   the same domain set shares the directory. If its losses are lower, the new
+   run's checkpoints are never written. A fresh `--seed` gives a virgin
+   directory. (Post-deadline fix: put featurization in the key.)
+2. **Tail-only retention.** With the default 2 slots you keep the two
+   lowest-loss epochs, which are always late. Zero-shot transfer peaks EARLY
+   and decays while training loss keeps falling (visitall: E190 100% ->
+   E330 97.6% -> E500 3.3%). Six slots keep the epochs that actually transfer.
+
+Before trusting any zero-shot number, confirm which epochs exist and who
+wrote them:
+
+```bash
+python tools/inspect_checkpoints.py models/MULTI-<...>/
+```
+
+Rows from a different featurization (width mismatch) are skipped loudly at
+load time; rows from a different date are the squatting signature.
 
 ## Readouts
 
