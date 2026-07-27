@@ -403,6 +403,31 @@ def add_lifted_layer_edges(all_edge_features, all_literals, all_actions,
                           objects_to_node[occ_node_key(sb, occ_b)], feat)
 
 
+_WARNED_TYPES = set()
+
+
+def _warn_unmatched_types(all_objects, type_preds):
+    """Once per type: a schema declares it but no object reports it.
+
+    The signature of a TYPE HIERARCHY. pddlgym reports an object's immediate
+    type, so a slot declared `?x - object` over objects declared `ball` finds
+    no match and its has_type path goes dead. Binding edges stay correct
+    (they come from actual applicability, not from type matching), so nothing
+    is falsified -- but the slot loses the type signal, which is the whole
+    point of compiling it.
+    """
+    if not type_preds:
+        return
+    seen = {declared_type(o) for o in all_objects}
+    for t in type_preds:
+        if t not in seen and t not in _WARNED_TYPES:
+            _WARNED_TYPES.add(t)
+            print(f"  WARNING: declared type '{t}' is used by a schema "
+                  f"parameter but no object reports it -- probable type "
+                  f"hierarchy; that slot's has_type path is dead "
+                  f"(binding edges unaffected)")
+
+
 def add_type_edges(all_edge_features, all_objects, spec, objects_to_node,
                    edge_feature_to_index, state_literals=()):
     """object <-> the symbol node of the type it belongs to  [has_type].
@@ -438,6 +463,7 @@ def add_type_edges(all_edge_features, all_objects, spec, objects_to_node,
         pred_name = type_preds.get(declared_type(obj))
         if pred_name is not None:
             link(obj, pred_name)
+    _warn_unmatched_types(all_objects, type_preds)
 
     for lit in state_literals:
         info = predicates.get(lit.predicate.name)
