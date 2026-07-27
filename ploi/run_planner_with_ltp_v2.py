@@ -271,6 +271,31 @@ def decode_beam_results(results, node_to_objects, action_space):
 
     return action_param_list
 
+def build_grounding_prefix_map(groundings, all_actions, node_to_objects):
+    """(schema, objects so far) -> object nodes legal in the NEXT slot.
+
+    Built from the applicable groundings the graph already carries, so it
+    encodes exactly "this action exists in this state" -- no type reasoning,
+    no domain knowledge, nothing that would not transfer. Token conventions
+    match decode_beam_results: a schema is its index into all_actions, an
+    object is its graph node index.
+    """
+    schema_index = {a: i for i, a in enumerate(all_actions)}
+    node_of = {v: k for k, v in node_to_objects.items()}
+
+    allowed = {}
+    for grounding in groundings:
+        schema = schema_index.get(grounding.predicate)
+        if schema is None:
+            continue
+        nodes = [node_of.get(o) for o in grounding.variables]
+        if any(n is None for n in nodes):
+            continue  # object missing from the graph: cannot constrain on it
+        for slot in range(len(nodes)):
+            allowed.setdefault((schema, tuple(nodes[:slot])), set()).add(nodes[slot])
+    return allowed
+
+
 def convert_state_and_run_model(model, state, action_space , device, groundings,
                                 graph_metadata,cheating_input=None):
     g_inp , _, node_to_objects = state_to_graph_wrapper(state,action_space,groundings,
@@ -283,6 +308,20 @@ def convert_state_and_run_model(model, state, action_space , device, groundings,
     num_actions =len(all_actions)
     num_non_action_nodes = len(node_to_objects) - (num_actions) 
                                     
+    # GABAR_CONSTRAINED_DECODE=1: restrict each parameter slot to objects some
+    # applicable grounding puts there (see build_grounding_prefix_map). Every
+    # proposal is then applicable by construction, so the model's task reduces
+    # from constructing actions to ranking legal ones. Test-time only.
+    if os.environ.get("GABAR_CONSTRAINED_DECODE", "") == "1":
+        if os.environ.get("GABAR_USE_PARALLEL_DECODER", "") == "1":
+            raise RuntimeError(
+                "GABAR_CONSTRAINED_DECODE is implemented for beam_search_v2 "
+                "only; unset GABAR_USE_PARALLEL_DECODER")
+        model._decode_allowed = build_grounding_prefix_map(
+            groundings, all_actions, node_to_objects)
+    else:
+        model._decode_allowed = None
+
     model_input = convert_graph_to_model_input_v2([g_inp],device)
     # Old version:
     #with torch.no_grad() :

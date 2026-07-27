@@ -955,12 +955,39 @@ class GNN_GRU(EncodeDecode):
             ao_scores_new = torch.zeros(ao_scores.shape,device=self.device)
             #ao_scores_new = torch.zeros_like(ao_scores)
 
+            # Grounding-constrained decoding (GABAR_CONSTRAINED_DECODE=1):
+            # _decode_allowed maps (schema, objects chosen so far) -> the object
+            # nodes that some APPLICABLE grounding puts in the next slot. The
+            # applicable set is already enumerated for the graph, so this costs
+            # a dict lookup and makes every completed action applicable by
+            # construction (V1 = 100%). Without it the decoder can compose
+            # (schema, objects) freely and spend its beam on actions that do
+            # not exist -- e.g. drive-truck(package, package, loc, city).
+            _allowed = getattr(self, "_decode_allowed", None)
+
             for beam_idx, beam in enumerate(active_beams):
-                ao_scores_new = self.compute_object_scores(x, n_parameters,n_objects, 
+                ao_scores_new = self.compute_object_scores(x, n_parameters,n_objects,
                                                             ao_scores_new,
                                                             #new_hidden_split[beam_idx],
                                                             new_hidden[:, beam_idx:beam_idx+1],
                                                         object_idxs,parameter_number)
+
+                ok_nodes = None
+                if _allowed is not None:
+                    seq = active_beams[beam_idx][0]
+                    key = (int(seq[0]), tuple(int(t) for t in seq[1:]))
+                    ok_nodes = _allowed.get(key) or set()
+                    # Score -inf outside the allowed set so top-k is drawn from
+                    # legal objects; rows are [param, node] and single-graph
+                    # decode puts this parameter on row `parameter_number`.
+                    if parameter_number < ao_scores_new.shape[0]:
+                        row = ao_scores_new[parameter_number]
+                        keep = torch.zeros_like(row, dtype=torch.bool)
+                        if ok_nodes:
+                            keep[torch.tensor(sorted(ok_nodes), dtype=torch.long,
+                                              device=row.device)] = True
+                        row[~keep] = float("-inf")
+
                 all_objects_batches_all_params,all_objects_scores_all_params = self.get_best_action_object_scores_locations(
                                         ao_scores=ao_scores_new, n_node=n_node, k=self.max_num_objects,
                                         n_objects=n_objects)
@@ -968,8 +995,12 @@ class GNN_GRU(EncodeDecode):
                 all_objects_scores = all_objects_scores_all_params[parameter_number]
                 all_objects_batches = all_objects_batches_all_params[parameter_number]
                 for object_option in range(self.max_num_objects):
-                    all_objects = all_objects_batches[object_option] 
+                    all_objects = all_objects_batches[object_option]
                     all_curr_obj_scores = all_objects_scores[object_option]
+                    # Fewer legal objects than k: top-k still returns k rows,
+                    # the surplus being masked-out ones. Drop them.
+                    if ok_nodes is not None and int(all_objects) not in ok_nodes:
+                        continue
                     new_decoder_input = self.get_best_object_embeddings_ltp(x, 
                                                                             all_objects,
                                                                              n_node, number_graphs)
