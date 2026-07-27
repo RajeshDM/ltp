@@ -368,7 +368,9 @@ class ModelManager:
         # Update best models tracking
         metrics_updated = self._update_best_models(checkpoint, config_hash)
 
-        if self.periodic_every > 0 and epoch % self.periodic_every == 0:
+        # epoch > 0: an untrained snapshot is never worth a test slot, and
+        # periodic is ordered earliest-first so epoch 0 would always be taken.
+        if self.periodic_every > 0 and epoch > 0 and epoch % self.periodic_every == 0:
             if self._update_periodic(checkpoint, config_hash):
                 metrics_updated.append('periodic')
 
