@@ -12,6 +12,21 @@
 # models/ directory. Checkpoint selection order is latest-first (main.py
 # reverses the list), so a small num_models still sees the newest epochs.
 #
+# DEVICE IS ALWAYS cuda:0 on this cluster. Each job gets its own machine or
+# its own GPU-isolated allocation, so every process sees exactly one device
+# and it is numbered 0. cuda:1+ selects a GPU that is not there.
+#
+# Arguments:
+#   config.yaml   which run's checkpoints to read (identifies the models/ dir)
+#   device        cuda:0 (see above)
+#   delay_hours   fractional ok (4.5). Pick it so the epochs you want exist:
+#                 hours = (target_epoch - current_epoch) * sec_per_epoch / 3600
+#                 sec_per_epoch = 'time(10)' in the training log / 10
+#   test-domains  domain[@train][:N] -- @train is the easy split, bare is the
+#                 hard split, :N caps the problem count
+#   num_models    how many periodic checkpoints to test, NEWEST first. Asking
+#                 for more than exist is fine; it tests what it finds.
+#
 # SEED must match the training run (default 30, override with SEED=n).
 set -euo pipefail
 

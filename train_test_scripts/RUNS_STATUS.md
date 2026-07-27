@@ -82,6 +82,14 @@ to change the design, not filling the in-domain rows. Held-out counts:
 | grid_ipcc | 192 | 48 |
 | logistics_ipcc | 156 | 96 |
 
+## Cluster convention: the device is ALWAYS cuda:0
+
+Every job runs on its own machine or its own GPU-isolated allocation, so each
+process sees exactly one device and it is numbered 0. `cuda:1` and above
+select a GPU that is not visible to that process. Parallelism comes from
+launching on different hosts/allocations, never from different device
+indices in the same command.
+
 ## Standing rule for every new zero-shot run
 
 Two independent failure modes have already voided runs, and both are silent

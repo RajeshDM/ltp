@@ -82,7 +82,10 @@ for n in $RUNS; do
 
     echo "  sidecars _ty2:    $(grep -c '_ty2' "$L") lines"
     echo "  type warnings:    $(grep -c 'WARNING: declared type' "$L")"
-    grep -oE 'lifted layer [\[(].*' "$L" | sed 's/.*(\([0-9]*\) type-compiled.*/  \1 type(s)/;s/.*: \([0-9]*\) declared.*/  \1 type(s)/' \
+    # Count the LOGGER line only. The print() says the same thing, so counting
+    # both double-reported every domain (7 domains looked like 14 lines).
+    grep -oE 'lifted layer \(.*' "$L" \
+        | sed 's/.*(\([0-9]*\) type-compiled.*/  \1 type(s)/' \
         | sort | uniq -c | sed 's/^/    /'
     echo "  last epoch:       ${LAST:-none yet}"
     FAIL=$(grep -ciE 'traceback|CUDA error|out of memory|size mismatch' "$L")

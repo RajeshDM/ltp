@@ -2,7 +2,8 @@
 # run_config.sh — launch one experiment config in the background with logging.
 #
 # Usage: ./train_test_scripts/run_config.sh configs/<name>.yaml [device] [extra flags...]
-#   device defaults to cuda:0. Extra flags are passed verbatim to main.py
+#   device is ALWAYS cuda:0 on this cluster (one visible GPU per allocation;
+#   cuda:1+ selects a device that is not there). Extra flags go to main.py
 #   (e.g. --continue-training True).
 #
 # Survives ssh disconnect (nohup). Log: logs/<config-name>.log
