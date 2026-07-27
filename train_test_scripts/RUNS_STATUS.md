@@ -42,6 +42,28 @@ vacuous, and if chain becomes the method the ladder re-anchors on chain
 (chain-minus-X), which joint_lite does not serve. Also dropped: `ho2`/`ho4` for union/structural, the other 4
 splits of every ablation column. 42 -> 13.
 
+## 2026-07-27: type compilation invalidates the joint_chain column
+
+Declared PDDL types are now compiled into the lifted layer (unary static
+predicate per type, 'pre' occurrence per typed slot, `has_type` object edge),
+so typed and predicate-typed domains agree. Lifted feature widths changed:
+every `joint*` checkpoint predates it and every `joint*` cache sidecar takes
+a new `_ty` tag. The four joint_chain splits must be retrained together or
+the GADAR column mixes two featurizations - including `no_visitall`, whose
+100%/68% was trained on 7 domains that were type-blind at the time.
+
+`structural` and `union` are unaffected (no lifted layer / symbol one-hots
+already carry types), so those columns stand.
+
+Verify compilation fired before trusting a run - the count is printed per
+domain at metadata build:
+
+```bash
+grep "lifted layer" <log> | sort -u
+#   gripper/miconic/spanner/rovers/blocksworld -> 1..7 declared type(s)
+#   grid/logistics                             -> 0 (predicate-typed)
+```
+
 ## Standing rule for every new zero-shot run
 
 Two independent failure modes have already voided runs, and both are silent
