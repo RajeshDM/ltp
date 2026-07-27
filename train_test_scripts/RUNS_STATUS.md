@@ -64,6 +64,24 @@ grep "lifted layer" <log> | sort -u
 #   grid/logistics                             -> 0 (predicate-typed)
 ```
 
+## 2026-07-27 launch: 5 type-compiled joint_chain splits, zero-shot only
+
+Held out: manyblocks, gripper, miconic (typed - the family type compilation
+targets) + grid, logistics (predicate-typed - the control that says whether
+compilation disturbed the family that already worked).
+
+Test scope is overridden on the CLI to the held-out domain's two splits and
+NOTHING else: the config's 9-entry sweep is ~12 h and we are deciding whether
+to change the design, not filling the in-domain rows. Held-out counts:
+
+| held out | easy (@train) | hard |
+|---|---|---|
+| manyblocks_ipcc_big | 200 | 200 |
+| gripper_ipcc | 147 | 173 |
+| miconic_ipcc | 228 | 119 |
+| grid_ipcc | 192 | 48 |
+| logistics_ipcc | 156 | 96 |
+
 ## Standing rule for every new zero-shot run
 
 Two independent failure modes have already voided runs, and both are silent
