@@ -62,7 +62,14 @@ main.py                            ← THE entry point (__main__): arg parsing,
  │                                   chaining edges, add_chain_node_features
  │                                   goal features, add_grounded_effect_edges);
  │                                   binding edges are added in
- │                                   _get_precondition_satisfaction_position
+ │                                   _get_precondition_satisfaction_position.
+ │                                   TYPE COMPILATION (all three modes):
+ │                                   build_lifted_spec turns each declared PDDL
+ │                                   type into a unary static predicate with one
+ │                                   'pre' occurrence per typed slot
+ │                                   (spec['type_preds'], spec['type_occ']);
+ │                                   add_type_edges links objects to their type
+ │                                   symbol ['has_type']
  ├─ ploi/modelutils_ltp.py         HeteroGNN_global encoder; GNN_GRU decoder
  │                                   (compute_action_scores / compute_object_scores)
  │    └─ ploi/attention_layer.py   attention via torch-scatter scatter_softmax
@@ -101,7 +108,10 @@ tests/test_lifted_layer.py         dependency-free unit tests: lifted spec
                                    (roles, bindings, occurrence order),
                                    metadata widths, joint vs joint_lite,
                                    joint_chain chaining/goal features,
-                                   renaming invariance of lifted tensors
+                                   type compilation (typed vs predicate-typed
+                                   domains agree structurally; type renaming
+                                   invariance), renaming invariance of lifted
+                                   tensors
 ```
 
 ### 1.2 What to ignore (legacy — do not read, never edit)
@@ -210,7 +220,16 @@ same `run_tests` machinery.
    turned true for small domains — now retired.)
 5. **`--num-train-problems` applies per domain** in `--domains` mode unless
    a per-domain `:count` override is given (`parse_domain_arg`).
-6. **Expert-planner failures on hard instances are normal**
+6. **Two typing conventions in the suite.** Blocksworld, gripper, miconic,
+   spanner and rovers declare PDDL types; grid and logistics spell types as
+   ordinary unary predicates. `structural.py` collapses every declared type
+   to one `typed_object` class (renaming invariance forbids type-name
+   features), so before type compilation only the second family's type
+   constraints were representable — the cause of gripper's 4-argument
+   type-invalid groundings. `build_lifted_spec` now compiles declared types
+   into unary static predicates so both families agree; `structural`
+   (no lifted layer to host symbol nodes) stays type-blind by design.
+7. **Expert-planner failures on hard instances are normal**
    (`Planning failed for problem N`): satisficing `fd-lama-first` vs optimal
    `fd-opt-lmcut` differ in reach; failed problems are skipped — watch the
    per-domain skip count for dataset imbalance.

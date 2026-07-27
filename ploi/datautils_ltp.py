@@ -404,12 +404,17 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
                                           allow_unknown=_allow_unknown)
 
     if _lifted_spec:
-        from ploi.lifted_layer import add_lifted_layer_edges
+        from ploi.lifted_layer import add_lifted_layer_edges, add_type_edges
         add_lifted_layer_edges(all_edge_features, all_literals, all_actions,
                                _lifted_spec, objects_to_node,
                                _edge_feature_to_index,
                                graph_metadata['max_pred_arity'],
                                graph_metadata['max_action_arity'])
+        # Type compilation: object <-> its declared type's symbol node. The
+        # compiled stand-in for the ground type literal a predicate-typed
+        # domain would have. No-op for untyped/predicate-typed domains.
+        add_type_edges(all_edge_features, all_objects, _lifted_spec,
+                       objects_to_node, _edge_feature_to_index)
 
     node_to_only_actions = dict(enumerate(all_actions))
     action_positions = dict(enumerate(list(range(max_action_arity))))
@@ -448,6 +453,10 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
         _binding_ctx = {
             'objects_to_node': objects_to_node,
             'ka': graph_metadata['max_action_arity'],
+            # {schema: {slot: occurrence index}} for the type-compiled
+            # preconditions; an applicable grounding is type-correct by
+            # construction, so its object binds to the slot's type occurrence.
+            'type_occ': _lifted_spec.get('type_occ', {}),
         }
 
     for action, values in actions_to_node_groundings.items():
@@ -663,6 +672,23 @@ def _get_precondition_satisfaction_position(curr_action, all_literals, all_objec
                         getattr(curr_action, 'name', str(curr_action)),
                         precond_for_current_action_object_occ[pos])
                     occ_index = binding_ctx['objects_to_node'].get(occ_key)
+                    if occ_index is not None:
+                        slot = min(position, binding_ctx['ka'] - 1)
+                        bind_index = _edge_feature_to_index[f'bind_slot_{slot}']
+                        all_edge_features[occ_index, object_index, bind_index] = 1
+                        all_edge_features[object_index, occ_index, bind_index] = 1
+
+            # Type-compiled precondition for this slot: this object is
+            # applicable at the slot, so it satisfies the slot's declared
+            # type. Same binding edge the real preconditions get, which is
+            # exactly what a predicate-typed domain produces for `(block ?x)`.
+            if binding_ctx is not None:
+                _schema = getattr(curr_action, 'name', str(curr_action))
+                _occ_k = binding_ctx['type_occ'].get(_schema, {}).get(position)
+                if _occ_k is not None:
+                    from ploi.lifted_layer import occ_node_key
+                    occ_index = binding_ctx['objects_to_node'].get(
+                        occ_node_key(_schema, _occ_k))
                     if occ_index is not None:
                         slot = min(position, binding_ctx['ka'] - 1)
                         bind_index = _edge_feature_to_index[f'bind_slot_{slot}']

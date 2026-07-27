@@ -540,6 +540,12 @@ if __name__ == "__main__":
                     # reuses the same featurized graphs. Union keeps
                     # domain-set tags (its merged vocab genuinely differs).
                     tag = f"_{args.featurization}_kp{kp}_ka{ka}"
+                    if args.featurization != 'structural':
+                        # Type compilation added a 'has_type' edge class and
+                        # per-typed-slot occurrence nodes: lifted graphs cached
+                        # before it are a different width. New namespace, so
+                        # stale sidecars are never silently reused.
+                        tag += "_ty"
                     if args.cheating_input:
                         tag += "_cheat"  # widths differ: never share sidecars
                     per_domain_graphs = {}

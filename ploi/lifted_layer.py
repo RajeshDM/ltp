@@ -24,6 +24,16 @@ Two featurization modes build on the structural substrate (Method 0):
   'deletes_true' from applicable groundings (add_grounded_effect_edges).
   Wider metadata than 'joint' -> its own cache sidecar tag.
 
+All three modes TYPE-COMPILE the domain first (build_lifted_spec): each
+declared PDDL type becomes a synthetic unary static predicate with one
+'pre' occurrence per typed schema slot, and each object gets a 'has_type'
+edge to its type's symbol node (add_type_edges). Without this, half the
+suite is typed (gripper, miconic, spanner, rovers, blocksworld) and half
+spells types as ordinary predicates (grid, logistics) -- and only the
+second half's type constraints survive the symbol-free featurization,
+because structural.py collapses every declared type to one class. After
+compilation both families produce the same lifted structure.
+
 Everything is symbol-free (roles + positions only), so renaming
 invariance and fixed cross-domain feature widths carry over from the
 structural substrate. Node ordering in the state graph stays
@@ -40,6 +50,14 @@ logger = logging.getLogger(__name__)
 _PRED_KEY = "LIFTED_PRED::{}"
 _OCC_KEY = "LIFTED_OCC::{}::{}"
 
+# Type compilation (below): a declared PDDL type becomes a synthetic unary
+# static predicate, so a typed domain and a predicate-typed one present the
+# same structure to the lifted + binding layers.
+_TYPE_PRED = "__type_{}"
+# pddlgym gives untyped entities this pseudo-type; it carries no information
+# (every object has it) so compiling it would add a constant node.
+_UNTYPED = {None, "default", ""}
+
 
 def pred_node_key(pred_name):
     return _PRED_KEY.format(pred_name)
@@ -47,6 +65,17 @@ def pred_node_key(pred_name):
 
 def occ_node_key(schema_name, occ_index):
     return _OCC_KEY.format(schema_name, occ_index)
+
+
+def type_pred_name(type_name):
+    return _TYPE_PRED.format(type_name)
+
+
+def declared_type(entity):
+    """The entity's PDDL type, or None if the domain is untyped there."""
+    t = getattr(entity, "var_type", None)
+    t = None if t is None else str(t)
+    return None if t in _UNTYPED else t
 
 
 def _positive_predicate(literal):
@@ -69,13 +98,30 @@ def build_lifted_spec(action_space):
       schemas: {schema_name: [occurrence, ...]} where occurrence =
         {'role': 'pre'|'add'|'del', 'pred': name,
          'bindings': [(pred_arg_i, schema_slot_j), ...]}
+      type_preds: {pddl_type_name: synthetic_predicate_name}
+      type_occ:   {schema_name: {slot_j: occurrence_index}}
+
       Precondition occurrences come FIRST and keep preconds.literals
       order, so the k-th precondition of a schema is occurrence k -- the
-      contract the binding layer relies on.
+      contract the binding layer relies on. TYPE-COMPILED preconditions
+      (below) are appended directly after them, before any effect
+      occurrence, so that contract is untouched.
+
+    Type compilation: a schema parameter declared `?x - block` carries a
+    constraint that a predicate-typed domain would spell as a precondition
+    `(block ?x)`. Without compiling it, the constraint is invisible to the
+    symbol-free featurizations -- structural.py collapses every declared
+    type to one `typed_object` class -- so a typed domain's slots have no
+    representable type at all while a predicate-typed domain's do. We
+    synthesize the missing precondition: one unary static predicate per
+    declared type, one 'pre' occurrence per typed slot. Both families then
+    reach the binding layer through the same path.
     """
     predicates = {}
     schemas = {}
     effect_names = set()
+    type_preds = {}
+    type_occ = {}
 
     for schema, op in action_space.items():
         for lit in getattr(getattr(op, "effects", None), "literals", []) or []:
@@ -96,19 +142,36 @@ def build_lifted_spec(action_space):
     for schema, op in sorted(action_space.items(),
                              key=lambda kv: _schema_name(kv[0])):
         params = list(getattr(op, "params", []))
+        name = _schema_name(schema)
         occurrences = []
         for lit in getattr(op.preconds, "literals", []):
             occurrences.append(record_occurrence("pre", lit, params))
+        # Type-compiled preconditions: after the real ones (preserving the
+        # k-th-precondition-is-occurrence-k contract), before the effects.
+        slots = {}
+        for j, param in enumerate(params):
+            t = declared_type(param)
+            if t is None:
+                continue
+            pred_name = type_preds.setdefault(t, type_pred_name(t))
+            predicates.setdefault(pred_name, {"arity": 1, "static": True})
+            slots[j] = len(occurrences)
+            occurrences.append({"role": "pre", "pred": pred_name,
+                                "bindings": [(0, j)], "type_slot": j})
+        if slots:
+            type_occ[name] = slots
         for lit in getattr(getattr(op, "effects", None), "literals", []) or []:
             role = "del" if getattr(lit, "is_anti", False) else "add"
             occurrences.append(record_occurrence(role, lit, params))
-        schemas[_schema_name(schema)] = occurrences
+        schemas[name] = occurrences
 
     return {
         "predicates": predicates,
         "pred_order": sorted(predicates),
         "schema_order": sorted(schemas),
         "schemas": schemas,
+        "type_preds": type_preds,
+        "type_occ": type_occ,
     }
 
 
@@ -188,7 +251,8 @@ def build_lifted_metadata(action_space, max_pred_arity, max_action_arity, mode,
 
     node_extra = ["lifted_pred_node", "occ_node_pre", "occ_node_add",
                   "occ_node_del"]
-    edge_extra = (["instance_of", "occ_of", "role_pre", "role_add", "role_del"]
+    edge_extra = (["instance_of", "occ_of", "role_pre", "role_add", "role_del",
+                   "has_type"]
                   + [f"slot_{j}" for j in range(ka)]
                   + [f"parg_{i}" for i in range(kp)]
                   + [f"pair_p{i}_s{j}" for i in range(kp) for j in range(ka)]
@@ -223,6 +287,14 @@ def build_lifted_metadata(action_space, max_pred_arity, max_action_arity, mode,
         md["lifted_spec"]["chain"] = build_chain_spec(md["lifted_spec"])
     md["lifted_spec"]["mode"] = mode
     md["featurization"] = mode
+    n_types = len(md["lifted_spec"]["type_preds"])
+    logger.info(
+        "lifted layer (%s): %d predicates (%d type-compiled from declared "
+        "PDDL types), %d schemas", mode, len(md["lifted_spec"]["predicates"]),
+        n_types, len(md["lifted_spec"]["schemas"]))
+    print(f"  lifted layer [{mode}]: {n_types} declared type(s) compiled to "
+          f"unary static predicates"
+          + (" (domain is predicate-typed or untyped)" if not n_types else ""))
     return md
 
 
@@ -329,6 +401,31 @@ def add_lifted_layer_edges(all_edge_features, all_literals, all_actions,
                 _set_edge(all_edge_features,
                           objects_to_node[occ_node_key(sa, occ_a)],
                           objects_to_node[occ_node_key(sb, occ_b)], feat)
+
+
+def add_type_edges(all_edge_features, all_objects, spec, objects_to_node,
+                   edge_feature_to_index):
+    """object <-> its type's synthetic predicate symbol node  [has_type].
+
+    The compiled counterpart of the ground literal `(block b1)` that a
+    predicate-typed domain would carry: it puts the object on the same
+    symbol node the schema's type-precondition occurrence hangs off, so the
+    binding layer can relate slot constraints to object types without ever
+    naming a type. Objects whose type no schema parameter declares have no
+    symbol node and are skipped (the type constrains nothing).
+    """
+    type_preds = spec.get("type_preds")
+    if not type_preds:
+        return
+    feat = edge_feature_to_index["has_type"]
+    for obj in all_objects:
+        pred_name = type_preds.get(declared_type(obj))
+        if pred_name is None:
+            continue
+        pred_idx = objects_to_node.get(pred_node_key(pred_name))
+        if pred_idx is None:
+            continue
+        _set_edge(all_edge_features, objects_to_node[obj], pred_idx, feat)
 
 
 _GDIST_MAX = 3  # buckets gdist_0..gdist_2 + gdist_3plus; fixed by metadata

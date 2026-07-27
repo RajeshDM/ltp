@@ -18,8 +18,10 @@ from ploi.lifted_layer import (
     lifted_node_keys,
     add_lifted_node_features,
     add_lifted_layer_edges,
+    add_type_edges,
     pred_node_key,
     occ_node_key,
+    type_pred_name,
 )
 
 
@@ -488,6 +490,169 @@ def test_chain_renaming_invariance_of_graph_tensors():
     E1, E2 = md1["edge_feature_to_index"], md2["edge_feature_to_index"]
     for cls in _CHAIN_EDGE_CLASSES:
         assert edges1[:, :, E1[cls]].sum() == edges2[:, :, E2[cls]].sum(), cls
+
+
+# --- type compilation: typed domains == predicate-typed domains ---
+
+class MockTypedParam(str):
+    """A pddlgym-shaped `?x - block`: a name that also carries a var_type."""
+    def __new__(cls, name, var_type):
+        obj = str.__new__(cls, name)
+        obj.var_type = var_type
+        return obj
+
+
+class MockObj(str):
+    def __new__(cls, name, var_type):
+        obj = str.__new__(cls, name)
+        obj.var_type = var_type
+        return obj
+
+
+def _typed_space():
+    """move(?r - robot, ?from - room, ?to - room): types declared in PDDL."""
+    at = MockPred("at", 2)
+    move = MockOp(
+        params=[MockTypedParam("?r", "robot"), MockTypedParam("?from", "room"),
+                MockTypedParam("?to", "room")],
+        preconds=[MockLiteral(at, ["?r", "?from"])],
+        effects=[MockLiteral(at, ["?r", "?to"]),
+                 MockLiteral(at, ["?r", "?from"], is_anti=True)])
+    return {MockPred("move", 3): move}
+
+
+def _predicate_typed_space():
+    """The same domain written untyped, with type predicates spelled out.
+
+    This is the form grid/logistics use and the only form the pre-compilation
+    featurization could represent.
+    """
+    at = MockPred("at", 2)
+    robot = MockPred("robot", 1)
+    room = MockPred("room", 1)
+    move = MockOp(
+        params=["?r", "?from", "?to"],
+        preconds=[MockLiteral(at, ["?r", "?from"]), MockLiteral(robot, ["?r"]),
+                  MockLiteral(room, ["?from"]), MockLiteral(room, ["?to"])],
+        effects=[MockLiteral(at, ["?r", "?to"]),
+                 MockLiteral(at, ["?r", "?from"], is_anti=True)])
+    return {MockPred("move", 3): move}
+
+
+def test_declared_types_become_unary_static_predicates():
+    spec = build_lifted_spec(_typed_space())
+    assert spec["type_preds"] == {"robot": type_pred_name("robot"),
+                                  "room": type_pred_name("room")}
+    for pred_name in spec["type_preds"].values():
+        assert spec["predicates"][pred_name] == {"arity": 1, "static": True}
+
+
+def test_type_occurrences_do_not_shift_real_precondition_indices():
+    """The binding layer maps the k-th precondition literal to occurrence k;
+    type occurrences must come after every real precondition."""
+    spec = build_lifted_spec(_typed_space())
+    occs = spec["schemas"]["move"]
+    assert occs[0]["role"] == "pre" and occs[0]["pred"] == "at"
+    for slot, occ_index in spec["type_occ"]["move"].items():
+        assert occ_index > 0
+        assert occs[occ_index]["role"] == "pre"
+        assert occs[occ_index]["bindings"] == [(0, slot)]
+    # every typed slot has exactly one occurrence
+    assert set(spec["type_occ"]["move"]) == {0, 1, 2}
+
+
+def test_typed_and_predicate_typed_domains_agree_structurally():
+    """The point of compilation: both spellings of the same domain give the
+    same multiset of (role, arity, static, bindings) occurrences."""
+    def signature(spec):
+        preds = spec["predicates"]
+        return sorted(
+            (o["role"], preds[o["pred"]]["arity"], preds[o["pred"]]["static"],
+             tuple(o["bindings"]))
+            for occs in spec["schemas"].values() for o in occs)
+    assert signature(build_lifted_spec(_typed_space())) == \
+        signature(build_lifted_spec(_predicate_typed_space()))
+
+
+def test_untyped_domain_compiles_nothing():
+    spec = build_lifted_spec(_predicate_typed_space())
+    assert spec["type_preds"] == {} and spec["type_occ"] == {}
+    # 'default' is pddlgym's pseudo-type for untyped entities: not a type.
+    spec2 = build_lifted_spec(
+        {MockPred("a", 1): MockOp(params=[MockTypedParam("?x", "default")],
+                                  preconds=[], effects=[])})
+    assert spec2["type_preds"] == {}
+
+
+def test_has_type_edge_links_object_to_its_type_symbol():
+    md = build_lifted_metadata(_typed_space(), KP, KA, "joint_chain")
+    spec = md["lifted_spec"]
+    keys = lifted_node_keys(spec)
+    objs = [MockObj("r1", "robot"), MockObj("rm1", "room"),
+            MockObj("x", "untyped_thing")]
+    node_order = list(objs) + keys + list(_typed_space())
+    o2n = {v: i for i, v in enumerate(node_order)}
+    edges = np.zeros((len(node_order), len(node_order), md["num_edge_features"]))
+    add_type_edges(edges, objs, spec, o2n, md["edge_feature_to_index"])
+    E = md["edge_feature_to_index"]["has_type"]
+    robot_node = o2n[pred_node_key(type_pred_name("robot"))]
+    room_node = o2n[pred_node_key(type_pred_name("room"))]
+    assert edges[o2n["r1"], robot_node, E] == 1
+    assert edges[robot_node, o2n["r1"], E] == 1
+    assert edges[o2n["rm1"], room_node, E] == 1
+    assert edges[o2n["rm1"], robot_node, E] == 0
+    # a type no schema parameter declares constrains nothing -> no node, no edge
+    assert edges[o2n["x"], :, E].sum() == 0
+
+
+def test_type_compilation_is_renaming_invariant():
+    """Renaming the types must not change the tensors -- types are symbols
+    too, and C1 depends on none of them reaching the features."""
+    def renamed():
+        at = MockPred("at", 2)
+        move = MockOp(
+            params=[MockTypedParam("?r", "zzz"), MockTypedParam("?from", "aaa"),
+                    MockTypedParam("?to", "aaa")],
+            preconds=[MockLiteral(at, ["?r", "?from"])],
+            effects=[MockLiteral(at, ["?r", "?to"]),
+                     MockLiteral(at, ["?r", "?from"], is_anti=True)])
+        return {MockPred("move", 3): move}
+
+    def tensors(space, type_names):
+        md = build_lifted_metadata(space, KP, KA, "joint_chain")
+        spec = md["lifted_spec"]
+        keys = lifted_node_keys(spec)
+        objs = [MockObj("o1", type_names[0]), MockObj("o2", type_names[1])]
+        node_order = list(objs) + keys + list(space)
+        o2n = {v: i for i, v in enumerate(node_order)}
+        n = len(node_order)
+        feats = np.zeros((n, md["num_node_features"]))
+        edges = np.zeros((n, n, md["num_edge_features"]))
+        add_lifted_node_features(feats, keys, spec, o2n,
+                                 md["node_feature_to_index"], KP)
+        add_lifted_layer_edges(edges, [], list(space), spec, o2n,
+                               md["edge_feature_to_index"], KP, KA)
+        add_type_edges(edges, objs, spec, o2n, md["edge_feature_to_index"])
+        return md, feats, edges
+
+    md1, f1, e1 = tensors(_typed_space(), ["robot", "room"])
+    md2, f2, e2 = tensors(renamed(), ["zzz", "aaa"])
+    assert md1["num_node_features"] == md2["num_node_features"]
+    assert md1["num_edge_features"] == md2["num_edge_features"]
+    assert sorted(tuple(r) for r in f1) == sorted(tuple(r) for r in f2)
+    assert e1.sum() == e2.sum()
+    E = md1["edge_feature_to_index"]["has_type"]
+    assert e1[:, :, E].sum() == e2[:, :, E].sum() == 4  # 2 objects, both ways
+
+
+def test_type_compilation_does_not_disturb_chaining():
+    """Nothing adds or deletes a type predicate, so enables/threatens are
+    unchanged by compilation."""
+    typed = build_lifted_spec(_typed_space())
+    chain = build_chain_spec(typed)
+    for (sa, occ_a, sb, occ_b) in chain["enables"] + chain["threatens"]:
+        assert "type_slot" not in typed["schemas"][sa][occ_a]
+        assert "type_slot" not in typed["schemas"][sb][occ_b]
 
 
 def _run_all():
