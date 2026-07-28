@@ -191,28 +191,18 @@ corroborated for learned heuristics and Q-value policies
 \citep{chrestien_optimize, mueller_qvalues}.
 
 Our experiments follow a leave-one-domain-out protocol over the eight GABAR
-benchmark domains. On Visitall, a policy trained on
-the other seven domains and never exposed to Visitall's predicates, schemas,
-or objects solves 68\% of the large test instances zero-shot, against
-0\% for an identically-executed untrained network and 4\% for
-the same system without the chain layer (\gadarbind{}); on the
-training-scale instances it solves 100\% against 16\% for \gadarbind{}. It does so at plan quality 0.97 relative to a satisficing planner
---- near-planner-length plans, not lucky wandering ---
-above the 50\% ceiling of a hand-coded oracle
-that always prefers an applicable action directly satisfying an open goal
-atom, which rules out the reading that the transfer is a terminal trigger in
-disguise. The union-vocabulary control makes the contrast concrete: the same
-architecture with symbol-identity features solves the domains it trained on
---- 100\% on Miconic, 86\% on Gripper in-domain --- and transfers exactly
-nothing, 0\% on both splits of held-out Visitall. By construction, \gadar{} is invariant to renaming of
-predicates, schemas, and objects --- a robustness that symbol-based
-approaches, including current large reasoning models, do not share
-\citep{llm_baseline}
-% TODO: verify exact renaming numbers (o1: 97.8% -> 37.3% on Mystery
-% Blocksworld) against the camera-ready of llm_baseline
---- and the same invariance yields a precise transfer ceiling: structurally
-isomorphic domains with different semantics necessarily receive identical
-behavior, which marks where zero-shot ends and adaptation must begin.
+benchmark domains. On held-out Visitall, \gadar{} solves 68\% of the large
+test instances zero-shot at plan quality 0.81 --- against 0\% for an
+identically-executed untrained network, 0\% for the union-vocabulary
+control (which solves the domains it \emph{trained} on), and 4\% without
+the chain layer --- and 100\% of training-scale instances at plan quality
+0.97, above the 50\% ceiling of a hand-coded goal-achievement oracle. By
+construction, \gadar{} is invariant to renaming of predicates, schemas, and
+objects --- a robustness current large reasoning models lack
+\citep{llm_baseline} --- and the same invariance is a precise ceiling:
+structurally isomorphic domains with different semantics necessarily
+receive identical behavior, marking where zero-shot ends and adaptation
+must begin.
 
 \textbf{Contributions.}
 \begin{itemize}
@@ -286,57 +276,44 @@ policy is bound to its training domain. \gadar{} removes this binding by
 moving the domain description from the parameters of the network into its
 input.
 
-\textbf{Ranking in planning.} Learning to rank has been used to order
-states and heuristic values for search: linear ranking functions for beam
-search \citep{ranking_old_2009}, RankSVM-based heuristic synthesis
-\citep{ranking_og}, ranking-optimized heuristics \citep{chrestien_optimize},
-and learned pairwise rankings for greedy best-first search \citep{gbfs_v2}.
-GABAR instead ranks \emph{actions} locally within a state, avoiding the need
-for a globally consistent function \citep{gabar}. In the cross-domain
-setting this choice becomes load-bearing rather than convenient: a value
-function shared across domains presupposes a common scale of goal distances
-that does not exist, whereas local action rankings are scale-free.
-\citet{mueller_qvalues} provide independent convergent evidence from the
-single-domain setting: vanilla Q-value regression fails precisely because it
-does not discriminate between actions, and is repaired by a ranking-style
-margin objective.
+\textbf{Ranking in planning.} Learning to rank has ordered states and
+heuristic values for search \citep{ranking_old_2009, ranking_og,
+chrestien_optimize, gbfs_v2}; GABAR instead ranks \emph{actions} locally
+within a state \citep{gabar}. Cross-domain, this choice becomes
+load-bearing: a shared value function presupposes a common scale of goal
+distances that does not exist across domains, whereas local rankings are
+scale-free --- convergent with \citet{mueller_qvalues}, where Q-value
+regression fails for lack of action discrimination and a ranking-style
+margin repairs it.
 
-\textbf{Large language models and planning.} LLM-based planners have been
-evaluated extensively; systematic studies find that performance of large
-reasoning models degrades sharply when symbols are renamed
-\citep{llm_baseline}, indicating reliance on symbol identity. \gadar{} is
-invariant to symbol renaming by construction. LLM code-synthesis approaches
-that write per-domain programs require solved instances and validator loops
-at test time, addressing a different question from zero-shot execution.
+\textbf{Large language models and planning.} Large reasoning models degrade
+sharply under symbol renaming \citep{llm_baseline} --- an invariance
+\gadar{} has by construction --- and LLM code-synthesis planners write
+per-domain programs using solved instances and validator loops at test
+time, a different question from zero-shot execution.
 
 \section{Background and Problem Setup}
 
-A classical planning problem is a pair $P = \langle D, I \rangle$, where $D$
-is a first-order domain and $I$ contains instance-specific information. The
-domain $D$ consists of a set of predicate symbols $\mathcal{P}$ with
-associated arities and a set of action schemas $\mathcal{A}$. Each schema $a
-\in \mathcal{A}$ is defined by a tuple of parameters $\Delta(a)$ representing
-variables that can be instantiated, preconditions $pre(a)$, add effects
-$add(a)$, and delete effects $del(a)$. The instance information $I$ is a
-tuple $\langle O, s_0, G \rangle$, where $O$ is a finite set of objects,
-$s_0$ is the initial state represented as a set of ground atoms, and $G$ is
-the goal condition, also a set of ground atoms. A ground action $a(o_1,
-\dots, o_k)$ substitutes objects for a schema's parameters; it is applicable
-in state $s$ if $pre(a) \subseteq s$ under the substitution, and yields
-successor $s' = (s \setminus del(a)) \cup add(a)$. A plan is a sequence of
-applicable ground actions transforming $s_0$ into a state satisfying $G$.
+A classical planning problem $P = \langle D, I \rangle$ pairs a first-order
+domain $D$ --- predicate symbols $\mathcal{P}$ with arities, and action
+schemas $\mathcal{A}$, each with parameters, preconditions $pre(a)$, and
+add/delete effects $add(a)$, $del(a)$ --- with instance information
+$I = \langle O, s_0, G \rangle$: objects, an initial state, and a goal
+condition, the last two as sets of ground atoms. A ground action
+substitutes objects for a schema's parameters, is applicable in $s$ if
+$pre(a) \subseteq s$ under the substitution, and yields
+$s' = (s \setminus del(a)) \cup add(a)$; a plan is an applicable sequence
+from $s_0$ to a state satisfying $G$.
 
-GABAR addresses the following problem: given a domain $D$ and solved training
-instances of different sizes, learn a relational policy $\pi_D(s, G)$ that
-solves larger test instances of the \emph{same} domain \citep{gabar}. This
-paper addresses the cross-domain version. Given a set of training domains
-$D_1, \dots, D_n$, each with solved instances of small problems, learn a
-\emph{single} policy $\pi(s, G, D)$ --- taking the domain description itself
-as input --- that solves instances of a test domain $D_{\mathit{test}}
-\notin \{D_1, \dots, D_n\}$, zero-shot. Execution is search-free and follows
-GABAR's protocol: the highest-ranked applicable action is executed, a
-monitor optionally avoids revisiting states, and execution ends at the goal,
-at a dead end, or at a length bound.
+GABAR learns, per domain, a policy $\pi_D(s, G)$ that generalizes to larger
+instances of the \emph{same} domain \citep{gabar}. We address the
+cross-domain version: from solved small instances of training domains
+$D_1, \dots, D_n$, learn a \emph{single} policy $\pi(s, G, D)$ --- the
+domain description itself an input --- that solves instances of a test
+domain $D_{\mathit{test}} \notin \{D_1, \dots, D_n\}$, zero-shot. Execution
+is search-free, following GABAR: the highest-ranked applicable action is
+executed, a monitor optionally avoids revisiting states, and execution ends
+at the goal, a dead end, or a length bound.
 
 \begin{figure*}[t]
 \centering
@@ -361,11 +338,11 @@ elements are cumulative along the ladder of systems: \union{} uses the
 ground layer with symbol-identity features; \gadarbind{} makes those
 features structural and adds the lifted layer --- predicate symbols,
 occurrence nodes, instantiation, role, and
-binding edges. Full \gadar{} adds the chain layer on top; its edges
-(\emph{enables} and \emph{threatens} between occurrence nodes, and grounded
-achieves-goal / deletes-true edges) are omitted from this drawing for
-legibility and described in the text. No feature encodes symbol identity, so
-the representation is invariant to renaming by construction.}
+binding edges. Full \gadar{} adds the chain layer (magenta): an
+\emph{enables} edge between occurrence nodes, a grounded deletes-true edge,
+and goal-relevance rings, one exemplar each; \emph{threatens} edges mirror
+enables for delete effects. No feature encodes symbol identity, so the
+representation is invariant to renaming by construction.}
 \label{fig:representation}
 \end{figure*}
 
