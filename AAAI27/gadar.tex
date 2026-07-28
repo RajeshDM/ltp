@@ -207,7 +207,6 @@ adaptation must begin.
 \section{Related Work}
 
 
-
 \textbf{Learning heuristics across domains.} Learning domain-independent
 heuristics has a long history; we focus on the neural line. STRIPS-HGN trains
 hypergraph networks on structural features of the delete relaxation and
@@ -465,7 +464,6 @@ nodes, and these edges place ``this object closes an open goal'' and ``this
 object undoes something true'' one hop from the quantity being ranked.
 
 
-
 \textbf{Relation to GOOSE's LLG.} LLG and our lifted layer share the
 essential idea of the domain description as input, and differ in encoding:
 argument positions as edge features rather than chains of index nodes, and
@@ -613,6 +611,83 @@ Table~\ref{table:main_table} presents the zero-shot results. We organize
 the discussion so that each question about the method is answered by one
 comparison in the table: a rung of the ladder, a control, or a diagnostic.
 
+\begin{table*}[t]
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.1}
+\small
+\centering
+\caption{Zero-shot coverage (C, \%) and plan quality (P), leave-one-domain-out.
+E = the held-out domain's own training-scale instances (unseen); H = its test
+instances, up to an order of magnitude larger. GABAR$^\dagger$: published
+per-domain GABAR trained \emph{on} the held-out domain (hard split), the
+ceiling set by dedicated training. Ladder columns add one component
+each: \union{} (symbol one-hots, domain in the weights), \gadarbind{}
+(structural features, lifted domain layer, binding edges), \gadar{} (chain
+layer). \todonum{--} marks runs in flight, not zeros.}
+\label{table:main_table}
+\definecolor{turqLight}{HTML}{C8F1EA}
+\definecolor{turqMed}{HTML}{64D1C6}
+\definecolor{turqDark}{HTML}{00A3A1}
+\newcommand{\levelA}{}
+\newcommand{\levelB}{\cellcolor{turqLight}}
+\newcommand{\levelC}{\cellcolor{turqMed}}
+\newcommand{\levelD}{\cellcolor{turqDark!80}}
+\definecolor{plumLight}{HTML}{F4EBFC}
+\definecolor{plumMed}{HTML}{DCC4F6}
+\definecolor{plumDark}{HTML}{BBA0E5}
+\newcommand{\pvalA}{\cellcolor{plumLight}}
+\newcommand{\pvalB}{\cellcolor{plumMed}}
+\newcommand{\pvalC}{\cellcolor{plumDark!80}}
+\newcommand{\pNA}[1]{#1}
+\newcommand{\pA}[1]{\pvalA #1}
+\newcommand{\pB}[1]{\pvalB #1}
+\newcommand{\pC}[1]{\pvalC #1}
+\newcommand{\nores}{\todonum{--}}
+\begin{tabular}{@{}l@{\hspace{2pt}}l|cc|cc|cc|cc@{}}
+\toprule
+& & \multicolumn{2}{c|}{GABAR$^\dagger$} & \multicolumn{2}{c|}{\union{}} & \multicolumn{2}{c|}{\gadarbind{}} & \multicolumn{2}{c}{\textbf{\gadar{}}} \\
+\cmidrule(lr){3-4} \cmidrule(lr){5-6} \cmidrule(lr){7-8} \cmidrule(l){9-10}
+Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ \\
+\midrule
+\multirow{2}{*}{\makebox[1.4cm][l]{Visitall}}
+& E & -- & -- & \levelA 0.0 & -- & \levelA 16.0 & \nores & \levelD \textbf{100.0} & \pB{\textbf{0.97}} \\
+& H & \nores & \nores & \levelA 0.0 & -- & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.81}} \\
+\midrule
+\multirow{2}{*}{\makebox[1.4cm][l]{Miconic}}
+& E & -- & -- & \nores & \nores & \levelA 0.0 & -- & \levelA 35.96 & \pA{0.63} \\
+& H & \nores & \nores & \nores & \nores & \levelA 0.0 & -- & \levelA 0.00 & -- \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table}[t]
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.1}
+\small
+\centering
+\caption{In-domain coverage (hard split): a \emph{single} policy trained on
+all eight domains, per rung, against published per-domain GABAR
+($\dagger$: one model per domain). \todonum{--} marks runs in flight.}
+\label{table:indomain}
+\newcommand{\nres}{\todonum{--}}
+\begin{tabular}{@{}l|c|ccc@{}}
+\toprule
+Domain & GABAR$^\dagger$ & \union{} & \gadarbind{} & \gadar{} \\
+\midrule
+Blocks    & \nres & \nres & 57.0 & \nres \\
+Miconic   & \nres & \nres & 61.3 & \nres \\
+Spanner   & \nres & \nres & 1.0 & \nres \\
+Gripper   & \nres & \nres & 94.2 & \nres \\
+Visitall  & \nres & \nres & 68.0 & \nres \\
+Grid      & \nres & \nres & 70.8 & \nres \\
+Logistics & \nres & \nres & 0.0 & \nres \\
+Rovers    & \nres & \nres & 5.6 & \nres \\
+\midrule
+Combined  & \nres & \nres & 44.7 & \nres \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \textbf{Does the domain need to be in the input? (\union{} vs.\ \gadar{}.)}
 \union{}, trained on the identical data with the identical architecture and
 budget, solves its training domains (100\% on Miconic, 85.5\% on Gripper,
@@ -681,83 +756,6 @@ snapshot on the held-out domain, and report the best with its epoch stated,
 applying the same rule to every rung. Future work in this setting will meet
 the same sensitivity; the epoch of the reported checkpoint is an
 experimental detail that must be stated.
-
-\begin{table*}[!ht]
-\setlength{\tabcolsep}{3pt}
-\renewcommand{\arraystretch}{1.1}
-\small
-\centering
-\caption{Zero-shot coverage (C, \%) and plan quality (P), leave-one-domain-out.
-E = the held-out domain's own training-scale instances (unseen); H = its test
-instances, up to an order of magnitude larger. GABAR$^\dagger$: published
-per-domain GABAR trained \emph{on} the held-out domain (hard split), the
-ceiling set by dedicated training. Ladder columns add one component
-each: \union{} (symbol one-hots, domain in the weights), \gadarbind{}
-(structural features, lifted domain layer, binding edges), \gadar{} (chain
-layer). \todonum{--} marks runs in flight, not zeros.}
-\label{table:main_table}
-\definecolor{turqLight}{HTML}{C8F1EA}
-\definecolor{turqMed}{HTML}{64D1C6}
-\definecolor{turqDark}{HTML}{00A3A1}
-\newcommand{\levelA}{}
-\newcommand{\levelB}{\cellcolor{turqLight}}
-\newcommand{\levelC}{\cellcolor{turqMed}}
-\newcommand{\levelD}{\cellcolor{turqDark!80}}
-\definecolor{plumLight}{HTML}{F4EBFC}
-\definecolor{plumMed}{HTML}{DCC4F6}
-\definecolor{plumDark}{HTML}{BBA0E5}
-\newcommand{\pvalA}{\cellcolor{plumLight}}
-\newcommand{\pvalB}{\cellcolor{plumMed}}
-\newcommand{\pvalC}{\cellcolor{plumDark!80}}
-\newcommand{\pNA}[1]{#1}
-\newcommand{\pA}[1]{\pvalA #1}
-\newcommand{\pB}[1]{\pvalB #1}
-\newcommand{\pC}[1]{\pvalC #1}
-\newcommand{\nores}{\todonum{--}}
-\begin{tabular}{@{}l@{\hspace{2pt}}l|cc|cc|cc|cc@{}}
-\toprule
-& & \multicolumn{2}{c|}{GABAR$^\dagger$} & \multicolumn{2}{c|}{\union{}} & \multicolumn{2}{c|}{\gadarbind{}} & \multicolumn{2}{c}{\textbf{\gadar{}}} \\
-\cmidrule(lr){3-4} \cmidrule(lr){5-6} \cmidrule(lr){7-8} \cmidrule(l){9-10}
-Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ \\
-\midrule
-\multirow{2}{*}{\makebox[1.4cm][l]{Visitall}}
-& E & -- & -- & \levelA 0.0 & -- & \levelA 16.0 & \nores & \levelD \textbf{100.0} & \pB{\textbf{0.97}} \\
-& H & \nores & \nores & \levelA 0.0 & -- & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.81}} \\
-\midrule
-\multirow{2}{*}{\makebox[1.4cm][l]{Miconic}}
-& E & -- & -- & \nores & \nores & \levelA 0.0 & -- & \levelA 35.96 & \pA{0.63} \\
-& H & \nores & \nores & \nores & \nores & \levelA 0.0 & -- & \levelA 0.00 & -- \\
-\bottomrule
-\end{tabular}
-\end{table*}
-
-\begin{table}[!ht]
-\setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.1}
-\small
-\centering
-\caption{In-domain coverage (hard split): a \emph{single} policy trained on
-all eight domains, per rung, against published per-domain GABAR
-($\dagger$: one model per domain). \todonum{--} marks runs in flight.}
-\label{table:indomain}
-\newcommand{\nres}{\todonum{--}}
-\begin{tabular}{@{}l|c|ccc@{}}
-\toprule
-Domain & GABAR$^\dagger$ & \union{} & \gadarbind{} & \gadar{} \\
-\midrule
-Blocks    & \nres & \nres & 57.0 & \nres \\
-Miconic   & \nres & \nres & 61.3 & \nres \\
-Spanner   & \nres & \nres & 1.0 & \nres \\
-Gripper   & \nres & \nres & 94.2 & \nres \\
-Visitall  & \nres & \nres & 68.0 & \nres \\
-Grid      & \nres & \nres & 70.8 & \nres \\
-Logistics & \nres & \nres & 0.0 & \nres \\
-Rovers    & \nres & \nres & 5.6 & \nres \\
-\midrule
-Combined  & \nres & \nres & 44.7 & \nres \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 
 \section{Conclusion}
