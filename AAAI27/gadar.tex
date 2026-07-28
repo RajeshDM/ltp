@@ -246,7 +246,13 @@ similarly learn policies over relational state representations
 \citep{relational_drl, sr_drl, relational_mdp_learning, rddl_gnn,
 generalized_planning_deep_rl}. GABAR, which this work extends, represents
 ground actions explicitly in the state graph and constructs actions
-autoregressively by ranking \citep{gabar}. The setting has remained
+autoregressively by ranking \citep{gabar}. The action-centric graph line
+has also been extended to partial observability: GammaZero converts
+particle beliefs into uncertainty-aware graphs to guide belief-space search
+in POMDPs \citep{gammazero}, and HOO-POMDP plans object rearrangement with
+hierarchical object-oriented POMDP models \citep{hoo_pomdp}. Both address
+uncertainty within a domain, which is orthogonal to the cross-domain
+question studied here. The setting has remained
 per-domain in the most recent work as well: self-improving search-and-learn
 loops train a relational value heuristic per domain and generalize across
 instance sizes within it \citep{learning_to_search_2026}, lookahead-based
@@ -602,67 +608,64 @@ in a domain yields identical input tensors.
 % generality), diversity curve (Figure 3, C5), per-domain failure-mode
 % discussion for the other three held-out targets.
 
-\textbf{Zero-shot transfer to an unseen domain.} The main result is the
-Visitall block of Table~\ref{table:main_table}. A single policy trained on
-the other seven benchmark domains, never exposed to Visitall's predicates,
-schemas, or objects, solves 68.0\% of the hard split, against 4.0\% for
-\gadarbind{} (the same system with the chain layer removed) and 0.0\% for
-the untrained control. On the easy split it solves 100.0\% against 16.0\%
-for \gadarbind{}. The step from 4\% to 68\% comes from a component that
-adds no learned parameters and no new supervision: the chain layer only
-states relations already present in the domain description in a form
-message passing can use. The chain layer, rather than the presence of the
-lifted domain alone, is what allows the policy to use the description.
+Table~\ref{table:main_table} presents the zero-shot results. We organize
+the discussion so that each question about the method is answered by one
+comparison in the table: a rung of the ladder, a control, or a diagnostic.
 
-\textbf{An untrained control rules out the executor.} Coverage is measured
-with a revisit monitor that resamples an applicable action when the greedy
-rollout re-enters a visited state, so a natural objection is that the
-monitor, not the policy, is solving the instances. We therefore evaluate
-the identical system, with the same graph, decoder, monitor, and 500-step
-bound, but with a network that has seen a single epoch of training. On the
-hard split it solves 0.0\%; on the easy split it reaches 26.4\%, which
-measures how forgiving small instances are under a monitored executor and
-is the number the 100\% should be read against. On the hard split, where
-the harness alone produces nothing, the 68\% reflects what was learned from
-the seven training domains.
+\textbf{Does the domain need to be in the input? (\union{} vs.\ \gadar{}.)}
+\union{}, trained on the identical data with the identical architecture and
+budget, solves its training domains (100\% on Miconic, 85.5\% on Gripper,
+68.8\% on Grid in-domain) and 0\% on both splits of held-out Visitall,
+while \gadar{} reaches 68\% and 100\%. A symbol-identity representation
+learns the domains it sees and does not transfer beyond their vocabulary;
+moving the domain description into the input is what makes transfer
+possible at all.
 
-\textbf{The mechanism is not a terminal trigger.} One possible reading of a
-high easy-split number is that the policy has only learned to fire when a
-goal atom is one action away, and that the easy instances forgive
-everything else. We measured this directly with the achievement oracle,
-which hard-codes exactly that behavior with perfect knowledge: it bounds
-coverage at 50\% on easy Visitall and at 0--5\% on Miconic. \gadar{}
-exceeds this ceiling by a factor of two on Visitall, so the policy is also
-choosing actions that are several steps from achieving anything, which is
-what the bucketed goal distance over the enables relation was designed to
-support.
+\textbf{Is the description enough, or is the chain layer needed?
+(\gadarbind{} vs.\ \gadar{}.)} \gadarbind{} already contains the full
+domain description and the binding edges, yet reaches only 4.0\% on the
+hard split and 16.0\% on the easy split; adding the chain layer moves these
+to 68.0\% and 100.0\%. The step comes from a component that adds no learned
+parameters and no new supervision: the chain layer only restates relations
+already present in the domain description in a form message passing can
+use. The description alone is not enough; it must be made reachable.
 
-\textbf{Plan quality.} An easy split under a monitored executor with a
-500-step bound is forgiving: aimless but legal behavior can eventually
-stumble into goals, so coverage alone cannot distinguish competence from
-wandering there. Plan quality can. \gadar{}'s mean plan length is 30.1
-steps against the satisficing planner's 29.2 on the same instances, a
-quality ratio of 0.97; a policy that solved these instances by wandering
-would show a ratio an order of magnitude worse. The zero-shot policy
-produces plans within 3\% of a planner that searches, while performing no
-search itself. On the hard split, plan quality remains 0.81.
+\textbf{Is it the policy or the executor? (Untrained control vs.\
+\gadar{}.)} Coverage is measured with a revisit monitor that resamples an
+applicable action when the greedy rollout re-enters a visited state, so a
+natural concern is that the monitor, not the policy, is solving the
+instances. The identical system with a network that has seen a single epoch
+of training solves 0.0\% of the hard split and 26.4\% of the easy split.
+The easy-split number measures how forgiving small instances are under a
+monitored executor and is the number the 100\% should be read against; on
+the hard split, where the harness alone produces nothing, the 68\% reflects
+what was learned from the seven training domains.
 
-\textbf{Transfer on a second domain.} On Miconic, \gadar{} solves 35.96\%
-of the easy split at plan quality 0.63, against 2.63\% for the untrained
-control under an identical executor, a thirteen-fold gap attributable to
-what was learned on the other seven domains. Coverage on the hard split,
-whose expert plans average 182 steps, is 0\%: at this horizon, per-step
-errors that the easy split absorbs compound beyond recovery. The transfer
-is real but partial.
+\textbf{Is it a terminal trigger? (Achievement oracle vs.\ \gadar{}.)} A
+policy might only learn to fire when a goal atom is one action away, with
+the easy instances forgiving everything else. The achievement oracle
+hard-codes exactly that behavior with perfect knowledge and bounds coverage
+at 50\% on easy Visitall and 0--5\% on Miconic. \gadar{} exceeds this
+ceiling by a factor of two on Visitall, so the policy is also choosing
+actions that are several steps from achieving anything, which is what the
+bucketed goal distance over the enables relation was designed to support.
 
-\textbf{The control learns its domains and transfers nothing.} \union{},
-trained on the identical data with the identical architecture and budget,
-solves its training domains (100\% on Miconic, 85.5\% on Gripper, 68.8\% on
-Grid in-domain) and 0\% on both splits of held-out Visitall. A
-symbol-identity representation does not transfer beyond the vocabulary it
-was trained on. The ladder attributes the gap: moving the domain
-description into the input (\gadarbind{}) makes transfer nonzero, and the
-chain layer (\gadar{}) makes it large.
+\textbf{Is it competence or wandering? (Plan quality.)} An easy split under
+a monitored executor with a 500-step bound is forgiving: aimless but legal
+behavior can eventually stumble into goals, so coverage alone cannot
+distinguish competence from wandering there. Plan quality can. \gadar{}'s
+mean plan length is 30.1 steps against the satisficing planner's 29.2 on
+the same instances, a quality ratio of 0.97; a wandering policy would show
+a ratio an order of magnitude worse. On the hard split, plan quality
+remains 0.81.
+
+\textbf{How far does the transfer go? (Miconic.)} On Miconic, \gadar{}
+solves 35.96\% of the easy split at plan quality 0.63, against 2.63\% for
+the untrained control under an identical executor, a thirteen-fold gap
+attributable to what was learned on the other seven domains. Coverage on
+the hard split, whose expert plans average 182 steps, is 0\%: at this
+horizon, per-step errors that the easy split absorbs compound beyond
+recovery. The transfer is real but partial.
 
 \textbf{A methodological note: transfer peaks early.} Zero-shot performance
 is not monotone in training: the same run reaches 100.0\% coverage at epoch
