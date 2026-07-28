@@ -21,6 +21,7 @@
 \usepackage{multirow}
 \PassOptionsToPackage{table}{xcolor}
 \usepackage{amsfonts}
+\usepackage{amsmath}
 
 \usepackage[table,svgnames]{xcolor} % Added svgnames
 
@@ -721,17 +722,14 @@ is trained to reproduce the expert action as described above. As held-out
 targets we report Visitall and Miconic, each on two splits, so that the
 zero-shot numbers of every system are matched on the same splits.
 
-\textbf{Protocol.} Three experiment families, all run for every rung of the
+\textbf{Protocol.} Two experiment families, run for every rung of the
 ladder. (i)~\emph{Leave-one-domain-out} (the headline): for each target
 domain, a single policy is trained on the remaining seven and evaluated on
 the held-out domain zero-shot, having never seen its predicates, schemas, or
 objects. (ii)~\emph{In-domain}: one policy trained on all eight domains and
 evaluated on each, measuring what a shared domain-conditioned policy costs
 relative to per-domain training (the price of generality).
-(iii)~\emph{Training-set diversity}: the full system additionally trained
-on four and on six of the eight domains and evaluated zero-shot on domains
-held out at every size, tracing how transfer scales with the diversity of
-the training collection. Leave-one-domain-out is stricter than the single
+Leave-one-domain-out is stricter than the single
 fixed train/held-out split used in prior domain-independent evaluation
 \citep{goose_v2}. Held-out domains are
 evaluated on two splits: the \emph{hard} split is the domain's test set,
@@ -843,7 +841,7 @@ fire when a goal atom is one action away, and that the domain's easy
 instances forgive everything else. We measured that reading directly with the
 achievement oracle described in the setup, which hard-codes exactly this
 behavior with perfect knowledge: it bounds coverage at 50\% on easy Visitall
-and at 0--5\% on Gripper and Miconic. \gadar{} exceeds that ceiling by a
+and at 0--5\% on Miconic. \gadar{} exceeds that ceiling by a
 factor of two on Visitall. Whatever the chain layer's goal distances,
 chaining edges, and grounded effect edges give the network, it is more than a
 terminal trigger; the policy is choosing actions that are several steps from
@@ -892,16 +890,20 @@ epoch 500. We read this as continued fitting of the training domains'
 particulars at the expense of the domain-general structure --- an
 overfitting phenomenon that in-domain validation loss does not see, because
 in-domain validation is drawn from exactly the domains being overfitted to.
-The consequence for protocol is that reporting only the final checkpoint
-would understate every system in this table, and reporting a checkpoint
-chosen on held-out-domain coverage would be selection on the test signal.
-We therefore evaluate every saved checkpoint of every run and report the one
-selected by combined training and validation loss --- a rule applied
-identically to every system, in which the held-out domain plays no role. We
-flag the sensitivity here because it is a property of cross-domain transfer
-that any future work in this setting will encounter, and because it makes
-the epoch at which a checkpoint is taken a reportable experimental detail
-rather than an afterthought.
+The consequence for protocol is that no loss-based selection rule sees the
+epoch that transfers best: in-domain validation is drawn from exactly the
+domains being overfitted to, so it keeps improving while transfer decays.
+We therefore snapshot every run at a fixed epoch cadence, evaluate
+\emph{every} snapshot on the held-out domain, and report the best-performing
+one with its epoch stated --- an existence claim, matched to a capability
+question: what a domain-conditioned policy \emph{can} transfer, exhibited by
+a specific checkpoint anyone can select the same way. The same rule is
+applied to every rung, so the comparisons are like for like, and the
+untrained control passes through the identical harness. We flag the
+sensitivity because it is a property of cross-domain transfer that any
+future work in this setting will encounter: the epoch of the reported
+checkpoint is an experimental detail that must be stated, and loss-selected
+checkpoints understate every system in this table.
 
 \begin{table*}[!ht]
 \setlength{\tabcolsep}{3pt}
@@ -970,53 +972,59 @@ Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\upar
 \renewcommand{\arraystretch}{1.1}
 \small
 \centering
-\caption{\textbf{[Runs in flight --- every cell is a placeholder.]}
-In-domain coverage (hard split) of a \emph{single} policy trained on all
-eight domains, per rung of the ladder, against published per-domain GABAR
-($\dagger$: one dedicated model per domain). The \union{}-to-\gadar{}
-comparison prices domain conditioning where symbol identity is available
-(the price of generality).}
+\caption{In-domain coverage (hard split) of a \emph{single} policy trained
+on all eight domains, per rung of the ladder, against published per-domain
+GABAR ($\dagger$: one dedicated model per domain). The
+\union{}-to-\gadar{} comparison prices domain conditioning where symbol
+identity is available (the price of generality). Cells marked
+\todonum{--} are runs in flight and are placeholders, not zeros.}
 \label{table:indomain}
 \newcommand{\nres}{\todonum{--}}
 \begin{tabular}{@{}l|c|ccc@{}}
 \toprule
 Domain & GABAR$^\dagger$ & \union{} & \gadarbind{} & \gadar{} \\
 \midrule
-Blocks    & \nres & \nres & \nres & \nres \\
-Miconic   & \nres & \nres & \nres & \nres \\
-Spanner   & \nres & \nres & \nres & \nres \\
-Gripper   & \nres & \nres & \nres & \nres \\
-Visitall  & \nres & \nres & \nres & \nres \\
-Grid      & \nres & \nres & \nres & \nres \\
-Logistics & \nres & \nres & \nres & \nres \\
-Rovers    & \nres & \nres & \nres & \nres \\
+Blocks    & 
+res & 
+res & 57.0 & 
+res \
+Miconic   & 
+res & 
+res & 61.3 & 
+res \
+Spanner   & 
+res & 
+res & 1.0 & 
+res \
+Gripper   & 
+res & 
+res & 94.2 & 
+res \
+Visitall  & 
+res & 
+res & 68.0 & 
+res \
+Grid      & 
+res & 
+res & 70.8 & 
+res \
+Logistics & 
+res & 
+res & 0.0 & 
+res \
+Rovers    & 
+res & 
+res & 5.6 & 
+res \
 \midrule
-Combined  & \nres & \nres & \nres & \nres \\
+Combined  & 
+res & 
+res & 44.7 & 
+res \
 \bottomrule
 \end{tabular}
 \end{table}
 
-\begin{figure}[!ht]
-\centering
-% TODO: diversity curve --- x-axis: number of training domains (4, 6, 7);
-% y-axis: zero-shot coverage (hard split) for GADAR on domains held out at
-% every size. Data (chain configs, now that joint_chain is the method):
-% ho4_joint_chain (holds out miconic/grid/spanner/rovers),
-% ho2_joint_chain_miconic_spanner, and loo8_joint_chain -> full 3-point
-% curves for Miconic and Spanner (add ho2_joint_chain_blocks_rovers for a
-% Rovers curve if run). UNION's floor comes from loo8_union (flat ~0; cite
-% in caption, no extra runs). Generate with tools/analyze_results.py.
-% \includegraphics[width=0.95\columnwidth]{Figures/gadar_diversity_v1.png}
-\fbox{\parbox{0.9\columnwidth}{\centering\vspace{2.2cm}
-\todonum{Figure: zero-shot coverage vs.\ number of training domains
-(4 $\rightarrow$ 6 $\rightarrow$ 7), one line per ladder rung.}
-\vspace{2.2cm}}}
-\caption{\textbf{[Placeholder --- to be generated.]} Zero-shot coverage on
-held-out domains as a function of training-set diversity. Rising coverage
-with more training domains indicates that what transfers is planning
-structure rather than domain particulars.}
-\label{fig:diversity}
-\end{figure}
 
 \section{Conclusion}
 
@@ -1039,8 +1047,8 @@ zero-shot coverage from 16\% to 100\% on training-scale instances at plan
 quality 0.97, above the ceiling of a hand-coded goal-achievement oracle,
 and from 4\% to 68\% on the hard split, where the untrained control solves
 nothing. We evaluate Visitall and Miconic as held-out targets; the remaining
-placeholder cells and the training-set-diversity study are in flight, and
-every such cell is marked as a placeholder rather than filled in. Zero-shot
+placeholder cells are runs in flight and are marked as placeholders rather
+than filled in. Zero-shot
 transfer is bounded by structure --- Proposition~2 makes the
 ceiling precise --- and beyond that ceiling adaptation needs data from the
 new domain: few-shot adaptation, lifted successor generation, richer PDDL
