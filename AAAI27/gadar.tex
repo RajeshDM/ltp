@@ -277,14 +277,10 @@ margin repairs it.
 
 \textbf{Large language models and planning.} Large reasoning models degrade
 sharply under symbol renaming \citep{llm_baseline}, an invariance \gadar{}
-has by construction. LLM code-synthesis planners write per-domain programs
-using solved instances and validator loops at test time, which is a
-different question from zero-shot execution. Closer to our cross-domain
-setting, HALO trains a small orchestrator over PDDL-repair agents from
-verifier-certified trajectories across eleven domains
-\citep{halo_orchestrator}. Generalization there happens at the
-specification level, with classical planners producing the plans; \gadar{}
-generalizes the planning policy itself and uses no planner at test time.
+has by construction. LLM pipelines that synthesize per-domain programs or
+generate and repair PDDL across domains \citep{halo_orchestrator} operate
+at the specification level and leave planning to search, which is a
+different question from zero-shot policy execution.
 
 \section{Background and Problem Setup}
 
