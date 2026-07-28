@@ -65,8 +65,9 @@ def rows_from(dump, floor):
     for key, entries in dump.get("results", {}).items():
         zs = key.startswith("zeroshot_")
         rest = key[len("zeroshot_"):] if zs else key
-        # key = <display_name>_<metric> ; metric is one of these three
-        metric = next((m for m in ("validation", "training", "combined")
+        # key = <display_name>_<metric>
+        metric = next((m for m in ("validation", "training", "combined",
+                                   "periodic")
                        if rest.endswith(m)), "?")
         domain = rest[:-len(metric)].rstrip("_") if metric != "?" else rest
         for e in entries:
