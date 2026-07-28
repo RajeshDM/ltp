@@ -1,5 +1,35 @@
 # Run ledger — what is running, what it feeds
 
+## MORNING CHECKLIST 2026-07-28 (everything left, in order)
+
+1. **Read out the overnight self-tests** (A, B, E1 finish training ~03:00-05:00,
+   then test themselves): `python tools/digest.py --print` on both machines.
+   - A `loo8_joint_chain_no_visitall` seed 30: the final-form headline.
+   - B `all8_joint_chain` seed 30: in-domain GADAR column (8 cells).
+   - E1 `loo8_joint_chain_no_spanner` seed 30: bar to clear = untrained
+     control 0.0/0.0 (measured), with sane PQ; random floor 63/44 for context.
+2. **UNION cells via the 07-23 worktree** (old union checkpoints do not load
+   under current code: width mismatch, SKIP lines; test with the code that
+   trained them):
+   ```
+   git worktree add ../ltp_0723 $(git log --format=%h --until="2026-07-23T06:00" -1)
+   cd ../ltp_0723 && ln -s ../ltp/cache cache && ln -s ../ltp/models models
+   ```
+   - submit-a fs: loo8_union_no_miconic test (miconic@train:228 + :119,
+     metrics training,combined, 2 models, NO --seed) -> 2 main-table cells,
+     ~1.5h. THE priority.
+   - dgx2-5 fs: all8_union test (8 hard splits) -> in-domain UNION column,
+     ~4-5h. Secondary table; can ship as [--] if time runs out.
+   Test-only: reads checkpoints/sidecars, writes timestamped JSONs. Cannot
+   corrupt anything; only GPU contention matters.
+3. Grid full-set retest verdict: claimable only if best epoch beats the
+   untrained 17.5% with PQ >~0.3. E150 was pacing ~12.8%, PQ 0.11-0.21 ->
+   expect to keep grid out.
+4. Human-only: GABAR-dagger cells from the published paper, bib keys
+   (gammazero, hoo_pomdp, halo_orchestrator, learning_to_search_2026,
+   lookahead_policies_2026, llm_evolved_heuristics_2026), todonums
+   ([125]/[312], ~100% planner), Overleaf recompile + page count.
+
 ## FINAL BATCH 2026-07-27 (launched ~22:00, done ~14-16h later)
 
 GADAR := joint_chain WITH type compilation (current code, _ty2). These four
