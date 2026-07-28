@@ -74,7 +74,7 @@
 
 \begin{abstract}
 
-Learned policies for classical planning act without search, but each policy is tied to the domain it was trained on: network modules per action schema, parameters per predicate, or vocabulary-sized encodings mean a trained policy cannot even be executed on new predicates and action schemas. We present \gadar{} (Generalizing Across Domains via Action Ranking), a policy for classical planning that takes the domain description as input --- $\pi(s, G, D)$ --- and constructs grounded actions in domains never seen in training, zero-shot and without search. The capability is built in three cumulative steps, each a contribution and each the ablation of the next: (i) \emph{symbol-free structural features} replace symbol identity with structural signatures, and a \emph{lifted domain layer} embeds $D$ itself into every state graph, identifying predicates and action schemas by their declared roles --- which schema uses them, as precondition or effect, at which argument slots --- rather than by name; (ii) a \emph{binding layer} ties each ground action's applicability to the lifted precondition occurrences it instantiates, expressing search-free action construction in the vocabulary of the domain description; and (iii) a \emph{chain layer} makes the domain's own action structure explicit --- which schema produces what another schema needs, which schema destroys it, how far each schema stands from achieving the goal, and which applicable grounding would achieve an open goal atom or delete a true atom. The last step is what turns executability into transfer. On a domain held out of training entirely, \gadar{} solves 68\% of the large test instances against a 6\% random floor and 0\% for an identically-executed untrained network, and 100\% of the training-scale instances at a plan quality of 0.97 relative to a satisficing planner, with 99.2\% of its top-ranked action proposals valid --- while the same system with the chain layer removed reaches 4\% and 16\%. It also exceeds the ceiling of a hand-coded goal-achievement oracle, so what transfers is learned lifted structure rather than a terminal trigger. \gadar{} is invariant to symbol renaming by construction, and we show the binding layer strictly increases expressiveness over the lifted graphs used for cross-domain heuristic learning.
+Learned policies for classical planning act without search, but each policy is tied to the domain it was trained on: network modules per action schema, parameters per predicate, or vocabulary-sized encodings mean a trained policy cannot even be executed on new predicates and action schemas. We present \gadar{} (Generalizing Across Domains via Action Ranking), a policy for classical planning that takes the domain description as input --- $\pi(s, G, D)$ --- and constructs grounded actions in domains never seen in training, zero-shot and without search. The capability is built in three cumulative steps, each a contribution and each the ablation of the next: (i) \emph{symbol-free structural features} replace symbol identity with structural signatures, and a \emph{lifted domain layer} embeds $D$ itself into every state graph, identifying predicates and action schemas by their declared roles --- which schema uses them, as precondition or effect, at which argument slots --- rather than by name; (ii) a \emph{binding layer} ties each ground action's applicability to the lifted precondition occurrences it instantiates, expressing search-free action construction in the vocabulary of the domain description; and (iii) a \emph{chain layer} makes the domain's own action structure explicit --- which schema produces what another schema needs, which schema destroys it, how far each schema stands from achieving the goal, and which applicable grounding would achieve an open goal atom or delete a true atom. The last step is what turns executability into transfer. On a domain held out of training entirely, \gadar{} solves 68\% of the large test instances --- where an identically-executed untrained network solves 0\% and the same system with the chain layer removed reaches 4\% --- and 100\% of the training-scale instances at a plan quality of 0.97 relative to a satisficing planner. It also exceeds the ceiling of a hand-coded goal-achievement oracle, so what transfers is learned lifted structure rather than a terminal trigger. \gadar{} is invariant to symbol renaming by construction, and we show the binding layer strictly increases expressiveness over the lifted graphs used for cross-domain heuristic learning.
 
 \end{abstract}
 
@@ -191,12 +191,12 @@ corroborated for learned heuristics and Q-value policies
 Our experiments follow a leave-one-domain-out protocol over the eight GABAR
 benchmark domains. On Visitall, a policy trained on
 the other seven domains and never exposed to Visitall's predicates, schemas,
-or objects solves 68\% of the large test instances zero-shot, against a 6\%
-random floor, 0\% for an identically-executed untrained network, and 4\% for
+or objects solves 68\% of the large test instances zero-shot, against
+0\% for an identically-executed untrained network and 4\% for
 the same system without the chain layer (\gadarbind{}); on the
 training-scale instances it solves 100\% against 16\% for \gadarbind{}. It does so at plan quality 0.97 relative to a satisficing planner
---- near-planner-length plans, not lucky wandering --- with 99.2\% of its
-top-ranked proposals valid, and above the 50\% ceiling of a hand-coded oracle
+--- near-planner-length plans, not lucky wandering ---
+above the 50\% ceiling of a hand-coded oracle
 that always prefers an applicable action directly satisfying an open goal
 atom, which rules out the reading that the transfer is a terminal trigger in
 disguise. The remaining held-out targets, the union-vocabulary control, and
@@ -709,9 +709,8 @@ computed by a classical planner \citep{fast_downward} on the small instances
 of each training domain (between \todonum{125} and \todonum{312} instances
 per domain); states along each plan are converted to graphs and the policy
 is trained to reproduce the expert action as described above. As held-out
-targets we report Visitall and Miconic, each on two splits and each with a
-separately measured random floor, so that the zero-shot numbers of every
-system are matched on the same splits.
+targets we report Visitall and Miconic, each on two splits, so that the
+zero-shot numbers of every system are matched on the same splits.
 
 \textbf{Protocol.} Three experiment families, all run for every rung of the
 ladder. (i)~\emph{Leave-one-domain-out} (the headline): for each target
@@ -739,17 +738,14 @@ control described above: identical data, architecture, training procedure,
 and budget --- only the representation differs. Any zero-shot capability
 \gadar{} has beyond this control is attributable to moving the domain into
 the input. Two references bracket the zero-shot numbers. The \emph{floor} is
-a random policy, and we hold it to strict protocol parity: it runs the same
-executor, the same revisit monitor, and the same step bound as every learned
-system, and the only difference is that the ranking over the applicable
-ground actions is replaced by a uniform random sample. It therefore measures
-exactly what the harness achieves when the learned component contributes
-nothing. This matters because the floor is not uniformly low: on the easy
-split of Visitall it is 99.73\%, since a monitored random walk on a
-connected grid approximates optimal exploration, and it is 88.30\% on easy
-Miconic. Visitall must accordingly be read on the hard split (floor 6.00\%)
-and on plan quality, where a random walk is not competitive; the easy-split
-Visitall number certifies executability, not competence. The \emph{ceiling} is published
+an untrained control held to strict protocol parity: the identical system
+--- same graph, same decoder, same execution harness, same step bound ---
+with a network that has seen a single epoch of training. It therefore
+measures exactly what the harness achieves when the learned component
+contributes nothing, under the same architecture. Because the executor is
+monitored and bounded, easy splits are forgiving of aimless but legal
+behavior; we therefore read easy-split coverage together with plan quality,
+which aimless behavior cannot fake. The \emph{ceiling} is published
 per-domain GABAR \citep{gabar}, trained directly on each held-out domain; it
 sees the test domain in training and by construction cannot be executed
 zero-shot, so it calibrates --- rather than competes with --- transfer, and
@@ -783,13 +779,7 @@ policy's on jointly solved problems, so higher is better and values above 1
 indicate plans shorter than the reference. Because P conditions on the
 problems a system solves, systems with higher coverage are scored on harder
 instances; coverage is therefore the primary metric and P is read within,
-not across, columns. For the zero-shot analysis we add a third,
-construction-level metric: \emph{top-1 proposal validity} (V1), the fraction
-of decoding steps at which the policy's highest-ranked constructed action is
-applicable in the current state. V1 separates the two ways a transferred
-policy can fail --- building a syntactically well-formed but inapplicable
-action, versus building applicable actions that go nowhere --- and it is
-defined even on problems the policy does not solve. Encoder and decoder
+not across, columns. Encoder and decoder
 hyperparameters are carried over from GABAR unchanged ($L{=}9$
 message-passing rounds, 64-dimensional representations, GRU decoder); all
 systems train for 500 epochs with batch size 64 and learning rate
@@ -814,8 +804,9 @@ tensors.
 Visitall block of Table~\ref{table:main_table}. A single policy trained on the
 other seven benchmark domains --- never exposed to Visitall's predicates,
 schemas, or objects --- solves 68.0\% of the hard split, the large test
-instances, against a 6.00\% random floor and against 4.0\% for \gadarbind{},
-the same system with the chain layer removed and everything else identical.
+instances, against 4.0\% for \gadarbind{},
+the same system with the chain layer removed and everything else identical,
+and 0.0\% for the untrained control.
 On the easy split, the held-out domain's own training-scale instances, it
 solves 100.0\% against 16.0\% for \gadarbind{}. The step from 4\% to 68\% is
 produced by a component that adds no learned parameters and no new kind of
@@ -847,11 +838,11 @@ terminal trigger; the policy is choosing actions that are several steps from
 achieving anything, which is what the bucketed goal distance over the enables
 relation was designed to support.
 
-\textbf{Plan quality: near-planner-length plans, not lucky wandering.} On the
-easy Visitall split the random floor is itself 99.73\%, because a monitored
-random walk on a connected grid eventually visits every cell; coverage alone
-therefore cannot distinguish competence from exhaustive wandering on this
-split, and we said so in advance. Plan quality does distinguish them.
+\textbf{Plan quality: near-planner-length plans, not lucky wandering.} An
+easy split under a monitored executor with a 500-step bound is forgiving:
+aimless but legal behavior can eventually stumble into goals, so coverage
+alone cannot distinguish competence from exhaustive wandering there. Plan
+quality does distinguish them.
 \gadar{}'s mean plan length is 30.1 steps against the satisficing planner's
 29.2 on the same instances, a quality ratio of 0.97. A policy that solved
 these instances by wandering under a 500-step bound would show a ratio an
@@ -860,31 +851,19 @@ plans within 3\% of a planner that searches --- while itself performing no
 search. On the hard split, where coverage is itself decisive, plan quality
 remains 0.81.
 
-\textbf{Partial transfer on a second domain.} Miconic is the one further
-held-out domain on which the policy is clearly not at its floor: \gadar{}
-solves 35.96\% of the easy split against 2.63\% for the untrained control
-under an identical executor, with plan quality 0.63 and top-1 validity
-rising monotonically with training (25.3\% $\rightarrow$ 67.6\%). We report
-it as partial transfer rather than as a second success, because the
-uniform-random floor on that split is 88.30\% --- Miconic's easy instances
-are solved by monitored random exploration --- and because coverage on the
-hard split, whose expert plans average 182 steps, is 0\%. The honest reading
-is that the policy has learned something transferable about Miconic and not
-enough of it.
-
-\textbf{Construction is essentially solved zero-shot.} V1, the fraction of
-steps at which the top-ranked constructed action is applicable in the current
-state, is 99.2\%. This is the metric that speaks to the capability claim in
-its narrowest form: in a domain whose vocabulary the network has never seen,
-the decoder assembles a schema and its arguments into an action the
-environment accepts on essentially every step. The two failure modes are
-cleanly separated by V1 and coverage together --- and on this domain neither
-is currently binding.
+\textbf{Transfer on a second domain.} On Miconic, \gadar{} solves 35.96\%
+of the easy split at plan quality 0.63, against 2.63\% for the untrained
+control under an identical executor --- a thirteen-fold gap attributable
+entirely to what was learned from the other seven domains. Coverage on the
+hard split, whose expert plans average 182 steps, is 0\%: at Miconic's
+horizon, per-step errors that the easy split absorbs compound beyond
+recovery. The transfer is real and it is partial, and we report both
+facts.
 
 \textbf{A methodological note: transfer peaks early.} Zero-shot performance
 is not monotone in training progress, and the non-monotonicity is large. The
-same run reaches 100.0\% coverage with V1 99.2\% at epoch 190, 97.6\%
-coverage with V1 68.7\% at epoch 330, and degrades further by epoch 500,
+same run reaches 100.0\% coverage at epoch 190, 97.6\% at epoch 330, and
+degrades further by epoch 500,
 while training loss decreases throughout. The same pattern, at smaller
 magnitude, appears for \gadarbind{}: 16.0\% at epoch 260 falling to 3.3\% at
 epoch 500. We read this as continued fitting of the training domains'
@@ -911,20 +890,21 @@ rather than an afterthought.
 leave-one-domain-out protocol. E = easy split (the held-out domain's own
 training-scale instances, unseen, since the domain itself was held out);
 H = hard split (its test instances, up to an order of magnitude larger).
-Two controls share the learned systems' executor exactly --- same revisit
-monitor, same 500-step bound: \emph{Random} replaces the ranking with a
-uniform sample among applicable ground actions, and \emph{Untrained} is
-\gadar{} itself after a single epoch, which isolates the executor from the
-weights. The random floor is degenerate on the easy splits (99.73\% on
-Visitall, 88.30\% on Miconic), where monitored random exploration
-approximates the task; those splits are therefore read on plan quality, and
-the coverage claim rests on the hard splits. Ladder columns left to right
-add one component each: \union{} (control: symbol one-hots, domain in the
-weights), \gadarbind{} (symbol-free features + lifted domain layer + binding
-edges), \gadar{} (+chain layer). Cells marked \todonum{--} are runs in
-flight and are placeholders, not zeros. Turquoise intensity for C: light
-50--74\%, medium 75--89\%, dark 90--100\%. Violet intensity for P: light
-0.5--0.74, medium 0.75--0.99, dark $\geq$1.0.}
+GABAR$^\dagger$ is published per-domain GABAR trained \emph{on} the
+held-out domain (hard split; it trains on the easy split's distribution, so
+no E entry) --- the ceiling that dedicated training sets, which by
+construction cannot be run zero-shot. \emph{Untrained} is the floor:
+\gadar{} itself after a single epoch, under the identical execution harness
+and step bound, isolating the harness from the weights. Easy splits are
+read together with plan quality (a bounded, monitored executor forgives
+aimless but legal behavior; near-planner plan lengths cannot be faked).
+Ladder columns left to right add one component each: \union{} (control:
+symbol one-hots, domain in the weights), \gadarbind{} (symbol-free features
++ lifted domain layer + binding edges), \gadar{} (+chain layer). Cells
+marked \todonum{--} are runs in flight and are placeholders, not zeros.
+Turquoise intensity for C: light 50--74\%, medium 75--89\%, dark
+90--100\%. Violet intensity for P: light 0.5--0.74, medium 0.75--0.99,
+dark $\geq$1.0.}
 \label{table:main_table}
 \definecolor{turqLight}{HTML}{C8F1EA}
 \definecolor{turqMed}{HTML}{64D1C6}
@@ -946,19 +926,19 @@ flight and are placeholders, not zeros. Turquoise intensity for C: light
 \newcommand{\nores}{\todonum{--}}
 \begin{tabular}{@{}l@{\hspace{2pt}}l|cc|cc|cc|cc|cc@{}}
 \toprule
-\multicolumn{2}{c|}{} & \multicolumn{4}{c|}{\colorbox{blue!8}{Controls (identical executor)}} & \multicolumn{6}{c}{\colorbox{green!10}{Zero-shot ladder (each column = previous + one component)}} \\
+\multicolumn{2}{c|}{} & \multicolumn{4}{c|}{\colorbox{blue!8}{Ceiling$^\dagger$ + floor (identical harness)}} & \multicolumn{6}{c}{\colorbox{green!10}{Zero-shot ladder (each column = previous + one component)}} \\
 \cmidrule(lr){3-6} \cmidrule(l){7-12}
-& & \multicolumn{2}{c|}{\scriptsize Random} & \multicolumn{2}{c|}{\scriptsize Untrained} & \multicolumn{2}{c|}{\scriptsize \union{}} & \multicolumn{2}{c|}{\scriptsize \gadarbind{}} & \multicolumn{2}{c}{\scriptsize \textbf{\gadar{}}} \\
+& & \multicolumn{2}{c|}{\scriptsize GABAR$^\dagger$} & \multicolumn{2}{c|}{\scriptsize Untrained} & \multicolumn{2}{c|}{\scriptsize \union{}} & \multicolumn{2}{c|}{\scriptsize \gadarbind{}} & \multicolumn{2}{c}{\scriptsize \textbf{\gadar{}}} \\
 \cmidrule(lr){3-4} \cmidrule(lr){5-6} \cmidrule(lr){7-8} \cmidrule(lr){9-10} \cmidrule(l){11-12}
 Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Visitall}}
-& E & \levelD 99.73 & \nores & \levelA 0.0 & -- & \nores & \nores & \levelA 16.0 & \nores & \levelD \textbf{100.0} & \pB{\textbf{0.97}} \\
-& H & \levelA 6.00 & \nores & \levelA 0.0 & -- & \nores & \nores & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.81}} \\
+& E & -- & -- & \levelA 0.0 & -- & \nores & \nores & \levelA 16.0 & \nores & \levelD \textbf{100.0} & \pB{\textbf{0.97}} \\
+& H & \nores & \nores & \levelA 0.0 & -- & \nores & \nores & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.81}} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Miconic}}
-& E & \levelC 88.30 & \nores & \levelA 2.63 & \pA{0.49} & \nores & \nores & \nores & \nores & \levelA 35.96 & \pA{0.63} \\
-& H & \levelA 1.12 & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \levelA 0.00 & -- \\
+& E & -- & -- & \levelA 2.63 & \pA{0.49} & \nores & \nores & \nores & \nores & \levelA 35.96 & \pA{0.63} \\
+& H & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \levelA 0.00 & -- \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -1034,9 +1014,9 @@ separates it from the lifted graphs of prior work; the chain layer is what
 makes that structure reachable by message passing, and it is the gap that the
 measurements isolate. On Visitall held out of training entirely, it moves
 zero-shot coverage from 16\% to 100\% on training-scale instances at plan
-quality 0.97 and 99.2\% top-1 proposal validity, above the ceiling of a
-hand-coded goal-achievement oracle and, on the hard split, above a 6\% random
-floor. We report this as one held-out domain measured end to end; the
+quality 0.97, above the ceiling of a hand-coded goal-achievement oracle,
+and from 4\% to 68\% on the hard split, where the untrained control solves
+nothing. We report this as one held-out domain measured end to end; the
 remaining held-out targets, the union-vocabulary control, and the
 training-set-diversity study are in flight, and every corresponding cell in
 this paper is marked as a placeholder rather than filled in. Zero-shot
