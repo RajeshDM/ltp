@@ -580,7 +580,9 @@ def get_ploi_argument_parser():
         "--checkpoint-every", type=int, default=0,
         help="Also snapshot every N epochs regardless of loss, into the "
              "'periodic' metric. Loss-ranked slots always end up holding "
-             "late epochs; zero-shot transfer peaks early. Use 50 for "
-             "zero-shot runs, then test --test-model-metrics periodic.")
+             "late epochs; zero-shot transfer peaks early. MUST be a "
+             "multiple of the save cadence (checkpoints are only written "
+             "every 10 epochs): 75 silently degrades to every-150. Use 50 "
+             "for zero-shot runs, then test --test-model-metrics periodic.")
 
     return parser

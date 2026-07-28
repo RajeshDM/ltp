@@ -199,10 +199,10 @@ training-scale instances it solves 100\% against 16\% for \gadarbind{}. It does 
 above the 50\% ceiling of a hand-coded oracle
 that always prefers an applicable action directly satisfying an open goal
 atom, which rules out the reading that the transfer is a terminal trigger in
-disguise. We evaluate four held-out targets --- Visitall, Miconic, Grid, and
-Logistics; the Grid and Logistics sweeps, the union-vocabulary control, and
-the intermediate rungs on those targets are in flight and reported as
-placeholders. By construction, \gadar{} is invariant to renaming of
+disguise. The union-vocabulary control makes the contrast concrete: the same
+architecture with symbol-identity features solves the domains it trained on
+--- 100\% on Miconic, 86\% on Gripper in-domain --- and transfers exactly
+nothing, 0\% on both splits of held-out Visitall. By construction, \gadar{} is invariant to renaming of
 predicates, schemas, and objects --- a robustness that symbol-based
 approaches, including current large reasoning models, do not share
 \citep{llm_baseline}
@@ -718,9 +718,8 @@ computed by a classical planner \citep{fast_downward} on the small instances
 of each training domain (between \todonum{125} and \todonum{312} instances
 per domain); states along each plan are converted to graphs and the policy
 is trained to reproduce the expert action as described above. As held-out
-targets we report four domains --- Visitall, Miconic, Grid, and
-Logistics --- each on two splits, so that the zero-shot numbers of every
-system are matched on the same splits.
+targets we report Visitall and Miconic, each on two splits, so that the
+zero-shot numbers of every system are matched on the same splits.
 
 \textbf{Protocol.} Three experiment families, all run for every rung of the
 ladder. (i)~\emph{Leave-one-domain-out} (the headline): for each target
@@ -831,9 +830,12 @@ with a revisit monitor that resamples an applicable action when the greedy
 rollout re-enters a visited state, so a natural objection is that the
 monitor, not the policy, is solving the instances. We therefore evaluate the
 identical system --- same graph, same decoder, same monitor, same 500-step
-bound --- with a network that has seen a single epoch of training. It solves
-0.0\% of Visitall on both splits. Whatever produces 68\% is in the weights,
-and it was learned from seven other domains.
+bound --- with a network that has seen a single epoch of training. On the
+hard split it solves 0.0\%; on the easy split it reaches 26.4\%, which
+calibrates exactly how forgiving small instances are under a monitored
+executor and is the number the 100\% must be read against. Whatever
+produces 68\% on instances where the harness alone produces nothing is in
+the weights, and it was learned from seven other domains.
 
 \textbf{The mechanism is not a terminal trigger.} An obvious deflationary
 reading of a high easy-split number is that the policy has learned only to
@@ -868,8 +870,17 @@ entirely to what was learned from the other seven domains. Coverage on the
 hard split, whose expert plans average 182 steps, is 0\%: at Miconic's
 horizon, per-step errors that the easy split absorbs compound beyond
 recovery. The transfer is real and it is partial, and we report both
-facts. The Grid and Logistics sweeps run the identical protocol and are in
-flight; their cells in Table~\ref{table:main_table} are placeholders.
+facts.
+
+\textbf{The control learns its domains and transfers nothing.} \union{},
+trained on the identical data with the identical architecture and budget,
+solves its training domains --- 100\% on Miconic, 85.5\% on Gripper, 68.8\%
+on Grid in-domain --- and 0\% on both splits of held-out Visitall. Symbol
+identity is a representation that cannot leave its vocabulary: every
+capability it supports ends at the boundary of the symbols it has seen.
+This is the gap the ladder attributes: moving the domain description into
+the input (\gadarbind{}) makes transfer nonzero, and the chain layer
+(\gadar{}) makes it large.
 
 \textbf{A methodological note: transfer peaks early.} Zero-shot performance
 is not monotone in training progress, and the non-monotonicity is large. The
@@ -944,20 +955,12 @@ dark $\geq$1.0.}
 Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Visitall}}
-& E & -- & -- & \levelA 0.0 & -- & \nores & \nores & \levelA 16.0 & \nores & \levelD \textbf{100.0} & \pB{\textbf{0.97}} \\
-& H & \nores & \nores & \levelA 0.0 & -- & \nores & \nores & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.81}} \\
+& E & -- & -- & \levelA 26.4 & -- & \levelA 0.0 & -- & \levelA 16.0 & \nores & \levelD \textbf{100.0} & \pB{\textbf{0.97}} \\
+& H & \nores & \nores & \levelA 0.0 & -- & \levelA 0.0 & -- & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.81}} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Miconic}}
-& E & -- & -- & \levelA 2.63 & \pA{0.49} & \nores & \nores & \nores & \nores & \levelA 35.96 & \pA{0.63} \\
-& H & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \levelA 0.00 & -- \\
-\midrule
-\multirow{2}{*}{\makebox[1.4cm][l]{Grid}}
-& E & -- & -- & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores \\
-& H & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores \\
-\midrule
-\multirow{2}{*}{\makebox[1.4cm][l]{Logistics}}
-& E & -- & -- & \levelA 0.00 & -- & \nores & \nores & \nores & \nores & \nores & \nores \\
-& H & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores \\
+& E & -- & -- & \levelA 2.63 & \pA{0.49} & \nores & \nores & \levelA 0.0 & -- & \levelA 35.96 & \pA{0.63} \\
+& H & \nores & \nores & \nores & \nores & \nores & \nores & \levelA 0.0 & -- & \levelA 0.00 & -- \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -1035,10 +1038,9 @@ measurements isolate. On Visitall held out of training entirely, it moves
 zero-shot coverage from 16\% to 100\% on training-scale instances at plan
 quality 0.97, above the ceiling of a hand-coded goal-achievement oracle,
 and from 4\% to 68\% on the hard split, where the untrained control solves
-nothing. We evaluate four held-out targets --- Visitall, Miconic, Grid, and
-Logistics; the Grid and Logistics sweeps, the union-vocabulary control, and
-the training-set-diversity study are in flight, and every corresponding
-cell in this paper is marked as a placeholder rather than filled in. Zero-shot
+nothing. We evaluate Visitall and Miconic as held-out targets; the remaining
+placeholder cells and the training-set-diversity study are in flight, and
+every such cell is marked as a placeholder rather than filled in. Zero-shot
 transfer is bounded by structure --- Proposition~2 makes the
 ceiling precise --- and beyond that ceiling adaptation needs data from the
 new domain: few-shot adaptation, lifted successor generation, richer PDDL
