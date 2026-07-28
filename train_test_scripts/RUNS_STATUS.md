@@ -1,5 +1,29 @@
 # Run ledger — what is running, what it feeds
 
+## FINAL BATCH 2026-07-27 (launched ~22:00, done ~14-16h later)
+
+GADAR := joint_chain WITH type compilation (current code, _ty2). These four
+runs complete every remaining cell of the paper:
+
+| run | kind | fills | readout |
+|---|---|---|---|
+| A `loo8_joint_chain_no_visitall` seed 30, ckpt-every 50 | retrain+test | **headline**: Visitall GADAR E+H on the final form (replaces pre-compilation 100/68) | all 10 periodic epochs tested, hard split first |
+| B `all8_joint_chain` seed 30, ckpt-every 50 | retrain+test | in-domain GADAR column (8 hard splits) | combined, 1 model |
+| C `all8_union` (no seed = default) | test-only | in-domain UNION column | training+combined, 2 models |
+| D `loo8_union_no_miconic` (no seed) | test-only, submit-a | zero-shot UNION Miconic E+H | training+combined, 2 models |
+
+Morning readout: `python tools/digest.py --print` on both machines.
+Decision rule for A: if final-form Visitall hard is comparable to 68%, the
+paper is one featurization end to end; if clearly worse, either report the
+lower number or define GADAR as the pre-compilation variant (drop type
+compilation from the method section) — method definition is ours to make,
+but the table and §method must match whichever we pick.
+
+Already-final numbers (do not re-run): Miconic GADAR 35.96 E / 0.00 H
+(_ty2); UNION Visitall 0/0; BIND column (old feat, uniform); untrained
+controls (Visitall 26.4/0.0, Miconic 2.63). Grid + Logistics: measured,
+failed their controls, cut from the paper.
+
 Status as reported by the user; update as runs finish. Paper table rows are
 the 4 representative held-out domains: **manyblocks, gripper, miconic,
 visitall** (documented failure modes + low random floors). Every method
