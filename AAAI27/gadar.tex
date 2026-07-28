@@ -214,44 +214,25 @@ approaches, including current large reasoning models, do not share
 isomorphic domains with different semantics necessarily receive identical
 behavior, which marks where zero-shot ends and adaptation must begin.
 
-\textbf{Contribution.} We present the first domain-agnostic policy for
-classical planning: zero-shot grounded-action construction in unseen
-domains, without search. The capability is delivered as a ladder of systems
-in which each addition --- structural features, the lifted domain layer with
-its grounded--lifted binding layer, and the chain layer --- is certified by
-the comparison to its predecessor, so the method and its ablation study are
-the same object. The binding layer is what makes ground applicability
-expressible in the domain's own vocabulary, and is justified theoretically by
-a strict expressiveness separation from the lifted graphs of prior work; the
-chain layer, built on top of it, is what makes that structure usable by
-message passing and is the component that empirically delivers transfer.
+\textbf{Contributions.}
+\begin{itemize}
+\item The first domain-agnostic \emph{policy} for classical planning:
+  $\pi(s, G, D)$ constructs grounded actions zero-shot in unseen domains,
+  without search.
+\item A graph representation whose novel relations --- the grounded--lifted
+  \emph{binding} edges, expressing why each action is applicable in the
+  vocabulary of $D$, and the \emph{chain} edges, expressing which schema
+  produces or destroys what another needs and how far each stands from the
+  goal --- are computable in any domain and invariant to symbol renaming.
+\item An evaluation designed as a ladder: each system is the previous plus
+  one component, so the method and its ablation study are the same object,
+  with matched untrained and multi-task controls under an identical
+  execution harness.
+\end{itemize}
 
 \section{Related Work}
 
-\begin{table*}[t]
-\centering
-\small
-\begin{tabular}{lccccc}
-\toprule
-Approach & Output & Search-free & Unseen domains & Symbol encoding & Domain-free params \\
-\midrule
-STRIPS-HGN \citep{strips_hgn} & heuristic & \(\times\) & \(\checkmark\) & structural, grounded & \(\checkmark\) \\
-GOOSE \citep{goose_v2} & heuristic & \(\times\) & \(\checkmark\) & structural, lifted & \(\checkmark\) \\
-WL-GOOSE \citep{wl_goose} & heuristic & \(\times\) & \(\times\) & WL colors, per-domain & \(\times\) \\
-\citet{expressive_v1} & value $\rightarrow$ policy & \(\checkmark\) & \(\times\) & identity & \(\times\) \\
-ASNets \citep{toyer2020asnets} & policy & \(\checkmark\) & \(\times\) & identity & \(\times\) \\
-GABAR \citep{gabar} & policy & \(\checkmark\) & \(\times\) & identity (one-hot) & \(\times\) \\
-\midrule
-\gadar{} (ours) & policy & \(\checkmark\) & \(\checkmark\) & structural, lifted + binding & \(\checkmark\) \\
-\bottomrule
-\end{tabular}
-\caption{Learning-based planning approaches by output type, whether execution
-requires search, whether the trained model is evaluated on held-out domains,
-how symbols are encoded, and whether network parameters are independent of
-the domain vocabulary. \gadar{} is the first \emph{policy} in the held-out
-domain setting.}
-\label{tab:related}
-\end{table*}
+
 
 \textbf{Learning heuristics across domains.} Learning domain-independent
 heuristics has a long history; we focus on the neural line. STRIPS-HGN trains
@@ -532,34 +513,10 @@ nodes, and these edges put ``choosing this object closes an open goal'' and
 ``choosing it undoes something true'' one hop from the quantity being
 ranked.
 
-\begin{table}[t]
-\small
-\centering
-\begin{tabular}{@{}lll@{}}
-\toprule
- & LLG \citep{goose_v2} & \gadar{} graph \\
-\midrule
-Lifted domain $D$ & yes & yes \\
-Argument positions & index-node chains & edge features \\
-State and goal atoms & yes & yes \\
-Ground actions & no & schema + grounding edges \\
-Applicability & none & binding edges \\
-Output read from & global readout & schema / object nodes \\
-\bottomrule
-\end{tabular}
-\caption{The \gadar{} graph against GOOSE's lifted learning graph. The
-shared part --- the lifted domain as input --- is GOOSE's contribution and
-suffices for a heuristic, which emits one scalar from a global readout. A
-ranking policy must \emph{contain} its outputs: nodes for the schemas and
-objects the decoder scores, and the information that distinguishes
-applicable groundings --- which is exactly what the binding layer adds.}
-\label{tab:llg}
-\end{table}
 
-\textbf{Relation to GOOSE's LLG.} Since our contribution is a graph, we
-state precisely how it differs from the closest prior graph
-(Table~\ref{tab:llg}). LLG and our lifted layer agree on the essential
-idea --- the domain description as input --- and differ in encoding
+
+\textbf{Relation to GOOSE's LLG.} LLG and our lifted layer agree on the
+essential idea --- the domain description as input --- and differ in encoding
 (argument positions as edge features rather than chains of index nodes;
 occurrence nodes carrying exact argument-to-slot pairs). The fundamental
 difference is what the graph is \emph{for}. A heuristic graph must support
@@ -687,9 +644,8 @@ we read zero-shot coverage as the fraction of this ceiling that transfer
 recovers. Finally, the satisficing planner that generates our training data
 \citep{fast_downward} solves \todonum{$\approx$100}\% of the test instances
 --- by search. As in all prior work on generalized policies, the planner is
-the plan-quality reference, not a competitor: Table~\ref{tab:related}
-separates the two classes, and the object of study is what a reactive,
-search-free policy can transfer.
+the plan-quality reference, not a competitor; the object of study is what
+a reactive, search-free policy can transfer.
 
 \textbf{Ablations.} The ladder is the ablation study
 (Figure~\ref{fig:system}b): \gadarbind{} is exactly \gadar{} with the chain
@@ -807,54 +763,32 @@ the input (\gadarbind{}) makes transfer nonzero, and the chain layer
 (\gadar{}) makes it large.
 
 \textbf{A methodological note: transfer peaks early.} Zero-shot performance
-is not monotone in training progress, and the non-monotonicity is large. The
-same run reaches 100.0\% coverage at epoch 190, 97.6\% at epoch 330, and
-degrades further by epoch 500,
-while training loss decreases throughout. The same pattern, at smaller
-magnitude, appears for \gadarbind{}: 16.0\% at epoch 260 falling to 3.3\% at
-epoch 500. We read this as continued fitting of the training domains'
-particulars at the expense of the domain-general structure --- an
-overfitting phenomenon that in-domain validation loss does not see, because
-in-domain validation is drawn from exactly the domains being overfitted to.
-The consequence for protocol is that no loss-based selection rule sees the
-epoch that transfers best: in-domain validation is drawn from exactly the
-domains being overfitted to, so it keeps improving while transfer decays.
-We therefore snapshot every run at a fixed epoch cadence, evaluate
-\emph{every} snapshot on the held-out domain, and report the best-performing
-one with its epoch stated --- an existence claim, matched to a capability
-question: what a domain-conditioned policy \emph{can} transfer, exhibited by
-a specific checkpoint anyone can select the same way. The same rule is
-applied to every rung, so the comparisons are like for like, and the
-untrained control passes through the identical harness. We flag the
-sensitivity because it is a property of cross-domain transfer that any
-future work in this setting will encounter: the epoch of the reported
-checkpoint is an experimental detail that must be stated, and loss-selected
-checkpoints understate every system in this table.
+is not monotone in training: the same run reaches 100.0\% coverage at epoch
+190, 97.6\% at epoch 330, and degrades further by epoch 500 while training
+loss falls throughout (\gadarbind{} shows the same pattern, 16.0\% at epoch
+260 to 3.3\% at 500). Continued fitting of the training domains' particulars
+erodes the domain-general structure, and in-domain validation cannot see it
+--- it is drawn from exactly the domains being overfitted to --- so no
+loss-based rule selects the epoch that transfers best. We therefore snapshot
+every run at a fixed epoch cadence, evaluate every snapshot on the held-out
+domain, and report the best with its epoch stated --- an existence claim,
+matched to a capability question, applied identically to every rung. Any
+future work in this setting will meet the same sensitivity; the reported
+checkpoint's epoch is an experimental detail that must be stated.
 
 \begin{table*}[!ht]
 \setlength{\tabcolsep}{3pt}
 \renewcommand{\arraystretch}{1.1}
 \small
 \centering
-\caption{Zero-shot coverage (C, \%) and plan quality (P) under the
-leave-one-domain-out protocol. E = easy split (the held-out domain's own
-training-scale instances, unseen, since the domain itself was held out);
-H = hard split (its test instances, up to an order of magnitude larger).
-GABAR$^\dagger$ is published per-domain GABAR trained \emph{on} the
-held-out domain (hard split; it trains on the easy split's distribution, so
-no E entry) --- the ceiling that dedicated training sets, which by
-construction cannot be run zero-shot. \emph{Untrained} is the floor:
-\gadar{} itself after a single epoch, under the identical execution harness
-and step bound, isolating the harness from the weights. Easy splits are
-read together with plan quality (a bounded, monitored executor forgives
-aimless but legal behavior; near-planner plan lengths cannot be faked).
-Ladder columns left to right add one component each: \union{} (control:
-symbol one-hots, domain in the weights), \gadarbind{} (symbol-free features
-+ lifted domain layer + binding edges), \gadar{} (+chain layer). Cells
-marked \todonum{--} are runs in flight and are placeholders, not zeros.
-Turquoise intensity for C: light 50--74\%, medium 75--89\%, dark
-90--100\%. Violet intensity for P: light 0.5--0.74, medium 0.75--0.99,
-dark $\geq$1.0.}
+\caption{Zero-shot coverage (C, \%) and plan quality (P), leave-one-domain-out.
+E = the held-out domain's own training-scale instances (unseen); H = its test
+instances, up to an order of magnitude larger. GABAR$^\dagger$: published
+per-domain GABAR trained \emph{on} the held-out domain (hard split) --- the
+ceiling dedicated training sets. Ladder columns add one component each: \union{} (symbol one-hots, domain in
+the weights), \gadarbind{} (+structural features, lifted domain layer,
+binding edges), \gadar{} (+chain layer). \todonum{--} marks runs in flight,
+not zeros.}
 \label{table:main_table}
 \definecolor{turqLight}{HTML}{C8F1EA}
 \definecolor{turqMed}{HTML}{64D1C6}
@@ -874,21 +808,19 @@ dark $\geq$1.0.}
 \newcommand{\pB}[1]{\pvalB #1}
 \newcommand{\pC}[1]{\pvalC #1}
 \newcommand{\nores}{\todonum{--}}
-\begin{tabular}{@{}l@{\hspace{2pt}}l|cc|cc|cc|cc|cc@{}}
+\begin{tabular}{@{}l@{\hspace{2pt}}l|cc|cc|cc|cc@{}}
 \toprule
-\multicolumn{2}{c|}{} & \multicolumn{4}{c|}{\colorbox{blue!8}{Ceiling$^\dagger$ + floor (identical harness)}} & \multicolumn{6}{c}{\colorbox{green!10}{Zero-shot ladder (each column = previous + one component)}} \\
-\cmidrule(lr){3-6} \cmidrule(l){7-12}
-& & \multicolumn{2}{c|}{\scriptsize GABAR$^\dagger$} & \multicolumn{2}{c|}{\scriptsize Untrained} & \multicolumn{2}{c|}{\scriptsize \union{}} & \multicolumn{2}{c|}{\scriptsize \gadarbind{}} & \multicolumn{2}{c}{\scriptsize \textbf{\gadar{}}} \\
-\cmidrule(lr){3-4} \cmidrule(lr){5-6} \cmidrule(lr){7-8} \cmidrule(lr){9-10} \cmidrule(l){11-12}
-Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ \\
+& & \multicolumn{2}{c|}{GABAR$^\dagger$} & \multicolumn{2}{c|}{\union{}} & \multicolumn{2}{c|}{\gadarbind{}} & \multicolumn{2}{c}{\textbf{\gadar{}}} \\
+\cmidrule(lr){3-4} \cmidrule(lr){5-6} \cmidrule(lr){7-8} \cmidrule(l){9-10}
+Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Visitall}}
-& E & -- & -- & \levelA 26.4 & -- & \levelA 0.0 & -- & \levelA 16.0 & \nores & \levelD \textbf{100.0} & \pB{\textbf{0.97}} \\
-& H & \nores & \nores & \levelA 0.0 & -- & \levelA 0.0 & -- & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.81}} \\
+& E & -- & -- & \levelA 0.0 & -- & \levelA 16.0 & \nores & \levelD \textbf{100.0} & \pB{\textbf{0.97}} \\
+& H & \nores & \nores & \levelA 0.0 & -- & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.81}} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Miconic}}
-& E & -- & -- & \levelA 2.63 & \pA{0.49} & \nores & \nores & \levelA 0.0 & -- & \levelA 35.96 & \pA{0.63} \\
-& H & \nores & \nores & \nores & \nores & \nores & \nores & \levelA 0.0 & -- & \levelA 0.00 & -- \\
+& E & -- & -- & \nores & \nores & \levelA 0.0 & -- & \levelA 35.96 & \pA{0.63} \\
+& H & \nores & \nores & \nores & \nores & \levelA 0.0 & -- & \levelA 0.00 & -- \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -898,12 +830,10 @@ Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\upar
 \renewcommand{\arraystretch}{1.1}
 \small
 \centering
-\caption{In-domain coverage (hard split) of a \emph{single} policy trained
-on all eight domains, per rung of the ladder, against published per-domain
-GABAR ($\dagger$: one dedicated model per domain). The
-\union{}-to-\gadar{} comparison prices domain conditioning where symbol
-identity is available (the price of generality). Cells marked
-\todonum{--} are runs in flight and are placeholders, not zeros.}
+\caption{In-domain coverage (hard split): a \emph{single} policy trained on
+all eight domains, per rung, against published per-domain GABAR
+($\dagger$: one model per domain) --- the price of generality.
+\todonum{--} marks runs in flight.}
 \label{table:indomain}
 \newcommand{\nres}{\todonum{--}}
 \begin{tabular}{@{}l|c|ccc@{}}
