@@ -21,16 +21,17 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-# The 16-run plan (train_test_scripts/RUNS_STATUS.md).
+# The paper's current cell list (four held-out targets: visitall, miconic,
+# grid, logistics; ladder UNION -> BIND(joint) -> GADAR(joint_chain)).
 PLANNED = [
-    "loo8_union_no_manyblocks", "loo8_union_no_gripper",
-    "loo8_union_no_miconic", "loo8_union_no_visitall",
-    "loo8_structural_no_manyblocks", "loo8_structural_no_gripper",
-    "loo8_structural_no_miconic", "loo8_structural_no_visitall",
+    "loo8_union_no_visitall", "loo8_union_no_miconic",
+    "loo8_union_no_grid", "loo8_union_no_logistics",
+    "loo8_joint_no_visitall", "loo8_joint_no_miconic",
+    "loo8_joint_no_grid", "loo8_joint_no_logistics",
+    "loo8_joint_chain_no_visitall", "loo8_joint_chain_no_miconic",
+    "loo8_joint_chain_no_grid", "loo8_joint_chain_no_logistics",
+    # measured but out of the paper's table; keep visible
     "loo8_joint_chain_no_manyblocks", "loo8_joint_chain_no_gripper",
-    "loo8_joint_chain_no_miconic", "loo8_joint_chain_no_visitall",
-    "all8_union", "all8_structural", "all8_joint_chain",
-    "loo8_joint_no_visitall",   # also the repr-128 capacity probe
 ]
 
 
@@ -67,6 +68,19 @@ def expected_model_dir(cfg_name):
     return "MULTI-" + "-".join(d.strip().capitalize() for d in doms.split(","))
 
 
+def has_checkpoints(mdir):
+    """ModelManager dirs live under cache/results/<save_prefix>/<env>_seed<n>_...
+    (see get_filenames/main.py), NOT under models/. Match on the MULTI- name
+    anywhere at those depths and require a tracking file."""
+    if not mdir:
+        return False
+    patterns = [
+        os.path.join("models", mdir + "*", "model_tracking.json"),
+        os.path.join("cache", "results", "*", mdir + "*", "model_tracking.json"),
+    ]
+    return any(glob.glob(p) for p in patterns)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--all", action="store_true")
@@ -85,7 +99,7 @@ def main():
     for name in names:
         n_proc = live.get(name, {}).get("n", 0)
         mdir = expected_model_dir(name)
-        has_ckpt = bool(mdir) and os.path.isdir(os.path.join("models", mdir))
+        has_ckpt = has_checkpoints(mdir)
         results = glob.glob(os.path.join("cache", "results", "*", "results_*.json"))
         # expid defaults to the config name in our suite
         has_res = any(f"/{name}/" in p for p in results)
