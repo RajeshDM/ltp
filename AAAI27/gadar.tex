@@ -279,7 +279,12 @@ margin repairs it.
 sharply under symbol renaming \citep{llm_baseline}, an invariance \gadar{}
 has by construction. LLM code-synthesis planners write per-domain programs
 using solved instances and validator loops at test time, which is a
-different question from zero-shot execution.
+different question from zero-shot execution. Closer to our cross-domain
+setting, HALO trains a small orchestrator over PDDL-repair agents from
+verifier-certified trajectories across eleven domains
+\citep{halo_orchestrator}. Generalization there happens at the
+specification level, with classical planners producing the plans; \gadar{}
+generalizes the planning policy itself and uses no planner at test time.
 
 \section{Background and Problem Setup}
 
