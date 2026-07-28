@@ -361,7 +361,8 @@ at a dead end, or at a length bound.
 \centering
 % Source: figures/fig1_representation.html --- updated 2026-07-28 with the
 % chain layer (enables edge, grounded deletes-true edge, goal-relevant object
-% rings, chain legend block). TODO (human): re-export at 100% zoom, screenshot
+% rings, chain legend block). PNG rendered headlessly 2026-07-28 and committed
+% (no manual screenshot needed; re-render: tools note in figures/).
 % the SVG area only, save on Overleaf as Figures/gadar_graph_v1.png).
 \includegraphics[width=0.98\textwidth]{Figures/gadar_graph_v1.png}
 \caption{The \gadar{} representation for a Blocksworld task. The
@@ -391,8 +392,7 @@ the representation is invariant to renaming by construction.}
 \centering
 % Source: figures/fig2_system.html --- panel (b) redrawn 2026-07-28 as the
 % THREE-rung ladder (UNION / GADAR-BIND / GADAR+chain, chain rung includes
-% type compilation). TODO (human): open the html in a browser at 100% zoom,
-% screenshot, overwrite Figures/gadar_system_v1.png before the final PDF.
+% type compilation). PNG rendered headlessly 2026-07-28 and committed.
 \includegraphics[width=0.98\textwidth]{Figures/gadar_system_v1.png}
 \caption{\gadar{} system overview. (a) The domain description $D$ and the
 state and goal are converted into a graph. (b) The ladder of domain
@@ -985,43 +985,16 @@ identity is available (the price of generality). Cells marked
 \toprule
 Domain & GABAR$^\dagger$ & \union{} & \gadarbind{} & \gadar{} \\
 \midrule
-Blocks    & 
-res & 
-res & 57.0 & 
-res \
-Miconic   & 
-res & 
-res & 61.3 & 
-res \
-Spanner   & 
-res & 
-res & 1.0 & 
-res \
-Gripper   & 
-res & 
-res & 94.2 & 
-res \
-Visitall  & 
-res & 
-res & 68.0 & 
-res \
-Grid      & 
-res & 
-res & 70.8 & 
-res \
-Logistics & 
-res & 
-res & 0.0 & 
-res \
-Rovers    & 
-res & 
-res & 5.6 & 
-res \
+Blocks    & \nres & \nres & 57.0 & \nres \\
+Miconic   & \nres & \nres & 61.3 & \nres \\
+Spanner   & \nres & \nres & 1.0 & \nres \\
+Gripper   & \nres & \nres & 94.2 & \nres \\
+Visitall  & \nres & \nres & 68.0 & \nres \\
+Grid      & \nres & \nres & 70.8 & \nres \\
+Logistics & \nres & \nres & 0.0 & \nres \\
+Rovers    & \nres & \nres & 5.6 & \nres \\
 \midrule
-Combined  & 
-res & 
-res & 44.7 & 
-res \
+Combined  & \nres & \nres & 44.7 & \nres \\
 \bottomrule
 \end{tabular}
 \end{table}
