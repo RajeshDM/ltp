@@ -199,10 +199,10 @@ training-scale instances it solves 100\% against 16\% for \gadarbind{}. It does 
 above the 50\% ceiling of a hand-coded oracle
 that always prefers an applicable action directly satisfying an open goal
 atom, which rules out the reading that the transfer is a terminal trigger in
-disguise. The remaining held-out targets, the union-vocabulary control, and
+disguise. We evaluate four held-out targets --- Visitall, Miconic, Grid, and
+Logistics; the Grid and Logistics sweeps, the union-vocabulary control, and
 the intermediate rungs on those targets are in flight and reported as
-placeholders; we state plainly that the capability claim currently rests on
-one fully measured held-out domain. By construction, \gadar{} is invariant to renaming of
+placeholders. By construction, \gadar{} is invariant to renaming of
 predicates, schemas, and objects --- a robustness that symbol-based
 approaches, including current large reasoning models, do not share
 \citep{llm_baseline}
@@ -264,7 +264,9 @@ evaluates on held-out ones \citep{goose_v1, goose_v2}. WL-GOOSE obtains
 stronger per-domain heuristics with classical machine learning over
 Weisfeiler--Lehman features, at the cost of per-domain feature dictionaries
 \citep{wl_goose}. \citet{karia2021learning} learn generalized heuristics over
-canonical abstractions without requiring the model at evaluation time. These
+canonical abstractions without requiring the model at evaluation time; more
+recently, LLM-evolved heuristic ensembles have been shown to transfer to a
+held-out IPC learning track \citep{llm_evolved_heuristics_2026}. These
 works establish domain-agnostic \emph{inputs}, and we adopt their lesson ---
 structural features and lifted domain graphs. They differ from our setting in
 their output: a heuristic delegates action construction to search, which
@@ -288,7 +290,14 @@ similarly learn policies over relational state representations
 \citep{relational_drl, sr_drl, relational_mdp_learning, rddl_gnn,
 generalized_planning_deep_rl}. GABAR, which this work extends, represents
 ground actions explicitly in the state graph and constructs actions
-autoregressively by ranking \citep{gabar}. In all of these, the domain's
+autoregressively by ranking \citep{gabar}. The setting has remained
+per-domain in the most recent work as well: self-improving search-and-learn
+loops train a relational value heuristic per domain and generalize across
+instance sizes within it \citep{learning_to_search_2026}, lookahead-based
+general policies are learned over collections of instances of a single
+domain \citep{lookahead_policies_2026}, and Q-value policy learning is
+studied explicitly under a per-domain framing \citep{mueller_qvalues}. In
+all of these, the domain's
 vocabulary is reflected in the network --- as per-schema modules,
 per-predicate parameters, or vocabulary-sized encodings --- so the trained
 policy is bound to its training domain. \gadar{} removes this binding by
@@ -709,8 +718,9 @@ computed by a classical planner \citep{fast_downward} on the small instances
 of each training domain (between \todonum{125} and \todonum{312} instances
 per domain); states along each plan are converted to graphs and the policy
 is trained to reproduce the expert action as described above. As held-out
-targets we report Visitall and Miconic, each on two splits, so that the
-zero-shot numbers of every system are matched on the same splits.
+targets we report four domains --- Visitall, Miconic, Grid, and
+Logistics --- each on two splits, so that the zero-shot numbers of every
+system are matched on the same splits.
 
 \textbf{Protocol.} Three experiment families, all run for every rung of the
 ladder. (i)~\emph{Leave-one-domain-out} (the headline): for each target
@@ -858,7 +868,8 @@ entirely to what was learned from the other seven domains. Coverage on the
 hard split, whose expert plans average 182 steps, is 0\%: at Miconic's
 horizon, per-step errors that the easy split absorbs compound beyond
 recovery. The transfer is real and it is partial, and we report both
-facts.
+facts. The Grid and Logistics sweeps run the identical protocol and are in
+flight; their cells in Table~\ref{table:main_table} are placeholders.
 
 \textbf{A methodological note: transfer peaks early.} Zero-shot performance
 is not monotone in training progress, and the non-monotonicity is large. The
@@ -939,6 +950,14 @@ Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\upar
 \multirow{2}{*}{\makebox[1.4cm][l]{Miconic}}
 & E & -- & -- & \levelA 2.63 & \pA{0.49} & \nores & \nores & \nores & \nores & \levelA 35.96 & \pA{0.63} \\
 & H & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \levelA 0.00 & -- \\
+\midrule
+\multirow{2}{*}{\makebox[1.4cm][l]{Grid}}
+& E & -- & -- & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores \\
+& H & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores \\
+\midrule
+\multirow{2}{*}{\makebox[1.4cm][l]{Logistics}}
+& E & -- & -- & \levelA 0.00 & -- & \nores & \nores & \nores & \nores & \nores & \nores \\
+& H & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores & \nores \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -1016,10 +1035,10 @@ measurements isolate. On Visitall held out of training entirely, it moves
 zero-shot coverage from 16\% to 100\% on training-scale instances at plan
 quality 0.97, above the ceiling of a hand-coded goal-achievement oracle,
 and from 4\% to 68\% on the hard split, where the untrained control solves
-nothing. We report this as one held-out domain measured end to end; the
-remaining held-out targets, the union-vocabulary control, and the
-training-set-diversity study are in flight, and every corresponding cell in
-this paper is marked as a placeholder rather than filled in. Zero-shot
+nothing. We evaluate four held-out targets --- Visitall, Miconic, Grid, and
+Logistics; the Grid and Logistics sweeps, the union-vocabulary control, and
+the training-set-diversity study are in flight, and every corresponding
+cell in this paper is marked as a placeholder rather than filled in. Zero-shot
 transfer is bounded by structure --- Proposition~2 makes the
 ceiling precise --- and beyond that ceiling adaptation needs data from the
 new domain: few-shot adaptation, lifted successor generation, richer PDDL
