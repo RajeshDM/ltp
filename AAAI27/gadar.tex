@@ -532,8 +532,8 @@ computed by a classical planner \citep{fast_downward} on the small instances
 of each training domain (between \todonum{125} and \todonum{312} instances
 per domain); states along each plan are converted to graphs and the policy
 is trained to reproduce the expert action as described above. As held-out
-targets we report Visitall and Miconic, each on two splits, so that the
-zero-shot numbers of every system are matched on the same splits.
+targets we report Visitall, Miconic, and Grid, each on two splits, so that
+the zero-shot numbers of every system are matched on the same splits.
 
 \textbf{Protocol.} Two experiment families, run for every rung of the
 ladder. (i)~\emph{Leave-one-domain-out} (the main experiment): for each target
@@ -656,6 +656,10 @@ Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\upar
 \multirow{2}{*}{\makebox[1.4cm][l]{Miconic}}
 & E & -- & -- & \nores & \nores & \levelA 0.0 & -- & \levelA 35.96 & \pA{0.63} \\
 & H & \nores & \nores & \nores & \nores & \levelA 0.0 & -- & \levelA 0.00 & -- \\
+\midrule
+\multirow{2}{*}{\makebox[1.4cm][l]{Grid}}
+& E & -- & -- & \nores & \nores & \levelA 3.1 & \nores & \levelA 11.98 & \pNA{0.21} \\
+& H & \nores & \nores & \nores & \nores & \levelA 0.0 & -- & \levelA 2.08 & \pNA{0.15} \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -740,13 +744,17 @@ the hard split, where coverage is itself decisive, plan quality is 0.97:
 the zero-shot policy produces plans within 3\% of a planner that searches,
 while performing no search itself.
 
-\textbf{How far does the transfer go? (Miconic.)} On Miconic, \gadar{}
-solves 35.96\% of the easy split at plan quality 0.63, against 2.63\% for
-the untrained control under an identical executor, a thirteen-fold gap
-attributable to what was learned on the other seven domains. Coverage on
-the hard split, whose expert plans average 182 steps, is 0\%: at this
-horizon, per-step errors that the easy split absorbs compound beyond
-recovery. The transfer is real but partial.
+\textbf{How far does the transfer go? (Miconic and Grid.)} On Miconic,
+\gadar{} solves 35.96\% of the easy split at plan quality 0.63, against
+2.63\% for the untrained control under an identical executor, a
+thirteen-fold gap attributable to what was learned on the other seven
+domains. Coverage on the hard split, whose expert plans average 182 steps,
+is 0\%: at this horizon, per-step errors that the easy split absorbs
+compound beyond recovery. On Grid the coverage is smaller but moves with
+the ladder in the same direction: \gadarbind{} solves 3.1\% of the easy
+split and none of the hard split, while \gadar{} reaches 11.98\% and
+2.08\%. Neither domain approaches Visitall, and we report both as partial
+transfers rather than as successes.
 
 \textbf{A methodological note: transfer peaks early.} Zero-shot performance
 is not monotone in training: the same run reaches 100.0\% coverage at epoch
@@ -777,7 +785,7 @@ representation is evaluated as it is built, one component at a time. On
 Visitall held out of training entirely, the chain layer moves zero-shot
 coverage from 16\% to 100\% on training-scale instances at plan quality
 0.97, and from 4\% to 68\% on the hard split, where the untrained control
-solves nothing. We evaluate Visitall and Miconic as held-out targets; the
+solves nothing. We evaluate Visitall, Miconic, and Grid as held-out targets; the
 remaining placeholder cells are runs in flight. Beyond the structural
 transfer ceiling, adaptation needs data from the new domain: few-shot
 adaptation, lifted successor generation, richer PDDL fragments, and
