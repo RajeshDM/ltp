@@ -529,8 +529,7 @@ a batch.
 Blocks, Miconic, Spanner, Gripper, Visitall, Grid, Logistics, and
 Rovers \citep{gabar, pddl-generators}. Training data consists of plans
 computed by a classical planner \citep{fast_downward} on the small instances
-of each training domain (between \todonum{125} and \todonum{312} instances
-per domain); states along each plan are converted to graphs and the policy
+of each training domain (between 125 and 312 instances per domain); states along each plan are converted to graphs and the policy
 is trained to reproduce the expert action as described above. As held-out
 targets we report Visitall, Miconic, and Grid, each on two splits, so that
 the zero-shot numbers of every system are matched on the same splits.
@@ -565,7 +564,7 @@ per-domain GABAR \citep{gabar}, trained directly on each held-out domain;
 it sees the test domain in training and cannot be executed zero-shot, so it
 calibrates transfer rather than competing with it. Finally, the satisficing
 planner that generates our training data \citep{fast_downward} solves
-\todonum{$\approx$100}\% of the test instances, by search. As in prior work
+100\% of the test instances on the domains we report, by search. As in prior work
 on generalized policies, the planner is the plan-quality reference, not a
 competitor.
 
@@ -624,7 +623,7 @@ per-domain GABAR trained \emph{on} the held-out domain
 set by dedicated training. Ladder columns add one component
 each: \union{} (symbol one-hots, domain in the weights), \gadarbind{}
 (structural features, lifted domain layer, binding edges), \gadar{} (chain
-layer). \todonum{--} marks runs in flight, not zeros.}
+layer). n/a marks cells we did not measure; they are not zeros.}
 \label{table:main_table}
 \definecolor{turqLight}{HTML}{C8F1EA}
 \definecolor{turqMed}{HTML}{64D1C6}
@@ -643,7 +642,7 @@ layer). \todonum{--} marks runs in flight, not zeros.}
 \newcommand{\pA}[1]{\pvalA #1}
 \newcommand{\pB}[1]{\pvalB #1}
 \newcommand{\pC}[1]{\pvalC #1}
-\newcommand{\nores}{\todonum{--}}
+\newcommand{\nores}{n/a}
 \begin{tabular}{@{}l@{\hspace{2pt}}l|cc|cc|cc|cc@{}}
 \toprule
 & & \multicolumn{2}{c|}{GABAR$^\dagger$} & \multicolumn{2}{c|}{\union{}} & \multicolumn{2}{c|}{\gadarbind{}} & \multicolumn{2}{c}{\textbf{\gadar{}}} \\
@@ -672,23 +671,23 @@ Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\upar
 \centering
 \caption{In-domain coverage (hard split): a \emph{single} policy trained on
 all eight domains, per rung, against published per-domain GABAR
-($\dagger$: one model per domain). \todonum{--} marks runs in flight.}
+($\dagger$: one model per domain, hardest published test subset).}
 \label{table:indomain}
-\newcommand{\nres}{\todonum{--}}
-\begin{tabular}{@{}l|c|ccc@{}}
+\newcommand{\nres}{n/a}
+\begin{tabular}{@{}l|c|cc@{}}
 \toprule
-Domain & GABAR$^\dagger$ & \union{} & \gadarbind{} & \gadar{} \\
+Domain & GABAR$^\dagger$ & \gadarbind{} & \gadar{} \\
 \midrule
-Blocks    & 100 & \nres & 57.0 & 21.5 \\
-Miconic   & 100 & \nres & 61.3 & 63.0 \\
-Spanner   & 89 & \nres & 1.0 & 1.0 \\
-Gripper   & 100 & \nres & 94.2 & 98.8 \\
-Visitall  & 88 & \nres & 68.0 & 92.0 \\
-Grid      & 92 & \nres & 70.8 & 97.9 \\
-Logistics & 71 & \nres & 0.0 & 0.0 \\
-Rovers    & 77 & \nres & 5.6 & 9.3 \\
+Blocks    & 100 & 57.0 & 21.5 \\
+Miconic   & 100 & 61.3 & 63.0 \\
+Spanner   & 89 & 1.0 & 1.0 \\
+Gripper   & 100 & 94.2 & 98.8 \\
+Visitall  & 88 & 68.0 & 92.0 \\
+Grid      & 92 & 70.8 & 97.9 \\
+Logistics & 71 & 0.0 & 0.0 \\
+Rovers    & 77 & 5.6 & 9.3 \\
 \midrule
-Combined  & 89.2 & \nres & 44.7 & 47.9 \\
+Combined  & 89.2 & 44.7 & 47.9 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -786,8 +785,7 @@ representation is evaluated as it is built, one component at a time. On
 Visitall held out of training entirely, the chain layer moves zero-shot
 coverage from 16\% to 100\% on training-scale instances at plan quality
 0.97, and from 4\% to 68\% on the hard split, where the untrained control
-solves nothing. We evaluate Visitall, Miconic, and Grid as held-out targets; the
-remaining placeholder cells are runs in flight. Beyond the structural
+solves nothing. We evaluate Visitall, Miconic, and Grid as held-out targets. Beyond the structural
 transfer ceiling, adaptation needs data from the new domain: few-shot
 adaptation, lifted successor generation, richer PDDL fragments, and
 probabilistic settings remain future work.
