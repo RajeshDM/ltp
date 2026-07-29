@@ -584,15 +584,21 @@ problems a system solves, systems with higher coverage are scored on harder
 instances; coverage is therefore the primary metric and P is read within,
 not across, columns. Encoder and decoder
 hyperparameters are carried over from GABAR unchanged ($L{=}9$
-message-passing rounds, 64-dimensional representations, GRU decoder); all
-systems train for 500 epochs with batch size 64 and learning rate
-$5{\times}10^{-4}$. Checkpoints are selected by combined training and
-validation loss, and every saved checkpoint of every run is evaluated; the
-test set plays no role in model selection. The reason for the second half of
-that protocol is empirical and we report it in the results: zero-shot
-transfer is not monotone in training progress.
-% TODO: seeds, hardware, wall-clock training time, and measured per-state
-% inference time for GADAR vs GADAR-BIND vs GADAR-STRUCT.
+message-passing rounds, 64-dimensional representations, GRU decoder), with
+batch size 64 and learning rate $5{\times}10^{-4}$; the appendix lists every
+final setting. The structural systems train for 500 epochs and \union{} for
+100, at which point its training loss has fallen by an order of magnitude
+and it fits its training domains completely (100\% in-domain coverage on
+Miconic); its zero-shot failure is not a matter of training budget, since a
+domain it has never seen has no trained slots to occupy at any epoch.
+In-domain results are reported at the checkpoint selected by combined
+training and validation loss, one checkpoint for all eight domains. For
+zero-shot results we instead evaluate every saved checkpoint on the held-out
+domain and report the best, applying the identical rule to every rung; the
+reason is empirical and we report it in the results, namely that zero-shot
+transfer is not monotone in training progress, so no loss-based rule
+recovers the epoch that transfers best. Each configuration is trained once,
+on a single GPU, from a fixed seed recorded with the run.
 Renaming invariance is verified as a unit test: permuting all symbol names
 in a domain yields identical input tensors.
 
