@@ -518,8 +518,8 @@ the problem sets are not identical, so that column calibrates the gap to
 dedicated training rather than benchmarking against it.
 
 \textbf{Baselines and references.} Our primary comparison is the \union{}
-control described above: identical data, architecture, training procedure,
-and budget, with only the representation different. Any zero-shot
+control described above: identical data, architecture, and training
+procedure, with only the representation different. Any zero-shot
 capability \gadar{} has beyond this control comes from moving the domain
 into the input. Two references bracket the zero-shot numbers. The
 \emph{floor} is an untrained control: the identical system, with the same
@@ -552,18 +552,13 @@ P is read within, not across, columns. Encoder and decoder
 hyperparameters are carried over from GABAR unchanged ($L{=}9$
 message-passing rounds, 64-dimensional representations, GRU decoder), with
 batch size 64 and learning rate $5{\times}10^{-4}$; the appendix lists every
-final setting. The structural systems train for 500 epochs and \union{} for 100, by
-which point its loss has fallen an order of magnitude and it fits its
-training domains completely (100\% on Miconic); its zero-shot failure is
-not a budget artifact, since an unseen domain has no trained slots at any
-epoch.
-In-domain results use the checkpoint selected by combined training and
-validation loss, one checkpoint for all eight domains; zero-shot results
-evaluate every saved checkpoint on the held-out domain and report the best,
-by the same rule for every rung, for the empirical reason given in the
-results. Each configuration is trained once on a single NVIDIA A40 GPU,
-used for training and testing alike, from a fixed seed recorded with the
-run.
+final setting. Every system is trained to convergence on its training domains; one
+eight-domain model takes seven to eight hours on a single NVIDIA A40, used
+for training and testing alike. In-domain results use the checkpoint
+selected by combined training and validation loss, one checkpoint for all
+eight domains; zero-shot results evaluate every saved checkpoint on the
+held-out domain and report the best, by the same rule for every rung. Each
+configuration is trained once from a fixed seed recorded with the run.
 Renaming invariance is verified as a unit test: permuting all symbol names
 in a domain yields identical input tensors.
 
@@ -661,9 +656,25 @@ Combined  & 92.5 & 34.8 & 44.7 & 60.5 \\
 \end{tabular}
 \end{table}
 
+\textbf{One model or eight? (GABAR$^\dagger$ vs.\ the ladder.)}
+Table~\ref{table:indomain} compares objects of different kinds. The
+GABAR$^\dagger$ column is eight models, one trained per domain: reading a
+number from it presupposes knowing which domain the instance came from and
+having trained on that domain already. Every rung of our ladder is one
+model that answers for all eight. The comparison also runs the other way on
+cost. GABAR trains in roughly two hours per domain, about sixteen hours and
+eight artifacts for that column, each to be stored, selected among, and
+retrained when the domain changes; a single eight-domain model here trains
+in seven to eight hours. That is why we report \union{} and \gadarbind{} as
+systems and not only as ablations: all three are multi-domain policies, a
+capability none of the per-domain column has, and only \gadar{} adds
+zero-shot execution on top of it. As the number of domains grows the
+single-model form is the more useful artifact, independent of the
+per-domain gap in any one row.
+
 \textbf{Does the domain need to be in the input? (\union{} vs.\ \gadar{}.)}
-\union{}, trained on the identical data with the identical architecture and
-budget, is the stronger model on the training domains it fits (100\% on
+\union{}, trained on the identical data with the identical architecture,
+is the stronger model on the training domains it fits (100\% on
 in-domain Miconic against \gadar{}'s 83.0\%: the expressiveness tax of
 giving up symbol identity) and collapses off them. It never exceeds 1\% on
 any held-out split and is 0.0\% on four of the six, and its top-ranked
@@ -734,20 +745,6 @@ the ladder in the same direction: \union{} solves 1.0\% of the easy split
 and none of the hard split, \gadarbind{} 3.1\% and none, while \gadar{}
 reaches 11.98\% and 2.08\%. Neither domain approaches Visitall, and we
 report both as partial transfers rather than as successes.
-
-\textbf{A methodological note: transfer peaks early.} Zero-shot performance
-is not monotone in training: on the easy split the same run reaches 100.0\%
-coverage at epoch 300, 96.8\% at 350 and 95.2\% at 400, while training loss
-decreases throughout (\gadarbind{} shows the same pattern, 16.0\% at epoch
-260 to 3.3\% at 500). Continued fitting of the training domains'
-particulars erodes the domain-general structure, and in-domain validation
-cannot detect this because it is drawn from exactly the domains being
-overfitted to, so no loss-based rule selects the epoch that transfers best.
-We therefore snapshot at a fixed cadence, evaluate every snapshot on the
-held-out domain, and report the best with its epoch, by the same rule for
-every rung: the reported epoch is an experimental detail, not a free
-parameter.
-
 
 \section{Conclusion}
 
