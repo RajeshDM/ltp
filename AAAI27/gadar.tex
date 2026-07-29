@@ -75,11 +75,7 @@
 
 \begin{abstract}
 
-Learned policies for classical planning act without search, but each policy is tied to the domain it was trained on: network modules per action schema, parameters per predicate, or vocabulary-sized encodings mean that a trained policy cannot even be executed on new predicates and action schemas. We present \gadar{} (Generalizing Across Domains via Action Ranking), a policy $\pi(s, G, D)$ that takes the domain description as input and constructs grounded actions in domains never seen in training, zero-shot and without search.
-
-Our idea is to describe symbols by the roles they play rather than by the names they carry. A predicate is encoded by where it appears in the domain: which schemas require it, which produce or destroy it, and at which argument positions. Under this description gripper's pick-then-drop and miconic's board-then-depart are the same structure, so a policy that learns the pattern in one domain can use it in another. Two further steps make the description usable. \emph{Binding} edges tie each applicable ground action to the lifted preconditions that license it, expressing why an action is available in the vocabulary of the domain rather than in per-domain feature slots. \emph{Chain} edges then state directly that one schema produces what another needs, a relation message passing otherwise loses when it aggregates over a shared predicate, along with how far each schema stands from the goal.
-
-On a domain held out of training entirely, \gadar{} solves 68\% of the large test instances at plan quality 0.97 relative to a satisficing planner and 100\% of the training-scale instances, where an identically-executed untrained network solves 0\% and the same system without chaining reaches 4\% and 16\%. \gadar{} is invariant to symbol renaming by construction.
+Learned policies for classical planning act without search, but each policy is tied to the domain it was trained on: network modules per action schema, parameters per predicate, or vocabulary-sized encodings mean a trained policy cannot even be executed on new predicates and action schemas. We propose \gadar{} (Generalizing Across Domains via Action Ranking), the first policy for classical planning that takes the domain description as input --- $\pi(s, G, D)$ --- and constructs grounded actions in domains never seen in training, zero-shot and without search. Our idea is to describe symbols by the roles they play rather than by the names they carry, so that gripper's pick-then-drop and miconic's board-then-depart become one structure a policy can learn once and reuse. The capability is built in three steps, each a contribution and each the ablation of the next: (i) a \emph{lifted domain layer} replaces symbol identity with structural signatures and embeds $D$ itself into every state graph, identifying predicates and action schemas by their declared roles --- which schema uses them, as precondition or effect, at which argument slots --- rather than by name; (ii) a \emph{binding layer} ties each ground action's applicability to the lifted preconditions it instantiates, expressing search-free action construction in the vocabulary of the domain description; and (iii) a \emph{chain layer} states directly that one schema produces what another needs, a relation message passing otherwise loses when it aggregates over a shared predicate, together with how far each schema stands from the goal. Across held-out IPC domains we show that a union-vocabulary multi-task control matches per-domain performance on its training domains yet transfers nothing to an unseen domain; that the domain description alone makes the policy executable but not competent; and that the chain layer converts executability into transfer, reaching 68\% coverage on the large test instances of a held-out domain at plan quality 0.97, where an identically-executed untrained network solves none. \gadar{} is invariant to symbol renaming by construction.
 
 \end{abstract}
 
@@ -109,49 +105,45 @@ domain. ASNets learn per-schema network modules that transfer across problem
 sizes \citep{toyer2020asnets}; relational GNN policies learn value functions
 whose greedy execution solves instances far larger than those seen in
 training \citep{expressive_v1, policy_beyond_c2}; GABAR encodes states as
-action-centric graphs and constructs grounded actions by ranking, selecting
-an action schema by scoring schema-node embeddings and then each argument by
-scoring object-node embeddings, and generalizes to instances significantly
-larger than its training problems \citep{gabar}. These policies share a
-design choice: the domain's schemas and predicates are reflected in the
-network's structure, whether as modules, parameters, or feature dimensions.
-This helps within-domain generalization, since the network is shaped to its
-domain, but it also ties each trained policy to that domain. The policy
-cannot even be executed on a domain whose schemas and predicates have no
-slots in the network.
+action-centric graphs and constructs grounded actions by ranking them, and
+generalizes to instances far larger than its training problems
+\citep{gabar}. These policies share a design choice: the domain's schemas
+and predicates are reflected in the network itself, as modules, parameters,
+or feature dimensions. Shaping the network to its domain helps
+within-domain generalization, but it is also what ties each trained policy
+to that domain, and a policy cannot even be executed where its schemas and
+predicates have no slots.
 
 For learned heuristics, a different treatment of the domain has emerged.
 STRIPS-HGN computes structural features that make no reference to symbol
-identity \citep{strips_hgn}, and GOOSE's lifted learning graph (LLG) goes
-further and encodes the full domain description (schemas, preconditions,
-effects, and argument bindings) as part of the heuristic's input
-\citep{goose_v2}. In GOOSE's domain-independent setting, a single heuristic
-is trained on one collection of domains and evaluated on held-out ones. This
-line of work shows that the input side of learning for planning can be made
-domain-agnostic. Heuristics, however, delegate action construction to
-search. The corresponding step for policies, which must construct grounded
-actions themselves, remains open, and \citet{goose_v2} identify lifted
-policy learning as future work. The step is not trivial: the same authors
-prove that message-passing networks over the lifted graph cannot compute
-even basic heuristics such as $h^{\mathrm{add}}$, and their
-domain-independent configuration is empirically their most difficult
-setting.
+identity \citep{strips_hgn}, and GOOSE's lifted learning graph encodes the
+full domain description as part of the heuristic's input, training one
+heuristic across many domains and evaluating on held-out ones
+\citep{goose_v2}. The input side of learning for planning can therefore be
+made domain-agnostic. Heuristics, however, delegate action construction to
+search; the corresponding step for policies, which must construct grounded
+actions themselves, remains open, and \citet{goose_v2} name it as future
+work. It is not a trivial step: the same authors prove that message passing
+over the lifted graph cannot compute even $h^{\mathrm{add}}$, and their
+domain-independent setting is empirically their hardest.
 
-In this work we take that step. We learn a policy $\pi(s, G, D)$ that
-receives the domain description $D$ as input alongside the state $s$ and
-goal $G$, and constructs grounded actions in domains never seen in
-training, zero-shot and without search. Classical planners are
-domain-general but rely on search at plan time; learned policies execute
-reactively but specialize to one domain at training time. $\pi(s, G, D)$ is
-a single learned model that is both domain-general and search-free, and the
-question we study is what such a policy can transfer, not whether it
-outperforms search. Our key idea is to change what the network is told
-about symbols: not which symbol something is, but what role the symbol
-plays in the lifted domain. We bind every ground action's applicability to
-that lifted structure, and we make the domain's own action structure (which
-schema produces what another schema needs, and how far each schema is from
-the goal) an explicit part of the input, so that the ranking decoder can
-score actions over symbols it has never seen.
+In this work we take that step, and our key idea is to change what the
+network is told about symbols: not which symbol something is, but what role
+the symbol plays in the domain. A predicate is described by where it
+appears --- which schemas require it, which produce or destroy it, at which
+argument positions --- and under that description gripper's
+$\textsf{pick}$-then-$\textsf{drop}$ and miconic's
+$\textsf{board}$-then-$\textsf{depart}$ are one structure, which a policy
+can learn in one domain and reuse in another. Two things are then needed to
+make the description usable: every ground action's applicability must be
+tied to that structure, so that ``why is this action available'' is said in
+the domain's own vocabulary; and the relation planning turns on, that one
+schema produces what another needs, must be stated explicitly rather than
+left for message passing to recover. The result is a policy
+$\pi(s, G, D)$ that is at once domain-general and search-free, where
+classical planners buy generality with search and learned policies buy
+reactivity with specialization. The question we study is what such a policy
+can transfer, not whether it outraces search.
 
 We build this capability as a ladder of three systems, each adding exactly
 one representational commitment to the previous one, so that every adjacent
