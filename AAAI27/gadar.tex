@@ -682,7 +682,7 @@ Spanner   & 92.0 & 1.0 & 1.0 & 35.4 \\
 Gripper   & 100.0 & \nres & 94.2 & 93.1 \\
 Visitall  & 90.7 & \nres & 68.0 & 92.0 \\
 Grid      & 96.3 & \nres & 70.8 & 97.9 \\
-Logistics & 79.0 & \nres & 0.0 & 0.0 \\
+Logistics & 79.0 & 14.6 & 0.0 & 0.0 \\
 Rovers    & 82.0 & \nres & 5.6 & 9.3 \\
 \midrule
 Combined  & 92.5 & \nres & 44.7 & 53.3 \\
@@ -692,10 +692,11 @@ Combined  & 92.5 & \nres & 44.7 & 53.3 \\
 
 \textbf{Does the domain need to be in the input? (\union{} vs.\ \gadar{}.)}
 \union{}, trained on the identical data with the identical architecture and
-budget, solves its training domains (100\% on Miconic, 85.5\% on Gripper,
-68.8\% on Grid in-domain) and 0\% on both splits of held-out Visitall and
-of held-out Miconic, where it does not construct a single applicable
-action, while \gadar{} reaches 68\% and 100\%. A symbol-identity
+budget, matches \gadar{} on the training domains it fits (100\% on
+in-domain Miconic, 14.6\% on Logistics where \gadar{} scores 0\%) and
+scores 0\% on both splits of held-out Visitall and of held-out Miconic,
+where it does not construct a single applicable action, while \gadar{}
+reaches 68\% and 100\%. A symbol-identity
 representation learns the domains it sees and does not transfer beyond
 their vocabulary;
 moving the domain description into the input is what makes transfer
