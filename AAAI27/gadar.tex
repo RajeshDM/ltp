@@ -715,7 +715,10 @@ of training solves 0.0\% of the hard split and 26.4\% of the easy split.
 The easy-split number measures how forgiving small instances are under a
 monitored executor and is the number the 100\% should be read against; on
 the hard split, where the harness alone produces nothing, the 68\% reflects
-what was learned from the seven training domains.
+what was learned from the seven training domains. Removing the monitor
+entirely separates the two further: under pure greedy execution \gadar{}
+still solves 50.4\% of the easy split and 8.0\% of the hard split, against
+20.8\% and 0.0\% for the untrained control.
 
 \textbf{Is it a terminal trigger? (Achievement oracle vs.\ \gadar{}.)} A
 policy might only learn to fire when a goal atom is one action away, with
