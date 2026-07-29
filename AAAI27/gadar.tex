@@ -647,7 +647,7 @@ layer). n/a marks cells we did not measure; they are not zeros.}
 Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ \\
 \midrule
 \multirow{2}{*}{\makebox[0.95cm][l]{Visitall}}
-& E & -- & -- & \levelA 0.0 & -- & \levelA 16.0 & \nores & \levelD \textbf{100.0} & \pB{\textbf{0.81}} \\
+& E & -- & -- & \levelA 0.8 & \nores & \levelA 16.0 & \nores & \levelD \textbf{100.0} & \pB{\textbf{0.81}} \\
 & H & \levelD 90.7 & \pC{1.07} & \levelA 0.0 & -- & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.97}} \\
 \midrule
 \multirow{2}{*}{\makebox[0.95cm][l]{Miconic}}
@@ -677,15 +677,15 @@ subsets).}
 Domain & GABAR$^\dagger$ & \union{} & \gadarbind{} & \gadar{} \\
 \midrule
 Blocks    & 100.0 & \nres & 57.0 & 35.5 \\
-Miconic   & 100.0 & 100.0 & 61.3 & 63.0 \\
+Miconic   & 100.0 & 100.0 & 61.3 & 43.7 \\
 Spanner   & 92.0 & 1.0 & 1.0 & 35.4 \\
 Gripper   & 100.0 & \nres & 94.2 & 93.1 \\
 Visitall  & 90.7 & \nres & 68.0 & 92.0 \\
-Grid      & 96.3 & \nres & 70.8 & 97.9 \\
+Grid      & 96.3 & \nres & 70.8 & 89.6 \\
 Logistics & 79.0 & 14.6 & 0.0 & 0.0 \\
-Rovers    & 82.0 & \nres & 5.6 & 9.3 \\
+Rovers    & 82.0 & \nres & 5.6 & 7.4 \\
 \midrule
-Combined  & 92.5 & \nres & 44.7 & 53.3 \\
+Combined  & 92.5 & \nres & 44.7 & 49.6 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -694,9 +694,12 @@ Combined  & 92.5 & \nres & 44.7 & 53.3 \\
 \union{}, trained on the identical data with the identical architecture and
 budget, matches \gadar{} on the training domains it fits (100\% on
 in-domain Miconic, 14.6\% on Logistics where \gadar{} scores 0\%) and
-scores 0\% on both splits of held-out Visitall and of held-out Miconic,
-where it does not construct a single applicable action, while \gadar{}
-reaches 68\% and 100\%. A symbol-identity
+collapses off them: 0.8\% and 0.0\% on the two splits of held-out Visitall
+and 0.0\% on both splits of held-out Miconic, with a top-ranked proposal
+that is valid in 0.0\% of states in every one of these cases, so even the
+single solved instance comes from the executor and not from the policy,
+while \gadar{} reaches 100\% and 68\% on the two Visitall splits.
+A symbol-identity
 representation learns the domains it sees and does not transfer beyond
 their vocabulary;
 moving the domain description into the input is what makes transfer
