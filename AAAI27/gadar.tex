@@ -655,8 +655,8 @@ Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\upar
 & H & \levelD 100.0 & \pB{0.97} & \levelA 0.0 & -- & \levelA 0.0 & -- & \levelA 0.00 & -- \\
 \midrule
 \multirow{2}{*}{\makebox[0.95cm][l]{Grid}}
-& E & -- & -- & \nores & \nores & \levelA 3.1 & \pNA{0.25} & \levelA 11.98 & \pNA{0.21} \\
-& H & \levelD 96.3 & \pB{0.83} & \nores & \nores & \levelA 0.0 & -- & \levelA 2.08 & \pNA{0.15} \\
+& E & -- & -- & \levelA 1.0 & \nores & \levelA 3.1 & \pNA{0.25} & \levelA 11.98 & \pNA{0.21} \\
+& H & \levelD 96.3 & \pB{0.83} & \levelA 0.0 & -- & \levelA 0.0 & -- & \levelA 2.08 & \pNA{0.15} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -694,11 +694,10 @@ Combined  & 92.5 & \nres & 44.7 & 49.6 \\
 \union{}, trained on the identical data with the identical architecture and
 budget, matches \gadar{} on the training domains it fits (100\% on
 in-domain Miconic, 14.6\% on Logistics where \gadar{} scores 0\%) and
-collapses off them: 0.8\% and 0.0\% on the two splits of held-out Visitall
-and 0.0\% on both splits of held-out Miconic, with a top-ranked proposal
-that is valid in 0.0\% of states in every one of these cases, so even the
-single solved instance comes from the executor and not from the policy,
-while \gadar{} reaches 100\% and 68\% on the two Visitall splits.
+collapses off them: it never exceeds 1\% on any held-out split, and its
+top-ranked proposal is applicable in at most 0.2\% of states there, so the
+one or two instances it does solve come from the executor and not from the
+policy. \gadar{} reaches 100\% and 68\% on the two Visitall splits.
 A symbol-identity
 representation learns the domains it sees and does not transfer beyond
 their vocabulary;
