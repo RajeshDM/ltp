@@ -597,8 +597,9 @@ zero-shot results we instead evaluate every saved checkpoint on the held-out
 domain and report the best, applying the identical rule to every rung; the
 reason is empirical and we report it in the results, namely that zero-shot
 transfer is not monotone in training progress, so no loss-based rule
-recovers the epoch that transfers best. Each configuration is trained once,
-on a single GPU, from a fixed seed recorded with the run.
+recovers the epoch that transfers best. Each configuration is trained once, on a
+single NVIDIA A40 GPU, from a fixed seed recorded with the run; training
+and testing use the same hardware.
 Renaming invariance is verified as a unit test: permuting all symbol names
 in a domain yields identical input tensors.
 
@@ -662,7 +663,7 @@ Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\upar
 \midrule
 \multirow{2}{*}{\makebox[0.95cm][l]{Grid}}
 & E & -- & -- & \levelA 1.0 & \nores & \levelA 3.1 & \pNA{0.25} & \levelA 11.98 & \pNA{0.21} \\
-& H & \levelD 96.3 & \pB{0.83} & \levelA 0.0 & -- & \levelA 0.0 & -- & \levelA 2.08 & \pNA{0.15} \\
+& H & \levelD 96.3 & \pB{0.83} & \levelA 2.08 & \nores & \levelA 0.0 & -- & \levelA 2.08 & \pNA{0.15} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -700,11 +701,12 @@ Combined  & 92.5 & \nres & 44.7 & 60.5 \\
 \union{}, trained on the identical data with the identical architecture and
 budget, is the stronger model on the training domains it fits (100\% on
 in-domain Miconic against \gadar{}'s 83.0\%: the expressiveness tax of
-giving up symbol identity) and collapses off them. It never exceeds 1\% on
-any held-out split, and its top-ranked proposal is applicable in at most
-0.2\% of states there, so the one or two instances it does solve come from
-the executor and not from the policy, while \gadar{} reaches 100\% and
-68\% on the two Visitall splits.
+giving up symbol identity) and collapses off them. It scores 0.0\% on three of the six
+held-out splits and never exceeds 2.1\% on any of them, and where we
+instrumented it its top-ranked proposal was applicable in at most 0.2\% of
+states, so the one or two instances it does solve come from the executor
+and not from the policy. \gadar{} reaches 100\% and 68\% on the two
+Visitall splits.
 A symbol-identity
 representation learns the domains it sees and does not transfer beyond
 their vocabulary;
@@ -760,11 +762,13 @@ while performing no search itself.
 thirteen-fold gap attributable to what was learned on the other seven
 domains. Coverage on the hard split, whose expert plans average 182 steps,
 is 0\%: at this horizon, per-step errors that the easy split absorbs
-compound beyond recovery. On Grid the coverage is smaller but moves with
-the ladder in the same direction: \gadarbind{} solves 3.1\% of the easy
-split and none of the hard split, while \gadar{} reaches 11.98\% and
-2.08\%. Neither domain approaches Visitall, and we report both as partial
-transfers rather than as successes.
+compound beyond recovery. On Grid the ladder moves in the same
+direction on the easy split, where \gadarbind{} solves 3.1\% and
+\gadar{} 11.98\% against \union{}'s 1.0\%, but on the hard split
+\gadar{}'s 2.08\% is a single instance and exactly matches \union{}
+there, so Grid is evidence of transfer at training scale only. Neither
+domain approaches Visitall, and we report both as partial transfers rather
+than as successes.
 
 \textbf{A methodological note: transfer peaks early.} Zero-shot performance
 is not monotone in training: on the easy split the same run reaches 100.0\%
