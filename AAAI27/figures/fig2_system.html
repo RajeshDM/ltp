@@ -5,7 +5,7 @@
   .wrap{width:1420px;margin:0 auto;background:#ffffff}
 </style>
 <div class="wrap">
-<svg width="1420" height="500" viewBox="0 0 1420 500" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff">
+<svg width="1420" height="540" viewBox="0 0 1420 540" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff">
   <defs>
     <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#555"/>
@@ -13,163 +13,165 @@
   </defs>
 
   <!-- ================= (a) INPUTS ================= -->
-  <g font-size="15" text-anchor="middle">
-    <rect x="30" y="112" width="188" height="38" rx="8" fill="#ffffff" stroke="#7D3C98" stroke-width="2.2"/>
-    <text x="124" y="137" fill="#7D3C98" font-weight="bold">Domain D (PDDL)</text>
-    <rect x="30" y="292" width="188" height="38" rx="8" fill="#ffffff" stroke="#1A5276" stroke-width="2.2"/>
-    <text x="124" y="317" fill="#1A5276" font-weight="bold">State s + Goal G</text>
+  <g font-size="17.5" text-anchor="middle">
+    <rect x="30" y="128" width="200" height="44" rx="9" fill="#ffffff" stroke="#7D3C98" stroke-width="2.4"/>
+    <text x="130" y="157" fill="#7D3C98" font-weight="bold">Domain D (PDDL)</text>
+    <rect x="30" y="336" width="200" height="44" rx="9" fill="#ffffff" stroke="#1A5276" stroke-width="2.4"/>
+    <text x="130" y="365" fill="#1A5276" font-weight="bold">State s + Goal G</text>
   </g>
   <!-- tiny blocks glyph tying the s+G box to Figure 1's task -->
   <g>
-    <rect x="230" y="292" width="18" height="17" rx="3" fill="#FAE5A0" stroke="#B7950B" stroke-width="1.3"/>
-    <rect x="230" y="274" width="18" height="17" rx="3" fill="#FAE5A0" stroke="#B7950B" stroke-width="1.3"/>
-    <rect x="254" y="292" width="18" height="17" rx="3" fill="#FAE5A0" stroke="#B7950B" stroke-width="1.3"/>
-    <rect x="224" y="310" width="54" height="5" rx="2" fill="#3B6FB5"/>
-    <text x="251" y="331" font-size="11" fill="#888" text-anchor="middle">e.g., Fig. 1</text>
+    <rect x="242" y="336" width="20" height="19" rx="3" fill="#FAE5A0" stroke="#B7950B" stroke-width="1.4"/>
+    <rect x="242" y="316" width="20" height="19" rx="3" fill="#FAE5A0" stroke="#B7950B" stroke-width="1.4"/>
+    <rect x="266" y="336" width="20" height="19" rx="3" fill="#FAE5A0" stroke="#B7950B" stroke-width="1.4"/>
+    <rect x="236" y="356" width="58" height="6" rx="2" fill="#3B6FB5"/>
+    <text x="265" y="380" font-size="12.5" fill="#888" text-anchor="middle">e.g., Fig. 1</text>
   </g>
   <!-- both inputs converge into the ladder -->
-  <path d="M 218 131 H 244 V 205 H 256" fill="none" stroke="#555" stroke-width="2"/>
-  <path d="M 218 311 H 244 V 217 H 256" fill="none" stroke="#555" stroke-width="2"/>
-  <line x1="256" y1="211" x2="304" y2="211" stroke="#555" stroke-width="2.4" marker-end="url(#arr)"/>
-  <text x="282" y="178" font-size="13" fill="#555" text-anchor="middle" font-style="italic">graph</text>
-  <text x="282" y="192" font-size="13" fill="#555" text-anchor="middle" font-style="italic">per state</text>
+  <path d="M 230 150 H 240 V 222 H 272" fill="none" stroke="#555" stroke-width="2.1"/>
+  <path d="M 230 358 H 240 V 234 H 272" fill="none" stroke="#555" stroke-width="2.1"/>
+  <line x1="272" y1="228" x2="304" y2="228" stroke="#555" stroke-width="2.6" marker-end="url(#arr)"/>
+  <g font-size="15" fill="#555" text-anchor="end" font-style="italic">
+    <text x="306" y="188">graph</text>
+    <text x="306" y="206">per state</text>
+  </g>
 
   <!-- ================= (b) THE LADDER OF DOMAIN CONDITIONING ================= -->
   <!-- rung 0: UNION (control) -->
-  <rect x="310" y="46" width="500" height="72" rx="10" fill="#F4F6F7" stroke="#7F8C8D" stroke-width="1.8"/>
-  <text x="332" y="76" font-size="17" font-weight="bold" fill="#566573">UNION</text>
-  <text x="404" y="76" font-size="13.5" font-style="italic" fill="#7F8C8D">(control)</text>
-  <text x="332" y="101" font-size="14" fill="#566573">symbol one-hots over the joint vocabulary</text>
+  <rect x="310" y="46" width="500" height="88" rx="11" fill="#F4F6F7" stroke="#7F8C8D" stroke-width="2"/>
+  <text x="332" y="84" font-size="20" font-weight="bold" fill="#566573">UNION</text>
+  <text x="418" y="84" font-size="16" font-style="italic" fill="#7F8C8D">(control)</text>
+  <text x="332" y="114" font-size="16.5" fill="#566573">symbol one-hots over the joint vocabulary</text>
   <g>
-    <rect x="742" y="62" width="14" height="14" fill="#7D3C98"/>
-    <rect x="758" y="62" width="14" height="14" fill="#2C6FB5"/>
-    <rect x="742" y="78" width="14" height="14" fill="#CB4335"/>
-    <rect x="758" y="78" width="14" height="14" fill="#1E8449"/>
-    <text x="763" y="107" font-size="11" fill="#7F8C8D" text-anchor="middle">|vocab|-sized</text>
+    <rect x="740" y="64" width="16" height="16" fill="#7D3C98"/>
+    <rect x="758" y="64" width="16" height="16" fill="#2C6FB5"/>
+    <rect x="740" y="82" width="16" height="16" fill="#CB4335"/>
+    <rect x="758" y="82" width="16" height="16" fill="#1E8449"/>
+    <text x="765" y="120" font-size="12.5" fill="#7F8C8D" text-anchor="middle">|vocab|-sized</text>
   </g>
 
   <!-- + structural + lifted + binding -->
-  <line x1="345" y1="118" x2="345" y2="150" stroke="#7D3C98" stroke-width="2.2" marker-end="url(#arr)"/>
-  <text x="360" y="139" font-size="14" font-weight="bold" fill="#7D3C98">+ structural features, lifted layer, binding edges</text>
+  <line x1="345" y1="134" x2="345" y2="172" stroke="#7D3C98" stroke-width="2.4" marker-end="url(#arr)"/>
+  <text x="360" y="162" font-size="16.5" font-weight="bold" fill="#7D3C98">+ structural features, lifted layer, binding edges</text>
 
   <!-- rung 1: GADAR-BIND -->
-  <rect x="310" y="154" width="500" height="72" rx="10" fill="#F7F2FB" stroke="#7D3C98" stroke-width="1.8"/>
-  <text x="332" y="184" font-size="17" font-weight="bold" fill="#7D3C98">GADAR-BIND</text>
-  <text x="332" y="209" font-size="14" fill="#5B2C6F">no symbol names; D inside every state graph</text>
+  <rect x="310" y="176" width="500" height="88" rx="11" fill="#F7F2FB" stroke="#7D3C98" stroke-width="2"/>
+  <text x="332" y="214" font-size="20" font-weight="bold" fill="#7D3C98">GADAR-BIND</text>
+  <text x="332" y="244" font-size="16.5" fill="#5B2C6F">no symbol names; D inside every state graph</text>
   <g>
-    <ellipse cx="738" cy="176" rx="19" ry="10" fill="#fff" stroke="#7D3C98" stroke-width="1.8"/>
-    <rect x="760" y="192" width="34" height="15" rx="4" fill="#fff" stroke="#CB4335" stroke-width="1.6"/>
-    <ellipse cx="766" cy="164" rx="13" ry="8" fill="#FAE5A0" stroke="#B7950B"/>
-    <line x1="756" y1="170" x2="774" y2="193" stroke="#1E8449" stroke-width="1.9" stroke-dasharray="5 3"/>
+    <ellipse cx="736" cy="204" rx="21" ry="11" fill="#fff" stroke="#7D3C98" stroke-width="2"/>
+    <rect x="758" y="222" width="38" height="17" rx="5" fill="#fff" stroke="#CB4335" stroke-width="1.8"/>
+    <ellipse cx="764" cy="190" rx="14" ry="9" fill="#FAE5A0" stroke="#B7950B"/>
+    <line x1="754" y1="197" x2="772" y2="224" stroke="#1E8449" stroke-width="2.1" stroke-dasharray="5 3"/>
   </g>
 
   <!-- + chain layer -->
-  <line x1="345" y1="226" x2="345" y2="258" stroke="#117A65" stroke-width="2.2" marker-end="url(#arr)"/>
-  <text x="360" y="247" font-size="14" font-weight="bold" fill="#117A65">+ chain layer</text>
+  <line x1="345" y1="264" x2="345" y2="302" stroke="#117A65" stroke-width="2.4" marker-end="url(#arr)"/>
+  <text x="360" y="292" font-size="16.5" font-weight="bold" fill="#117A65">+ chain layer</text>
 
   <!-- rung 2: GADAR (full; the method) -->
-  <rect x="310" y="262" width="500" height="88" rx="10" fill="#E8F8F3" stroke="#117A65" stroke-width="2.6"/>
-  <text x="332" y="292" font-size="17" font-weight="bold" fill="#117A65">GADAR</text>
-  <text x="332" y="317" font-size="14" fill="#0B5345">schema A produces what B needs; distance to goal</text>
-  <text x="332" y="339" font-size="12.5" font-weight="bold" fill="#117A65">= the two-layer graph of Figure 1</text>
+  <rect x="310" y="306" width="500" height="112" rx="11" fill="#E8F8F3" stroke="#117A65" stroke-width="2.8"/>
+  <text x="332" y="344" font-size="20" font-weight="bold" fill="#117A65">GADAR</text>
+  <text x="332" y="374" font-size="16.5" fill="#0B5345">schema A produces what B needs; goal distance</text>
+  <text x="332" y="401" font-size="14.5" font-weight="bold" fill="#117A65">= the two-layer graph of Figure 1</text>
   <g>
-    <rect x="716" y="276" width="32" height="15" rx="5" fill="#fff" stroke="#CB4335" stroke-width="1.5"/>
-    <rect x="756" y="276" width="32" height="15" rx="5" fill="#fff" stroke="#CB4335" stroke-width="1.5"/>
-    <path d="M 732 274 C 739 262, 765 262, 772 274" fill="none" stroke="#16A085" stroke-width="2.2" stroke-dasharray="6 3"/>
-    <ellipse cx="752" cy="318" rx="14" ry="9" fill="#FAE5A0" stroke="#B7950B"/>
-    <ellipse cx="752" cy="318" rx="20" ry="14" fill="none" stroke="#16A085" stroke-width="1.6" stroke-dasharray="4 3"/>
+    <rect x="724" y="326" width="34" height="17" rx="5" fill="#fff" stroke="#CB4335" stroke-width="1.7"/>
+    <rect x="766" y="326" width="34" height="17" rx="5" fill="#fff" stroke="#CB4335" stroke-width="1.7"/>
+    <path d="M 741 324 C 748 310, 776 310, 783 324" fill="none" stroke="#16A085" stroke-width="2.4" stroke-dasharray="6 3"/>
+    <ellipse cx="762" cy="380" rx="16" ry="10" fill="#FAE5A0" stroke="#B7950B"/>
+    <ellipse cx="762" cy="380" rx="23" ry="15" fill="none" stroke="#16A085" stroke-width="1.8" stroke-dasharray="4 3"/>
   </g>
 
   <!-- merge arrows into (c): every rung feeds the SAME encoder -->
-  <g stroke="#555" stroke-width="1.8">
-    <line x1="810" y1="82" x2="838" y2="82"/>
-    <line x1="810" y1="190" x2="838" y2="190"/>
-    <line x1="810" y1="306" x2="838" y2="306"/>
-    <line x1="838" y1="82" x2="838" y2="306"/>
+  <g stroke="#555" stroke-width="2">
+    <line x1="810" y1="90" x2="838" y2="90"/>
+    <line x1="810" y1="220" x2="838" y2="220"/>
+    <line x1="810" y1="362" x2="838" y2="362"/>
+    <line x1="838" y1="90" x2="838" y2="362"/>
   </g>
-  <line x1="838" y1="196" x2="862" y2="196" stroke="#555" stroke-width="2.4" marker-end="url(#arr)"/>
-  <text x="862" y="342" font-size="12.5" fill="#555" text-anchor="middle" font-style="italic">one encoder</text>
+  <line x1="838" y1="228" x2="862" y2="228" stroke="#555" stroke-width="2.6" marker-end="url(#arr)"/>
+  <text x="866" y="400" font-size="14.5" fill="#555" text-anchor="middle" font-style="italic">one encoder</text>
 
   <!-- ================= (c) GNN ENCODER ================= -->
-  <rect x="866" y="76" width="230" height="240" rx="16" fill="#FBFCFC" stroke="#7F8C8D" stroke-width="1.6"/>
-  <g font-size="14.5" font-style="italic">
-    <g stroke="#333" stroke-width="1.2" stroke-dasharray="6 5">
-      <line x1="894" y1="132" x2="1050" y2="132"/>
-      <line x1="894" y1="196" x2="1050" y2="196"/>
-      <line x1="894" y1="260" x2="1050" y2="260"/>
+  <rect x="866" y="80" width="230" height="290" rx="16" fill="#FBFCFC" stroke="#7F8C8D" stroke-width="1.8"/>
+  <g font-size="17" font-style="italic">
+    <g stroke="#333" stroke-width="1.3" stroke-dasharray="6 5">
+      <line x1="894" y1="150" x2="1050" y2="150"/>
+      <line x1="894" y1="228" x2="1050" y2="228"/>
+      <line x1="894" y1="306" x2="1050" y2="306"/>
     </g>
-    <circle cx="990" cy="132" r="4" fill="#333"/>
-    <circle cx="970" cy="196" r="4" fill="#333"/>
-    <circle cx="950" cy="260" r="4" fill="#333"/>
-    <text x="886" y="126" text-anchor="end" fill="#333">g&#8342;</text>
-    <text x="886" y="190" text-anchor="end" fill="#333">v&#8342;</text>
-    <text x="886" y="254" text-anchor="end" fill="#333">e&#8342;</text>
-    <text x="990" y="116" text-anchor="middle" fill="#333">&#966;&#8343;</text>
-    <text x="970" y="180" text-anchor="middle" fill="#333">&#966;&#7525;</text>
-    <text x="950" y="244" text-anchor="middle" fill="#333">&#966;&#8337;</text>
-    <g stroke="#333" stroke-width="1.4">
-      <line x1="1050" y1="132" x2="1064" y2="132" marker-end="url(#arr)"/>
-      <line x1="1050" y1="196" x2="1064" y2="196" marker-end="url(#arr)"/>
-      <line x1="1050" y1="260" x2="1064" y2="260" marker-end="url(#arr)"/>
+    <circle cx="990" cy="150" r="4.5" fill="#333"/>
+    <circle cx="970" cy="228" r="4.5" fill="#333"/>
+    <circle cx="950" cy="306" r="4.5" fill="#333"/>
+    <text x="886" y="144" text-anchor="end" fill="#333">g&#8342;</text>
+    <text x="886" y="222" text-anchor="end" fill="#333">v&#8342;</text>
+    <text x="886" y="300" text-anchor="end" fill="#333">e&#8342;</text>
+    <text x="990" y="132" text-anchor="middle" fill="#333">&#966;&#8343;</text>
+    <text x="970" y="210" text-anchor="middle" fill="#333">&#966;&#7525;</text>
+    <text x="950" y="288" text-anchor="middle" fill="#333">&#966;&#8337;</text>
+    <g stroke="#333" stroke-width="1.5">
+      <line x1="1050" y1="150" x2="1064" y2="150" marker-end="url(#arr)"/>
+      <line x1="1050" y1="228" x2="1064" y2="228" marker-end="url(#arr)"/>
+      <line x1="1050" y1="306" x2="1064" y2="306" marker-end="url(#arr)"/>
     </g>
-    <text x="1070" y="136" fill="#333">g&#8342;&#8330;&#8321;</text>
-    <text x="1070" y="200" fill="#333">v&#8342;&#8330;&#8321;</text>
-    <text x="1070" y="264" fill="#333">e&#8342;&#8330;&#8321;</text>
+    <text x="1070" y="154" fill="#333">g&#8342;&#8330;&#8321;</text>
+    <text x="1070" y="232" fill="#333">v&#8342;&#8330;&#8321;</text>
+    <text x="1070" y="310" fill="#333">e&#8342;&#8330;&#8321;</text>
   </g>
-  <text x="981" y="296" font-size="13" fill="#555" text-anchor="middle">L rounds</text>
+  <text x="981" y="348" font-size="15" fill="#555" text-anchor="middle">L rounds</text>
 
   <!-- gL flows into (d) -->
-  <line x1="1096" y1="196" x2="1140" y2="196" stroke="#555" stroke-width="2.4" marker-end="url(#arr)"/>
-  <text x="1118" y="186" font-size="14.5" font-style="italic" fill="#333" text-anchor="middle">g&#8343;</text>
+  <line x1="1096" y1="228" x2="1140" y2="228" stroke="#555" stroke-width="2.6" marker-end="url(#arr)"/>
+  <text x="1118" y="216" font-size="17" font-style="italic" fill="#333" text-anchor="middle">g&#8343;</text>
 
   <!-- ================= (d) ACTION CONSTRUCTION ================= -->
-  <g font-size="14" text-anchor="middle">
-    <rect x="1150" y="52" width="176" height="40" rx="9" fill="#ffffff" stroke="#E67E22" stroke-width="2.4"/>
-    <text x="1238" y="77" fill="#CA6F1E" font-weight="bold">schema 'A'</text>
-    <rect x="1150" y="132" width="176" height="40" rx="9" fill="#ffffff" stroke="#E67E22" stroke-width="2.4"/>
-    <text x="1238" y="157" fill="#CA6F1E" font-weight="bold">object 'O&#8321;'</text>
-    <rect x="1150" y="212" width="176" height="40" rx="9" fill="#ffffff" stroke="#E67E22" stroke-width="2.4"/>
-    <text x="1238" y="237" fill="#CA6F1E" font-weight="bold">object 'O&#8342;'</text>
+  <g font-size="16.5" text-anchor="middle">
+    <rect x="1150" y="56" width="180" height="46" rx="10" fill="#ffffff" stroke="#E67E22" stroke-width="2.6"/>
+    <text x="1240" y="85" fill="#CA6F1E" font-weight="bold">schema 'A'</text>
+    <rect x="1150" y="144" width="180" height="46" rx="10" fill="#ffffff" stroke="#E67E22" stroke-width="2.6"/>
+    <text x="1240" y="173" fill="#CA6F1E" font-weight="bold">object 'O&#8321;'</text>
+    <rect x="1150" y="236" width="180" height="46" rx="10" fill="#ffffff" stroke="#E67E22" stroke-width="2.6"/>
+    <text x="1240" y="265" fill="#CA6F1E" font-weight="bold">object 'O&#8342;'</text>
   </g>
-  <line x1="1238" y1="92" x2="1238" y2="128" stroke="#CA6F1E" stroke-width="1.9" marker-end="url(#arr)"/>
-  <text x="1252" y="116" font-size="13.5" font-style="italic" fill="#CA6F1E">v&#7522;</text>
-  <line x1="1238" y1="172" x2="1238" y2="186" stroke="#CA6F1E" stroke-width="1.9"/>
-  <g stroke="#CA6F1E" stroke-width="1.9" stroke-dasharray="3 4">
-    <line x1="1238" y1="186" x2="1238" y2="208" marker-end="url(#arr)"/>
+  <line x1="1240" y1="102" x2="1240" y2="140" stroke="#CA6F1E" stroke-width="2.1" marker-end="url(#arr)"/>
+  <text x="1256" y="128" font-size="16" font-style="italic" fill="#CA6F1E">v&#7522;</text>
+  <line x1="1240" y1="190" x2="1240" y2="204" stroke="#CA6F1E" stroke-width="2.1"/>
+  <g stroke="#CA6F1E" stroke-width="2.1" stroke-dasharray="3 4">
+    <line x1="1240" y1="204" x2="1240" y2="232" marker-end="url(#arr)"/>
   </g>
-  <text x="1252" y="200" font-size="13.5" font-style="italic" fill="#CA6F1E">v&#8338;</text>
+  <text x="1256" y="222" font-size="16" font-style="italic" fill="#CA6F1E">v&#8338;</text>
 
   <!-- GRU column -->
-  <rect x="1344" y="132" width="58" height="120" rx="9" fill="#ffffff" stroke="#E67E22" stroke-width="2"/>
-  <text x="1373" y="186" font-size="14" font-weight="bold" fill="#CA6F1E" text-anchor="middle">GRU</text>
-  <text x="1373" y="203" font-size="12.5" fill="#CA6F1E" text-anchor="middle">decoder</text>
-  <g stroke="#CA6F1E" stroke-width="1.2" opacity="0.7">
-    <line x1="1326" y1="150" x2="1344" y2="166"/>
-    <line x1="1326" y1="234" x2="1344" y2="218"/>
+  <rect x="1348" y="144" width="58" height="138" rx="10" fill="#ffffff" stroke="#E67E22" stroke-width="2.2"/>
+  <text x="1377" y="204" font-size="16.5" font-weight="bold" fill="#CA6F1E" text-anchor="middle">GRU</text>
+  <text x="1377" y="223" font-size="14.5" fill="#CA6F1E" text-anchor="middle">decoder</text>
+  <g stroke="#CA6F1E" stroke-width="1.4" opacity="0.7">
+    <line x1="1330" y1="162" x2="1348" y2="178"/>
+    <line x1="1330" y1="266" x2="1348" y2="250"/>
   </g>
 
   <!-- output -->
-  <line x1="1238" y1="252" x2="1238" y2="278" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
-  <g font-size="14" text-anchor="middle">
-    <rect x="1132" y="282" width="212" height="44" rx="9" fill="#ffffff" stroke="#1E8449" stroke-width="2.4"/>
-    <text x="1238" y="303" fill="#1E8449" font-weight="bold">Grounded action</text>
-    <text x="1238" y="320" fill="#1E8449" font-weight="bold">A(O&#8321;, &#8230;, O&#8342;)</text>
+  <line x1="1240" y1="282" x2="1240" y2="312" stroke="#555" stroke-width="2.2" marker-end="url(#arr)"/>
+  <g font-size="16.5" text-anchor="middle">
+    <rect x="1136" y="316" width="208" height="52" rx="10" fill="#ffffff" stroke="#1E8449" stroke-width="2.6"/>
+    <text x="1240" y="339" fill="#1E8449" font-weight="bold">Grounded action</text>
+    <text x="1240" y="359" fill="#1E8449" font-weight="bold">A(O&#8321;, &#8230;, O&#8342;)</text>
   </g>
-  <text x="1238" y="346" font-size="12.5" fill="#555" text-anchor="middle">no layer sized by |A| or |O|</text>
+  <text x="1240" y="392" font-size="14.5" fill="#555" text-anchor="middle">no layer sized by |A| or |O|</text>
 
   <!-- ================= panel captions ================= -->
-  <line x1="30" y1="400" x2="1400" y2="400" stroke="#EEEEEE"/>
-  <g font-size="15" font-weight="bold" fill="#333" text-anchor="middle">
-    <text x="140"  y="428">(a) Inputs</text>
-    <text x="560"  y="428">(b) A ladder of domain conditioning</text>
-    <text x="981"  y="428">(c) GNN encoder</text>
-    <text x="1238" y="428">(d) Action extraction</text>
+  <line x1="30" y1="450" x2="1400" y2="450" stroke="#EEEEEE"/>
+  <g font-size="17.5" font-weight="bold" fill="#333" text-anchor="middle">
+    <text x="140"  y="484">(a) Inputs</text>
+    <text x="560"  y="484">(b) A ladder of domain conditioning</text>
+    <text x="981"  y="484">(c) GNN encoder</text>
+    <text x="1240" y="484">(d) Action extraction</text>
   </g>
-  <g font-size="13" fill="#777" text-anchor="middle">
-    <text x="140"  y="450">D moves into the input</text>
-    <text x="560"  y="450">each system = the previous + one component</text>
-    <text x="981"  y="450">unchanged from GABAR</text>
-    <text x="1238" y="450">unchanged from GABAR</text>
+  <g font-size="15" fill="#777" text-anchor="middle">
+    <text x="140"  y="510">D moves into the input</text>
+    <text x="560"  y="510">each system = the previous + one component</text>
+    <text x="981"  y="510">unchanged from GABAR</text>
+    <text x="1240" y="510">unchanged from GABAR</text>
   </g>
 </svg>
 </div>
