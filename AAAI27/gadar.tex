@@ -157,9 +157,14 @@ vocabularies, which is multi-task learning with the domain in the weights.
 \gadarbind{} replaces symbol identity with structural features computable
 in any domain, making the policy executable on unseen domains, and adds the
 domain description to every state graph: a lifted domain layer of
-predicate-symbol and occurrence nodes, plus the grounded--lifted
-\emph{binding layer} that annotates each applicable ground action with
-links to the lifted precondition occurrences it instantiates. Structure in
+predicate-symbol and occurrence nodes, plus the \emph{binding layer} that
+annotates each applicable ground action with links to the lifted
+precondition occurrences it instantiates.\footnote{Binding edges are
+\emph{cross-layer}: each one joins a node of the ground instance layer (an
+object of the current problem) to a node of the lifted domain layer (a
+precondition occurrence of a schema in $D$). The two layers are not
+alternatives; the graph contains both, and the binding edges are what
+connect them.} Structure in
 the graph, however, is not yet transfer. A network can only use domain
 structure that message passing actually reaches, and the relation ``schema
 $A$ produces what schema $B$ consumes'' is, in this graph, a two-hop path
@@ -194,8 +199,9 @@ adaptation must begin.
   classical planning: $\pi(s, G, D)$ constructs grounded actions zero-shot
   in unseen domains, without search.
 \item A graph representation with two novel relations, both computable in
-  any domain: grounded--lifted \emph{binding} edges, which express why each
-  action is applicable in the vocabulary of $D$, and \emph{chain} edges,
+  any domain: \emph{binding} edges, which link each applicable ground
+  action's objects to the lifted precondition occurrences they satisfy and
+  so express why the action is applicable in the vocabulary of $D$, and \emph{chain} edges,
   which express which schema produces or destroys what another needs and
   how far each schema is from the goal.
 \item An evaluation designed as a ladder: each system is the previous plus

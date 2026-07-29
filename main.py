@@ -266,9 +266,11 @@ def run_tests(
             except RuntimeError as _e:
                 if 'size mismatch' not in str(_e):
                     raise
+                _first = str(_e).split("\n")[1].strip() if "\n" in str(_e) else str(_e)
                 print(f"SKIP checkpoint epoch {model_info['epoch']}: built for "
                       f"a different featurization (width mismatch). Looking "
-                      f"for one matching --featurization {args.featurization}.")
+                      f"for one matching --featurization {args.featurization}."
+                      f"\n     mismatch: {_first[:220]}")
                 continue
             curr_model.to(device)
             curr_model.eval()
