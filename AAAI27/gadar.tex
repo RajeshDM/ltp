@@ -223,12 +223,13 @@ similarly learn policies over relational state representations
 \citep{relational_drl, sr_drl, relational_mdp_learning, rddl_gnn,
 generalized_planning_deep_rl}. GABAR represents ground actions explicitly in the
 state graph and constructs actions autoregressively by ranking
-\citep{gabar}. The action-centric graph line extends to partial observability:
-GammaZero converts particle beliefs into uncertainty-aware graphs for
-belief-space search \citep{gammazero}, and HOO-POMDP plans object
-rearrangement with hierarchical object-oriented models \citep{hoo_pomdp};
-both address uncertainty within a domain, orthogonal to the cross-domain
-question here. The most recent work remains per-domain: self-improving
+\citep{gabar}. The same action-centric idea extends beyond full
+observability: GammaZero converts particle beliefs into uncertainty-aware
+graphs to guide belief-space search \citep{gammazero}, which opens the
+approach to tasks such as object rearrangement under partial observation
+\citep{hoo_pomdp}. That line relaxes what the policy can observe while
+holding the domain fixed; we do the opposite, keeping the classical
+fully observable setting and varying the domain. The most recent work remains per-domain: self-improving
 search-and-learn loops train a relational value heuristic per domain
 \citep{learning_to_search_2026}, lookahead-based general policies are
 learned over instances of a single domain
