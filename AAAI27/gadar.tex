@@ -763,10 +763,11 @@ split and none of the hard split, while \gadar{} reaches 11.98\% and
 transfers rather than as successes.
 
 \textbf{A methodological note: transfer peaks early.} Zero-shot performance
-is not monotone in training: the same run reaches 100.0\% coverage at epoch
-190, 97.6\% at epoch 330, and degrades further by epoch 500 while training
-loss falls throughout (\gadarbind{} shows the same pattern, 16.0\% at epoch
-260 to 3.3\% at 500). Continued fitting of the training domains'
+is not monotone in training. On the easy split the same run reaches 100.0\%
+coverage at epoch 300, 96.8\% at 350 and 95.2\% at 400; on the hard split it
+reaches 68.0\% at epoch 150 and has fallen by more than half by epoch 500,
+while training loss decreases throughout (\gadarbind{} shows the same
+pattern, 16.0\% at epoch 260 to 3.3\% at 500). Continued fitting of the training domains'
 particulars erodes the domain-general structure, and in-domain validation
 cannot detect this because it is drawn from exactly the domains being
 overfitted to, so no loss-based rule selects the epoch that transfers best.
