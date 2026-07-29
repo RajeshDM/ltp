@@ -651,8 +651,8 @@ Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\upar
 & H & \levelD 90.7 & \pC{1.07} & \levelA 0.0 & -- & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.97}} \\
 \midrule
 \multirow{2}{*}{\makebox[0.95cm][l]{Miconic}}
-& E & -- & -- & \nores & \nores & \levelA 0.0 & -- & \levelA 35.96 & \pA{0.63} \\
-& H & \levelD 100.0 & \pB{0.97} & \nores & \nores & \levelA 0.0 & -- & \levelA 0.00 & -- \\
+& E & -- & -- & \levelA 0.0 & -- & \levelA 0.0 & -- & \levelA 35.96 & \pA{0.63} \\
+& H & \levelD 100.0 & \pB{0.97} & \levelA 0.0 & -- & \levelA 0.0 & -- & \levelA 0.00 & -- \\
 \midrule
 \multirow{2}{*}{\makebox[0.95cm][l]{Grid}}
 & E & -- & -- & \nores & \nores & \levelA 3.1 & \pNA{0.25} & \levelA 11.98 & \pNA{0.21} \\
@@ -693,9 +693,11 @@ Combined  & 92.5 & \nres & 44.7 & 53.3 \\
 \textbf{Does the domain need to be in the input? (\union{} vs.\ \gadar{}.)}
 \union{}, trained on the identical data with the identical architecture and
 budget, solves its training domains (100\% on Miconic, 85.5\% on Gripper,
-68.8\% on Grid in-domain) and 0\% on both splits of held-out Visitall,
-while \gadar{} reaches 68\% and 100\%. A symbol-identity representation
-learns the domains it sees and does not transfer beyond their vocabulary;
+68.8\% on Grid in-domain) and 0\% on both splits of held-out Visitall and
+of held-out Miconic, where it does not construct a single applicable
+action, while \gadar{} reaches 68\% and 100\%. A symbol-identity
+representation learns the domains it sees and does not transfer beyond
+their vocabulary;
 moving the domain description into the input is what makes transfer
 possible at all.
 
