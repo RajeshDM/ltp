@@ -650,8 +650,8 @@ layer). \todonum{--} marks runs in flight, not zeros.}
 Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Visitall}}
-& E & -- & -- & \levelA 0.0 & -- & \levelA 16.0 & \nores & \levelD \textbf{100.0} & \pB{\textbf{0.97}} \\
-& H & \nores & \nores & \levelA 0.0 & -- & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.81}} \\
+& E & -- & -- & \levelA 0.0 & -- & \levelA 16.0 & \nores & \levelD \textbf{100.0} & \pB{\textbf{0.81}} \\
+& H & \nores & \nores & \levelA 0.0 & -- & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.97}} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Miconic}}
 & E & -- & -- & \nores & \nores & \levelA 0.0 & -- & \levelA 35.96 & \pA{0.63} \\
@@ -674,16 +674,16 @@ all eight domains, per rung, against published per-domain GABAR
 \toprule
 Domain & GABAR$^\dagger$ & \union{} & \gadarbind{} & \gadar{} \\
 \midrule
-Blocks    & \nres & \nres & 57.0 & \nres \\
-Miconic   & \nres & \nres & 61.3 & \nres \\
-Spanner   & \nres & \nres & 1.0 & \nres \\
-Gripper   & \nres & \nres & 94.2 & \nres \\
-Visitall  & \nres & \nres & 68.0 & \nres \\
-Grid      & \nres & \nres & 70.8 & \nres \\
-Logistics & \nres & \nres & 0.0 & \nres \\
-Rovers    & \nres & \nres & 5.6 & \nres \\
+Blocks    & \nres & \nres & 57.0 & 21.5 \\
+Miconic   & \nres & \nres & 61.3 & 63.0 \\
+Spanner   & \nres & \nres & 1.0 & 1.0 \\
+Gripper   & \nres & \nres & 94.2 & 98.8 \\
+Visitall  & \nres & \nres & 68.0 & 92.0 \\
+Grid      & \nres & \nres & 70.8 & 97.9 \\
+Logistics & \nres & \nres & 0.0 & 0.0 \\
+Rovers    & \nres & \nres & 5.6 & 9.3 \\
 \midrule
-Combined  & \nres & \nres & 44.7 & \nres \\
+Combined  & \nres & \nres & 44.7 & 47.9 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -733,10 +733,12 @@ bucketed goal distance over the enables relation was designed to support.
 a monitored executor with a 500-step bound is forgiving: aimless but legal
 behavior can eventually stumble into goals, so coverage alone cannot
 distinguish competence from wandering there. Plan quality can. \gadar{}'s
-mean plan length is 30.1 steps against the satisficing planner's 29.2 on
-the same instances, a quality ratio of 0.97; a wandering policy would show
-a ratio an order of magnitude worse. On the hard split, plan quality
-remains 0.81.
+mean plan length on the easy split is 36.3 steps against the satisficing
+planner's 29.2 on the same instances, a ratio of 0.81; a wandering policy
+under a 500-step bound would show a ratio an order of magnitude worse. On
+the hard split, where coverage is itself decisive, plan quality is 0.97:
+the zero-shot policy produces plans within 3\% of a planner that searches,
+while performing no search itself.
 
 \textbf{How far does the transfer go? (Miconic.)} On Miconic, \gadar{}
 solves 35.96\% of the easy split at plan quality 0.63, against 2.63\% for
