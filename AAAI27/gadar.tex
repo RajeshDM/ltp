@@ -552,9 +552,9 @@ P is read within, not across, columns. Encoder and decoder
 hyperparameters are carried over from GABAR unchanged ($L{=}9$
 message-passing rounds, 64-dimensional representations, GRU decoder), with
 batch size 64 and learning rate $5{\times}10^{-4}$; the appendix lists every
-final setting. Every system is trained to convergence on its training domains; one
-eight-domain model takes seven to eight hours on a single NVIDIA A40, used
-for training and testing alike. In-domain results use the checkpoint
+final setting. Training runs to a fixed budget listed in the appendix; one eight-domain
+model takes seven to eight hours on a single NVIDIA A40, used for training
+and testing alike. In-domain results use the checkpoint
 selected by combined training and validation loss, one checkpoint for all
 eight domains; zero-shot results evaluate every saved checkpoint on the
 held-out domain and report the best, by the same rule for every rung. Each
