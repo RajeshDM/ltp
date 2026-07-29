@@ -619,8 +619,9 @@ comparison in the table: a rung of the ladder, a control, or a diagnostic.
 \caption{Zero-shot coverage (C, \%) and plan quality (P), leave-one-domain-out.
 E = the held-out domain's own training-scale instances (unseen); H = its test
 instances, up to an order of magnitude larger. GABAR$^\dagger$: published
-per-domain GABAR trained \emph{on} the held-out domain (hard split), the
-ceiling set by dedicated training. Ladder columns add one component
+per-domain GABAR trained \emph{on} the held-out domain
+\citep{gabar}, on that domain's hardest published test subset: the ceiling
+set by dedicated training. Ladder columns add one component
 each: \union{} (symbol one-hots, domain in the weights), \gadarbind{}
 (structural features, lifted domain layer, binding edges), \gadar{} (chain
 layer). \todonum{--} marks runs in flight, not zeros.}
@@ -651,15 +652,15 @@ Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\upar
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Visitall}}
 & E & -- & -- & \levelA 0.0 & -- & \levelA 16.0 & \nores & \levelD \textbf{100.0} & \pB{\textbf{0.81}} \\
-& H & \nores & \nores & \levelA 0.0 & -- & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.97}} \\
+& H & \levelC 88 & \pC{1.1} & \levelA 0.0 & -- & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.97}} \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Miconic}}
 & E & -- & -- & \nores & \nores & \levelA 0.0 & -- & \levelA 35.96 & \pA{0.63} \\
-& H & \nores & \nores & \nores & \nores & \levelA 0.0 & -- & \levelA 0.00 & -- \\
+& H & \levelD 100 & \pB{0.95} & \nores & \nores & \levelA 0.0 & -- & \levelA 0.00 & -- \\
 \midrule
 \multirow{2}{*}{\makebox[1.4cm][l]{Grid}}
 & E & -- & -- & \nores & \nores & \levelA 3.1 & \nores & \levelA 11.98 & \pNA{0.21} \\
-& H & \nores & \nores & \nores & \nores & \levelA 0.0 & -- & \levelA 2.08 & \pNA{0.15} \\
+& H & \levelD 92 & \pA{0.74} & \nores & \nores & \levelA 0.0 & -- & \levelA 2.08 & \pNA{0.15} \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -678,16 +679,16 @@ all eight domains, per rung, against published per-domain GABAR
 \toprule
 Domain & GABAR$^\dagger$ & \union{} & \gadarbind{} & \gadar{} \\
 \midrule
-Blocks    & \nres & \nres & 57.0 & 21.5 \\
-Miconic   & \nres & \nres & 61.3 & 63.0 \\
-Spanner   & \nres & \nres & 1.0 & 1.0 \\
-Gripper   & \nres & \nres & 94.2 & 98.8 \\
-Visitall  & \nres & \nres & 68.0 & 92.0 \\
-Grid      & \nres & \nres & 70.8 & 97.9 \\
-Logistics & \nres & \nres & 0.0 & 0.0 \\
-Rovers    & \nres & \nres & 5.6 & 9.3 \\
+Blocks    & 100 & \nres & 57.0 & 21.5 \\
+Miconic   & 100 & \nres & 61.3 & 63.0 \\
+Spanner   & 89 & \nres & 1.0 & 1.0 \\
+Gripper   & 100 & \nres & 94.2 & 98.8 \\
+Visitall  & 88 & \nres & 68.0 & 92.0 \\
+Grid      & 92 & \nres & 70.8 & 97.9 \\
+Logistics & 71 & \nres & 0.0 & 0.0 \\
+Rovers    & 77 & \nres & 5.6 & 9.3 \\
 \midrule
-Combined  & \nres & \nres & 44.7 & 47.9 \\
+Combined  & 89.2 & \nres & 44.7 & 47.9 \\
 \bottomrule
 \end{tabular}
 \end{table}
