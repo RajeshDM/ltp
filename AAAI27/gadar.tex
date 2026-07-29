@@ -557,8 +557,9 @@ training-scale instances, unseen by the policy since the domain itself was
 held out; it separates ``cannot handle the unseen domain'' from ``cannot
 scale within it.'' Training domains are evaluated on the hard split only.
 Our hard split is a domain's full test set, whereas the published GABAR
-results subdivide their test problems by size and we quote the hardest
-subset; the GABAR$^\dagger$ column therefore calibrates the gap to
+results subdivide their test problems into three size bands; we average
+over the three so that the GABAR$^\dagger$ column spans the same range.
+The problem sets are not identical, so that column calibrates the gap to
 dedicated training rather than benchmarking against an identical split.
 
 \textbf{Baselines and references.} Our primary comparison is the \union{}
@@ -629,8 +630,9 @@ comparison in the table: a rung of the ladder, a control, or a diagnostic.
 E = the held-out domain's own training-scale instances (unseen); H = its test
 instances, up to an order of magnitude larger. GABAR$^\dagger$: published
 per-domain GABAR trained \emph{on} the held-out domain
-\citep{gabar}, on that domain's hardest published test subset: the ceiling
-set by dedicated training. Ladder columns add one component
+\citep{gabar}, averaged over its three published test subsets so that it
+covers the same size range as our hard split: the ceiling set by dedicated
+training. Ladder columns add one component
 each: \union{} (symbol one-hots, domain in the weights), \gadarbind{}
 (structural features, lifted domain layer, binding edges), \gadar{} (chain
 layer). n/a marks cells we did not measure; they are not zeros.}
@@ -661,15 +663,15 @@ Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\upar
 \midrule
 \multirow{2}{*}{\makebox[0.95cm][l]{Visitall}}
 & E & -- & -- & \levelA 0.0 & -- & \levelA 16.0 & \nores & \levelD \textbf{100.0} & \pB{\textbf{0.81}} \\
-& H & \levelC 88 & \pC{1.1} & \levelA 0.0 & -- & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.97}} \\
+& H & \levelD 90.7 & \pC{1.07} & \levelA 0.0 & -- & \levelA 4.0 & \nores & \levelB \textbf{68.0} & \pB{\textbf{0.97}} \\
 \midrule
 \multirow{2}{*}{\makebox[0.95cm][l]{Miconic}}
 & E & -- & -- & \nores & \nores & \levelA 0.0 & -- & \levelA 35.96 & \pA{0.63} \\
-& H & \levelD 100 & \pB{0.95} & \nores & \nores & \levelA 0.0 & -- & \levelA 0.00 & -- \\
+& H & \levelD 100.0 & \pB{0.97} & \nores & \nores & \levelA 0.0 & -- & \levelA 0.00 & -- \\
 \midrule
 \multirow{2}{*}{\makebox[0.95cm][l]{Grid}}
 & E & -- & -- & \nores & \nores & \levelA 3.1 & \pNA{0.25} & \levelA 11.98 & \pNA{0.21} \\
-& H & \levelD 92 & \pA{0.74} & \nores & \nores & \levelA 0.0 & -- & \levelA 2.08 & \pNA{0.15} \\
+& H & \levelD 96.3 & \pB{0.83} & \nores & \nores & \levelA 0.0 & -- & \levelA 2.08 & \pNA{0.15} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -681,23 +683,24 @@ Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\upar
 \centering
 \caption{In-domain coverage (hard split): a \emph{single} policy trained on
 all eight domains, per rung, against published per-domain GABAR
-($\dagger$: one model per domain, hardest published test subset).}
+($\dagger$: one model per domain, averaged over its three published test
+subsets).}
 \label{table:indomain}
 \newcommand{\nres}{n/a}
 \begin{tabular}{@{}l|c|cc@{}}
 \toprule
 Domain & GABAR$^\dagger$ & \gadarbind{} & \gadar{} \\
 \midrule
-Blocks    & 100 & 57.0 & 35.5 \\
-Miconic   & 100 & 61.3 & 63.0 \\
-Spanner   & 89 & 1.0 & 1.0 \\
-Gripper   & 100 & 94.2 & 93.1 \\
-Visitall  & 88 & 68.0 & 92.0 \\
-Grid      & 92 & 70.8 & 97.9 \\
-Logistics & 71 & 0.0 & 0.0 \\
-Rovers    & 77 & 5.6 & 9.3 \\
+Blocks    & 100.0 & 57.0 & 35.5 \\
+Miconic   & 100.0 & 61.3 & 63.0 \\
+Spanner   & 92.0 & 1.0 & 1.0 \\
+Gripper   & 100.0 & 94.2 & 93.1 \\
+Visitall  & 90.7 & 68.0 & 92.0 \\
+Grid      & 96.3 & 70.8 & 97.9 \\
+Logistics & 79.0 & 0.0 & 0.0 \\
+Rovers    & 82.0 & 5.6 & 9.3 \\
 \midrule
-Combined  & 89.2 & 44.7 & 49.0 \\
+Combined  & 92.5 & 44.7 & 49.0 \\
 \bottomrule
 \end{tabular}
 \end{table}
