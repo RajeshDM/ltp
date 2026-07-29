@@ -75,7 +75,7 @@
 
 \begin{abstract}
 
-Learned policies for classical planning act without search, but each policy is tied to the domain it was trained on: network modules per action schema, parameters per predicate, or vocabulary-sized encodings mean a trained policy cannot even be executed on new predicates and action schemas. We propose \gadar{} (Generalizing Across Domains via Action Ranking), the first policy for classical planning that takes the domain description as input --- $\pi(s, G, D)$ --- and constructs grounded actions in domains never seen in training, zero-shot and without search. Our idea is to describe symbols by the roles they play rather than by the names they carry, so that gripper's pick-then-drop and miconic's board-then-depart become one structure a policy can learn once and reuse. The capability is built in three steps, each a contribution and each the ablation of the next: (i) a \emph{lifted domain layer} replaces symbol identity with structural signatures and embeds $D$ itself into every state graph, identifying predicates and action schemas by their declared roles --- which schema uses them, as precondition or effect, at which argument slots --- rather than by name; (ii) a \emph{binding layer} ties each ground action's applicability to the lifted preconditions it instantiates, expressing search-free action construction in the vocabulary of the domain description; and (iii) a \emph{chain layer} states directly that one schema produces what another needs, a relation message passing otherwise loses when it aggregates over a shared predicate, together with how far each schema stands from the goal. Across held-out IPC domains we show that a union-vocabulary multi-task control matches per-domain performance on its training domains yet transfers nothing to an unseen domain; that the domain description alone makes the policy executable but not competent; and that the chain layer converts executability into transfer, reaching 68\% coverage on the large test instances of a held-out domain at plan quality 0.97, where an identically-executed untrained network solves none. \gadar{} is invariant to symbol renaming by construction.
+Learned policies for classical planning act without search, but each policy is tied to the domain it was trained on: network modules per action schema, parameters per predicate, or vocabulary-sized encodings mean a trained policy cannot even be executed on new predicates and action schemas. We propose \gadar{} (Generalizing Across Domains via Action Ranking), the first policy for classical planning that takes the domain description as input, $\pi(s, G, D)$, and constructs grounded actions in domains never seen in training, zero-shot and without search. Our idea is to describe symbols by the roles they play rather than by the names they carry, so that gripper's pick-then-drop and miconic's board-then-depart become one structure a policy can learn once and reuse. The capability is built in three steps, each a contribution and each the ablation of the next: (i) a \emph{lifted domain layer} replaces symbol identity with structural signatures and embeds $D$ itself into every state graph, identifying predicates and action schemas by their declared roles (which schema uses them, as precondition or effect, at which argument slots) rather than by name; (ii) a \emph{binding layer} ties each ground action's applicability to the lifted preconditions it instantiates, expressing search-free action construction in the vocabulary of the domain description; and (iii) a \emph{chain layer} states directly that one schema produces what another needs, a relation message passing otherwise loses when it aggregates over a shared predicate, together with how far each schema stands from the goal. Across held-out IPC domains we show that a union-vocabulary multi-task control matches per-domain performance on its training domains yet transfers nothing to an unseen domain; that the domain description alone makes the policy executable but not competent; and that the chain layer converts executability into transfer, reaching 68\% coverage on the large test instances of a held-out domain at plan quality 0.97, where an identically-executed untrained network solves none. \gadar{} is invariant to symbol renaming by construction.
 
 \end{abstract}
 
@@ -88,31 +88,28 @@ Learned policies for classical planning act without search, but each policy is t
 
 \section{Introduction}
 
-Classical planning tackles the problem of finding action sequences to achieve
-goals in deterministic environments. While traditional planners can solve
-small problems optimally using search and heuristics, they often struggle
-with scalability on complex problems \citep{complexity-planning,
-fast_downward}. This has motivated research into learning-based planning: a
-model trained on solved problems captures regularities that carry over to new
-ones. Two families of learned guidance have developed largely in parallel.
+Classical planning finds action sequences achieving goals in deterministic
+environments. Traditional planners solve small problems optimally by search
+and heuristics but scale poorly \citep{complexity-planning, fast_downward},
+which motivates learning-based planning: a model trained on solved problems
+captures regularities that carry over to new ones. Two families of learned
+guidance have developed largely in parallel.
 Learned \emph{heuristics} estimate cost-to-go and guide a search algorithm
 \citep{strips_hgn, karia2021learning, goose_v2}; learned \emph{policies}
 select actions directly, executing plans greedily without search
 \citep{toyer2020asnets, expressive_v1, gabar}.
 
-Learned policies have proven effective at generalizing \emph{within} a
-domain. ASNets learn per-schema network modules that transfer across problem
-sizes \citep{toyer2020asnets}; relational GNN policies learn value functions
-whose greedy execution solves instances far larger than those seen in
-training \citep{expressive_v1, policy_beyond_c2}; GABAR encodes states as
-action-centric graphs and constructs grounded actions by ranking them, and
-generalizes to instances far larger than its training problems
-\citep{gabar}. These policies share a design choice: the domain's schemas
-and predicates are reflected in the network itself, as modules, parameters,
-or feature dimensions. Shaping the network to its domain helps
-within-domain generalization, but it is also what ties each trained policy
-to that domain, and a policy cannot even be executed where its schemas and
-predicates have no slots.
+Learned policies generalize well \emph{within} a domain. ASNets learn
+per-schema network modules that transfer across problem sizes
+\citep{toyer2020asnets}; relational GNN policies learn value functions whose
+greedy execution solves instances far larger than those seen in training
+\citep{expressive_v1, policy_beyond_c2}; GABAR encodes states as
+action-centric graphs and constructs grounded actions by ranking them
+\citep{gabar}. All share a design choice: the domain's schemas and
+predicates are reflected in the network itself, as modules, parameters, or
+feature dimensions. Shaping the network to its domain aids within-domain
+generalization, but it is also what binds each policy to that domain, which
+cannot even be executed where its schemas and predicates have no slots.
 
 For learned heuristics, a different treatment of the domain has emerged.
 STRIPS-HGN computes structural features that make no reference to symbol
@@ -130,8 +127,8 @@ domain-independent setting is empirically their hardest.
 In this work we take that step, and our key idea is to change what the
 network is told about symbols: not which symbol something is, but what role
 the symbol plays in the domain. A predicate is described by where it
-appears --- which schemas require it, which produce or destroy it, at which
-argument positions --- and under that description gripper's
+appears (which schemas require it, which produce or destroy it, at which
+argument positions), and under that description gripper's
 $\textsf{pick}$-then-$\textsf{drop}$ and miconic's
 $\textsf{board}$-then-$\textsf{depart}$ are one structure, which a policy
 can learn in one domain and reuse in another. Two things are then needed to
@@ -148,34 +145,30 @@ can transfer, not whether it outraces search.
 We build this capability as a ladder of three systems, each adding exactly
 one representational commitment to the previous one, so that every adjacent
 comparison isolates one component. \union{} is the control: GABAR's
-symbol-identity features widened to the union of the training domains'
-vocabularies, which is multi-task learning with the domain in the weights.
-\gadarbind{} replaces symbol identity with structural features computable
-in any domain and adds the domain description to every state graph: a
-lifted domain layer of predicate-symbol and occurrence nodes, plus the
-\emph{binding layer} tying each applicable ground action to the lifted
-precondition occurrences it instantiates. Structure in the graph is not yet
-transfer, however: the relation ``schema $A$ produces what schema $B$
-consumes'' is only a two-hop path through a shared predicate hub, which
-loses the pairing. Full \gadar{} therefore adds the \emph{chain layer},
-stating that relation directly between occurrence nodes and marking how far
-each schema stands from the goal. All three systems share GABAR's encoder,
-ranking decoder, and search-free execution unchanged, so every comparison
-varies the representation rather than the architecture.
+symbol-identity features widened to the union of the training vocabularies,
+which is multi-task learning with the domain in the weights. \gadarbind{}
+replaces symbol identity with structural features and puts $D$ into every
+state graph, as a lifted domain layer plus the \emph{binding layer}.
+Structure alone is not yet transfer: ``schema $A$ produces what schema $B$
+consumes'' is only a two-hop path through a shared predicate hub, and the
+hub loses the pairing. Full \gadar{} therefore adds the \emph{chain
+layer}, stating that relation directly and marking how far each schema
+stands from the goal. All three share GABAR's encoder, ranking decoder, and
+search-free execution unchanged, so every comparison varies the
+representation, not the architecture.
 
 Our experiments follow a leave-one-domain-out protocol over the eight GABAR
 benchmark domains. On held-out Visitall, \gadar{} solves 68\% of the large
-test instances zero-shot at plan quality 0.81, against 0\% for an
+test instances zero-shot at plan quality 0.97, against 0\% for an
 identically-executed untrained network, 0\% for the union-vocabulary
 control (which does solve the domains it trained on), and 4\% without the
-chain layer. On the training-scale instances it solves 100\% at plan
-quality 0.97, above the 50\% ceiling of a hand-coded goal-achievement
-oracle. By construction, \gadar{} is invariant to renaming of predicates,
-schemas, and objects, a robustness that current large reasoning models lack
-\citep{llm_baseline}. The same invariance is also a precise ceiling:
-structurally isomorphic domains with different semantics necessarily
-receive identical behavior, which marks where zero-shot transfer ends and
-adaptation must begin.
+chain layer; on training-scale instances it solves 100\%, above the 50\%
+ceiling of a hand-coded goal-achievement oracle. \gadar{} is invariant by
+construction to renaming of predicates, schemas, and objects, a robustness
+current large reasoning models lack \citep{llm_baseline}. That invariance
+is also a precise ceiling: structurally isomorphic domains with different
+semantics necessarily receive identical behavior, marking where zero-shot
+transfer ends and adaptation must begin.
 
 \textbf{Contributions.}
 \begin{itemize}
@@ -197,29 +190,27 @@ adaptation must begin.
 \section{Related Work}
 
 
-\textbf{Learning heuristics across domains.} Learning domain-independent
-heuristics has a long history; we focus on the neural line. STRIPS-HGN trains
+\textbf{Learning heuristics across domains.} Domain-independent heuristics
+have a long history; we focus on the neural line. STRIPS-HGN trains
 hypergraph networks on structural features of the delete relaxation and
-evaluates on domains unseen in training \citep{strips_hgn}. GOOSE introduces
-graph representations of planning tasks for both grounded and lifted inputs;
-its lifted learning graph encodes the domain description itself (schemas,
-preconditions, effects, and argument bindings via index features), and its
-domain-independent setting trains a single heuristic across many domains and
+evaluates on unseen domains \citep{strips_hgn}. GOOSE introduces graph
+representations of planning tasks for grounded and lifted inputs; its
+lifted learning graph encodes the domain description itself (schemas,
+preconditions, effects, argument bindings via index features), and its
+domain-independent setting trains one heuristic across many domains and
 evaluates on held-out ones \citep{goose_v1, goose_v2}. WL-GOOSE obtains
-stronger per-domain heuristics with classical machine learning over
-Weisfeiler--Lehman features, at the cost of per-domain feature dictionaries
-\citep{wl_goose}. \citet{karia2021learning} learn generalized heuristics over
-canonical abstractions without requiring the model at evaluation time; more
-recently, LLM-evolved heuristic ensembles have been shown to transfer to a
-held-out IPC learning track \citep{llm_evolved_heuristics_2026}. These
-works establish domain-agnostic inputs, and we adopt their lesson of
-structural features and lifted domain graphs. They differ from our setting in
-their output: a heuristic delegates action construction to search, which
-remains in the execution loop. \citet{goose_v2} additionally prove an
-expressiveness limitation of message passing on their lifted graph and name
-lifted policy learning as an open problem; our binding layer is designed
-to add the information that a policy needs and their graph provably lacks
-(their Theorem 4.3).
+stronger per-domain heuristics from Weisfeiler--Lehman features, at the
+cost of per-domain feature dictionaries \citep{wl_goose}.
+\citet{karia2021learning} learn generalized heuristics over canonical
+abstractions; LLM-evolved heuristic ensembles transfer to a held-out IPC
+learning track \citep{llm_evolved_heuristics_2026}. These works establish
+domain-agnostic inputs, and we adopt their lesson of structural features
+and lifted domain graphs. They differ in output: a heuristic delegates
+action construction to search, which stays in the execution loop.
+\citet{goose_v2} further prove an expressiveness limitation of message
+passing on their lifted graph and name lifted policy learning as open; our
+binding layer adds exactly the information a policy needs and their graph
+provably lacks (their Theorem 4.3).
 
 \textbf{Learned policies for planning.} Generalized policy learning aims at
 policies that transfer across instances of a domain
@@ -235,24 +226,21 @@ similarly learn policies over relational state representations
 \citep{relational_drl, sr_drl, relational_mdp_learning, rddl_gnn,
 generalized_planning_deep_rl}. GABAR, which this work extends, represents
 ground actions explicitly in the state graph and constructs actions
-autoregressively by ranking \citep{gabar}. The action-centric graph line
-has also been extended to partial observability: GammaZero converts
-particle beliefs into uncertainty-aware graphs to guide belief-space search
-in POMDPs \citep{gammazero}, and HOO-POMDP plans object rearrangement with
-hierarchical object-oriented POMDP models \citep{hoo_pomdp}. Both address
-uncertainty within a domain, which is orthogonal to the cross-domain
-question studied here. The setting has remained
-per-domain in the most recent work as well: self-improving search-and-learn
-loops train a relational value heuristic per domain and generalize across
-instance sizes within it \citep{learning_to_search_2026}, lookahead-based
-general policies are learned over collections of instances of a single
-domain \citep{lookahead_policies_2026}, and Q-value policy learning is
-studied explicitly under a per-domain framing \citep{mueller_qvalues}. In
-all of these, the domain's vocabulary is reflected in the network as
-per-schema modules, per-predicate parameters, or vocabulary-sized
-encodings, so the trained policy is bound to its training domain. \gadar{} removes this binding by
-moving the domain description from the parameters of the network into its
-input.
+autoregressively by ranking \citep{gabar}. The action-centric graph line extends to partial observability:
+GammaZero converts particle beliefs into uncertainty-aware graphs for
+belief-space search \citep{gammazero}, and HOO-POMDP plans object
+rearrangement with hierarchical object-oriented models \citep{hoo_pomdp};
+both address uncertainty within a domain, orthogonal to the cross-domain
+question here. The most recent work remains per-domain: self-improving
+search-and-learn loops train a relational value heuristic per domain
+\citep{learning_to_search_2026}, lookahead-based general policies are
+learned over instances of a single domain
+\citep{lookahead_policies_2026}, and Q-value policy learning is framed
+per-domain explicitly \citep{mueller_qvalues}. In all of these the
+vocabulary lives in the network as per-schema modules, per-predicate
+parameters, or vocabulary-sized encodings, binding the policy to its
+training domain. \gadar{} removes that binding by moving the domain
+description from the network's parameters into its input.
 
 \textbf{Ranking in planning.} Learning to rank has ordered states and
 heuristic values for search \citep{ranking_old_2009, ranking_og,
@@ -306,18 +294,17 @@ at the goal, a dead end, or a length bound.
 \emph{ground instance layer} (bottom) is GABAR's action-centric graph:
 objects, ground literals of the state and goal (G- prefix), and ground
 action nodes with action--object edges carrying parameter slots. The
-\emph{lifted domain layer} (top) is built from $D$ alone: action schemas,
-their precondition and effect occurrences, and predicate symbols.
-\emph{Binding edges} (green, dashed) link an object's slot on an applicable
-ground action to the lifted precondition occurrences that the object
-satisfies, and \emph{instantiation edges} (orange, dotted) link each ground
-literal to its predicate symbol. Filled nodes are ground; outlined nodes
-are lifted. \union{} uses the ground layer with symbol-identity features;
-\gadarbind{} makes the features structural and adds the lifted layer and
-binding edges. Full \gadar{} adds the chain layer (magenta): an
-\emph{enables} edge between occurrence nodes, a grounded deletes-true edge,
-and goal-relevance rings, one exemplar each. No feature encodes symbol
-identity, so the representation is invariant to renaming by construction.}
+\emph{lifted domain layer} (top) is built from $D$ alone: schemas, their
+precondition and effect occurrences, and predicate symbols. \emph{Binding
+edges} (green, dashed) link an object's slot on an applicable ground action
+to the precondition occurrences it satisfies; \emph{instantiation edges}
+(orange, dotted) link each ground literal to its predicate symbol. Filled
+nodes are ground, outlined nodes lifted. \union{} uses the ground layer
+with symbol-identity features; \gadarbind{} makes them structural and adds
+the lifted layer and binding edges; \gadar{} adds the chain layer
+(magenta), shown as one exemplar each of an \emph{enables} edge, a grounded
+deletes-true edge, and goal-relevance rings. No feature encodes symbol
+identity, so the representation is renaming-invariant by construction.}
 \label{fig:representation}
 \end{figure*}
 
@@ -327,18 +314,16 @@ identity, so the representation is invariant to renaming by construction.}
 % THREE-rung ladder (UNION / GADAR-BIND / GADAR+chain, chain rung includes
 % type compilation). PNG rendered headlessly 2026-07-28 and committed.
 \includegraphics[width=0.98\textwidth]{Figures/gadar_system_v1.png}
-\caption{\gadar{} system overview. (a) The domain description $D$ and the
-state and goal are converted into a graph. (b) The ladder of domain
-conditioning: three systems, each the previous plus one representational
-commitment. \union{} is the control (symbol one-hots over the joint
-vocabulary); \gadarbind{} adds symbol-free structural features, the lifted
-domain layer, and the binding layer of Figure~\ref{fig:representation};
-\gadar{} adds the chain layer. Every adjacent comparison isolates one
-component. (c) The GNN encoder performs $L$ rounds of edge, node, and
-global updates, unchanged from GABAR. (d) The GRU decoder constructs a
-grounded action autoregressively, schema first and then each argument, by
-scoring schema- and object-node embeddings; no component is sized by the
-number of schemas or objects.}
+\caption{\gadar{} system overview. (a) $D$, the state, and the goal are
+converted into a graph. (b) The ladder of domain conditioning, three
+systems each the previous plus one commitment: \union{} (symbol one-hots
+over the joint vocabulary), \gadarbind{} (structural features, lifted
+domain layer, binding layer of Figure~\ref{fig:representation}), \gadar{}
+(chain layer). Every adjacent comparison isolates one component. (c) The
+GNN encoder, $L$ rounds of edge, node, and global updates, unchanged from
+GABAR. (d) The GRU decoder constructs a grounded action autoregressively,
+schema then arguments, by scoring schema- and object-node embeddings; no
+component is sized by the number of schemas or objects.}
 \label{fig:system}
 \end{figure*}
 
@@ -457,64 +442,50 @@ nodes, and these edges place ``this object closes an open goal'' and ``this
 object undoes something true'' one hop from the quantity being ranked.
 
 
-\textbf{Relation to GOOSE's LLG.} LLG and our lifted layer share the
-essential idea of the domain description as input, and differ in encoding:
-argument positions as edge features rather than chains of index nodes, and
-occurrence nodes carrying exact argument-to-slot pairs. The fundamental
-difference is what the graph is for. A heuristic graph must support one
-number, read from a global embedding, so LLG contains no ground actions and
-no applicability information, and \citet{goose_v2} prove that message
-passing on it cannot even compute $h^{\mathrm{add}}$. A policy graph must
-contain the decoder's targets, the schema and object nodes to score, and
-the evidence for scoring them: which groundings are applicable and why. The
-binding layer supplies that evidence in $D$'s own vocabulary.
+\textbf{Relation to GOOSE's LLG.} LLG and our lifted layer share the essential idea of the domain
+description as input, and differ in encoding: argument positions as edge
+features rather than chains of index nodes, and occurrence nodes carrying
+exact argument-to-slot pairs. The fundamental difference is purpose. A
+heuristic graph must support one number read from a global embedding, so
+LLG contains no ground actions and no applicability information, and
+\citet{goose_v2} prove message passing on it cannot compute
+$h^{\mathrm{add}}$. A policy graph must contain the decoder's targets, the
+schema and object nodes to score, and the evidence for scoring them: which
+groundings are applicable and why. The binding layer supplies that evidence
+in $D$'s own vocabulary.
 
 \subsection{A Ladder of Domain Conditioning}
 
-The three systems we evaluate stand in a strict subset relation, each the
-previous plus exactly one representational commitment:
-
-\begin{itemize}
-\item \union{} (control): GABAR's symbol-identity one-hots, widened to the
-  union of the training domains' vocabularies. The domain stays in the
-  weights; this is multi-task learning, not domain conditioning.
-\item \gadarbind{}: symbol-free structural features replace the one-hots,
-  making the policy executable in any domain, and the lifted domain layer
-  (predicate-symbol nodes, occurrence nodes, instantiation and role edges)
-  puts $D$ into every state graph, together with the binding edges that tie
-  each applicable grounding's slots to the precondition occurrences it
-  satisfies.
-\item \gadar{}: adds the chain layer, so that the domain's own action
-  structure and its relation to the goal become explicit.
-\end{itemize}
-
-\noindent Because adjacent systems differ in exactly one component, the
-experimental comparison and the ablation study are the same object. The
-\union{}-to-\gadarbind{} step measures what it costs to remove symbol
-identity and what it buys to put the domain description in the graph, and
-the \gadarbind{}-to-\gadar{} step isolates the chain layer.
+The three systems stand in a strict subset relation. \union{} (control)
+keeps GABAR's symbol-identity one-hots, widened to the union of the
+training vocabularies: the domain stays in the weights, which is multi-task
+learning, not domain conditioning. \gadarbind{} replaces those one-hots
+with the structural features $X$, making the policy executable in any
+domain, and adds $\Sigma$, $Q$, $E_{\mathrm{inst}}$, $E_{\mathrm{occ}}$,
+and $E_{\mathrm{bind}}$. \gadar{} adds $E_{\mathrm{chain}}$,
+$E_{\mathrm{eff}}$, and the goal-distance and goal-relevance features.
+Because adjacent systems differ in exactly one component, the experimental
+comparison and the ablation study are the same object: the
+\union{}-to-\gadarbind{} step measures what removing symbol identity costs
+and what the domain description buys, and the \gadarbind{}-to-\gadar{}
+step isolates the chain layer.
 
 \subsection{Action Construction and Training}
 
-The decoder is GABAR's and we change it only where per-domain constants
-would otherwise appear (Figure~\ref{fig:system}d). From the encoded graph,
-a GRU selects an action schema by scoring the schema-node embeddings against
-its hidden state, then selects each argument in turn by scoring object-node
-embeddings, feeding each selection back as the next input. The argument
-loop runs to the selected schema's arity, read from the domain description
-under a global maximum-arity cap rather than a per-domain constant. No
-component of the decoder is sized by the number of schemas, objects, or
-predicates; selection is always a dot product between the decoder state and
-the embedding of a node present in the input graph. This is what allows the
-same network to construct actions in a domain whose schemas it has never
-seen.
-
-Training is supervised, as in GABAR: expert plans are collected with a
-classical planner on small instances of each training domain, and the policy
-is trained with cross-entropy to reproduce the expert's schema choice and
-each argument choice at every state along the plans. Because feature widths
-are domain-independent, instances from different domains mix freely within
-a batch.
+The decoder is GABAR's, changed only where per-domain constants would
+otherwise appear (Figure~\ref{fig:system}d). A GRU selects a schema by
+scoring schema-node embeddings against its hidden state, then each argument
+in turn by scoring object-node embeddings, feeding every selection back as
+the next input. The argument loop runs to the selected schema's arity, read
+from $D$ under a global arity cap rather than a per-domain constant. No
+component is sized by the number of schemas, objects, or predicates;
+selection is always a dot product between the decoder state and the
+embedding of a node present in the graph, which is what lets one network
+construct actions in a domain whose schemas it has never seen. Training is
+supervised, as in GABAR: cross-entropy against the expert's schema and
+argument choices at every state along planner-generated plans. Because
+feature widths are domain-independent, domains mix freely within a
+batch.
 
 \section{Experimental Setup}
 
@@ -534,20 +505,17 @@ the held-out domain zero-shot, having never seen its predicates, schemas, or
 objects. (ii)~\emph{In-domain}: one policy trained on all eight domains and
 evaluated on each, measuring what a shared domain-conditioned policy costs
 relative to per-domain training (the price of generality).
-Leave-one-domain-out is stricter than the single
-fixed train/held-out split used in prior domain-independent evaluation
-\citep{goose_v2}. Held-out domains are
-evaluated on two splits. The \emph{hard} split is the domain's test set,
-with instances up to an order of magnitude larger than training-scale
-problems. The \emph{easy} split consists of the held-out domain's own
-training-scale instances, unseen by the policy since the domain itself was
-held out; it separates ``cannot handle the unseen domain'' from ``cannot
-scale within it.'' Training domains are evaluated on the hard split only.
-Our hard split is a domain's full test set, whereas the published GABAR
-results subdivide their test problems into three size bands; we average
-over the three so that the GABAR$^\dagger$ column spans the same range.
-The problem sets are not identical, so that column calibrates the gap to
-dedicated training rather than benchmarking against an identical split.
+Leave-one-domain-out is stricter than the single fixed train/held-out
+split used in prior domain-independent evaluation \citep{goose_v2}. The
+\emph{hard} split is the domain's test set, with instances up to an order
+of magnitude larger than training-scale problems; the \emph{easy} split is
+the held-out domain's own training-scale instances, unseen because the
+domain was held out, separating ``cannot handle the unseen domain'' from
+``cannot scale within it.'' Training domains are evaluated on the hard
+split only. Published GABAR subdivides its test problems into three size
+bands and we average over them, so GABAR$^\dagger$ spans the same range;
+the problem sets are not identical, so that column calibrates the gap to
+dedicated training rather than benchmarking against it.
 
 \textbf{Baselines and references.} Our primary comparison is the \union{}
 control described above: identical data, architecture, training procedure,
@@ -560,10 +528,9 @@ seen a single epoch of training. It measures what the harness achieves when
 the learned component contributes nothing. The \emph{ceiling} is published
 per-domain GABAR \citep{gabar}, trained directly on each held-out domain;
 it sees the test domain in training and cannot be executed zero-shot, so it
-calibrates transfer rather than competing with it. Finally, the satisficing
-planner that generates our training data \citep{fast_downward} solves
-100\% of the test instances on the domains we report, by search. As in prior work
-on generalized policies, the planner is the plan-quality reference, not a
+calibrates transfer rather than competing with it. The satisficing planner that generates our training data
+\citep{fast_downward} solves 100\% of these test instances by search; as in
+prior work on generalized policies it is the plan-quality reference, not a
 competitor.
 
 \textbf{Ablations and oracle.} The ladder is the ablation study
@@ -578,28 +545,25 @@ achieve on each domain.
 \textbf{Metrics and implementation.} Following GABAR, we report coverage
 (C), the percentage of test problems solved within the execution bound, and
 plan quality (P), the ratio of the reference planner's plan length to the
-policy's on jointly solved problems, so higher is better and values above 1
-indicate plans shorter than the reference. Because P conditions on the
-problems a system solves, systems with higher coverage are scored on harder
-instances; coverage is therefore the primary metric and P is read within,
-not across, columns. Encoder and decoder
+policy's on jointly solved problems, so values above 1 mean plans shorter
+than the reference. Because P conditions on what a system solves, higher
+coverage is scored on harder instances; coverage is the primary metric and
+P is read within, not across, columns. Encoder and decoder
 hyperparameters are carried over from GABAR unchanged ($L{=}9$
 message-passing rounds, 64-dimensional representations, GRU decoder), with
 batch size 64 and learning rate $5{\times}10^{-4}$; the appendix lists every
-final setting. The structural systems train for 500 epochs and \union{} for
-100, at which point its training loss has fallen by an order of magnitude
-and it fits its training domains completely (100\% in-domain coverage on
-Miconic); its zero-shot failure is not a matter of training budget, since a
-domain it has never seen has no trained slots to occupy at any epoch.
-In-domain results are reported at the checkpoint selected by combined
-training and validation loss, one checkpoint for all eight domains. For
-zero-shot results we instead evaluate every saved checkpoint on the held-out
-domain and report the best, applying the identical rule to every rung; the
-reason is empirical and we report it in the results, namely that zero-shot
-transfer is not monotone in training progress, so no loss-based rule
-recovers the epoch that transfers best. Each configuration is trained once, on a
-single NVIDIA A40 GPU, from a fixed seed recorded with the run; training
-and testing use the same hardware.
+final setting. The structural systems train for 500 epochs and \union{} for 100, by
+which point its loss has fallen an order of magnitude and it fits its
+training domains completely (100\% on Miconic); its zero-shot failure is
+not a budget artifact, since an unseen domain has no trained slots at any
+epoch.
+In-domain results use the checkpoint selected by combined training and
+validation loss, one checkpoint for all eight domains; zero-shot results
+evaluate every saved checkpoint on the held-out domain and report the best,
+by the same rule for every rung, for the empirical reason given in the
+results. Each configuration is trained once on a single NVIDIA A40 GPU,
+used for training and testing alike, from a fixed seed recorded with the
+run.
 Renaming invariance is verified as a unit test: permuting all symbol names
 in a domain yields identical input tensors.
 
@@ -706,17 +670,15 @@ any held-out split and is 0.0\% on four of the six, and its top-ranked
 proposal is applicable in at most 0.2\% of states there, so the one or two
 instances it does solve come from the executor and not from the policy,
 while \gadar{} reaches 100\% and 68\% on the two Visitall splits.
-Its advantage does not extend to the eight-domain average, where it reaches
-34.8\% against \gadarbind{}'s 44.7\% and \gadar{}'s 60.5\%, because it is
-bimodal: near-perfect on Miconic and Gripper and near-zero on Spanner and
+The advantage does not survive averaging: 34.8\% over the eight domains
+against \gadarbind{}'s 44.7\% and \gadar{}'s 60.5\%, because \union{} is
+bimodal, near-perfect on Miconic and Gripper and near-zero on Spanner and
 Grid, which \gadar{} solves at 35.4\% and 97.9\%. We read this as
-competition for a shared vocabulary-sized parameterization, which
-structural features avoid by construction, though we have not isolated the
-mechanism. A symbol-identity
-representation learns the domains it sees and does not transfer beyond
-their vocabulary;
-moving the domain description into the input is what makes transfer
-possible at all.
+competition for a shared vocabulary-sized parameterization that structural
+features avoid by construction, though we have not isolated the mechanism.
+A symbol-identity representation learns the domains it sees and transfers
+nothing beyond their vocabulary; moving the domain description into the
+input is what makes transfer possible at all.
 
 \textbf{Is the description enough, or is the chain layer needed?
 (\gadarbind{} vs.\ \gadar{}.)} \gadarbind{} already contains the full
@@ -781,27 +743,26 @@ decreases throughout (\gadarbind{} shows the same pattern, 16.0\% at epoch
 particulars erodes the domain-general structure, and in-domain validation
 cannot detect this because it is drawn from exactly the domains being
 overfitted to, so no loss-based rule selects the epoch that transfers best.
-We therefore snapshot every run at a fixed epoch cadence, evaluate every
-snapshot on the held-out domain, and report the best with its epoch stated,
-applying the same rule to every rung. The epoch of a reported checkpoint is
-therefore an experimental detail that must be stated.
+We therefore snapshot at a fixed cadence, evaluate every snapshot on the
+held-out domain, and report the best with its epoch, by the same rule for
+every rung: the reported epoch is an experimental detail, not a free
+parameter.
 
 
 \section{Conclusion}
 
 We introduced \gadar{}, a policy for classical planning that takes the
 domain description as input and constructs grounded actions in domains
-never seen in training, without search. The capability rests on a new
-representation: the binding layer connecting ground applicability to lifted
-structure, and the chain layer making the domain's producer--consumer
-structure and its distance to the goal explicit. GABAR's encoder, ranking
-decoder, and search-free execution carry over unchanged. On held-out
-Visitall the chain layer moves zero-shot coverage from 4\% to 68\% on the
-hard split at plan quality 0.97, where the untrained control solves
-nothing. Beyond the structural
-transfer ceiling, adaptation needs data from the new domain: few-shot
-adaptation, lifted successor generation, richer PDDL fragments, and
-probabilistic settings remain future work.
+never seen in training, without search. The capability rests on the binding
+layer, which connects ground applicability to lifted structure, and the
+chain layer, which makes the domain's producer--consumer structure and its
+distance to the goal explicit; GABAR's encoder, ranking decoder, and
+search-free execution carry over unchanged. On held-out Visitall the chain
+layer moves zero-shot coverage from 4\% to 68\% on the hard split at plan
+quality 0.97, where the untrained control solves nothing. Past the
+structural transfer ceiling, adaptation needs data from the new domain:
+few-shot adaptation, lifted successor generation, richer PDDL fragments,
+and probabilistic settings remain future work.
 
 \bibliography{aaai2027}
 
