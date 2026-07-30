@@ -1003,6 +1003,15 @@ if __name__ == "__main__":
             #'model_class' : model_class.__name__,
             'abl_' : args.ablation ,
             'mlp_layers' : args.num_mlp_layers_gnn,
+            # Featurization and the input widths it produces are part of the
+            # model's identity: two runs differing only here train state
+            # dicts that cannot be loaded into each other. Without them in
+            # the key, runs on the same domain set and seed share one model
+            # directory and compete for the same three loss-ranked slots, so
+            # a union run can evict a joint_chain checkpoint and vice versa.
+            'feat' : args.featurization,
+            'nf' : int(graph_metadata['num_node_features']),
+            'ef' : int(graph_metadata['num_edge_features']),
         }
 
         testing_hyperparameters = {

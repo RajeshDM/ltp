@@ -47,7 +47,11 @@ main.py                            ← THE entry point (__main__): arg parsing,
  │                                   cache (collect_training_data), unified-cache
  │                                   orchestration (process_pddl_to_graphs), graph
  │                                   construction (_create_graph_structure_ltp,
- │                                   _state_to_graph_ltp), PyG conversion
+ │                                   _state_to_graph_ltp), PyG conversion.
+ │                                   Edge features accumulate in `_EdgeSlice`
+ │                                   (one sparse {(sender,receiver): {feat: v}}
+ │                                   map per parameter position), NOT a dense
+ │                                   (arity, N, N, k) array - see §1.4 contract 6
  ├─ ploi/multidomain.py            multi-domain helpers: parse_domain_arg,
  │                                   merge_feature_metadata, merge_action_spaces (C1)
  ├─ ploi/structural.py             structural featurization: StructuralMap,
@@ -104,6 +108,9 @@ train_test_scripts/RUNS_STATUS.md  live ledger: which runs are in flight,
                                    floors/ceilings to compare against
 tests/test_multidomain_metadata.py dependency-free unit tests: union merge,
                                    structural classes, renaming invariance
+tests/test_sparse_edges.py         dependency-free unit tests: sparse edge
+                                   accumulation is byte-identical to the dense
+                                   array it replaced (edges, order, values)
 tests/test_lifted_layer.py         dependency-free unit tests: lifted spec
                                    (roles, bindings, occurrence order),
                                    metadata widths, joint vs joint_lite,
@@ -193,6 +200,25 @@ same `run_tests` machinery.
    if present; on load it strips any legacy in-pickle `all_graphs*`/
    `batch_graphs` blobs (migration). Loaders reject per-problem tuples
    shorter than 5.
+6. **Graph tensors are indicator matrices, stored as `uint8`.** Every node
+   and edge feature is a flag or a one-hot (§5.3), so `nodes` and `edges`
+   are built as `uint8`: lossless, and 8x smaller on disk than numpy's
+   default float64, which is what made `cache/results` grow past 100 GB.
+   Every consumer casts to float32 on load (`graph_to_pyg_data`,
+   `traineval.py`). Do not introduce a non-binary node/edge feature without
+   changing the dtype and saying so here.
+7. **Edge features are accumulated sparsely** (`_EdgeSlice`). The dense
+   `(max_action_arity, num_nodes, num_nodes, num_edge_features)` array it
+   replaced cost O(arity*N^2*k) to allocate and scan for every state, which
+   dominated test-time re-featurization (multi-GB per state on large
+   instances). Writers use `all_edge_features[i, j, k] = 1` unchanged; the
+   emit pass sorts keys so edge ordering matches `np.argwhere` exactly.
+   `tests/test_sparse_edges.py` pins that equivalence.
+8. **Checkpoint identity includes the featurization and the input widths**
+   (`feat`, `nf`, `ef` in `training_hyperparameters`, main.py). Without them
+   runs differing only in featurization shared one `ModelManager` directory
+   and competed for the same loss-ranked slots.
+
    `<N>` is the ACTUAL collected count: `_effective_problem_count` resolves
    the requested `num_train_problems` (`<=0` = all the domain has) against
    the domain size before the filename is built, so the name is honest and

@@ -78,6 +78,36 @@ def reverse_binary_literal(x):
     assert len(variables) == 2
 
 
+class _EdgeSlice:
+    """Edge features for one parameter position: {(sender, receiver): {feature: value}}.
+
+    Replaces a dense (num_nodes, num_nodes, num_edge_features) array. The
+    dense form had to be allocated and then scanned in full for every state,
+    costing O(N^2 * k) time and memory even though a state graph has only a
+    few thousand edges; with the parameter dimension on top of that it was
+    the dominant cost of re-featurizing states at test time. Supports exactly
+    the access patterns the feature writers use: a three-index set and a
+    two-index row read.
+    """
+
+    __slots__ = ('rows', 'width')
+
+    def __init__(self, width):
+        self.rows = {}
+        self.width = width
+
+    def __setitem__(self, key, value):
+        sender, receiver, feature = key
+        row = self.rows.get((sender, receiver))
+        if row is None:
+            row = self.rows[(sender, receiver)] = {}
+        row[feature] = value
+
+    def __getitem__(self, key):
+        sender, receiver = key
+        return self.rows.get((sender, receiver))
+
+
 def graph_to_pyg_data(graph):
     hetero_data = HeteroData()
     all_dtype = torch.float32
@@ -312,8 +342,10 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     #action_object_to_edge = {v: k for k, v in edge_to_action_object.items()}
     graph_input = {}
 
-    # Nodes: one per object
-    input_node_features = np.zeros((num_nodes, _num_node_features))
+    # Nodes: one per object. uint8, not the default float64: every node
+    # feature is a flag or a one-hot, so this is lossless, and it is what
+    # dominates the size of the cached graphs. Consumers cast to float32.
+    input_node_features = np.zeros((num_nodes, _num_node_features), dtype=np.uint8)
     num_nodes = np.array(num_nodes)
     #num_nodes = np.reshape(num_nodes,[1]).astype(np.int64)
     #graph_input["n_node"] = np.array(num_nodes)
@@ -393,8 +425,9 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
                                     sorted(goal_state.literals),
                                     objects_to_node, _node_feature_to_index)
 
-    all_edge_features_stack = np.zeros((max_action_arity,num_nodes, num_nodes,_num_edge_features))
-    all_edge_features = all_edge_features_stack[0][:]
+    all_edge_features_stack = [_EdgeSlice(_num_edge_features)
+                               for _ in range(max_action_arity)]
+    all_edge_features = all_edge_features_stack[0]
 
     '''
     All edge features of predicate object are being added in this function
@@ -443,10 +476,11 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
             position_index = _feature_index(_edge_feature_to_index, 'pos_' + str(position), _allow_unknown)
             if position_index is None:
                 continue
-            all_edge_features_stack[position,action_index, obj_index, pred_index] = 1
-            all_edge_features_stack[position,obj_index, action_index, pred_index] = 1
-            all_edge_features_stack[position,action_index, obj_index, position_index] = 1
-            all_edge_features_stack[position,obj_index, action_index, position_index] = 1
+            _slice = all_edge_features_stack[position]
+            _slice[action_index, obj_index, pred_index] = 1
+            _slice[obj_index, action_index, pred_index] = 1
+            _slice[action_index, obj_index, position_index] = 1
+            _slice[obj_index, action_index, position_index] = 1
 
     # Binding layer (CLAUDE.md 5.5, 'joint'/'joint_chain' modes): grounded
     # applicability edges also link the object to the precondition
@@ -495,34 +529,45 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
                                   _edge_feature_to_index)
 
     for action_edge in action_edges :
+        action_index = objects_to_node[action_edge[0]]
+        obj_index = objects_to_node[action_edge[1]]
         for position in range(max_action_arity):
-            #pred_index = _edge_feature_to_index['action_object']
-            action_index = objects_to_node[action_edge[0]]
-            obj_index = objects_to_node[action_edge[1]]
-            assert (all_edge_features_stack[position, action_index, obj_index]==
-                all_edge_features_stack[position,obj_index, action_index]).all()
-            if sum (all_edge_features_stack[position,action_index, obj_index]) == 2:
-                all_edge_features_stack[position, action_index, obj_index] = [0] * _num_edge_features
-                all_edge_features_stack[position, obj_index, action_index] = [0] * _num_edge_features
+            _rows = all_edge_features_stack[position].rows
+            _fwd = _rows.get((action_index, obj_index))
+            _rev = _rows.get((obj_index, action_index))
+            assert _fwd == _rev, "action-object edges must stay symmetric"
+            # Exactly two flags set means the action_object marker and the
+            # position marker and nothing else: the object satisfies no
+            # precondition at this slot, so it is not a candidate there and
+            # the edge is dropped. (Zeroing the dense row had the same
+            # effect: an all-zero row never entered the adjacency matrix.)
+            if _fwd is not None and sum(_fwd.values()) == 2:
+                del _rows[(action_index, obj_index)]
+                del _rows[(obj_index, action_index)]
     # Organize into expected representation
 
-    receivers, senders, edges = [], [], []
-    sender_rec = []
-    for all_edge_features in all_edge_features_stack :
-        adjacency_mat = np.any(all_edge_features, axis=2)
-        #ic (adjacency_mat.size)
-        #ic (np.argwhere(adjacency_mat))
-        for sender, receiver in np.argwhere(adjacency_mat):
-            edge = all_edge_features[sender, receiver]
-            senders.append(sender)
-            receivers.append(receiver)
-            edges.append(edge)
-            sender_rec.append((sender,receiver))
+    _present = []
+    for _slice in all_edge_features_stack :
+        # sorted() reproduces np.argwhere's row-major order over the dense
+        # adjacency matrix, so edge ordering is unchanged.
+        for _key in sorted(_slice.rows):
+            _row = _slice.rows[_key]
+            if any(_row.values()):
+                _present.append((_key, _row))
 
-    n_edge = len(edges)
-    edges = np.reshape(edges, [n_edge, _num_edge_features])
-    receivers = np.reshape(receivers, [n_edge]).astype(np.int64)
-    senders = np.reshape(senders, [n_edge]).astype(np.int64)
+    # Fill one (n_edge, k) array in place. Collecting per-edge arrays and
+    # np.reshape-ing the list afterwards allocated once per edge and then
+    # copied the lot, which showed up at test time where every state is
+    # re-featurized.
+    n_edge = len(_present)
+    edges = np.zeros((n_edge, _num_edge_features), dtype=np.uint8)
+    senders = np.empty(n_edge, dtype=np.int64)
+    receivers = np.empty(n_edge, dtype=np.int64)
+    for _i, ((_sender, _receiver), _row) in enumerate(_present):
+        senders[_i] = _sender
+        receivers[_i] = _receiver
+        for _feature, _value in _row.items():
+            edges[_i, _feature] = _value
     n_edge = np.reshape(n_edge, [1]).astype(np.int64)
     num_actions = np.reshape(num_actions,[1]).astype(np.int64)
     num_objects = np.reshape(num_objects+num_agents,[1]).astype(np.int64)
