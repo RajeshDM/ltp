@@ -97,6 +97,10 @@ configs/                           one YAML per paper experiment (--config);
                                    (base: key); README.md maps configs to claims
 tools/analyze_results.py           aggregates the results_*.json dumps main.py
                                    writes after testing into one table/CSV
+tools/bench_featurize.py           times state_to_graph_wrapper on real
+                                   rollout states, no model/training needed;
+                                   the before/after harness for featurization
+                                   changes (reads graph_metadata from a sidecar)
 tools/random_policy_baseline.py    zero-shot floor: uniform-random applicable
                                    action rollouts, config test-domains syntax
                                    (incl. @train), no model/training needed
