@@ -1014,6 +1014,17 @@ if __name__ == "__main__":
             'ef' : int(graph_metadata['num_edge_features']),
         }
 
+        # Escape hatch for checkpoints saved before those three keys existed:
+        # they live under the old folder name and hash, so a run that adds the
+        # keys cannot find them. Set GABAR_LEGACY_CKPT_KEY=1 to look in the old
+        # location. Only for reading pre-existing models; new runs should not
+        # use it, or the clash it fixes comes back.
+        if os.environ.get("GABAR_LEGACY_CKPT_KEY", "") == "1":
+            for _legacy_drop in ('feat', 'nf', 'ef'):
+                training_hyperparameters.pop(_legacy_drop, None)
+            print("GABAR_LEGACY_CKPT_KEY=1: using the pre-featurization "
+                  "checkpoint key (old model directories)")
+
         testing_hyperparameters = {
             'domain_name' : args.domain,
             'search' : args.search_strat,
