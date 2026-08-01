@@ -218,6 +218,14 @@ same `run_tests` machinery.
    instances). Writers use `all_edge_features[i, j, k] = 1` unchanged; the
    emit pass sorts keys so edge ordering matches `np.argwhere` exactly.
    `tests/test_sparse_edges.py` pins that equivalence.
+
+   Measured on visitall, 20 test problems, one A40 (2026-08-01): sequential
+   29:00 -> 7:02 (4.1x), batched 28:51 -> 5:38 (5.1x). The cost was kernel
+   time, not compute: system time 448s -> 5.5s and minor page faults 1.12e9
+   -> 2.35e6, i.e. zero-filling pages for arrays that were then discarded.
+   Coverage is unchanged (14/20 sequential, 16/20 batched, before and after).
+   `GABAR_BATCH_EVAL=1` was worth 0.5% before this and is worth 1.25x after:
+   batching could not help while a kernel-bound serial cost dominated.
 8. **Checkpoint identity includes the featurization and the input widths**
    (`feat`, `nf`, `ef` in `training_hyperparameters`, main.py). Without them
    runs differing only in featurization shared one `ModelManager` directory
