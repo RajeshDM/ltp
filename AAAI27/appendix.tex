@@ -67,7 +67,7 @@ prefixes of the same procedure: \union{} runs lines 1 to 3 with
 symbol-identity features in place of $X$, \gadarbind{} runs lines 1 to 7, and
 \gadar{} runs all of it.
 
-\begin{algorithm}[h]
+\begin{algorithm}[t]
 \caption{Construction of the \gadar{} graph for $(s, G, D)$}
 \label{alg:graph}
 \begin{algorithmic}[1]
@@ -143,7 +143,7 @@ planner fails to solve within its limit are skipped, so the collected count
 can fall below the number of instances the generator produced; the counts in
 the table are what was actually collected.
 
-\begin{table}[h]
+\begin{table}[t]
 \small
 \centering
 \caption{Data per domain. Problems and states are training instances and the
@@ -187,7 +187,7 @@ do. The two settings we did choose are the global arity caps $(k_p, k_a)$,
 set to the maxima over the training domains so a held-out domain with wider
 symbols still featurizes at full width, and the number of training epochs.
 
-\begin{table}[h]
+\begin{table}[t]
 \small
 \centering
 \caption{Final hyperparameters, identical across all three systems except
