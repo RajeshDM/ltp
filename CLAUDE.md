@@ -97,6 +97,10 @@ configs/                           one YAML per paper experiment (--config);
                                    (base: key); README.md maps configs to claims
 tools/analyze_results.py           aggregates the results_*.json dumps main.py
                                    writes after testing into one table/CSV
+tools/parity_matrix.sh             batch-vs-sequential parity across
+                                   {cpu,gpu} x {det,nodet}: runs 8 configs,
+                                   compares traces (--action-only: forked or
+                                   not) and final coverage per cell
 tools/bench_featurize.py           times state_to_graph_wrapper on real
                                    rollout states, no model/training needed;
                                    the before/after harness for featurization

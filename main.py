@@ -456,10 +456,9 @@ if __name__ == "__main__":
         atexit.register(trigger_auto_shutdown)
     setup_logging(args.domain, args)
 
-    print(f"Domain: {args.domain}")
-    print(f"Run mode: {args.run_mode}")
-    print(f"Train planner: {args.train_planner_name}")
-    print(f"Test planner: {args.eval_planner_name}")
+    print(f"[{args.mode}] {args.domain} | featurization={args.featurization} "
+          f"| planners: train={args.train_planner_name} "
+          f"eval={args.eval_planner_name}")
 
     eval_planner = _create_planner(args.eval_planner_name)
     is_strips_domain = True
@@ -470,7 +469,6 @@ if __name__ == "__main__":
     _dataset_file_prefix=os.path.join(model_dir, "training_data")
 
     training_data = None
-    print("Collecting training data")
     graphs_inp, graphs_tgt, graph_metadata = None, None, None
     if not os.path.exists(args.datafile) or args.force_collect_data:
         if 'ltp' in args.method :
@@ -945,7 +943,6 @@ if __name__ == "__main__":
                 # force_include_goal_objects=False,
             )
 
-            ic (planner_to_eval)
             test_stats, global_stats = test_planner(
                 planner_to_eval,
                 args.domain,
@@ -969,7 +966,6 @@ if __name__ == "__main__":
         exp_baseline_train(args)
 
     elif 'ltp' in args.method:
-        ic ("LTP start")
         representation_size = args.representation_size
         gnn_rounds = args.gnn_rounds
         n_heads = args.n_heads
@@ -1137,12 +1133,9 @@ if __name__ == "__main__":
             if hasattr(args, '_domain_names_ordered'):
                 _train_kwargs['domain_names'] = args._domain_names_ordered
             train_func(_model, datasets, **_train_kwargs)
-            ic (args.attention_dropout)
-            ic (args.dropout)
-            ic (args.weight_decay)
-            ic (args.n_heads)
-            ic (args.gnn_rounds)
-            ic (args.lr)
+            print(f"  model: L={args.gnn_rounds} heads={args.n_heads} "
+                  f"lr={args.lr} dropout={args.dropout}/{args.attention_dropout} "
+                  f"wd={args.weight_decay}")
 
         if args.mode != 'test' and args.mode != 'train_test' :
            exit() 

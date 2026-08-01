@@ -1504,9 +1504,9 @@ def get_filenames(dataset_size,train_env_name,epochs,_model_version,
         message_string += "_wd" + str(args.weight_decay)
 
     if _debug_level < constants.max_debug_level :
-        ic (message_string)
-        ic (representation_size,gnn_rounds,dataset_size)
-        ic (_save_model_prefix)
+        logger.debug("run=%s repr=%d rounds=%d dataset=%d prefix=%s",
+                     message_string, representation_size, gnn_rounds,
+                     dataset_size, _save_model_prefix)
     if epochs == None or epochs == 0 :
         model_outfile = _save_model_prefix+"_{}_{}.pt".format(train_env_name, message_string)
     elif model_class == GNN_GRU :

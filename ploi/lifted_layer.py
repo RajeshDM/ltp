@@ -292,9 +292,6 @@ def build_lifted_metadata(action_space, max_pred_arity, max_action_arity, mode,
         "lifted layer (%s): %d predicates (%d type-compiled from declared "
         "PDDL types), %d schemas", mode, len(md["lifted_spec"]["predicates"]),
         n_types, len(md["lifted_spec"]["schemas"]))
-    print(f"  lifted layer [{mode}]: {n_types} declared type(s) compiled to "
-          f"unary static predicates"
-          + (" (domain is predicate-typed or untyped)" if not n_types else ""))
     return md
 
 
