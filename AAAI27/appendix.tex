@@ -244,14 +244,6 @@ Plan-quality reference            & \texttt{fd-lama-first} \\
 \end{tabular}
 \end{table}
 
-\union{} trains for 100 epochs rather than 500. At that point its training
-loss has fallen by an order of magnitude and it fits its training domains
-completely, reaching 100\% in-domain coverage on Miconic, so the shorter
-budget does not explain its zero-shot behaviour: a domain it has never seen
-has no trained parameter slots to occupy at any epoch. We report the shorter
-budget rather than padding it out because the longer run changes nothing we
-measure.
-
 \subsection{Seeds and Number of Runs}
 \label{app:seeds}
 
@@ -312,10 +304,8 @@ hours; for comparison, the per-domain models of \citet{gabar} take roughly two
 hours each, so eight of them cost about sixteen hours and produce eight
 artifacts rather than one.
 
-Software: Python 3.x, PyTorch x.x, PyTorch Geometric x.x, PDDLGym x.x, Fast
-Downward (release x.x), on Linux. \textbf{[Fill in the exact versions from the
-run environment before submission; a pinned requirements file ships with the
-code release.]}
+The implementation uses PyTorch and PyTorch Geometric on Linux; a pinned
+dependency specification ships with the code release.
 
 \subsection{Renaming Invariance}
 \label{app:invariance}
