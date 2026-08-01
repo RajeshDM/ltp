@@ -1,0 +1,336 @@
+% Supplementary material for GADAR.
+%
+% Compiles two ways:
+%   (a) standalone, producing a separate supplementary PDF: pdflatex appendix
+%   (b) \input{appendix.tex} just before \end{document} of gadar.tex
+% The guard below detects which, so the same file serves both.
+%
+% Everything here is promised by an answer in the reproducibility checklist;
+% the mapping is in Table~\ref{tab:checklist-map}.
+
+\makeatletter
+\@ifundefined{gadar}{
+  \newif\ifappendixStandalone
+  \appendixStandalonetrue
+}{
+  \newif\ifappendixStandalone
+  \appendixStandalonefalse
+}
+\makeatother
+
+\ifappendixStandalone
+\documentclass[letterpaper]{article}
+\usepackage{aaai2027}
+\usepackage[hyphens]{url}
+\usepackage{graphicx}
+\urlstyle{rm}
+\def\UrlFont{\rm}
+\usepackage{natbib}
+\usepackage{caption}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\frenchspacing
+\setlength{\pdfpagewidth}{8.5in}
+\setlength{\pdfpageheight}{11in}
+\setcounter{secnumdepth}{0}
+
+\newcommand{\gadar}{GADAR}
+\newcommand{\gadarbind}{\gadar{}-BIND}
+\newcommand{\union}{UNION}
+
+\title{GADAR: Supplementary Material}
+\author{Anonymous Submission}
+\affiliations{Anonymized for review}
+
+\begin{document}
+\maketitle
+\fi
+
+\appendix
+\section{Supplementary Material}
+
+This appendix supplies the detail promised by our reproducibility checklist
+answers. Table~\ref{tab:checklist-map} maps each answer to the section that
+discharges it.
+
+\begin{table}[h]
+\small
+\centering
+\caption{Checklist answers and where they are discharged.}
+\label{tab:checklist-map}
+\begin{tabular}{@{}llp{2.9cm}@{}}
+\toprule
+Item & Answer & Section \\
+\midrule
+1.1 outline / pseudocode        & yes     & \ref{app:pseudocode} \\
+4.2 hyperparameter search       & partial & \ref{app:hyper} \\
+4.5 code released on publication& yes     & \ref{app:code} \\
+4.6 implementation comments     & partial & \ref{app:code} \\
+4.7 seeding                     & yes     & \ref{app:seeds} \\
+4.8 computing infrastructure    & partial & \ref{app:compute} \\
+4.9 evaluation metrics          & yes     & \ref{app:metrics} \\
+4.10 number of runs             & yes     & \ref{app:seeds} \\
+4.13 final hyperparameters      & yes     & \ref{app:hyper} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Code and Data Availability}
+\label{app:code}
+
+The implementation is a single Python package built on PyTorch and PyTorch
+Geometric, using PDDLGym to parse domains and problems and Fast Downward
+\citep{fast_downward} to generate training plans. The full source, the
+experiment configuration files that reproduce every number in the paper, and
+the analysis scripts will be released publicly under a permissive license on
+publication. They are not attached to this submission.
+
+Each experiment is a YAML configuration file naming the training domains, the
+featurization rung, and the evaluation domains; a run is a single invocation
+of the entry point with one such file, so the configuration files are a
+complete record of what was run. Files implementing the components introduced
+here, in particular graph construction, the lifted domain layer, the binding
+layer, and the chain layer, carry comments naming the paper section each step
+corresponds to. Files inherited unchanged from the per-domain policy we build
+on \citep{gabar} are not annotated in that way.
+
+\subsection{Domains and Data}
+\label{app:data}
+
+We use the eight benchmark domains of \citet{gabar}, generated with
+\citet{pddl-generators}. Training data is the set of states along a
+satisficing plan for each small instance, labelled with the action the planner
+took. Table~\ref{tab:data} gives the sizes. Instances the planner fails to
+solve within its limit are skipped, so the collected count can be below the
+number of instances the generator produced.
+
+\begin{table}[h]
+\small
+\centering
+\caption{Data per domain. Problems and states are training instances and the
+labelled states collected from their plans; test problems are the domain's
+full test set (our hard split).}
+\label{tab:data}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Domain & Problems & States & Test problems \\
+\midrule
+Blocks     & 200 & 4{,}216 & 200 \\
+Gripper    & 147 & 7{,}287 & 173 \\
+Miconic    & 228 & 5{,}453 & 119 \\
+Visitall   & 125 & 3{,}654 & 50 \\
+Grid       & 192 & 6{,}880 & 48 \\
+Logistics  & 156 & 6{,}732 & 96 \\
+Spanner    & 234 & 3{,}801 & 96 \\
+Rovers     & 312 & 3{,}001 & 54 \\
+\midrule
+Total      & 1{,}594 & 41{,}024 & 836 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Ten percent of the states of each domain are held out as a validation split,
+stratified by domain so every training domain is represented. The split is
+deterministic given the seed. In the leave-one-domain-out experiments the
+held-out domain contributes no training or validation data at all: its plans
+are never collected for that run.
+
+\subsection{Graph Construction}
+\label{app:pseudocode}
+
+Algorithm~\ref{alg:graph} states the construction of
+$\mathcal{G} = (V, E, X, R)$ for one task, in the notation of the
+representation section. Lines marked $\dagger$ are computed once per domain
+and reused for every state of that domain; the rest are per state. The three
+rungs of the ladder are prefixes of this procedure: \union{} runs lines
+1 to 3 with symbol-identity features in place of $X$, \gadarbind{} runs lines
+1 to 7, and \gadar{} runs all of it.
+
+\begin{algorithm}[h]
+\caption{Construction of the \gadar{} graph for $(s, G, D)$}
+\label{alg:graph}
+\begin{algorithmic}[1]
+\STATE $V \leftarrow O \cup L \cup A \cup \{g\}$ where $L$ holds the ground
+  literals of $s$ and of $G$, the latter flagged as goal atoms
+\STATE add $E_{\mathrm{lit}}$: each literal to its argument objects, argument
+  position on the edge
+\STATE add $E_{\mathrm{act}}$: each schema to the objects of its
+  \emph{applicable} groundings, parameter slot on the edge
+\STATE $\dagger$ compile each declared PDDL type of $D$ into a unary static
+  predicate, so typed and predicate-typed domains present one structure
+\STATE $\dagger$ $V \leftarrow V \cup \Sigma \cup Q$: a node per predicate
+  symbol of $D$, and an occurrence node $q_{a,k}$ per literal occurrence in
+  the preconditions and effects of each schema $a$
+\STATE $\dagger$ add $E_{\mathrm{occ}}$: each occurrence to its predicate
+  symbol and its schema, carrying role $r(q)$ and argument-to-slot pairs
+\STATE add $E_{\mathrm{inst}}$ and $E_{\mathrm{bind}}$: each literal to its
+  predicate symbol, each object to its type symbol, and $(o, q_{a,k})$
+  whenever an applicable grounding of $a$ puts $o$ at a slot that occurrence
+  $k$ constrains
+\STATE $\dagger$ add $E_{\mathrm{chain}}$: \textit{enables} between an add and
+  a pre occurrence of a shared predicate, \textit{threatens} likewise for del
+\STATE add $E_{\mathrm{eff}}$: from each applicable grounding, link its
+  objects to any unsatisfied goal atom it adds and any true atom it deletes
+\STATE compute $\mathrm{gdist}(a)$ by breadth-first search over
+  \textit{enables} from the schemas adding a goal predicate; mark objects
+  occurring in an open goal atom
+\STATE emit $X$ and $R$ as indicator vectors; widths depend only on the global
+  arity caps $(k_p, k_a)$, never on $|A|$, $|P|$, $|T|$ or $|O|$
+\end{algorithmic}
+\end{algorithm}
+
+Decoding is unchanged from the per-domain policy: a GRU scores the schema
+nodes against its hidden state, takes the best, then scores the object nodes
+once per argument of the selected schema, feeding each choice back as the next
+input. Search over these choices is a beam of width 2 over schemas and 3 over
+objects per slot.
+
+\subsection{Hyperparameters}
+\label{app:hyper}
+
+Table~\ref{tab:hyper} lists every setting used. Encoder and decoder
+hyperparameters are inherited from \citet{gabar} without modification, which
+is deliberate: the paper's claims are about the representation, and re-tuning
+the network per rung would confound them. We therefore ran no hyperparameter
+search over the architecture, and item 4.2 of the checklist is answered
+``partial'' for that reason. The two settings we did choose are the global
+arity caps $(k_p, k_a)$, set to the maxima over the training domains so that a
+held-out domain with wider symbols still featurizes at full width, and the
+training length, discussed below.
+
+\begin{table}[h]
+\small
+\centering
+\caption{Final hyperparameters. Identical across all three rungs except where
+noted.}
+\label{tab:hyper}
+\begin{tabular}{@{}lr@{}}
+\toprule
+Setting & Value \\
+\midrule
+\multicolumn{2}{@{}l}{\emph{Encoder}} \\
+Message-passing rounds $L$        & 9 \\
+Representation size               & 64 \\
+Attention heads                   & 1 \\
+MLP layers per update block       & 2 \\
+Global node                       & enabled \\
+\midrule
+\multicolumn{2}{@{}l}{\emph{Decoder}} \\
+GRU layers                        & 3 \\
+Beam width, schemas               & 2 \\
+Beam width, objects per slot      & 3 \\
+\midrule
+\multicolumn{2}{@{}l}{\emph{Optimization}} \\
+Optimizer                         & Adam \\
+Learning rate                     & $5 \times 10^{-4}$ \\
+Batch size                        & 64 \\
+Dropout                           & 0.0 \\
+Attention dropout                 & 0.0 \\
+Weight decay                      & 0.0 \\
+Epochs, structural rungs          & 500 \\
+Epochs, \union{}                  & 100 \\
+\midrule
+\multicolumn{2}{@{}l}{\emph{Evaluation}} \\
+Execution bound (steps)           & 500 \\
+Search at test time               & none (greedy) \\
+Revisit monitor                   & enabled \\
+Training plan generator           & \texttt{fd-lama-first} \\
+Plan-quality reference            & \texttt{fd-lama-first} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\union{} trains for 100 epochs rather than 500. At that point its training
+loss has fallen by an order of magnitude and it fits its training domains
+completely, reaching 100\% in-domain coverage on Miconic, so the shorter
+budget does not explain its zero-shot behaviour: a domain it has never seen
+has no trained parameter slots to occupy at any epoch. We report the shorter
+budget rather than padding it out because the longer run changes nothing we
+measure.
+
+\subsection{Seeds and Number of Runs}
+\label{app:seeds}
+
+A run is seeded once, and that seed initializes the network, the training
+shuffle, the train and validation split, and the revisit monitor's fallback
+sampling. The seed is recorded alongside every checkpoint, and the checkpoint
+directory is keyed by the training domain set, the seed, the featurization,
+and the resulting input widths, so runs that differ in any of these cannot
+overwrite one another.
+
+Each reported configuration is run for three seeds and the results averaged.
+We report means without dispersion: three runs are too few for a meaningful
+interval, and the differences the paper turns on, for instance 4\% against
+68\% zero-shot coverage on the hard split of held-out Visitall, are far larger
+than the spread we observe. No statistical test is applied, which is item 4.12
+of the checklist.
+
+\subsection{Evaluation Metrics}
+\label{app:metrics}
+
+Let $\mathcal{T}$ be a test set and $\mathrm{solved}(\pi) \subseteq
+\mathcal{T}$ the instances on which policy $\pi$ reaches a goal state within
+the execution bound. \emph{Coverage} is
+\begin{equation*}
+C(\pi) \;=\; \frac{|\mathrm{solved}(\pi)|}{|\mathcal{T}|} \times 100 .
+\end{equation*}
+Execution is greedy and search-free: at each state the highest-ranked
+applicable action the decoder constructs is executed, and a rollout ends at
+the goal, at a dead end, or at the bound. A rollout that proposes an
+inapplicable action falls back to the next candidate in the beam; if none is
+applicable the rollout fails.
+
+\emph{Plan quality} compares plan lengths on the instances both the policy and
+the reference planner solve. With $|\pi(t)|$ the policy's plan length on
+instance $t$ and $|\rho(t)|$ the reference planner's,
+\begin{equation*}
+P(\pi) \;=\; \frac{\sum_{t \in \mathrm{solved}(\pi) \cap \mathrm{solved}(\rho)} |\rho(t)|}
+                 {\sum_{t \in \mathrm{solved}(\pi) \cap \mathrm{solved}(\rho)} |\pi(t)|} .
+\end{equation*}
+Higher is better and $P > 1$ means plans shorter than the reference. $P$ is
+conditioned on what a system solves, so a system with higher coverage is
+scored on harder instances and $P$ must be read within a column rather than
+across columns. Coverage is the primary metric for that reason.
+
+Coverage is measured with a revisit monitor, which resamples among the
+decoder's applicable proposals when a greedy rollout re-enters a state it has
+already visited. The monitor is part of the execution harness and is applied
+identically to every system, including the untrained control, which is what
+makes the control informative: it measures what the harness achieves when the
+learned component contributes nothing.
+
+\subsection{Compute Environment}
+\label{app:compute}
+
+All training and all evaluation ran on a single NVIDIA A40 GPU per run, one
+run per GPU. Training a single model on all eight domains takes seven to eight
+hours; for comparison, the per-domain models of \citet{gabar} take roughly two
+hours each, so eight of them cost about sixteen hours and produce eight
+artifacts rather than one.
+
+Software: Python 3.x, PyTorch x.x, PyTorch Geometric x.x, PDDLGym x.x, Fast
+Downward (release x.x), on Linux. \textbf{[Fill in the exact versions from the
+run environment before submission; a pinned requirements file ships with the
+code release.]}
+
+\subsection{Renaming Invariance}
+\label{app:invariance}
+
+The claim that \gadar{} is invariant to renaming is enforced by construction
+rather than learned, and it is checked by a unit test that runs on every
+change to the representation: given a domain and a bijective renaming of its
+predicates, action schemas, types, and objects, the test builds the graph for
+the original and the renamed task and asserts that the node feature matrix,
+the edge feature matrix, and the edge lists are identical. The test covers
+both typing conventions in the benchmark suite, domains that declare PDDL
+types and domains that spell types as ordinary unary predicates, and asserts
+that the two produce the same structure after type compilation.
+
+\ifappendixStandalone
+\bibliography{aaai2027}
+\end{document}
+\fi
