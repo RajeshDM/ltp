@@ -952,8 +952,11 @@ class GNN_GRU(EncodeDecode):
 
             # Prepare for next step
             new_active_beams = []
-            ao_scores_new = torch.zeros(ao_scores.shape,device=self.device)
-            #ao_scores_new = torch.zeros_like(ao_scores)
+            # compute_object_scores reads only .shape of this argument and
+            # returns a fresh tensor, so allocating and zero-filling one here
+            # was pure waste, once per parameter slot per decode. ao_scores has
+            # the same shape; nothing reads its contents either.
+            ao_scores_new = ao_scores
 
             # Grounding-constrained decoding (GABAR_CONSTRAINED_DECODE=1):
             # _decode_allowed maps (schema, objects chosen so far) -> the object
@@ -1082,8 +1085,11 @@ class GNN_GRU(EncodeDecode):
 
             # Prepare for next step
             new_active_beams = []
-            ao_scores_new = torch.zeros(ao_scores.shape,device=self.device)
-            #ao_scores_new = torch.zeros_like(ao_scores)
+            # compute_object_scores reads only .shape of this argument and
+            # returns a fresh tensor, so allocating and zero-filling one here
+            # was pure waste, once per parameter slot per decode. ao_scores has
+            # the same shape; nothing reads its contents either.
+            ao_scores_new = ao_scores
 
             for beam_idx, beam in enumerate(active_beams):
                 ao_scores_new = self.compute_object_scores(x, n_parameters,n_objects,
