@@ -1,12 +1,9 @@
-% Supplementary material for GADAR.
+% Appendix for GADAR.
 %
 % Compiles two ways:
-%   (a) standalone, producing a separate supplementary PDF: pdflatex appendix
+%   (a) standalone, producing a separate PDF: pdflatex appendix
 %   (b) \input{appendix.tex} just before \end{document} of gadar.tex
 % The guard below detects which, so the same file serves both.
-%
-% Everything here is promised by an answer in the reproducibility checklist;
-% the mapping is in Table~\ref{tab:checklist-map}.
 
 \makeatletter
 \@ifundefined{gadar}{
@@ -42,7 +39,7 @@
 \newcommand{\gadarbind}{\gadar{}-BIND}
 \newcommand{\union}{UNION}
 
-\title{GADAR: Supplementary Material}
+\title{GADAR: Appendix}
 \author{Anonymous Submission}
 \affiliations{Anonymized for review}
 
@@ -51,104 +48,24 @@
 \fi
 
 \appendix
-\section{Supplementary Material}
+\section{Appendix}
 
-This appendix supplies the detail promised by our reproducibility checklist
-answers. Table~\ref{tab:checklist-map} maps each answer to the section that
-discharges it.
+This appendix gives the detail a reader needs to implement the
+representation, reproduce the experiments, or reuse either in another
+setting. It adds no results: everything reported in the paper is in the
+paper.
 
-\begin{table}[h]
-\small
-\centering
-\caption{Checklist answers and where they are discharged.}
-\label{tab:checklist-map}
-\begin{tabular}{@{}llp{2.9cm}@{}}
-\toprule
-Item & Answer & Section \\
-\midrule
-1.1 outline / pseudocode        & yes     & \ref{app:pseudocode} \\
-4.2 hyperparameter search       & partial & \ref{app:hyper} \\
-4.5 code released on publication& yes     & \ref{app:code} \\
-4.6 implementation comments     & partial & \ref{app:code} \\
-4.7 seeding                     & yes     & \ref{app:seeds} \\
-4.8 computing infrastructure    & partial & \ref{app:compute} \\
-4.9 evaluation metrics          & yes     & \ref{app:metrics} \\
-4.10 number of runs             & yes     & \ref{app:seeds} \\
-4.13 final hyperparameters      & yes     & \ref{app:hyper} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Code and Data Availability}
-\label{app:code}
-
-The implementation is a single Python package built on PyTorch and PyTorch
-Geometric, using PDDLGym to parse domains and problems and Fast Downward
-\citep{fast_downward} to generate training plans. The full source, the
-experiment configuration files that reproduce every number in the paper, and
-the analysis scripts will be released publicly under a permissive license on
-publication. They are not attached to this submission.
-
-Each experiment is a YAML configuration file naming the training domains, the
-featurization rung, and the evaluation domains; a run is a single invocation
-of the entry point with one such file, so the configuration files are a
-complete record of what was run. Files implementing the components introduced
-here, in particular graph construction, the lifted domain layer, the binding
-layer, and the chain layer, carry comments naming the paper section each step
-corresponds to. Files inherited unchanged from the per-domain policy we build
-on \citep{gabar} are not annotated in that way.
-
-\subsection{Domains and Data}
-\label{app:data}
-
-We use the eight benchmark domains of \citet{gabar}, generated with
-\citet{pddl-generators}. Training data is the set of states along a
-satisficing plan for each small instance, labelled with the action the planner
-took. Table~\ref{tab:data} gives the sizes. Instances the planner fails to
-solve within its limit are skipped, so the collected count can be below the
-number of instances the generator produced.
-
-\begin{table}[h]
-\small
-\centering
-\caption{Data per domain. Problems and states are training instances and the
-labelled states collected from their plans; test problems are the domain's
-full test set (our hard split).}
-\label{tab:data}
-\begin{tabular}{@{}lrrr@{}}
-\toprule
-Domain & Problems & States & Test problems \\
-\midrule
-Blocks     & 200 & 4{,}216 & 200 \\
-Gripper    & 147 & 7{,}287 & 173 \\
-Miconic    & 228 & 5{,}453 & 119 \\
-Visitall   & 125 & 3{,}654 & 50 \\
-Grid       & 192 & 6{,}880 & 48 \\
-Logistics  & 156 & 6{,}732 & 96 \\
-Spanner    & 234 & 3{,}801 & 96 \\
-Rovers     & 312 & 3{,}001 & 54 \\
-\midrule
-Total      & 1{,}594 & 41{,}024 & 836 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Ten percent of the states of each domain are held out as a validation split,
-stratified by domain so every training domain is represented. The split is
-deterministic given the seed. In the leave-one-domain-out experiments the
-held-out domain contributes no training or validation data at all: its plans
-are never collected for that run.
-
-\subsection{Graph Construction}
+\subsection{Building the Graph}
 \label{app:pseudocode}
 
-Algorithm~\ref{alg:graph} states the construction of
-$\mathcal{G} = (V, E, X, R)$ for one task, in the notation of the
-representation section. Lines marked $\dagger$ are computed once per domain
-and reused for every state of that domain; the rest are per state. The three
-rungs of the ladder are prefixes of this procedure: \union{} runs lines
-1 to 3 with symbol-identity features in place of $X$, \gadarbind{} runs lines
-1 to 7, and \gadar{} runs all of it.
+Algorithm~\ref{alg:graph} constructs $\mathcal{G} = (V, E, X, R)$ for one
+task, in the notation of the representation section. Lines marked $\dagger$
+depend on the domain description alone, so they are computed once per domain
+and reused for every state of it; the rest are per state and are linear in
+the applicable groundings and the open goal atoms. The three systems are
+prefixes of the same procedure: \union{} runs lines 1 to 3 with
+symbol-identity features in place of $X$, \gadarbind{} runs lines 1 to 7, and
+\gadar{} runs all of it.
 
 \begin{algorithm}[h]
 \caption{Construction of the \gadar{} graph for $(s, G, D)$}
@@ -183,30 +100,98 @@ rungs of the ladder are prefixes of this procedure: \union{} runs lines
 \end{algorithmic}
 \end{algorithm}
 
-Decoding is unchanged from the per-domain policy: a GRU scores the schema
-nodes against its hidden state, takes the best, then scores the object nodes
-once per argument of the selected schema, feeding each choice back as the next
-input. Search over these choices is a beam of width 2 over schemas and 3 over
-objects per slot.
+Two implementation points matter for anyone rebuilding this. First, the type
+compilation on line 4 is what lets one model span domains that declare PDDL
+types and domains that spell types as ordinary unary predicates; without it
+the two families present different structure for the same constraint, and a
+policy trained on one produces type-invalid groundings on the other. Second,
+$E_{\mathrm{bind}}$ on line 7 is the only relation that crosses between the
+two layers, joining an object of the current problem to a precondition
+occurrence of a schema in $D$. Everything else lives wholly inside one layer.
 
-\subsection{Hyperparameters}
-\label{app:hyper}
+The reference implementation accumulates edge features sparsely, as a map
+from node pair to the set of features that hold. A dense
+$(k_a, |V|, |V|, \dim R)$ array is the obvious alternative and is what we
+wrote first, but it costs $O(k_a |V|^2 \dim R)$ to allocate and scan for
+every state, which dominates the cost of re-featurizing states during
+evaluation on large instances.
 
-Table~\ref{tab:hyper} lists every setting used. Encoder and decoder
-hyperparameters are inherited from \citet{gabar} without modification, which
-is deliberate: the paper's claims are about the representation, and re-tuning
-the network per rung would confound them. We therefore ran no hyperparameter
-search over the architecture, and item 4.2 of the checklist is answered
-``partial'' for that reason. The two settings we did choose are the global
-arity caps $(k_p, k_a)$, set to the maxima over the training domains so that a
-held-out domain with wider symbols still featurizes at full width, and the
-training length, discussed below.
+\subsection{Decoding and Training}
+\label{app:decode}
+
+A GRU scores the schema nodes against its hidden state and takes the best,
+then scores the object nodes once per argument of the selected schema,
+feeding each choice back as the next input. The number of arguments is read
+from $D$ for the selected schema, under a global arity cap rather than a
+per-domain constant, which is what allows the loop to run in a domain whose
+schemas were never seen. Selection is a dot product between the decoder state
+and the embedding of a node present in the graph, so no layer is sized by the
+number of schemas, objects, or predicates. Search over these choices is a
+beam of width 2 over schemas and 3 over objects per slot.
+
+Training is supervised on plans from a satisficing planner: cross-entropy
+against the planner's schema choice and each of its argument choices, at
+every state along every plan. Because feature widths do not depend on the
+domain, states from different domains mix freely within a batch.
+
+\subsection{Domains and Data}
+\label{app:data}
+
+We use the eight benchmark domains of \citet{gabar}, generated with
+\citet{pddl-generators}. Table~\ref{tab:data} gives the sizes. Instances the
+planner fails to solve within its limit are skipped, so the collected count
+can fall below the number of instances the generator produced; the counts in
+the table are what was actually collected.
 
 \begin{table}[h]
 \small
 \centering
-\caption{Final hyperparameters. Identical across all three rungs except where
-noted.}
+\caption{Data per domain. Problems and states are training instances and the
+labelled states collected from their plans; test problems are the domain's
+full test set (the hard split).}
+\label{tab:data}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Domain & Problems & States & Test problems \\
+\midrule
+Blocks     & 200 & 4{,}216 & 200 \\
+Gripper    & 147 & 7{,}287 & 173 \\
+Miconic    & 228 & 5{,}453 & 119 \\
+Visitall   & 125 & 3{,}654 & 50 \\
+Grid       & 192 & 6{,}880 & 48 \\
+Logistics  & 156 & 6{,}732 & 96 \\
+Spanner    & 234 & 3{,}801 & 96 \\
+Rovers     & 312 & 3{,}001 & 54 \\
+\midrule
+Total      & 1{,}594 & 41{,}024 & 836 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Ten percent of each domain's states are held out for validation, stratified
+by domain so every training domain is represented, and the split is
+deterministic given the seed. In the leave-one-domain-out experiments the
+held-out domain contributes nothing to either split: its plans are never
+collected for that run, so no state, predicate, or schema of it is seen.
+
+\subsection{Hyperparameters}
+\label{app:hyper}
+
+Table~\ref{tab:hyper} lists every setting. Encoder and decoder
+hyperparameters are inherited from \citet{gabar} without modification. This
+is deliberate rather than incidental: the comparisons in the paper are
+between representations, and re-tuning the network for each one would
+confound them. We therefore ran no architecture search, and a practitioner
+adapting this to a new benchmark should expect to gain from tuning we did not
+do. The two settings we did choose are the global arity caps $(k_p, k_a)$,
+set to the maxima over the training domains so a held-out domain with wider
+symbols still featurizes at full width, and the number of training epochs.
+
+\begin{table}[h]
+\small
+\centering
+\caption{Final hyperparameters, identical across all three systems except
+where noted.}
 \label{tab:hyper}
 \begin{tabular}{@{}lr@{}}
 \toprule
@@ -231,7 +216,7 @@ Batch size                        & 64 \\
 Dropout                           & 0.0 \\
 Attention dropout                 & 0.0 \\
 Weight decay                      & 0.0 \\
-Epochs, structural rungs          & 500 \\
+Epochs, structural systems        & 500 \\
 Epochs, \union{}                  & 100 \\
 \midrule
 \multicolumn{2}{@{}l}{\emph{Evaluation}} \\
@@ -244,24 +229,14 @@ Plan-quality reference            & \texttt{fd-lama-first} \\
 \end{tabular}
 \end{table}
 
-\subsection{Seeds and Number of Runs}
-\label{app:seeds}
+A run is seeded once, and that seed governs the network initialization, the
+training shuffle, the train and validation split, and the revisit monitor's
+fallback sampling. Each reported configuration is run for three seeds and the
+results averaged. We report means without dispersion: three runs are too few
+for a meaningful interval, and the differences the paper turns on are far
+larger than the spread we observe.
 
-A run is seeded once, and that seed initializes the network, the training
-shuffle, the train and validation split, and the revisit monitor's fallback
-sampling. The seed is recorded alongside every checkpoint, and the checkpoint
-directory is keyed by the training domain set, the seed, the featurization,
-and the resulting input widths, so runs that differ in any of these cannot
-overwrite one another.
-
-Each reported configuration is run for three seeds and the results averaged.
-We report means without dispersion: three runs are too few for a meaningful
-interval, and the differences the paper turns on, for instance 4\% against
-68\% zero-shot coverage on the hard split of held-out Visitall, are far larger
-than the spread we observe. No statistical test is applied, which is item 4.12
-of the checklist.
-
-\subsection{Evaluation Metrics}
+\subsection{Evaluation Protocol}
 \label{app:metrics}
 
 Let $\mathcal{T}$ be a test set and $\mathrm{solved}(\pi) \subseteq
@@ -270,55 +245,74 @@ the execution bound. \emph{Coverage} is
 \begin{equation*}
 C(\pi) \;=\; \frac{|\mathrm{solved}(\pi)|}{|\mathcal{T}|} \times 100 .
 \end{equation*}
-Execution is greedy and search-free: at each state the highest-ranked
-applicable action the decoder constructs is executed, and a rollout ends at
-the goal, at a dead end, or at the bound. A rollout that proposes an
-inapplicable action falls back to the next candidate in the beam; if none is
-applicable the rollout fails.
+Execution is greedy and search-free. At each state the highest-ranked
+applicable action the decoder constructs is executed; a rollout that proposes
+an inapplicable action falls back to the next candidate in the beam, and if
+none is applicable the rollout fails. Rollouts also end at the goal, at a
+dead end, or at the step bound.
 
-\emph{Plan quality} compares plan lengths on the instances both the policy and
-the reference planner solve. With $|\pi(t)|$ the policy's plan length on
-instance $t$ and $|\rho(t)|$ the reference planner's,
+\emph{Plan quality} compares plan lengths on the instances that both the
+policy and the reference planner solve. With $|\pi(t)|$ the policy's plan
+length on instance $t$ and $|\rho(t)|$ the reference planner's,
 \begin{equation*}
 P(\pi) \;=\; \frac{\sum_{t \in \mathrm{solved}(\pi) \cap \mathrm{solved}(\rho)} |\rho(t)|}
                  {\sum_{t \in \mathrm{solved}(\pi) \cap \mathrm{solved}(\rho)} |\pi(t)|} .
 \end{equation*}
-Higher is better and $P > 1$ means plans shorter than the reference. $P$ is
-conditioned on what a system solves, so a system with higher coverage is
-scored on harder instances and $P$ must be read within a column rather than
-across columns. Coverage is the primary metric for that reason.
+Higher is better, and $P > 1$ means plans shorter than the reference. Because
+$P$ conditions on what a system solves, a system with higher coverage is
+scored on harder instances, so $P$ should be read within a column rather than
+across columns, and coverage is the primary metric.
 
 Coverage is measured with a revisit monitor, which resamples among the
 decoder's applicable proposals when a greedy rollout re-enters a state it has
-already visited. The monitor is part of the execution harness and is applied
-identically to every system, including the untrained control, which is what
-makes the control informative: it measures what the harness achieves when the
-learned component contributes nothing.
-
-\subsection{Compute Environment}
-\label{app:compute}
-
-All training and all evaluation ran on a single NVIDIA A40 GPU per run, one
-run per GPU. Training a single model on all eight domains takes seven to eight
-hours; for comparison, the per-domain models of \citet{gabar} take roughly two
-hours each, so eight of them cost about sixteen hours and produce eight
-artifacts rather than one.
-
-The implementation uses PyTorch and PyTorch Geometric on Linux; a pinned
-dependency specification ships with the code release.
+already visited. The monitor belongs to the execution harness and applies
+identically to every system, including the untrained control. That is what
+makes the control informative: it measures what the harness alone achieves
+when the learned component contributes nothing, and it is the number the
+policy's coverage should be read against.
 
 \subsection{Renaming Invariance}
 \label{app:invariance}
 
-The claim that \gadar{} is invariant to renaming is enforced by construction
-rather than learned, and it is checked by a unit test that runs on every
-change to the representation: given a domain and a bijective renaming of its
+Invariance to renaming is a property of the construction rather than
+something learned, and it is checked by a test that runs on every change to
+the representation. Given a domain and a bijective renaming of its
 predicates, action schemas, types, and objects, the test builds the graph for
 the original and the renamed task and asserts that the node feature matrix,
-the edge feature matrix, and the edge lists are identical. The test covers
-both typing conventions in the benchmark suite, domains that declare PDDL
-types and domains that spell types as ordinary unary predicates, and asserts
-that the two produce the same structure after type compilation.
+the edge feature matrix, and the edge lists are identical. It covers both
+typing conventions in the benchmark suite and asserts that a domain declaring
+PDDL types and an equivalent domain spelling types as unary predicates
+produce the same structure after type compilation.
+
+\subsection{Compute and Runtime}
+\label{app:compute}
+
+All training and all evaluation ran on a single NVIDIA A40 GPU per run, one
+run per GPU. Training one model on all eight domains takes seven to eight
+hours. For comparison, the per-domain models of \citet{gabar} take roughly
+two hours each, so covering the same eight domains costs about sixteen hours
+and yields eight separate models rather than one.
+
+Evaluation, not training, is the expensive half of a full experiment. Every
+state of every rollout is featurized from scratch, and the largest test
+instances are an order of magnitude bigger than anything seen in training, so
+a single evaluation sweep over all eight test sets can exceed the cost of the
+training run that produced the model. Anyone reusing this pipeline at larger
+scale should expect that, and should look at the per-state graph construction
+before looking at the network.
+
+\subsection{Code}
+\label{app:code}
+
+The implementation is a single Python package built on PyTorch and PyTorch
+Geometric, using PDDLGym to parse domains and problems and Fast Downward
+\citep{fast_downward} to generate training plans. Each experiment is one YAML
+configuration file naming the training domains, the representation, and the
+evaluation domains, and a run is a single invocation of the entry point with
+one such file, so the configuration files are a complete record of what was
+run. The source, those configuration files, and the analysis scripts will be
+released publicly under a permissive license on publication, with a pinned
+dependency specification.
 
 \ifappendixStandalone
 \bibliography{aaai2027}
