@@ -894,12 +894,16 @@ class PlannerTester:
         start_time = time.time()
 
         # Each problem needs its own env instance (env.step mutates internal
-        # state). Use deepcopy from a single template to avoid re-parsing the
-        # PDDL domain file N times (pddlgym.make is the expensive part).
-        active, results_by_problem = {}, {}
+        # state). Deepcopy from a single template so the PDDL domain file is
+        # parsed once (pddlgym.make is the expensive part).
         _suffix = "Test" if getattr(self.config, "test_split", "test") == "test" else ""
         template_env = pddlgym.make(f"PDDLEnv{self.config.domain_name}{_suffix}-v0")
-        for p in problem_idxs:
+
+        def _fname_for(p):
+            fname = template_env.problems[p].problem_fname
+            return "/".join(fname.split("/")[-2:]) + "_" + str(epoch)
+
+        def _build_state(p):
             env = copy.deepcopy(template_env)
             env.fix_problem_index(p)
             state, _ = env.reset()
@@ -909,15 +913,9 @@ class PlannerTester:
             monitor = StateMonitor() if use_monitor else None
             if monitor:
                 monitor.add_state(state)
-            fname = env.problems[p].problem_fname
-            fname = "/".join(fname.split("/")[-2:]) + "_" + str(epoch)
-            active[p] = {"env": env, "state": state, "monitor": monitor,
-                         "result": result, "fname": fname, "step": 0,
-                         "fallback_rng": self._fallback_rng_for(p)}
-            results_by_problem[p] = result
-        del template_env
-
-        t_setup = time.time() - start_time
+            return {"env": env, "state": state, "monitor": monitor,
+                    "result": result, "fname": _fname_for(p), "step": 0,
+                    "fallback_rng": self._fallback_rng_for(p)}
 
         n_total = len(problem_idxs)
         n_solved = 0
@@ -956,15 +954,32 @@ class PlannerTester:
         # worker-side step counter is not the parent's.
         pool = None
         _n_workers = configured_workers()
+        if _n_workers > 0 and os.environ.get("GABAR_TRACE_SCORES", ""):
+            print("[batch] GABAR_FEATURIZE_WORKERS ignored while "
+                  "GABAR_TRACE_SCORES is set (traces come from the "
+                  "serial path)", flush=True)
+            _n_workers = 0
+
+        active, results_by_problem = {}, {}
         if _n_workers > 0:
-            if os.environ.get("GABAR_TRACE_SCORES", ""):
-                print("[batch] GABAR_FEATURIZE_WORKERS ignored while "
-                      "GABAR_TRACE_SCORES is set (traces come from the "
-                      "serial path)", flush=True)
-            else:
-                pool = RolloutWorkerPool(_n_workers, active,
-                                         _featurize_one, _step_one)
-                print(f"[batch] {pool.n_workers} rollout workers", flush=True)
+            # Workers build their own envs; the parent keeps only what it
+            # reports on (the problem's filename) and placeholder results,
+            # replaced by the authoritative ones at collect_results().
+            pool = RolloutWorkerPool(_n_workers, problem_idxs, _build_state,
+                                     _featurize_one, _step_one)
+            print(f"[batch] {pool.n_workers} rollout workers", flush=True)
+            for p in problem_idxs:
+                active[p] = {"fname": _fname_for(p)}
+                placeholder = PlanningResult()
+                placeholder.problem_idx = p
+                results_by_problem[p] = placeholder
+        else:
+            for p in problem_idxs:
+                active[p] = _build_state(p)
+                results_by_problem[p] = active[p]["result"]
+        del template_env
+
+        t_setup = time.time() - start_time
 
         round_num = 0
         while active:

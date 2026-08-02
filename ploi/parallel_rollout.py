@@ -96,8 +96,13 @@ class RolloutWorkerPool:
     is literally the code the serial path runs.
     """
 
-    def __init__(self, n_workers, states, featurize_one, step_one):
-        ids = sorted(states)
+    def __init__(self, n_workers, problem_ids, build_state,
+                 featurize_one, step_one):
+        """`build_state(p)` returns the per-problem state dict. It runs IN
+        the worker that will own p, so constructing the envs (a deepcopy, a
+        reset and a full regrounding, ~0.9s each) parallelises too instead
+        of running serially in the parent."""
+        ids = sorted(problem_ids)
         n_workers = max(1, min(n_workers, len(ids)))
         # Round-robin over sorted ids: deterministic, and it spreads the
         # long-running problems (which cluster by size in the test sets)
@@ -107,15 +112,26 @@ class RolloutWorkerPool:
         ctx = mp.get_context("fork")
         self._conns, self._procs = [], []
         for w in range(n_workers):
-            mine = {p: states[p] for p in ids if self.owner[p] == w}
+            mine = [p for p in ids if self.owner[p] == w]
             parent_conn, child_conn = ctx.Pipe()
-            proc = ctx.Process(target=_worker_loop,
-                               args=(child_conn, mine, featurize_one, step_one),
-                               daemon=True)
+            proc = ctx.Process(
+                target=_worker_loop,
+                args=(child_conn, mine, build_state, featurize_one, step_one),
+                daemon=True)
             proc.start()
             child_conn.close()          # parent keeps only its end
             self._conns.append(parent_conn)
             self._procs.append(proc)
+
+        # Block until every worker has built its envs. Keeps setup inside the
+        # caller's setup timing, and surfaces a build failure here rather
+        # than as a mystifying hang on the first featurize round.
+        for conn in self._conns:
+            status = conn.recv()
+            if isinstance(status, BaseException):
+                self.close()
+                raise RuntimeError("rollout worker failed to build its "
+                                   "problems") from status
 
     @property
     def n_workers(self):
@@ -181,12 +197,19 @@ class RolloutWorkerPool:
         self.close()
 
 
-def _worker_loop(conn, states, featurize_one, step_one):
-    """Owns `states` for the life of the rollout; replies to one command at
-    a time. Groundings are kept between the FEATURIZE and STEP halves of a
-    round so they are enumerated exactly once, as in the serial path."""
+def _worker_loop(conn, my_ids, build_state, featurize_one, step_one):
+    """Builds and then owns the problems in `my_ids` for the life of the
+    rollout; replies to one command at a time. Groundings are kept between
+    the FEATURIZE and STEP halves of a round so they are enumerated exactly
+    once, as in the serial path."""
     groundings = {}
     try:
+        try:
+            states = {p: build_state(p) for p in my_ids}
+        except BaseException as exc:        # report, do not hang the parent
+            conn.send(exc)
+            return
+        conn.send({})                       # ready
         while True:
             cmd, payload = conn.recv()
             if cmd == STOP:
