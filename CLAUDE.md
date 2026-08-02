@@ -109,6 +109,11 @@ configs/                           one YAML per paper experiment (--config);
                                    (base: key); README.md maps configs to claims
 tools/analyze_results.py           aggregates the results_*.json dumps main.py
                                    writes after testing into one table/CSV
+ONBOARDING.md                      for someone arriving from GABAR: what is
+                                   unchanged, what is new and optional, and
+                                   the four behavioural/compat gotchas
+                                   (checkpoint key, executor RNG, refused
+                                   bare invocation, cache layout)
 PERFORMANCE.md                     measured evaluation timings per machine,
                                    the optimization chain with its
                                    verification, worker-count scaling,
