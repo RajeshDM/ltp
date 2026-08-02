@@ -604,10 +604,17 @@ if __name__ == "__main__":
                     if len(train_domains) > 1:
                         raise ValueError("per_domain featurization cannot mix domains; use --featurization union, structural, joint_lite, joint, or joint_chain")
                     name = train_domains[0][0]
-                    graphs, graph_metadata, action_space = process_pddl_to_graphs(
-                        name, train_planner, train_domains[0][1], args,
-                        _create_graph_dataset_ltp)
-                    per_domain_graphs = {name: graphs}
+                    if _test_only:
+                        # per_domain takes its metadata from the graph build,
+                        # unlike union/structural which build it separately -
+                        # but pass 1 already loaded exactly this.
+                        graph_metadata, action_space = per_domain_meta[name]
+                        per_domain_graphs = {}
+                    else:
+                        graphs, graph_metadata, action_space = process_pddl_to_graphs(
+                            name, train_planner, train_domains[0][1], args,
+                            _create_graph_dataset_ltp)
+                        per_domain_graphs = {name: graphs}
 
                 # Update num_global_features from actual graph data: union/
                 # structural metadata predates graph creation, so its value
@@ -652,6 +659,19 @@ if __name__ == "__main__":
                 rng.shuffle(input_hetero_graphs)
                 rng.shuffle(val_hetero_graphs)
 
+            elif args.mode == 'test':
+                # Single-domain test run (the per-domain GABAR baselines use
+                # --domain, not --domains): metadata and action space are all
+                # the test path needs, and load_domain_metadata returns them
+                # from the unified cache without building any graphs.
+                from ploi.datautils_ltp import load_domain_metadata
+                print("[test] metadata-only startup: skipping training-graph "
+                      f"load for {args.domain}")
+                graph_metadata, action_space = load_domain_metadata(
+                    args.domain, train_planner, args.num_train_problems, args,
+                    _create_graph_dataset_ltp)
+                input_hetero_graphs, val_hetero_graphs = [], []
+                all_input_graphs = []
             else:
                 all_input_graphs , graph_metadata,action_space =  process_pddl_to_graphs(
                     args.domain,
