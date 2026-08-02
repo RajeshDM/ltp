@@ -178,8 +178,20 @@ plan:
 | cores | training slots | dataloaders each | eval lane while training | eval lane when idle |
 |---|---|---|---|---|
 | 32 | 4 | 4 | 12 | 16 |
-| 16 | 4 | 2 | 4 | 16 |
+| 16 | 4 | 2 | 4 (10 if only 2 are training) | 16 |
 | 8 | 3 | 1 | 2 | 8 |
+
+**Measured allocations: node M has 32, node D has 16.** That is the wrong way
+round for the roles, since node D does the evaluation and evaluation is the
+CPU-bound half. Two adjustments compensate, both automatic:
+
+- The eval lane sizes itself to what is *actually* training, not to the slot
+  count. Node D runs 2 trainings on 16 cores, so its lane is 10 workers, not
+  the 4 that 4 slots would imply.
+- Node D runs **two** seed replicates, not three. Seed 10 already exists on
+  that filesystem, so 10/12/13 is the three seeds the paper claims; the third
+  replicate would have cost a fifth of a 16-core node for a fourth point
+  nobody needs.
 
 At 16 cores the dataloaders halve rather than a training slot being dropped:
 four concurrent trainings is the *GPU* power ceiling (4 x 170W ~ 700W)

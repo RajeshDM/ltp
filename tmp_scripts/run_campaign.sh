@@ -156,8 +156,8 @@ evalq() {   # tag  extra-flags  config...
 
 say "campaign node $NODE starting in $REPO"
 say "wandb group $GABAR_WANDB_GROUP"
-say "$CORES cores -> $SLOTS training slots x (1 + $DL_WORKERS dataloader), \
-eval $WORKERS workers while training, $EVAL_IDLE when idle"
+say "$CORES cores -> up to $SLOTS trainings x $CORES_PER_TRAINING cores; \
+eval lane sizes itself to whatever is left, $EVAL_IDLE once training is done"
 
 if [ "$NODE" = "m" ]; then
     # ---- Node M: the sweep, then the data-need arms --------------------
@@ -205,8 +205,13 @@ else
     # Lane B first so the trainings are already occupying the GPU while the
     # evaluation lane (CPU) runs alongside them; the reverse order would
     # leave the GPU idle for the whole first evaluation.
-    say "PHASE 1  three seed replicates ($((3 * (1 + DL_WORKERS))) cores)"
-    for s in 12 13 14; do
+    # Two, not three: seed 10 already exists on this filesystem, so 10/12/13
+    # is the three seeds the paper and appendix claim. The third replicate
+    # would cost a third of a 16-core node for a fourth point nobody needs.
+    N_SEEDS=2
+    say "PHASE 1  $N_SEEDS seed replicates ($((N_SEEDS * CORES_PER_TRAINING)) \
+cores; seed 10 already exists, so this makes three)"
+    for s in 12 13; do
         train all8_joint_chain "s$s" --seed "$s" --mode train
         stagger
     done
@@ -214,6 +219,9 @@ else
     say "PHASE 2  evaluate the existing all8 checkpoints alongside them"
     # Configs this filesystem never trained report NO MODELS and are skipped,
     # so this doubles as an inventory of what node D actually holds.
+    _lane=$(eval_workers_for "$N_SEEDS")
+    say "         eval lane: $_lane workers alongside $N_SEEDS trainings"
+    WORKERS=$_lane \
     evalq "all8" "" \
         configs/all8_union.yaml configs/all8_joint_chain.yaml \
         configs/all8_joint.yaml configs/all8_joint_lite.yaml \
@@ -222,7 +230,7 @@ else
     wait_for_trainings
 
     say "PHASE 3  evaluate each replicate ($EVAL_IDLE workers, GPU now idle)"
-    for s in 12 13 14; do
+    for s in 12 13; do
         WORKERS=$EVAL_IDLE evalq "s$s" "--seed $s" configs/all8_joint_chain.yaml
     done
 fi

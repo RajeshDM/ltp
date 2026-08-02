@@ -28,10 +28,23 @@ compute_budget() {          # cores -> SLOTS DL_WORKERS EVAL_BUSY EVAL_IDLE
         # this branch only keeps the arithmetic from going negative.
         SLOTS=1; DL_WORKERS=0
     fi
-    local per=$((1 + DL_WORKERS))
-    EVAL_BUSY=$(( cores - SLOTS * per ))
+    CORES_PER_TRAINING=$((1 + DL_WORKERS))
+    EVAL_BUSY=$(( cores - SLOTS * CORES_PER_TRAINING ))
     [ "$EVAL_BUSY" -lt 1 ] && EVAL_BUSY=1
     # Once training is done the eval lane gets the machine, capped at the
     # measured plateau.
     EVAL_IDLE=$(( cores < 16 ? cores : 16 ))
+}
+
+# EVAL_BUSY above assumes every training slot is occupied. A phase that runs
+# FEWER trainings than SLOTS should hand the difference to the eval lane -
+# node D runs 2 seed replicates on a 16-core box, so the lane is 10 workers,
+# not the 4 that SLOTS=4 implies. Evaluation is the CPU-bound half of the
+# work; leaving cores idle there is the expensive mistake.
+eval_workers_for() {        # concurrent-trainings -> echoes worker count
+    local running="$1" free
+    free=$(( CORES - running * CORES_PER_TRAINING ))
+    [ "$free" -lt 1 ] && free=1
+    [ "$free" -gt "$EVAL_IDLE" ] && free="$EVAL_IDLE"
+    echo "$free"
 }
