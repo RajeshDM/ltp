@@ -272,9 +272,9 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     #literals = [literal for literal in state.literals if literal.predicate.arity != 0]
     #goal_literals = [ G(literal) for literal in list(state.goal.literals) if literal.predicate.arity != 0]
     #literals = list(state.literals)
-    literals = [literal for literal in sorted(state.literals)]
+    literals = sorted(state.literals, key=repr)
     #goal_literals = [G(literal) for literal in sorted(state.goal.literals)]
-    _sorted_goal = sorted(goal_state.literals)
+    _sorted_goal = sorted(goal_state.literals, key=repr)
     goal_literals = [G(literal) for literal in _sorted_goal]
     # Set, not list: `lit in goal_literals` below runs once per literal, and
     # list membership is a linear scan of Literal.__eq__ - O(|literals| *
@@ -1091,10 +1091,10 @@ def state_to_graph_wrapper(state,action_space,grounding,prev_actions,prev_state,
     all_actions = [k for k, v in action_space.items()]
     num_actions =len(all_actions)
     # Target nodes
-    literals = [literal for literal in sorted(state.literals)]
+    literals = sorted(state.literals, key=repr)
     G = wrap_goal_literal
     #goal_literals_old = [G(literal) for literal in sorted(state.goal.literals)]
-    goal_literals = [G(literal) for literal in sorted(goal_state.literals)]
+    goal_literals = [G(literal) for literal in sorted(goal_state.literals, key=repr)]
     num_objects = len(node_to_objects) - (num_actions) - (len(literals + goal_literals))
     num_non_action_nodes = len(node_to_objects) - num_actions
     objects_to_node = {v: k for k, v in node_to_objects.items()}
