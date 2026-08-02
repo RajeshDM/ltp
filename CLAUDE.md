@@ -101,7 +101,14 @@ tools/graph_fingerprint.py         hashes every array of every featurized
                                    graph over seeded rollouts; record before a
                                    featurizer change, record after, --compare.
                                    The byte-identity gate for refactoring
-                                   _state_to_graph_ltp
+                                   _state_to_graph_ltp. ALWAYS run it against
+                                   itself first (same code, two invocations):
+                                   a tool whose own rollouts drift reports
+                                   avalanche mismatches that look like a
+                                   broken refactor. It sorts groundings by
+                                   repr for that reason - `all_ground_literals`
+                                   returns a set, so list order follows
+                                   PYTHONHASHSEED and changes per launch
 tools/parity_matrix.sh             batch-vs-sequential parity across
                                    {cpu,gpu} x {det,nodet}: runs 8 configs,
                                    compares traces (--action-only: forked or
