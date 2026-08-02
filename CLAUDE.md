@@ -97,6 +97,11 @@ configs/                           one YAML per paper experiment (--config);
                                    (base: key); README.md maps configs to claims
 tools/analyze_results.py           aggregates the results_*.json dumps main.py
                                    writes after testing into one table/CSV
+tools/graph_fingerprint.py         hashes every array of every featurized
+                                   graph over seeded rollouts; record before a
+                                   featurizer change, record after, --compare.
+                                   The byte-identity gate for refactoring
+                                   _state_to_graph_ltp
 tools/parity_matrix.sh             batch-vs-sequential parity across
                                    {cpu,gpu} x {det,nodet}: runs 8 configs,
                                    compares traces (--action-only: forked or
