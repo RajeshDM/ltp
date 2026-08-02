@@ -496,11 +496,19 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
             'type_occ': _lifted_spec.get('type_occ', {}),
         }
 
+    # O(1) position lookup instead of list.index (a linear scan per call),
+    # and dedup: an object appearing in many groundings at the same slot was
+    # re-processed once per grounding, though the writes are idempotent.
+    _object_pos = {o: i for i, o in enumerate(all_objects)}
+    _done = set()
     for action, values in actions_to_node_groundings.items():
         action_index = objects_to_node[action]
         for position,objects in values.items():
             for object in objects :
-                object_loc = all_objects.index(object)
+                if (action_index, position, object) in _done:
+                    continue
+                _done.add((action_index, position, object))
+                object_loc = _object_pos[object]
                 _get_precondition_satisfaction_position(action, state.literals, all_objects, all_edge_features_stack[position],
                                                             action_space, action_index, object_loc,
                                                             position,_edge_feature_to_index,
