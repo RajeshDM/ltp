@@ -255,21 +255,21 @@ same `run_tests` machinery.
    `..._ltp_batch` (dead on the live path); `_create_planner` exists in both
    v1 (imported by main.py) and v2 (used internally). Before changing "old"
    code, trace the live path (§8, rule 8).
-2. **Same-name redefinition:** `log_model_metrics` is defined twice in
+3. **Same-name redefinition:** `log_model_metrics` is defined twice in
    test_utils.py — Python keeps the last. Grep for later definitions before
    editing any function.
-3. **`args.datafile` is reassigned mid-flow** in main.py (generic
+4. **`args.datafile` is reassigned mid-flow** in main.py (generic
    `ploi_<domain>.pkl`, then `training_data_<domain>.pkl` inside the ltp
    branch) — the first existence check gates the whole data section.
-4. **Cache filename keyed by ACTUAL collected count** (`_effective_problem_count`,
+5. **Cache filename keyed by ACTUAL collected count** (`_effective_problem_count`,
    §1.4 contract 5): requesting 200 of a 147-problem domain yields
    `..._0_147.pkl`; `num_train_problems <= 0` means "all". Configs request
    `0` (use all) so the requested count no longer appears in the key. (Was
    a hazard when the key held the requested count and `all_complete` never
    turned true for small domains — now retired.)
-5. **`--num-train-problems` applies per domain** in `--domains` mode unless
+6. **`--num-train-problems` applies per domain** in `--domains` mode unless
    a per-domain `:count` override is given (`parse_domain_arg`).
-6. **Two typing conventions in the suite.** Blocksworld, gripper, miconic,
+7. **Two typing conventions in the suite.** Blocksworld, gripper, miconic,
    spanner and rovers declare PDDL types; grid and logistics spell types as
    ordinary unary predicates. `structural.py` collapses every declared type
    to one `typed_object` class (renaming invariance forbids type-name
@@ -278,7 +278,7 @@ same `run_tests` machinery.
    type-invalid groundings. `build_lifted_spec` now compiles declared types
    into unary static predicates so both families agree; `structural`
    (no lifted layer to host symbol nodes) stays type-blind by design.
-7. **Randomness in the executor must be per problem, not per run.** The
+8. **Randomness in the executor must be per problem, not per run.** The
    revisit-trap fallback samples among the model's valid proposals. It is
    seeded from the problem index (`_fallback_rng_for`), because the
    sequential path consumes a generator problem-by-problem while
@@ -290,7 +290,7 @@ same `run_tests` machinery.
    already-scored proposals without a model call, so score traces show
    "same actions" and miss it entirely - `tools/parity_matrix.sh` compares
    outcomes as well for exactly this reason.
-8. **Expert-planner failures on hard instances are normal**
+9. **Expert-planner failures on hard instances are normal**
    (`Planning failed for problem N`): satisficing `fd-lama-first` vs optimal
    `fd-opt-lmcut` differ in reach; failed problems are skipped — watch the
    per-domain skip count for dataset imbalance.
