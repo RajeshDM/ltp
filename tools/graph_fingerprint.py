@@ -99,7 +99,15 @@ def fingerprint_domain(domain, tag, split, problems, steps, seed):
         # Seed per problem so interleaving cannot change the walk.
         rng = random.Random(seed + idx)
         for step in range(steps):
-            groundings = list(env.action_space.all_ground_literals(state))
+            # all_ground_literals returns a set; list order therefore depends
+            # on PYTHONHASHSEED, which changes per interpreter launch, and
+            # rng.choice indexes into that list - so unsorted rollouts
+            # DIVERGE between two invocations of this tool and every
+            # downstream hash differs. Sort by cached repr: deterministic
+            # across runs, and featurization is order-insensitive (idempotent
+            # flag writes), so this changes no fingerprint semantics.
+            groundings = sorted(env.action_space.all_ground_literals(state),
+                                key=repr)
             if not groundings:
                 break
             if action_space is None:
