@@ -9,7 +9,11 @@ each table names its host.
 | tag | GPU | host CPU | cores in the allocation |
 |---|---|---|---|
 | **A40 node** (`cn-gpu7`) | NVIDIA A40 | older generation | 16 |
-| **H100 node** (`dgxh-2`) | NVIDIA H100 | current generation | 2 |
+| **H100 node** (`dgxh-2`) | NVIDIA H100 | current generation | 2 or 32, depending on the allocation |
+
+Core count is a property of the allocation, not the node: `dgxh-2` has been
+seen with both 2 and 32. Always check before trusting a worker-count
+result: `python -c "import os; print(len(os.sched_getaffinity(0)))"`.
 
 The host CPU matters far more than the GPU for this workload. The identical
 serial graph build takes **72.5s on the H100 host and 114.1s on the A40
@@ -150,9 +154,12 @@ running many seeds at once, divide the worker count down or drop it.
 
 ## Recommended settings
 
-    GABAR_BATCH_EVAL=1 GABAR_FEATURIZE_WORKERS=<cores>
+    GABAR_BATCH_EVAL=1 GABAR_FEATURIZE_WORKERS=16
 
-No determinism flag. Add `GABAR_PROFILE_BATCH=1` for the bucket breakdown.
+16 rather than "all cores": the curve above plateaus there, and spare cores
+are better spent on a concurrent run than on the 1% past the plateau. Use
+fewer when the test set is small (`min(cores, problems / 2)`) or when
+several runs share the machine. No determinism flag. Add `GABAR_PROFILE_BATCH=1` for the bucket breakdown.
 
 ## Verification
 
