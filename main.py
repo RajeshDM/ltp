@@ -732,22 +732,29 @@ if __name__ == "__main__":
         #graph_dataset_val = pyg_dataloader(val_graphs_pyg,batch_size=batch_size,shuffle=True)
         num_workers = args.num_workers
         shuffle = True
-        graph_dataset = PyGDataLoader(
-            input_hetero_graphs,
-            batch_size=batch_size,
-            shuffle=shuffle,
-            num_workers=num_workers,
-            pin_memory=True,
-            persistent_workers=(num_workers > 0)
-        )
-        graph_dataset_val =  PyGDataLoader(
-            val_hetero_graphs,
-            batch_size=batch_size,
-            shuffle=shuffle,
-            num_workers=num_workers,
-            pin_memory=True,
-            persistent_workers=(num_workers > 0)
-        )
+        if not input_hetero_graphs and not val_hetero_graphs:
+            # Metadata-only startup (--mode test): a shuffling DataLoader over
+            # an empty set raises (RandomSampler needs num_samples > 0), and
+            # nothing on the test path consumes these - only train_func does,
+            # and it is not reached.
+            graph_dataset = graph_dataset_val = None
+        else:
+            graph_dataset = PyGDataLoader(
+                input_hetero_graphs,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                num_workers=num_workers,
+                pin_memory=True,
+                persistent_workers=(num_workers > 0)
+            )
+            graph_dataset_val =  PyGDataLoader(
+                val_hetero_graphs,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                num_workers=num_workers,
+                pin_memory=True,
+                persistent_workers=(num_workers > 0)
+            )
 
         '''
         graph_dataset = graph_dataset_to_pyg_dataset(
@@ -1157,6 +1164,10 @@ if __name__ == "__main__":
             )
             if hasattr(args, '_domain_names_ordered'):
                 _train_kwargs['domain_names'] = args._domain_names_ordered
+            if datasets["train"] is None:
+                raise RuntimeError(
+                    "no training data loaded but training was requested; "
+                    "metadata-only startup applies to --mode test only")
             train_func(_model, datasets, **_train_kwargs)
             print(f"  model: L={args.gnn_rounds} heads={args.n_heads} "
                   f"lr={args.lr} dropout={args.dropout}/{args.attention_dropout} "
