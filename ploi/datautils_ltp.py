@@ -560,28 +560,36 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
                 del _rows[(obj_index, action_index)]
     # Organize into expected representation
 
-    _present = []
+    # Flatten to (row, feature, value) triples, then scatter once. Writing
+    # edges[i, feature] = value per feature is a numpy scalar assignment
+    # (~0.3us through numpy's indexing machinery) and there are several
+    # thousand per state; one fancy-index assignment does the lot in C.
+    _senders, _receivers = [], []
+    _rows_idx, _feat_idx, _vals = [], [], []
+    _i = 0
     for _slice in all_edge_features_stack :
         # sorted() reproduces np.argwhere's row-major order over the dense
         # adjacency matrix, so edge ordering is unchanged.
         for _key in sorted(_slice.rows):
             _row = _slice.rows[_key]
-            if any(_row.values()):
-                _present.append((_key, _row))
+            if not any(_row.values()):
+                continue
+            _senders.append(_key[0])
+            _receivers.append(_key[1])
+            for _feature, _value in _row.items():
+                _rows_idx.append(_i)
+                _feat_idx.append(_feature)
+                _vals.append(_value)
+            _i += 1
 
-    # Fill one (n_edge, k) array in place. Collecting per-edge arrays and
-    # np.reshape-ing the list afterwards allocated once per edge and then
-    # copied the lot, which showed up at test time where every state is
-    # re-featurized.
-    n_edge = len(_present)
+    n_edge = _i
     edges = np.zeros((n_edge, _num_edge_features), dtype=np.uint8)
-    senders = np.empty(n_edge, dtype=np.int64)
-    receivers = np.empty(n_edge, dtype=np.int64)
-    for _i, ((_sender, _receiver), _row) in enumerate(_present):
-        senders[_i] = _sender
-        receivers[_i] = _receiver
-        for _feature, _value in _row.items():
-            edges[_i, _feature] = _value
+    if _rows_idx:
+        edges[np.fromiter(_rows_idx, dtype=np.intp, count=len(_rows_idx)),
+              np.fromiter(_feat_idx, dtype=np.intp, count=len(_feat_idx))] = \
+            np.fromiter(_vals, dtype=np.uint8, count=len(_vals))
+    senders = np.fromiter(_senders, dtype=np.int64, count=n_edge)
+    receivers = np.fromiter(_receivers, dtype=np.int64, count=n_edge)
     n_edge = np.reshape(n_edge, [1]).astype(np.int64)
     num_actions = np.reshape(num_actions,[1]).astype(np.int64)
     num_objects = np.reshape(num_objects+num_agents,[1]).astype(np.int64)
