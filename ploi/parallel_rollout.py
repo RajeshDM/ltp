@@ -39,12 +39,40 @@ import os
 FEATURIZE, STEP, COLLECT, STOP = range(4)
 
 
-def configured_workers():
-    """Worker count from GABAR_FEATURIZE_WORKERS; 0 means "stay serial"."""
+def available_cores():
+    """Cores this process may actually run on, not the machine's total.
+
+    GPU nodes commonly allocate 2-8 CPUs per GPU, so os.cpu_count() (which
+    reports the whole machine) overstates it by an order of magnitude.
+    """
     try:
-        return max(0, int(os.environ.get("GABAR_FEATURIZE_WORKERS", "0")))
+        return len(os.sched_getaffinity(0))
+    except AttributeError:            # not Linux
+        return os.cpu_count() or 1
+
+
+def configured_workers(verbose=True):
+    """Worker count from GABAR_FEATURIZE_WORKERS; 0 means "stay serial".
+
+    Capped at (available cores - 1), leaving one for the parent, which does
+    the batching, the forward pass and the decode. Oversubscribing is not
+    merely useless here but actively harmful: measured on a 2-core
+    allocation, 8 workers ran the batched evaluator ~1% SLOWER than serial,
+    while 2 workers cut graph build 9%.
+    """
+    try:
+        requested = max(0, int(os.environ.get("GABAR_FEATURIZE_WORKERS", "0")))
     except ValueError:
         return 0
+    if requested == 0:
+        return 0
+    allowed = max(1, available_cores() - 1)
+    if requested > allowed and verbose:
+        print(f"[batch] GABAR_FEATURIZE_WORKERS={requested} capped to "
+              f"{allowed} ({available_cores()} cores available to this "
+              f"process); oversubscription slows this harness down",
+              flush=True)
+    return min(requested, allowed)
 
 
 def compact_beam(beam_results):
