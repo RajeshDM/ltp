@@ -378,10 +378,13 @@ if __name__ == "__main__":
     apply_config_defaults(parser)
     args = parser.parse_args()
 
-    if args.wandb:  
+    if args.wandb:
         run = wandb.init(
             # Set the project where this run will be logged
             project="ltp_gnn_gru_pyg",
+            # Group has to be set HERE: Run.group is a read-only property, so
+            # assigning it after init raises AttributeError and kills the run.
+            group=os.environ.get("GABAR_WANDB_GROUP") or None,
             # Track hyperparameters and run metadata
             config={
                 "learning_rate": args.lr,
@@ -449,26 +452,33 @@ if __name__ == "__main__":
     # auto-generated name. Unusable when a dozen runs across two nodes have to
     # be told apart from a phone. Name/group/tag them now that the identity is
     # actually known. GABAR_WANDB_GROUP labels the machine or campaign.
+    # Wrapped: this is cosmetic run metadata and which of these attributes are
+    # writable has changed between wandb releases (Run.group is read-only and
+    # took down a whole run when assigned here). Never let labelling kill a
+    # training job - warn and carry on.
     if args.wandb and wandb.run is not None:
         _grp = os.environ.get("GABAR_WANDB_GROUP", "")
         _name = f"{args.expid}_s{args.seed}_{args.mode}"
         if _grp:
             _name = f"{_grp}/{_name}"
-            wandb.run.group = _grp
-        wandb.run.name = _name
-        wandb.run.tags = tuple(t for t in (
-            _grp, args.mode, args.featurization,
-            f"seed{args.seed}") if t)
-        wandb.config.update({
-            "domain": args.domain,
-            "domains": args.domains or args.domain,
-            "featurization": args.featurization,
-            "expid": args.expid,
-            "dropout": args.dropout,
-            "attention_dropout": args.attention_dropout,
-            "weight_decay": args.weight_decay,
-            "n_heads": args.n_heads,
-        }, allow_val_change=True)
+        try:
+            wandb.run.name = _name
+            wandb.run.tags = tuple(t for t in (
+                _grp, args.mode, args.featurization,
+                f"seed{args.seed}") if t)
+            wandb.config.update({
+                "domain": args.domain,
+                "domains": args.domains or args.domain,
+                "featurization": args.featurization,
+                "expid": args.expid,
+                "dropout": args.dropout,
+                "attention_dropout": args.attention_dropout,
+                "weight_decay": args.weight_decay,
+                "n_heads": args.n_heads,
+            }, allow_val_change=True)
+        except Exception as _exc:
+            print(f"[wandb] could not label this run ({_exc}); "
+                  f"metrics still log normally")
 
     # This datafile is the same for ploi and hierarchical variants
     args.datafile = os.path.join(args.logdir, f"ploi_{args.domain}.pkl")

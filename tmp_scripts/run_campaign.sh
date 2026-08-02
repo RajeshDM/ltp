@@ -17,7 +17,9 @@
 #
 # Env:
 #   DRY_RUN=1     print the plan and exit, run nothing (check this first)
-#   WORKERS=N     eval workers when trainings are running (default 12)
+#   WORKERS=N     override the eval workers used while trainings are running
+#                 (default: derived from the core count, see budget.sh)
+#   CORES=N       pretend the allocation has N cores (for DRY_RUN inspection)
 
 set -u
 
@@ -29,7 +31,20 @@ case "$NODE" in m|d) ;; *) usage ;; esac
 cd "$(dirname "$0")/.." || exit 1
 REPO="$PWD"
 DRY_RUN="${DRY_RUN:-0}"
-WORKERS="${WORKERS:-12}"
+
+# Concurrency is DERIVED from the cores this allocation actually has, not
+# assumed to be 32 - the same node has shown up with 2, 16 and 32.
+. tmp_scripts/budget.sh
+# CORES is overridable so a DRY_RUN can show the plan for the node you are
+# about to launch on, from wherever you happen to be sitting.
+CORES="${CORES:-$(python -c "import os; print(len(os.sched_getaffinity(0)))" 2>/dev/null || echo 16)}"
+compute_budget "$CORES"
+WORKERS="${WORKERS:-$EVAL_BUSY}"
+if [ "$CORES" -lt 8 ]; then
+    echo "Only $CORES cores in this allocation - not enough to run the"
+    echo "campaign (a single training run wants ~3). Get a bigger allocation."
+    exit 1
+fi
 # $USER is not guaranteed to be exported - notably not under setsid, which is
 # how this script re-execs itself - and `set -u` turns that into an instant
 # death right after detaching, where nobody would see it.
@@ -101,7 +116,7 @@ train() {   # config-basename  run-tag  [extra flags...]
         return
     fi
     RUN_TAG="$tag" ./train_test_scripts/run_config.sh "configs/${cfg}.yaml" \
-        cuda:0 --wandb True "$@" >/dev/null
+        cuda:0 --wandb True --num-workers "$DL_WORKERS" "$@" >/dev/null
 }
 
 stagger() {   # let one run get past its cache load before the next starts
@@ -140,24 +155,30 @@ evalq() {   # tag  extra-flags  config...
 }
 
 say "campaign node $NODE starting in $REPO"
-say "wandb group $GABAR_WANDB_GROUP, eval workers $WORKERS"
+say "wandb group $GABAR_WANDB_GROUP"
+say "$CORES cores -> $SLOTS training slots x (1 + $DL_WORKERS dataloader), \
+eval $WORKERS workers while training, $EVAL_IDLE when idle"
 
 if [ "$NODE" = "m" ]; then
     # ---- Node M: the sweep, then the data-need arms --------------------
-    say "PHASE 1  four sweep arms (GPU ceiling; the 5th queues behind them)"
-    for cfg in sweep_jc_base sweep_jc_drop01 sweep_jc_drop02 sweep_jc_l2; do
+    say "PHASE 1  sweep arms, $SLOTS at a time (the rest queue behind them)"
+    ARMS=(sweep_jc_base sweep_jc_drop01 sweep_jc_drop02 sweep_jc_l2 sweep_jc_heads4)
+    for cfg in "${ARMS[@]:0:$SLOTS}"; do
         train "$cfg" "run"
-        stagger           # four simultaneous cache loads thrash the filesystem
+        stagger           # simultaneous cache loads thrash the filesystem
     done
 
-    say "PHASE 2  heads4 when a slot frees"
-    wait_until_below 4
-    train sweep_jc_heads4 "run"
+    say "PHASE 2  remaining arms as slots free"
+    for cfg in "${ARMS[@]:$SLOTS}"; do
+        wait_until_below "$SLOTS"
+        train "$cfg" "run"
+        stagger
+    done
 
     wait_for_trainings
 
-    say "PHASE 3  evaluate all five arms (16 workers now that the GPU is idle)"
-    WORKERS=16 evalq "sweep" "" \
+    say "PHASE 3  evaluate all five arms ($EVAL_IDLE workers, GPU now idle)"
+    WORKERS=$EVAL_IDLE evalq "sweep" "" \
         configs/sweep_jc_base.yaml configs/sweep_jc_drop01.yaml \
         configs/sweep_jc_drop02.yaml configs/sweep_jc_l2.yaml \
         configs/sweep_jc_heads4.yaml
@@ -176,7 +197,7 @@ if [ "$NODE" = "m" ]; then
 
     say "PHASE 5  evaluate the data-need arms"
     for n in 25 50 100; do
-        WORKERS=16 evalq "d$n" "--num-train-problems $n" configs/sweep_jc_base.yaml
+        WORKERS=$EVAL_IDLE evalq "d$n" "--num-train-problems $n" configs/sweep_jc_base.yaml
     done
 
 else
@@ -184,7 +205,7 @@ else
     # Lane B first so the trainings are already occupying the GPU while the
     # evaluation lane (CPU) runs alongside them; the reverse order would
     # leave the GPU idle for the whole first evaluation.
-    say "PHASE 1  three seed replicates (15 cores) "
+    say "PHASE 1  three seed replicates ($((3 * (1 + DL_WORKERS))) cores)"
     for s in 12 13 14; do
         train all8_joint_chain "s$s" --seed "$s" --mode train
         stagger
@@ -200,9 +221,9 @@ else
 
     wait_for_trainings
 
-    say "PHASE 3  evaluate each replicate (16 workers, GPU now idle)"
+    say "PHASE 3  evaluate each replicate ($EVAL_IDLE workers, GPU now idle)"
     for s in 12 13 14; do
-        WORKERS=16 evalq "s$s" "--seed $s" configs/all8_joint_chain.yaml
+        WORKERS=$EVAL_IDLE evalq "s$s" "--seed $s" configs/all8_joint_chain.yaml
     done
 fi
 

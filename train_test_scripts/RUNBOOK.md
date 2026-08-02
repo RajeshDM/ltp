@@ -171,9 +171,23 @@ is not GPU-saturated: one run draws ~170W of 700W at ~1980 MHz and ~10 GB of
 | one training run | ~5 | 1 main + `num_workers: 4` dataloader workers |
 | one evaluation run | 16 | `GABAR_FEATURIZE_WORKERS=16`, the plateau (PERFORMANCE.md) |
 
-**3 trainings + 1 evaluation = 31 of 32.** Four concurrent trainings is the
-*GPU* ceiling (4 x 170W ~ 700W), not the CPU one, so run four only while no
-evaluation is running.
+**Check the core count first - do not assume 32.** `dgxh-2` has been seen
+with 2, 16 and 32 depending on the allocation, and the difference changes the
+plan:
+
+| cores | training slots | dataloaders each | eval lane while training | eval lane when idle |
+|---|---|---|---|---|
+| 32 | 4 | 4 | 12 | 16 |
+| 16 | 4 | 2 | 4 | 16 |
+| 8 | 3 | 1 | 2 | 8 |
+
+At 16 cores the dataloaders halve rather than a training slot being dropped:
+four concurrent trainings is the *GPU* power ceiling (4 x 170W ~ 700W)
+regardless of cores, and dataloader workers idle during the forward/backward
+pass, so they are the cheaper thing to cut. `tmp_scripts/budget.sh` holds this
+arithmetic and both the preflight and the campaign driver derive from it -
+the preflight prints the budget it computed, so you see the allocation you
+actually got before you walk away.
 
 Never run two evaluations at once: each wants 16 workers and
 `configured_workers()` clamps against the affinity mask, which both runs see

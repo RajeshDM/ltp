@@ -55,8 +55,21 @@ else
 fi
 
 CORES=$(python -c "import os; print(len(os.sched_getaffinity(0)))" 2>/dev/null || echo 0)
-if [ "$CORES" -ge 8 ]; then ok "$CORES cores visible"
-else bad "$CORES cores visible, expected ~32"; fi
+if [ "$CORES" -ge 8 ]; then
+    ok "$CORES cores visible"
+    # Print the DERIVED budget, not just the count. The campaign was planned
+    # for 32 and this node has been seen with 2, 16 and 32; a silently
+    # oversubscribed node just makes every run slower with nobody watching.
+    . tmp_scripts/budget.sh
+    compute_budget "$CORES"
+    info "budget: $SLOTS trainings x (1 + $DL_WORKERS dataloader) = \
+$((SLOTS * (1 + DL_WORKERS))) cores, eval lane $EVAL_BUSY workers \
+($EVAL_IDLE once training is done)"
+    [ "$CORES" -lt 28 ] && info "fewer than 28 cores: dataloaders halved to \
+keep 4 training slots (see tmp_scripts/budget.sh)"
+else
+    bad "$CORES cores visible, too few to run the campaign"
+fi
 
 if python -c "import torch,sys; sys.exit(0 if torch.cuda.is_available() else 1)" 2>/dev/null; then
     ok "CUDA: $(python -c 'import torch; print(torch.cuda.get_device_name(0))' 2>/dev/null)"
