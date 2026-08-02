@@ -25,9 +25,20 @@ set -u
 CONFIG="${1:-configs/ab_visitall.yaml}"
 TEST_DOMAINS="${2:-visitall_ipcc:5}"
 OUT="${3:-parity_$(date +%Y%m%d_%H%M%S)}"
-# POOL_WORKERS=N adds a third harness: batched + N parallel rollout workers.
-# It is compared against sequential exactly like plain batch is.
+# POOL_WORKERS=N enables the `pool` harness (batched + N rollout workers).
 POOL_WORKERS="${POOL_WORKERS:-0}"
+# Which harnesses and devices to run. The FIRST harness is the reference;
+# every other is compared against it.
+#   full check (default):  seq batch [pool]      x {cpu,gpu} = 8-12 runs
+#   quick check:           HARNESSES="batch pool" DEVICES=gpu  = 4 runs
+# Keep `seq` first whenever the featurizer or executor changed: it is the
+# reference implementation, and batch-vs-pool cannot detect a bug both
+# inherit from it.
+DEFAULT_HARNESSES="seq batch"
+[ "$POOL_WORKERS" -gt 0 ] && DEFAULT_HARNESSES="$DEFAULT_HARNESSES pool"
+HARNESSES="${HARNESSES:-$DEFAULT_HARNESSES}"
+DEVICES="${DEVICES:-cpu gpu}"
+REFERENCE="${HARNESSES%% *}"
 
 mkdir -p "$OUT/traces" "$OUT/logs"
 echo "config=$CONFIG  test-domains=$TEST_DOMAINS  out=$OUT"
@@ -75,10 +86,11 @@ outcome() {
   echo "${succ:-none} pq=${pq:-none}"
 }
 
-echo "=== running 8 configurations ==="
-HARNESSES="seq batch"
-[ "$POOL_WORKERS" -gt 0 ] && HARNESSES="$HARNESSES pool"
-for dev in cpu gpu; do
+N_RUNS=0
+for dev in $DEVICES; do for det in det nodet; do for h in $HARNESSES; do
+  N_RUNS=$((N_RUNS + 1)); done; done; done
+echo "=== running $N_RUNS configurations (reference: $REFERENCE) ==="
+for dev in $DEVICES; do
   for det in det nodet; do
     for harness in $HARNESSES; do
       run_one "$dev" "$det" "$harness"
@@ -87,40 +99,38 @@ for dev in cpu gpu; do
 done
 
 echo
-echo "=== parity within each cell (sequential vs batch) ==="
-printf "%-12s %-34s %-34s %s\n" "cell" "sequential" "batch" "trajectory"
-for dev in cpu gpu; do
+echo "=== parity within each cell (vs $REFERENCE) ==="
+for dev in $DEVICES; do
   for det in det nodet; do
-    s="$OUT/logs/${dev}_${det}_seq.log"
-    b="$OUT/logs/${dev}_${det}_batch.log"
-    ts="$OUT/traces/${dev}_${det}_seq.jsonl"
-    tb="$OUT/traces/${dev}_${det}_batch.jsonl"
+    ref_log="$OUT/logs/${dev}_${det}_${REFERENCE}.log"
+    ref_trace="$OUT/traces/${dev}_${det}_${REFERENCE}.jsonl"
+    printf "%-10s %-8s %-34s %s\n" "$dev/$det" "$REFERENCE" \
+           "$(outcome "$ref_log")" "(reference)"
 
-    verdict="no traces"
-    if [ -s "$ts" ] && [ -s "$tb" ]; then
-      cmp_out=$(python compare_score_traces.py "$ts" "$tb" --action-only 2>&1)
-      echo "$cmp_out" > "$OUT/logs/compare_${dev}_${det}.txt"
-      # "N forked" is the only number that means different actions were taken.
-      forked=$(echo "$cmp_out" | grep -aoE "[0-9]+ forked" | head -1 | awk '{print $1}')
-      if [ "${forked:-x}" = "0" ]; then
-        verdict="SAME actions"
-      elif [ -n "${forked:-}" ]; then
-        verdict="$forked FORKED"
+    for harness in $HARNESSES; do
+      [ "$harness" = "$REFERENCE" ] && continue
+      log="$OUT/logs/${dev}_${det}_${harness}.log"
+      trace="$OUT/traces/${dev}_${det}_${harness}.jsonl"
+
+      if [ "$(outcome "$log")" = "$(outcome "$ref_log")" ]; then
+        verdict="outcome matches"
       else
-        verdict="unparsed"
+        verdict="OUTCOME DIFFERS"
       fi
-    fi
-    printf "%-12s %-34s %-34s %s\n" "$dev/$det" "$(outcome "$s")" "$(outcome "$b")" "$verdict"
-    if [ "$POOL_WORKERS" -gt 0 ]; then
-      pl="$OUT/logs/${dev}_${det}_pool.log"
-      if [ "$(outcome "$s")" = "$(outcome "$pl")" ]; then
-        pool_verdict="outcome matches sequential"
-      else
-        pool_verdict="OUTCOME DIFFERS from sequential"
+
+      # Trajectory comparison only when both sides traced (the pool does not).
+      if [ -s "$ref_trace" ] && [ -s "$trace" ]; then
+        cmp_out=$(python compare_score_traces.py "$ref_trace" "$trace" --action-only 2>&1)
+        echo "$cmp_out" > "$OUT/logs/compare_${dev}_${det}_${harness}.txt"
+        forked=$(echo "$cmp_out" | grep -aoE "[0-9]+ forked" | head -1 | awk '{print $1}')
+        if [ "${forked:-x}" = "0" ]; then
+          verdict="$verdict, SAME actions"
+        elif [ -n "${forked:-}" ]; then
+          verdict="$verdict, $forked FORKED"
+        fi
       fi
-      printf "%-12s %-34s %-34s %s\n" "  +pool($POOL_WORKERS)" "" \
-             "$(outcome "$pl")" "$pool_verdict"
-    fi
+      printf "%-10s %-8s %-34s %s\n" "" "$harness" "$(outcome "$log")" "$verdict"
+    done
   done
 done
 
@@ -128,7 +138,9 @@ echo
 echo "detail: $OUT/logs/compare_<cell>.txt"
 echo
 echo "Reading this table:"
-echo "  outcomes equal + SAME actions -> parity holds, batching is safe here"
-echo "  outcomes equal + N FORKED     -> trajectories differ, coverage happened"
-echo "                                   to agree; not safe to rely on"
-echo "  outcomes differ               -> batching changes reported numbers"
+echo "  outcome matches + SAME actions -> parity holds, that harness is safe"
+echo "  outcome matches + N FORKED     -> trajectories differ, coverage happened"
+echo "                                    to agree; not safe to rely on"
+echo "  OUTCOME DIFFERS                -> that harness changes reported numbers"
+echo "  (no trajectory verdict shown when a harness does not emit traces,"
+echo "   e.g. pool: workers are refused while GABAR_TRACE_SCORES is set)"
