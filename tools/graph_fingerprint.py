@@ -32,14 +32,32 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+def _canonical_domain(domain):
+    """Sidecars and pddlgym env ids use the capitalized form (Visitall_ipcc),
+    while configs and --test-domains use lowercase. Accept either."""
+    return domain[:1].upper() + domain[1:]
+
+
 def _find_sidecar(domain, tag):
-    pattern = os.path.join('cache', 'results', f'{domain}_graphs_0_*{tag}.pkl')
+    results = os.path.join('cache', 'results')
+    pattern = os.path.join(results, f'{domain}_graphs_0_*{tag}.pkl')
     hits = sorted(glob.glob(pattern))
-    if not hits:
-        raise FileNotFoundError(
-            f"no sidecar matching {pattern}; pass the right --tag "
-            f"(e.g. joint_chain_kp3_ka6_ty2)")
-    return hits[-1]
+    if hits:
+        return hits[-1]
+    # Case-insensitive fallback, then report what this domain actually has.
+    want = f'{domain}_graphs_0_'.lower()
+    for fname in sorted(os.listdir(results)) if os.path.isdir(results) else []:
+        low = fname.lower()
+        if low.startswith(want) and tag.lower() in low and low.endswith('.pkl'):
+            return os.path.join(results, fname)
+    available = sorted(
+        f.split('_graphs_0_', 1)[1].rsplit('.pkl', 1)[0].split('_', 1)[-1]
+        for f in (os.listdir(results) if os.path.isdir(results) else [])
+        if f.lower().startswith(want) and f.endswith('.pkl'))
+    raise FileNotFoundError(
+        f"no sidecar matching {pattern}\n"
+        f"  tags available for {domain}: "
+        + (", ".join(available) if available else "none (domain not collected?)"))
 
 
 def _load_metadata(path):
@@ -68,6 +86,7 @@ def fingerprint_domain(domain, tag, split, problems, steps, seed):
     import pddlgym
     from ploi.datautils_ltp import state_to_graph_wrapper
 
+    domain = _canonical_domain(domain)
     metadata = _load_metadata(_find_sidecar(domain, tag))
     suffix = 'Test' if split == 'test' else ''
     env = pddlgym.make(f"PDDLEnv{domain}{suffix}-v0")
@@ -164,6 +183,7 @@ def main():
 
     result = {}
     for domain in [d.strip() for d in args.domains.split(',') if d.strip()]:
+        domain = _canonical_domain(domain)
         states = fingerprint_domain(domain, args.tag, args.split,
                                     args.problems, args.steps, args.seed)
         result[domain] = states
