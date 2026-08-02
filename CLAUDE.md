@@ -271,7 +271,19 @@ same `run_tests` machinery.
    type-invalid groundings. `build_lifted_spec` now compiles declared types
    into unary static predicates so both families agree; `structural`
    (no lifted layer to host symbol nodes) stays type-blind by design.
-7. **Expert-planner failures on hard instances are normal**
+7. **Randomness in the executor must be per problem, not per run.** The
+   revisit-trap fallback samples among the model's valid proposals. It is
+   seeded from the problem index (`_fallback_rng_for`), because the
+   sequential path consumes a generator problem-by-problem while
+   `_run_learned_model_batch` consumes it interleaved across active
+   problems. A single shared generator made the two harnesses take
+   different fallback actions and report different coverage (measured on
+   visitall, 20 problems: 70% sequential vs 80% batched, identically on
+   cpu/gpu and with/without determinism). The fallback picks among
+   already-scored proposals without a model call, so score traces show
+   "same actions" and miss it entirely - `tools/parity_matrix.sh` compares
+   outcomes as well for exactly this reason.
+8. **Expert-planner failures on hard instances are normal**
    (`Planning failed for problem N`): satisficing `fd-lama-first` vs optimal
    `fd-opt-lmcut` differ in reach; failed problems are skipped — watch the
    per-domain skip count for dataset imbalance.

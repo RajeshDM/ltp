@@ -418,9 +418,15 @@ class PlannerTester:
         self.learned_search_strat = config.learned_search_strat
 
         self.load_planner_data()
-        # Seeded once per tester: revisit-trap fallback samples among the
-        # model's valid proposals (reproducible across runs).
-        self._fallback_rng = random.Random(42)
+        # Revisit-trap fallback sampling. One generator PER PROBLEM, derived
+        # from the problem index, not one shared across the run: the
+        # sequential path consumes a shared generator problem-by-problem while
+        # the batched path consumes it interleaved across active problems, so
+        # a shared generator makes the two harnesses take different fallback
+        # actions and report different coverage. The fallback picks among
+        # already-scored proposals without a model call, so that divergence is
+        # invisible to score traces (see tools/parity_matrix.sh).
+        self._fallback_seed = 42
         self.opt_planner = _create_planner(config.train_planner_name)
         self.non_opt_planner = _create_planner(config.eval_planner_name)
         self.metrics = {}
@@ -685,9 +691,15 @@ class PlannerTester:
                 return g
         return None
 
+    def _fallback_rng_for(self, problem_idx):
+        """Fallback sampler for one problem's rollout, independent of the
+        order in which problems are interleaved."""
+        return random.Random(self._fallback_seed + int(problem_idx))
+
     def _run_greedy_search(self, state, model, action_space, graph_metadata,monitor,
                             result,start_time, fname, planner_data):
         _oracle = os.environ.get("GABAR_ORACLE_ACHIEVE", "")
+        fallback_rng = self._fallback_rng_for(result.problem_idx)
         while True:
             groundings = list(self.env.action_space.all_ground_literals(state))
             action_param_list = convert_state_and_run_model(
@@ -784,7 +796,7 @@ class PlannerTester:
             # trapped executor a random walk over the model's valid
             # proposals instead - same protocol for every system.
             if not action_taken and valid_actions:
-                new_action = self._fallback_rng.choice(valid_actions)
+                new_action = fallback_rng.choice(valid_actions)
                 state = self.env.step(new_action)[0]
                 if monitor:
                     monitor.add_state(state)
@@ -845,7 +857,7 @@ class PlannerTester:
             break
 
         if not action_taken and valid_actions:
-            new_action = self._fallback_rng.choice(valid_actions)
+            new_action = st["fallback_rng"].choice(valid_actions)
             st["state"] = env.step(new_action)[0]
             if monitor:
                 monitor.add_state(st["state"])
@@ -897,7 +909,8 @@ class PlannerTester:
             fname = env.problems[p].problem_fname
             fname = "/".join(fname.split("/")[-2:]) + "_" + str(epoch)
             active[p] = {"env": env, "state": state, "monitor": monitor,
-                         "result": result, "fname": fname, "step": 0}
+                         "result": result, "fname": fname, "step": 0,
+                         "fallback_rng": self._fallback_rng_for(p)}
             results_by_problem[p] = result
         del template_env
 
