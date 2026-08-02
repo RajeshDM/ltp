@@ -45,14 +45,18 @@ def _collect_states(domain, split, problems, steps, seed):
     import pddlgym
     suffix = 'Test' if split == 'test' else ''
     env = pddlgym.make(f"PDDLEnv{domain}{suffix}-v0")
-    action_space = env.domain.operators
     rng = random.Random(seed)
     pairs = []
+    action_space = None
     for idx in range(min(problems, len(env.problems))):
         env.fix_problem_index(idx)
         state, _ = env.reset()
         for _ in range(steps):
             groundings = list(env.action_space.all_ground_literals(state))
+            if action_space is None:
+                # Predicate-keyed operator map, what the featurizer expects
+                # (same source as the test harness); populated by grounding.
+                action_space = env.action_space._action_predicate_to_operators
             if not groundings:
                 break
             pairs.append((state, groundings))

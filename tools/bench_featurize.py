@@ -77,7 +77,7 @@ def main():
 
     suffix = 'Test' if args.split == 'test' else ''
     env = pddlgym.make(f"PDDLEnv{args.domain}{suffix}-v0")
-    action_space = env.domain.operators
+    action_space = None  # predicate-keyed map; set after first grounding
     rng = random.Random(args.seed)
 
     build_times, convert_times, sizes, edge_counts = [], [], [], []
@@ -90,6 +90,8 @@ def main():
             groundings = list(env.action_space.all_ground_literals(state))
             if not groundings:
                 break
+            if action_space is None:
+                action_space = env.action_space._action_predicate_to_operators
 
             gc.collect()
             t0 = time.perf_counter()
