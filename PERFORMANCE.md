@@ -55,7 +55,16 @@ The network is now the largest single cost. It was 6.4% before this work.
 | batched | 223s | 290s |
 | batched + 16 workers | **105s** | 179s |
 
-Determinism costs ~1.7x. Batching and pooling are outcome-identical to
+**H100 node, 32 cores, visitall 20 problems** (the pool's best showing; every
+earlier pool measurement was on a machine that could not feed it):
+
+| harness | no determinism | with `GABAR_DETERMINISTIC=1` |
+|---|---|---|
+| sequential | 202s | 269s |
+| batched | 137s | 159s |
+| batched + 16 workers | **55s** | 79s |
+
+2.5x over batched, 3.7x over sequential. Determinism costs ~1.7x. Batching and pooling are outcome-identical to
 sequential without it (12/12 parity cells), so **do not set it for
 production runs** - it is for parity checks only.
 
@@ -113,6 +122,20 @@ count does not touch the GPU. Useful as a sanity check on the profiler.
 Even at 32 workers graph build is still the largest bucket (45%, against
 forward pass at 27%): 500 rounds with a shrinking active set cannot
 saturate that many workers.
+
+**A40 node, 16 cores, visitall 50 problems** - same curve, same knee, the
+whole thing shifted by the host CPU gap:
+
+| workers | 0 | 2 | 4 | 8 | 16 | 25 | 32 |
+|---|---|---|---|---|---|---|---|
+| total | 623.4s | 399.6s | 285.6s | 223.3s | **215.9s** | 220.2s | 217.8s |
+
+Both hosts plateau at 16 and the A40 is uniformly ~1.7-2x slower, which is
+the single-thread host CPU difference showing up across a whole curve
+rather than one point. Note 25 and 32 exceed the 16 available cores here
+and are clamped, so those two columns are really "16" repeated - useful
+only as a noise estimate (215.9 / 220.2 / 217.8 puts run-to-run spread at
+about 2%).
 
 **A40 node, 16 cores, visitall 20 problems** (too few problems to fill the
 workers, which is the point):
