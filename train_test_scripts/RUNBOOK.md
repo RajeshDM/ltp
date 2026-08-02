@@ -138,3 +138,81 @@ Time column in the same JSONs — no extra runs.
    spanner; update the paper's Ablations paragraph to match).
 4. Never cut: P0, P1, and at least 2 splits of P2 — without the floor,
    the control, and the binding ablation there is no paper.
+
+---
+
+# The 32-core H100 campaign (2 days)
+
+## Core budget — training and evaluation CAN share the node
+
+Evaluation is host-CPU bound, not GPU bound: 137s on GPU against 135s on CPU
+for the same 20 visitall problems (H100 node, batched). So evaluation runs
+with `--device cpu` and never contends with training for the GPU. Training
+in turn is not GPU-saturated: one run draws ~170W of 700W at ~1980 MHz and
+~10 GB of 80 GB.
+
+Budget on 32 cores:
+
+| job | cores | why |
+|---|---|---|
+| one training run | ~5 | 1 main + `num_workers: 4` dataloader workers |
+| one evaluation run | 16 | `GABAR_FEATURIZE_WORKERS=16`, the plateau (PERFORMANCE.md) |
+
+**3 trainings + 1 evaluation = 31 cores.** That is the shape to hold. Four
+concurrent trainings is the GPU ceiling (4 x 170W ~ 700W), not the CPU one,
+so go to 4 trainings only while no evaluation is running.
+
+What NOT to do: two concurrent evaluations. Each wants 16 workers, and the
+pool degrades under oversubscription rather than sharing gracefully
+(`configured_workers()` clamps to the affinity mask, which both runs see as
+32). Evaluations go one at a time.
+
+## Order of work
+
+Nothing is evaluable until the first checkpoints land, so:
+
+**Hours 0-N: training only, 4 arms at once.** All five `sweep_jc_*` arms are
+`mode: train`, seed 11, `epochs: 1000`, `checkpoint_every: 100`.
+
+```bash
+for cfg in sweep_jc_base sweep_jc_drop01 sweep_jc_drop02 sweep_jc_l2; do
+  ./train_test_scripts/run_config.sh configs/$cfg.yaml cuda:0
+done
+# heads4 goes in as soon as one of the four finishes
+```
+
+**From the first periodic checkpoint on: add the evaluation lane.** Drop to
+3 concurrent trainings and run one evaluation at a time:
+
+```bash
+GABAR_BATCH_EVAL=1 GABAR_FEATURIZE_WORKERS=16 \
+  python main.py --config configs/sweep_jc_base.yaml --mode test --device cpu \
+    --test-model-metrics training,combined,validation --num-models-to-test 2
+```
+
+`--device cpu` is deliberate and costs nothing measurable; it keeps the GPU
+entirely for training.
+
+## Why these five arms
+
+The failure mode in the paper's numbers is overfitting to the training
+domains, and `_common.yaml` currently runs with `dropout`,
+`attention_dropout` and `weight_decay` all at 0.0. Those are the untried
+levers, so they go first. `n_heads` is arm 4 and is expected to be small:
+`ploi/attention_layer.py` has `is_concat=False`, full width per head, a
+single shared score projection, and combines heads with `.mean(dim=1)` — an
+averaging ensemble, not extra capacity.
+
+More epochs alone is not one of the arms. Loss stops moving well before 500,
+so 1000 is here to make the arms comparable at a fixed budget, not as a
+treatment.
+
+## Checkpoint keys
+
+`weight_decay` reaches the optimizer but was absent from the ModelManager
+key, so every L2 value used to write into one directory. It is now `'l2'` in
+`training_hyperparameters` (main.py), defaulted away at 0.0 — verified that
+runs at 0.0 keep the exact folder name and hash they had before, so no
+existing checkpoint moved. `--expid` is NOT part of the key: two arms must
+differ in a keyed hyperparameter (or the seed) or they will share a
+directory whatever their expid says.

@@ -1076,6 +1076,11 @@ if __name__ == "__main__":
             'feat' : args.featurization,
             'nf' : int(graph_metadata['num_node_features']),
             'ef' : int(graph_metadata['num_edge_features']),
+            # L2 reaches the optimizer but used to be absent here, so a
+            # regularization sweep would have had every weight_decay value
+            # writing into one directory. Defaulted away in ignore_defaults,
+            # so every run at 0.0 keeps the directory it already has.
+            'l2' : args.weight_decay,
         }
 
         # Escape hatch for checkpoints saved before those three keys existed:
@@ -1084,7 +1089,7 @@ if __name__ == "__main__":
         # location. Only for reading pre-existing models; new runs should not
         # use it, or the clash it fixes comes back.
         if os.environ.get("GABAR_LEGACY_CKPT_KEY", "") == "1":
-            for _legacy_drop in ('feat', 'nf', 'ef'):
+            for _legacy_drop in ('feat', 'nf', 'ef', 'l2'):
                 training_hyperparameters.pop(_legacy_drop, None)
             print("GABAR_LEGACY_CKPT_KEY=1: using the pre-featurization "
                   "checkpoint key (old model directories)")
@@ -1099,6 +1104,7 @@ if __name__ == "__main__":
             #'model_class' : GNN_GRU.__name__
             #'abl_' : 'main'
             'mlp_layers' : 2,
+            'l2' : 0.0,
         }
 
         continue_training = args.continue_training

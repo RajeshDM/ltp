@@ -102,6 +102,21 @@ Methods A and B (compiled vs joint domain conditioning, CLAUDE.md 5.6) are
 NOT implemented yet; when they land as featurization/model modes, they get
 configs following the same pattern.
 
+## Hyperparameter sweep (`sweep_jc_*`) — serves no claim directly
+
+Five arms over `all8_joint_chain`, identical except for one knob, all seed 11
+and `mode: train`. They exist to find settings for the C1/C4 headline runs,
+not to produce a table cell. Launch and core budget: RUNBOOK.md, "The 32-core
+H100 campaign".
+
+| config | knob |
+|---|---|
+| `sweep_jc_base` | none (reference) |
+| `sweep_jc_drop01` | `dropout: 0.1` |
+| `sweep_jc_drop02` | `dropout: 0.2`, `attention_dropout: 0.1` |
+| `sweep_jc_l2` | `weight_decay: 1e-4` |
+| `sweep_jc_heads4` | `n_heads: 4` |
+
 ## Domain facts (pddlgym)
 
 | shorthand | pddlgym name | train problems | test problems |
