@@ -54,11 +54,12 @@ def available_cores():
 def configured_workers(verbose=True):
     """Worker count from GABAR_FEATURIZE_WORKERS; 0 means "stay serial".
 
-    Capped at (available cores - 1), leaving one for the parent, which does
-    the batching, the forward pass and the decode. Oversubscribing is not
-    merely useless here but actively harmful: measured on a 2-core
-    allocation, 8 workers ran the batched evaluator ~1% SLOWER than serial,
-    while 2 workers cut graph build 9%.
+    Capped at the number of available cores. Not cores-1: the parent is
+    blocked in recv() for the whole featurize phase, so it is not competing
+    with the workers for CPU. Measured on a 2-core allocation, graph build
+    over 20 visitall problems: 72.5s serial, 66.1s at 2 workers, 70.0s at 4,
+    72.4s at 8, 80.7s at 16. Oversubscription is not merely useless but
+    actively harmful, hence the hard cap.
     """
     try:
         requested = max(0, int(os.environ.get("GABAR_FEATURIZE_WORKERS", "0")))
@@ -66,7 +67,7 @@ def configured_workers(verbose=True):
         return 0
     if requested == 0:
         return 0
-    allowed = max(1, available_cores() - 1)
+    allowed = max(1, available_cores())
     if requested > allowed and verbose:
         print(f"[batch] GABAR_FEATURIZE_WORKERS={requested} capped to "
               f"{allowed} ({available_cores()} cores available to this "

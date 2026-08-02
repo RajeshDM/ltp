@@ -456,6 +456,21 @@ if __name__ == "__main__":
         atexit.register(trigger_auto_shutdown)
     setup_logging(args.domain, args)
 
+    # An unset shell variable (e.g. `python main.py $PROF` where PROF was
+    # never exported in this shell) silently collapses to a bare invocation,
+    # which then falls back to constants.py: domain ManyBlocks, mode
+    # train_test. That looks like a hang while it starts collecting data and
+    # training a model nobody asked for, under a default checkpoint key.
+    # Any real run either names a config or names a domain.
+    if not any(a.startswith(('--config', '--domain')) for a in sys.argv[1:]):
+        raise SystemExit(
+            "refusing to run with no --config and no --domain/--domains: this "
+            "would fall back to the constants.py defaults "
+            f"(domain={args.domain}, mode={args.mode}) and start training.\n"
+            "If a shell variable expanded to nothing, that is the bug. "
+            "Set GABAR_ALLOW_DEFAULTS=1 to override."
+        ) if not os.environ.get("GABAR_ALLOW_DEFAULTS") else None
+
     print(f"[{args.mode}] {args.domain} | featurization={args.featurization} "
           f"| planners: train={args.train_planner_name} "
           f"eval={args.eval_planner_name}")
