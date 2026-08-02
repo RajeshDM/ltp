@@ -146,9 +146,20 @@ tools/bench_featurize.py           times state_to_graph_wrapper on real
 tools/random_policy_baseline.py    zero-shot floor: uniform-random applicable
                                    action rollouts, config test-domains syntax
                                    (incl. @train), no model/training needed
-train_test_scripts/run_config.sh   nohup-launch one config on one GPU
+train_test_scripts/run_config.sh   nohup-launch one config on one GPU;
+                                   RUN_TAG=<suffix> separates the logs of
+                                   concurrent launches of the SAME config
+                                   (seed replicates, data-fraction arms)
+train_test_scripts/eval_queue.sh   run N configs through --mode test one at
+                                   a time on --device cpu (evaluation is
+                                   host-CPU bound, so it leaves the GPU to
+                                   training; two at once oversubscribe the
+                                   worker pool). Reports NO MODELS rather
+                                   than failing on an untrained key
 train_test_scripts/RUNBOOK.md      results-to-claims matrix, prioritized
-                                   launch commands, cut order
+                                   launch commands, cut order, and the
+                                   two-node campaign plan (per-node core
+                                   budget and seed partition)
 train_test_scripts/RUNS_STATUS.md  live ledger: which runs are in flight,
                                    what each feeds, readout commands, measured
                                    floors/ceilings to compare against

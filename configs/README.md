@@ -106,8 +106,8 @@ configs following the same pattern.
 
 Five arms over `all8_joint_chain`, identical except for one knob, all seed 11
 and `mode: train`. They exist to find settings for the C1/C4 headline runs,
-not to produce a table cell. Launch and core budget: RUNBOOK.md, "The 32-core
-H100 campaign".
+not to produce a table cell. Launch and core budget: RUNBOOK.md, "The two-H100
+campaign". They run on node M (the `mangannr` filesystem) at seed 11.
 
 | config | knob |
 |---|---|

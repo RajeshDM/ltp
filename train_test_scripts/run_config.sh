@@ -7,6 +7,14 @@
 #   (e.g. --continue-training True).
 #
 # Survives ssh disconnect (nohup). Log: logs/<config-name>.log
+#
+# RUN_TAG=<suffix> makes the log logs/<config-name>_<suffix>.log instead.
+# REQUIRED when launching the same config several times concurrently (seed
+# replicates, data-fraction arms): without it every launch rotates the
+# previous one's log and then all of them append to the same path, so the
+# loss curves interleave into garbage and the only record of training is
+# lost. It changes the log name ONLY - nothing about the run, the checkpoint
+# key or the results JSON.
 set -euo pipefail
 
 if [ "$#" -lt 1 ]; then
@@ -24,6 +32,7 @@ if [ ! -f "$CFG" ]; then
 fi
 
 NAME=$(basename "$CFG" .yaml)
+[ -n "${RUN_TAG:-}" ] && NAME="${NAME}_${RUN_TAG}"
 mkdir -p logs
 export PYTHONHASHSEED="${PYTHONHASHSEED:-42}"
 # print() is block-buffered when stdout is a file, so progress lines lag the
@@ -36,8 +45,11 @@ export PYTHONUNBUFFERED=1
 # stdout log is the ONLY place the loss curve lives (metrics survive in the
 # results JSON, checkpoints in models/). Rotate instead of truncating.
 if [ -f "logs/${NAME}.log" ]; then
-    mv "logs/${NAME}.log" "logs/${NAME}.$(date +%Y%m%d_%H%M%S).log"
-    echo "  rotated previous log -> logs/${NAME}.$(date +%Y%m%d_%H%M%S).log"
+    # One `date`, not two: called twice these can straddle a second and the
+    # name echoed is not the name written.
+    ROTATED="logs/${NAME}.$(date +%Y%m%d_%H%M%S).log"
+    mv "logs/${NAME}.log" "$ROTATED"
+    echo "  rotated previous log -> $ROTATED"
 fi
 
 nohup python main.py --config "$CFG" --device "$DEV" "$@" \

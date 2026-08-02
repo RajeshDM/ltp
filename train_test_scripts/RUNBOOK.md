@@ -140,79 +140,178 @@ Time column in the same JSONs — no extra runs.
    the control, and the binding ablation there is no paper.
 
 ---
+# The two-H100 campaign (2 days, 32 cores each)
 
-# The 32-core H100 campaign (2 days)
+Two nodes, two different filesystems: **M** = the `mangannr` checkout, **D**
+= the `dugarp` checkout.
 
-## Core budget — training and evaluation CAN share the node
+## The rule that makes this easy: each node evaluates its own checkpoints
+
+No model directories are ever copied between the nodes. Checkpoints stay
+where they were trained and are evaluated there; only the small
+`results_*.json` files get mirrored, at the end, exactly as the Aggregation
+section above already describes. That is why the split below is by *role*
+rather than by "half the runs each" - a role split needs no synchronisation
+at any point in the two days.
+
+Seeds are partitioned so a model directory never means two different things:
+**seed 10 = the paper's existing runs, seed 11 = the sweep family (node M),
+seeds 12-14 = the replicates (node D).**
+
+## Core budget, per node
 
 Evaluation is host-CPU bound, not GPU bound: 137s on GPU against 135s on CPU
 for the same 20 visitall problems (H100 node, batched). So evaluation runs
-with `--device cpu` and never contends with training for the GPU. Training
-in turn is not GPU-saturated: one run draws ~170W of 700W at ~1980 MHz and
-~10 GB of 80 GB.
-
-Budget on 32 cores:
+`--device cpu` and never contends with training for the GPU. Training in turn
+is not GPU-saturated: one run draws ~170W of 700W at ~1980 MHz and ~10 GB of
+80 GB.
 
 | job | cores | why |
 |---|---|---|
 | one training run | ~5 | 1 main + `num_workers: 4` dataloader workers |
 | one evaluation run | 16 | `GABAR_FEATURIZE_WORKERS=16`, the plateau (PERFORMANCE.md) |
 
-**3 trainings + 1 evaluation = 31 cores.** That is the shape to hold. Four
-concurrent trainings is the GPU ceiling (4 x 170W ~ 700W), not the CPU one,
-so go to 4 trainings only while no evaluation is running.
+**3 trainings + 1 evaluation = 31 of 32.** Four concurrent trainings is the
+*GPU* ceiling (4 x 170W ~ 700W), not the CPU one, so run four only while no
+evaluation is running.
 
-What NOT to do: two concurrent evaluations. Each wants 16 workers, and the
-pool degrades under oversubscription rather than sharing gracefully
-(`configured_workers()` clamps to the affinity mask, which both runs see as
-32). Evaluations go one at a time.
+Never run two evaluations at once: each wants 16 workers and
+`configured_workers()` clamps against the affinity mask, which both runs see
+as the full 32, so they oversubscribe instead of sharing.
+`eval_queue.sh` exists to serialise them for you.
 
-## Order of work
+## Before launching, on BOTH nodes
 
-Nothing is evaluable until the first checkpoints land, so:
+```bash
+git pull origin claude/wizardly-rubin-hqMug
+conda activate <di_ltp_1 | ltp_3>          # the wrong env is the usual cause of a weird failure
+python -c "import os; print(len(os.sched_getaffinity(0)), 'cores')"   # expect 32
+ls models/ | head                          # what this node can evaluate today
+./train_test_scripts/collect_data.sh       # idempotent; complete caches skip in seconds
+```
 
-**Hours 0-N: training only, 4 arms at once.** All five `sweep_jc_*` arms are
-`mode: train`, seed 11, `epochs: 1000`, `checkpoint_every: 100`.
+`ls models/` matters: node D's day-1 evaluation lane assumes the paper's
+checkpoints are on that filesystem. If they are not, swap D's lanes (train
+first, evaluate on day 2).
+
+---
+
+## Node M — the SWEEP node
+
+Question it answers: does any regularization fix the overfitting-to-training-
+domains failure mode? `_common.yaml` has `dropout`, `attention_dropout` and
+`weight_decay` all at 0.0, so these are the untried levers.
+
+**Day 1, hours 0+: four arms, 20 cores, GPU at its ceiling.**
 
 ```bash
 for cfg in sweep_jc_base sweep_jc_drop01 sweep_jc_drop02 sweep_jc_l2; do
   ./train_test_scripts/run_config.sh configs/$cfg.yaml cuda:0
 done
-# heads4 goes in as soon as one of the four finishes
 ```
 
-**From the first periodic checkpoint on: add the evaluation lane.** Drop to
-3 concurrent trainings and run one evaluation at a time:
+`sweep_jc_heads4` goes in as soon as one of the four finishes. Expect little
+from it: `ploi/attention_layer.py` has `is_concat=False`, full width per
+head, one shared score projection, and combines heads with `.mean(dim=1)` -
+an averaging ensemble, not extra capacity. A large effect there is a reason
+to re-read that file, not to celebrate.
+
+All five arms are `mode: train`, seed 11, `epochs: 1000`,
+`checkpoint_every: 100`. Testing is deliberately separate so the arms can be
+compared on loss before anything is spent evaluating them.
+
+**Day 1, once the first periodic checkpoints land: the 12-core eval lane.**
+Twelve, not sixteen, because four trainings are holding 20 cores. The curve
+is flat enough there (8 workers 118s, 16 workers 105s on 50 problems) that
+it costs a few percent.
 
 ```bash
-GABAR_BATCH_EVAL=1 GABAR_FEATURIZE_WORKERS=16 \
-  python main.py --config configs/sweep_jc_base.yaml --mode test --device cpu \
-    --test-model-metrics training,combined,validation --num-models-to-test 2
+nohup env WORKERS=12 ./train_test_scripts/eval_queue.sh \
+  configs/sweep_jc_base.yaml configs/sweep_jc_drop01.yaml \
+  configs/sweep_jc_drop02.yaml configs/sweep_jc_l2.yaml \
+  > logs/queue_sweep.log 2>&1 &
 ```
 
-`--device cpu` is deliberate and costs nothing measurable; it keeps the GPU
-entirely for training.
+**Day 2: the data-need question.** Pick the winning arm, then vary
+`--num-train-problems` (already in the checkpoint key as `d`, so each
+fraction gets its own directory). `RUN_TAG` is REQUIRED here - three
+launches of one config would otherwise all write the same log file.
 
-## Why these five arms
+```bash
+for n in 25 50 100; do
+  RUN_TAG="d$n" ./train_test_scripts/run_config.sh \
+    configs/<winning-arm>.yaml cuda:0 --num-train-problems $n --mode train
+done
+```
 
-The failure mode in the paper's numbers is overfitting to the training
-domains, and `_common.yaml` currently runs with `dropout`,
-`attention_dropout` and `weight_decay` all at 0.0. Those are the untried
-levers, so they go first. `n_heads` is arm 4 and is expected to be small:
-`ploi/attention_layer.py` has `is_concat=False`, full width per head, a
-single shared score projection, and combines heads with `.mean(dim=1)` — an
-averaging ensemble, not extra capacity.
+Budget a first pass for data collection: a new problem count means new
+unified caches and new sidecars (`cache/results/<Domain>_graphs_0_<n>*.pkl`),
+it does not reuse the full-size ones.
 
-More epochs alone is not one of the arms. Loss stops moving well before 500,
-so 1000 is here to make the arms comparable at a fixed budget, not as a
-treatment.
+---
 
-## Checkpoint keys
+## Node D — the SEEDS + EVAL node
 
-`weight_decay` reaches the optimizer but was absent from the ModelManager
-key, so every L2 value used to write into one directory. It is now `'l2'` in
-`training_hyperparameters` (main.py), defaulted away at 0.0 — verified that
-runs at 0.0 keep the exact folder name and hash they had before, so no
-existing checkpoint moved. `--expid` is NOT part of the key: two arms must
-differ in a keyed hyperparameter (or the seed) or they will share a
-directory whatever their expid says.
+Question it answers: are the paper's numbers stable, and what are the two
+cells still marked provisional?
+
+**Day 1, lane A (16 cores): evaluate what already exists.** This is the
+lane that closes out the paper's open numbers - the two
+`% UNION PROVISIONAL` cells in Table 2 come from `all8_union`.
+
+```bash
+nohup ./train_test_scripts/eval_queue.sh \
+  configs/all8_union.yaml configs/all8_joint_chain.yaml \
+  configs/all8_joint.yaml configs/all8_joint_lite.yaml \
+  configs/all8_structural.yaml \
+  > logs/queue_all8.log 2>&1 &
+```
+
+It reports `NO MODELS` per config rather than failing, so pointing it at
+configs this filesystem never trained is harmless - that is also the fastest
+inventory of what node D actually has.
+
+**Day 1, lane B (15 cores): three seed replicates.** The paper and appendix
+both say three seeds averaged; the tables are currently single-seed. Seed 10
+already exists, so these three plus it give four.
+
+```bash
+for s in 12 13 14; do
+  RUN_TAG="s$s" ./train_test_scripts/run_config.sh \
+    configs/all8_joint_chain.yaml cuda:0 --seed $s --mode train
+done
+```
+
+`--mode train` is forced on purpose: `all8_joint_chain.yaml` is
+`train_test`, and three 8-domain test phases starting at unpredictable times
+would blow the core budget. They get evaluated on day 2, in a queue.
+
+**Day 2: evaluate the replicates, and take a spread.**
+
+```bash
+nohup ./train_test_scripts/eval_queue.sh configs/all8_joint_chain.yaml \
+  > logs/queue_seeds.log 2>&1 &
+python tools/analyze_results.py --csv node_d.csv
+```
+
+## Monitoring both nodes
+
+```bash
+pgrep -u $USER -af main.py | grep -o 'configs/[^ ]*' | sort | uniq -c  # runs here
+nvidia-smi --query-gpu=utilization.gpu,power.draw,memory.used --format=csv -l 5
+tail -f logs/queue_*.log                                              # eval progress
+```
+
+Power draw is the honest saturation signal, not `utilization.gpu` (which is
+time-occupancy: a GPU running one small kernel per millisecond reports ~80%).
+Under 3-4 concurrent trainings expect 500-700W; well under that means the
+node has room for another training run.
+
+## What NOT to do
+
+- Two evaluations at once on one node (see the core budget above).
+- Copying `models/` between the filesystems. Each node evaluates its own.
+- Launching the same config twice without `RUN_TAG` - the second launch
+  rotates the first one's log and then both append to the same path, and the
+  loss curve is the only place training history lives.
+- Reusing seed 10 or 11 on node D, or seeds 12-14 on node M.
