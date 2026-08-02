@@ -1,0 +1,24 @@
+# Smoke-test config for tmp_scripts/preflight.sh. NOT part of the paper suite.
+#
+# Deliberately exercises the exact code paths the campaign uses rather than
+# the cheapest ones: `domains` (the multi-domain harness, even with one
+# domain), joint_chain featurization, and train_test so that BOTH the
+# training-loss and the test-metric wandb paths run. Everything else is sized
+# down until it finishes in minutes.
+description: preflight smoke test
+base: ../configs/_common.yaml
+expid: preflight
+domains: visitall_ipcc
+featurization: joint_chain
+test_domains: visitall_ipcc:3
+mode: train_test
+epochs: 4
+seed: 999
+num_train_problems: 10
+num_test_problems: 3
+all_problems: false
+checkpoint_every: 2
+keep_checkpoints: 1
+max_plan_length: 50
+test_model_metrics: combined
+num_models_to_test: 1

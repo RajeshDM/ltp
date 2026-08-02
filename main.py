@@ -444,6 +444,32 @@ if __name__ == "__main__":
             raise ValueError("--domains produced no training domains")
         args.domain = "MULTI-" + "-".join(train_domain_names)
 
+    # wandb.init ran before any of the above, so its config recorded the
+    # constants.py default domain for every --domains run and every run got an
+    # auto-generated name. Unusable when a dozen runs across two nodes have to
+    # be told apart from a phone. Name/group/tag them now that the identity is
+    # actually known. GABAR_WANDB_GROUP labels the machine or campaign.
+    if args.wandb and wandb.run is not None:
+        _grp = os.environ.get("GABAR_WANDB_GROUP", "")
+        _name = f"{args.expid}_s{args.seed}_{args.mode}"
+        if _grp:
+            _name = f"{_grp}/{_name}"
+            wandb.run.group = _grp
+        wandb.run.name = _name
+        wandb.run.tags = tuple(t for t in (
+            _grp, args.mode, args.featurization,
+            f"seed{args.seed}") if t)
+        wandb.config.update({
+            "domain": args.domain,
+            "domains": args.domains or args.domain,
+            "featurization": args.featurization,
+            "expid": args.expid,
+            "dropout": args.dropout,
+            "attention_dropout": args.attention_dropout,
+            "weight_decay": args.weight_decay,
+            "n_heads": args.n_heads,
+        }, allow_val_change=True)
+
     # This datafile is the same for ploi and hierarchical variants
     args.datafile = os.path.join(args.logdir, f"ploi_{args.domain}.pkl")
     if args.domain.endswith("scrub"):

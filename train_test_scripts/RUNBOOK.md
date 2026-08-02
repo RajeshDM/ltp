@@ -180,6 +180,38 @@ Never run two evaluations at once: each wants 16 workers and
 as the full 32, so they oversubscribe instead of sharing.
 `eval_queue.sh` exists to serialise them for you.
 
+## Unattended: the whole thing in two commands per node
+
+The per-lane commands below are the manual form, kept because they are what
+the campaign script actually runs and what you want when something needs
+re-running by hand. To just launch it and leave:
+
+```bash
+git pull origin claude/wizardly-rubin-hqMug
+conda activate <di_ltp_1 | ltp_3>
+
+./tmp_scripts/preflight.sh && touch .preflight_ok   # ~10 min, verifies wandb
+./tmp_scripts/run_campaign.sh m                     # or d on the other node
+```
+
+`run_campaign.sh` detaches itself with `setsid`, so it outlives the tmux
+session and the ssh connection. It refuses to start without `.preflight_ok`.
+`DRY_RUN=1` prints the phase plan without running anything.
+
+`preflight.sh` is deliberately end-to-end rather than a checklist: it runs
+four real epochs through the multi-domain harness and joint_chain
+featurization, evaluates the checkpoint, and then **reads the resulting
+coverage numbers back off the wandb server**. A valid API key with no network
+path passes every local check and still loses two days of results.
+
+Everything reports to wandb project `ltp_gnn_gru_pyg`, grouped `node_m` /
+`node_d`, with runs named `<group>/<expid>_s<seed>_<mode>`. Coverage lands in
+the run **summary** (one sortable column per test domain in the runs table),
+not only in history, so the two-day result is one table rather than a dozen
+charts.
+
+`tmp_scripts/` is throwaway - `rm -rf tmp_scripts .preflight_ok` when done.
+
 ## Before launching, on BOTH nodes
 
 ```bash

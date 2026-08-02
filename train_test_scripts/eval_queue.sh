@@ -18,6 +18,10 @@
 #   METRICS=...     --test-model-metrics (default training,combined,validation)
 #   NMODELS=N       --num-models-to-test (default 2)
 #   DEV=cuda:0      evaluate on GPU instead (only if nothing is training)
+#   WANDB=1         --wandb True, so coverage lands online as well as in JSON
+#   EXTRA="..."     extra main.py flags, e.g. EXTRA="--seed 12"
+#   TAG=<suffix>    appended to the log name; use it when the same config is
+#                   queued more than once (per-seed evaluation)
 #
 # Survives ssh disconnect: launch it under nohup itself.
 #   nohup ./train_test_scripts/eval_queue.sh configs/*.yaml > logs/queue.log 2>&1 &
@@ -32,6 +36,10 @@ WORKERS="${WORKERS:-16}"
 METRICS="${METRICS:-training,combined,validation}"
 NMODELS="${NMODELS:-2}"
 DEV="${DEV:-cpu}"
+EXTRA="${EXTRA:-}"
+TAG="${TAG:-}"
+WANDB_FLAG=""
+[ "${WANDB:-0}" = "1" ] && WANDB_FLAG="--wandb True"
 
 mkdir -p logs
 export PYTHONHASHSEED="${PYTHONHASHSEED:-42}"
@@ -48,6 +56,7 @@ for CFG in "$@"; do
         continue
     fi
     NAME=$(basename "$CFG" .yaml)
+    [ -n "$TAG" ] && NAME="${NAME}_${TAG}"
     LOG="logs/eval_${NAME}.log"
     [ -f "$LOG" ] && mv "$LOG" "logs/eval_${NAME}.$(date +%Y%m%d_%H%M%S).log"
 
@@ -56,7 +65,8 @@ for CFG in "$@"; do
     GABAR_BATCH_EVAL=1 GABAR_FEATURIZE_WORKERS="$WORKERS" \
        python main.py --config "$CFG" --mode test --device "$DEV" \
             --test-model-metrics "$METRICS" \
-            --num-models-to-test "$NMODELS" > "$LOG" 2>&1
+            --num-models-to-test "$NMODELS" \
+            $WANDB_FLAG $EXTRA > "$LOG" 2>&1
     RC=$?
 
     # Checked BEFORE the exit code: main.py logs "No models found to test" as

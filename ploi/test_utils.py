@@ -398,14 +398,36 @@ def log_model_metrics(all_results_dict, args):
                 if planner_type in result['test_results']:
                     metrics = result['test_results'][planner_type]
                     
-                    # Log to wandb
+                    # Log to wandb.
+                    #
+                    # NO step=epoch here. model_type is "<domain>_<metric>",
+                    # so this loop walks domain by domain and the epoch
+                    # RESTARTS at each one. wandb requires steps to increase
+                    # monotonically and silently drops out-of-order points, so
+                    # with step=epoch only the first test domain's numbers ever
+                    # arrived - the rest of an 8-domain evaluation vanished.
+                    # Epoch travels as an ordinary field instead.
+                    #
+                    # The summary write is what makes the runs TABLE readable:
+                    # history needs a chart per key, summary puts one sortable
+                    # column per domain next to the run name.
                     if args.wandb:
-                        wandb.log({
-                            f"{model_type}/{planner_type}/success_rate_monitor": metrics.success_rate_with_monitor,
-                            f"{model_type}/{planner_type}/success_rate_no_monitor": metrics.success_rate_without_monitor,
-                            f"{model_type}/{planner_type}/plan_length": metrics.avg_plan_length,
-                        }, step=epoch)
-                    
+                        _pref = f"{model_type}/{planner_type}"
+                        _point = {
+                            f"{_pref}/success_rate_monitor": metrics.success_rate_with_monitor,
+                            f"{_pref}/success_rate_no_monitor": metrics.success_rate_without_monitor,
+                            f"{_pref}/plan_length": metrics.avg_plan_length,
+                            f"{_pref}/epoch": epoch,
+                        }
+                        wandb.log(_point)
+                        # Best-so-far per key, so a later, worse checkpoint
+                        # cannot overwrite the headline number.
+                        _k = f"{_pref}/success_rate_monitor"
+                        if metrics.success_rate_with_monitor > (
+                                wandb.summary.get(_k) or -1):
+                            for _sk, _sv in _point.items():
+                                wandb.summary[_sk] = _sv
+
                     # Track best model for this planner type
                     if metrics.success_rate_with_monitor > best_results[planner_type]["success_rate"]:
                         best_results[planner_type]["success_rate"] = metrics.success_rate_with_monitor
