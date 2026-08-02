@@ -257,6 +257,24 @@ same `run_tests` machinery.
    Coverage is unchanged (14/20 sequential, 16/20 batched, before and after).
    `GABAR_BATCH_EVAL=1` was worth 0.5% before this and is worth 1.25x after:
    batching could not help while a kernel-bound serial cost dominated.
+
+   Later work on the same reference (visitall, 20 problems, dgxh-2) took the
+   batched run to 2:15, i.e. 12.8x from the 28:51 baseline: goal membership
+   via set (quadratic scan removed), O(1) object positions + grounding-call
+   dedup, sorts keyed by cached repr, and a single fancy-index scatter in
+   place of per-feature numpy scalar writes. Every step was verified
+   byte-identical with tools/graph_fingerprint.py.
+
+   Parallel rollout workers (GABAR_FEATURIZE_WORKERS, opt-in) then scale
+   what is left, but ONLY with enough cores AND enough problems, since a
+   worker owns problems and idles once its own are done. Graph build,
+   20 problems, 16-core A40 host: 114.1s serial, 64.7s at 2 workers, 41.2s
+   at 4, 29.0s at 8, 38.3s at 16 (too few problems to fill 16). At 50
+   problems and 16 workers it falls to 26.4% of the run. Rule of thumb:
+   workers ~ min(cores, problems / 2). On a 2-core allocation the whole
+   thing is worth ~5%. Host CPU generation matters more than the GPU: the
+   same serial graph build is 72.5s on an H100 host and 114.1s on an A40
+   host, so timings are not comparable across nodes.
 8. **Checkpoint identity includes the featurization and the input widths**
    (`feat`, `nf`, `ef` in `training_hyperparameters`, main.py). Without them
    runs differing only in featurization shared one `ModelManager` directory
