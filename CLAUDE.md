@@ -275,6 +275,12 @@ same `run_tests` machinery.
    thing is worth ~5%. Host CPU generation matters more than the GPU: the
    same serial graph build is 72.5s on an H100 host and 114.1s on an A40
    host, so timings are not comparable across nodes.
+
+   Building the envs inside the workers is a clear win (44.9s -> 5.6s on 50
+   problems). Converting to PyG inside them is NOT: only numpy may cross the
+   pipe, because torch's ForkingPickler puts every tensor in its own
+   shared-memory segment (graph build 65s -> 631s when tried). Reverted;
+   the conversion stays in the parent.
 8. **Checkpoint identity includes the featurization and the input widths**
    (`feat`, `nf`, `ef` in `training_hyperparameters`, main.py). Without them
    runs differing only in featurization shared one `ModelManager` directory

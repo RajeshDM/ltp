@@ -22,6 +22,14 @@ Featurization and env stepping run in parallel; the parent keeps the model
 and the batched forward pass. Serialisation costs about 1% of the work it
 replaces (0.05ms to round-trip a graph against 5.7ms to build one).
 
+Only NUMPY crosses the pipe, never torch tensors. Converting to HeteroData
+inside the worker looks like an obvious extra win (it would move ~9% of the
+run into the parallel region) and is a trap: torch installs a ForkingPickler
+that relocates every tensor into its own shared-memory segment, so each
+graph costs ~14 file descriptors and mmaps instead of one buffer copy.
+Measured on visitall, 50 problems, 16 workers: graph build went from 65s to
+631s. The PyG conversion stays in the parent.
+
 Workers are forked *after* the envs exist, so they inherit the tester, the
 graph metadata and the envs with no pickling at startup, and they never
 touch CUDA - which is what makes forking a CUDA-initialised parent safe.
