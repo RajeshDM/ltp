@@ -13,6 +13,9 @@ from icecream import ic
 import tempfile
 import ploi.constants as constants
 from ploi.datautils_ltp import state_to_graph_wrapper
+from ploi.parallel_rollout import (RolloutWorkerPool,
+                                   compact_beam,
+                                   configured_workers)
 from ploi.datautils_ltp import (
     graph_dataset_to_pyg_dataset,
 )
@@ -925,30 +928,65 @@ class PlannerTester:
 
         t_ground, t_graph, t_convert, t_forward, t_decode = 0., 0., 0., 0., 0.
 
+        # The two per-problem units of work. Defined once and used by BOTH
+        # the serial loop and the worker pool, so the parallel path cannot
+        # drift from the reference implementation.
+        def _featurize_one(st):
+            groundings = list(
+                st["env"].action_space.all_ground_literals(st["state"]))
+            g_inp, _, node_to_objects = state_to_graph_wrapper(
+                st["state"], action_space, groundings,
+                prev_actions=None, prev_state=None,
+                graph_metadata=graph_metadata,
+                curr_action=None, objects=None,
+                goal_state=st["state"].goal, cheating_input=None)
+            st["node_to_objects"] = node_to_objects
+            return g_inp, groundings
+
+        def _step_one(st, beam, groundings):
+            st["step"] += 1
+            action_param_list = decode_beam_results(
+                beam, st["node_to_objects"], action_space)
+            return self._greedy_step_single(st, action_param_list, groundings,
+                                            planner_data, start_time)
+
+        # GABAR_FEATURIZE_WORKERS=N: featurize and step in N forked workers
+        # that own disjoint problems (ploi/parallel_rollout.py). Refused
+        # while tracing, because traces are the parity reference and the
+        # worker-side step counter is not the parent's.
+        pool = None
+        _n_workers = configured_workers()
+        if _n_workers > 0:
+            if os.environ.get("GABAR_TRACE_SCORES", ""):
+                print("[batch] GABAR_FEATURIZE_WORKERS ignored while "
+                      "GABAR_TRACE_SCORES is set (traces come from the "
+                      "serial path)", flush=True)
+            else:
+                pool = RolloutWorkerPool(_n_workers, active,
+                                         _featurize_one, _step_one)
+                print(f"[batch] {pool.n_workers} rollout workers", flush=True)
+
         round_num = 0
         while active:
             round_num += 1
             batch_order = sorted(active.keys())
 
             t0 = time.time()
-            graphs, groundings_by_problem = [], {}
-            for p in batch_order:
-                st = active[p]
-                groundings = list(st["env"].action_space.all_ground_literals(st["state"]))
-                groundings_by_problem[p] = groundings
+            groundings_by_problem = {}
             t1 = time.time()
             t_ground += t1 - t0
 
-            for p in batch_order:
-                st = active[p]
-                g_inp, _, node_to_objects = state_to_graph_wrapper(
-                    st["state"], action_space, groundings_by_problem[p],
-                    prev_actions=None, prev_state=None,
-                    graph_metadata=graph_metadata,
-                    curr_action=None, objects=None,
-                    goal_state=st["state"].goal, cheating_input=None)
-                st["node_to_objects"] = node_to_objects
-                graphs.append(g_inp)
+            if pool is not None:
+                # Grounding happens inside the workers, alongside the build;
+                # it lands in the graph-build bucket rather than its own.
+                graphs_by_problem = pool.featurize(batch_order)
+                graphs = [graphs_by_problem[p] for p in batch_order]
+            else:
+                graphs = []
+                for p in batch_order:
+                    g_inp, groundings = _featurize_one(active[p])
+                    groundings_by_problem[p] = groundings
+                    graphs.append(g_inp)
             t2 = time.time()
             t_graph += t2 - t1
 
@@ -964,17 +1002,32 @@ class PlannerTester:
             t_forward += t4 - t3
 
             finished = []
-            for i, p in enumerate(batch_order):
-                st = active[p]
-                if os.environ.get("GABAR_TRACE_SCORES", ""):
-                    _trace_scores(epoch, p, st["step"], batch_results[i])
-                st["step"] += 1
-                action_param_list = decode_beam_results(
-                    batch_results[i], st["node_to_objects"], action_space)
-                if self._greedy_step_single(st, action_param_list,
-                                            groundings_by_problem[p],
-                                            planner_data, start_time):
+            if pool is not None:
+                statuses = pool.step(
+                    {p: compact_beam(batch_results[i])
+                     for i, p in enumerate(batch_order)})
+                for p in batch_order:
+                    is_finished, success, plan_length, time_taken = statuses[p]
+                    if not is_finished:
+                        continue
                     finished.append(p)
+                    # The authoritative PlanningResult lives in the worker
+                    # until collect_results(); mirror just what the parent
+                    # reports on as it goes.
+                    r = results_by_problem[p]
+                    r.success, r.plan_length, r.time_taken = (
+                        success, plan_length, time_taken)
+                    if success:
+                        planner_data[active[p]["fname"]] = (plan_length,
+                                                            time_taken)
+            else:
+                for i, p in enumerate(batch_order):
+                    st = active[p]
+                    if os.environ.get("GABAR_TRACE_SCORES", ""):
+                        _trace_scores(epoch, p, st["step"], batch_results[i])
+                    if _step_one(st, batch_results[i],
+                                 groundings_by_problem[p]):
+                        finished.append(p)
             t5 = time.time()
             t_decode += t5 - t4
 
@@ -992,6 +1045,12 @@ class PlannerTester:
             pbar.refresh()
 
         pbar.close()
+        if pool is not None:
+            # Plans, step counts and monitor statistics only exist in the
+            # workers; take them before the pool goes away.
+            for p, result in pool.collect_results().items():
+                results_by_problem[p] = result
+            pool.close()
         total_time = time.time() - start_time
         print(f"[batch-eval] done: {n_total} problems, {n_solved} solved, "
               f"{n_failed} failed, {round_num} rounds, {total_time:.1f}s", flush=True)

@@ -56,6 +56,18 @@ main.py                            ← THE entry point (__main__): arg parsing,
  │                                   merge_feature_metadata, merge_action_spaces (C1)
  ├─ ploi/structural.py             structural featurization: StructuralMap,
  │                                   build_structural_metadata (C1/C2)
+ ├─ ploi/parallel_rollout.py       OPT-IN parallel featurization for the batched
+ │                                   evaluator (GABAR_FEATURIZE_WORKERS=N):
+ │                                   RolloutWorkerPool forks N workers, each
+ │                                   OWNING a disjoint subset of problems, so
+ │                                   env/state/monitor/result/node_to_objects
+ │                                   never cross a process boundary (a pddlgym
+ │                                   state pickles in ~4.6ms; a graph in
+ │                                   ~0.05ms). Both paths call the SAME
+ │                                   _featurize_one/_step_one closures. Off by
+ │                                   default; the serial path stays the parity
+ │                                   reference and is used whenever
+ │                                   GABAR_TRACE_SCORES is set
  ├─ ploi/lifted_layer.py           lifted domain layer + binding layer (5.4/5.5):
  │                                   build_lifted_spec / build_lifted_metadata,
  │                                   lifted_node_keys, add_lifted_node_features,
@@ -112,7 +124,10 @@ tools/graph_fingerprint.py         hashes every array of every featurized
 tools/parity_matrix.sh             batch-vs-sequential parity across
                                    {cpu,gpu} x {det,nodet}: runs 8 configs,
                                    compares traces (--action-only: forked or
-                                   not) and final coverage per cell
+                                   not) and final coverage per cell.
+                                   POOL_WORKERS=N adds a third harness
+                                   (batched + N rollout workers), compared on
+                                   outcomes (tracing is off with workers)
 tools/bench_featurize.py           times state_to_graph_wrapper on real
                                    rollout states, no model/training needed;
                                    the before/after harness for featurization

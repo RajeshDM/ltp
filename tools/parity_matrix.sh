@@ -25,6 +25,9 @@ set -u
 CONFIG="${1:-configs/ab_visitall.yaml}"
 TEST_DOMAINS="${2:-visitall_ipcc:5}"
 OUT="${3:-parity_$(date +%Y%m%d_%H%M%S)}"
+# POOL_WORKERS=N adds a third harness: batched + N parallel rollout workers.
+# It is compared against sequential exactly like plain batch is.
+POOL_WORKERS="${POOL_WORKERS:-0}"
 
 mkdir -p "$OUT/traces" "$OUT/logs"
 echo "config=$CONFIG  test-domains=$TEST_DOMAINS  out=$OUT"
@@ -42,6 +45,12 @@ run_one() {           # device determinism harness
   local -a env_vars=(GABAR_TRACE_SCORES="$trace")
   [ "$det" = "det" ] && env_vars+=(GABAR_DETERMINISTIC=1 PYTHONHASHSEED=42)
   [ "$harness" = "batch" ] && env_vars+=(GABAR_BATCH_EVAL=1)
+  if [ "$harness" = "pool" ]; then
+    # Tracing is refused with workers (the harness says so and falls back),
+    # so the pool cell is compared on OUTCOMES only.
+    env_vars=(GABAR_BATCH_EVAL=1 GABAR_FEATURIZE_WORKERS="$POOL_WORKERS")
+    [ "$det" = "det" ] && env_vars+=(GABAR_DETERMINISTIC=1 PYTHONHASHSEED=42)
+  fi
 
   local devflag="--device cpu"
   [ "$dev" = "gpu" ] && devflag="--device cuda:0"
@@ -67,9 +76,11 @@ outcome() {
 }
 
 echo "=== running 8 configurations ==="
+HARNESSES="seq batch"
+[ "$POOL_WORKERS" -gt 0 ] && HARNESSES="$HARNESSES pool"
 for dev in cpu gpu; do
   for det in det nodet; do
-    for harness in seq batch; do
+    for harness in $HARNESSES; do
       run_one "$dev" "$det" "$harness"
     done
   done
@@ -100,6 +111,16 @@ for dev in cpu gpu; do
       fi
     fi
     printf "%-12s %-34s %-34s %s\n" "$dev/$det" "$(outcome "$s")" "$(outcome "$b")" "$verdict"
+    if [ "$POOL_WORKERS" -gt 0 ]; then
+      pl="$OUT/logs/${dev}_${det}_pool.log"
+      if [ "$(outcome "$s")" = "$(outcome "$pl")" ]; then
+        pool_verdict="outcome matches sequential"
+      else
+        pool_verdict="OUTCOME DIFFERS from sequential"
+      fi
+      printf "%-12s %-34s %-34s %s\n" "  +pool($POOL_WORKERS)" "" \
+             "$(outcome "$pl")" "$pool_verdict"
+    fi
   done
 done
 
