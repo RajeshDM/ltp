@@ -109,6 +109,12 @@ configs/                           one YAML per paper experiment (--config);
                                    (base: key); README.md maps configs to claims
 tools/analyze_results.py           aggregates the results_*.json dumps main.py
                                    writes after testing into one table/CSV
+PERFORMANCE.md                     measured evaluation timings per machine,
+                                   the optimization chain with its
+                                   verification, worker-count scaling,
+                                   recommended env vars, and the things
+                                   tried and rejected with the measurement
+                                   that killed each
 tools/graph_fingerprint.py         hashes every array of every featurized
                                    graph over seeded rollouts; record before a
                                    featurizer change, record after, --compare.
