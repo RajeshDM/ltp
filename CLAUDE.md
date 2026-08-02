@@ -242,7 +242,14 @@ same `run_tests` machinery.
 
 ### 1.5 Repo hazards (conventions that will bite you)
 
-1. **Similar-name traps.** `collect_training_data` (live) vs
+1. **`--mode test` is metadata-only at startup** (`_test_only`, main.py):
+   the multi-domain data section skips every sidecar's graph payload, the
+   split/pad/DataLoader steps run on empty lists, and
+   `num_global_features` is set from `num_node_features` (the globals row
+   is built at exactly that width). Test-time featurization never touches
+   training graphs; loading them cost 95s / 16GB per 8-domain side-eval.
+   The single-domain `per_domain` baseline branch still loads graphs.
+2. **Similar-name traps.** `collect_training_data` (live) vs
    `_collect_training_data` / `_collect_training_data_ltp` (dead);
    `train_model_graphnetwork_ltp_batch_allows_both` (live) vs
    `..._ltp_batch` (dead on the live path); `_create_planner` exists in both

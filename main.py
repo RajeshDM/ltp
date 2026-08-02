@@ -485,6 +485,17 @@ if __name__ == "__main__":
                                            args.num_train_problems)
                 train_domains = [(n, c) for n, c, held_out in domains if not held_out]
 
+                # --mode test never trains, so the featurized training graphs
+                # (the multi-GB sidecar payloads) are dead weight: the test
+                # path re-featurizes every rollout state itself and needs only
+                # graph_metadata + action_space, both from the fast pass-1
+                # metadata load. Was 95s / 16GB of startup per 8-domain
+                # side-eval.
+                _test_only = (args.mode == 'test')
+                if _test_only:
+                    print(f"[test] metadata-only startup: skipping training-graph "
+                          f"load for {len(train_domains)} domain(s)")
+
                 # Domain-set tag: sorted names prevent stale cache when the
                 # domain combination changes (e.g. {A,B} vs {A,B,C}).
                 _domain_set_tag = "_" + "_".join(
@@ -506,6 +517,8 @@ if __name__ == "__main__":
                     tag = "_union" + _domain_set_tag
                     per_domain_graphs = {}
                     for name, num_problems in train_domains:
+                        if _test_only:
+                            continue
                         graphs, _, _ = process_pddl_to_graphs(
                             name, train_planner, num_problems, args,
                             _create_graph_dataset_ltp,
@@ -561,6 +574,8 @@ if __name__ == "__main__":
                                 per_domain_meta[name][1], kp, ka,
                                 args.featurization,
                                 cheating=args.cheating_input)
+                        if _test_only:
+                            continue
                         graphs, _, _ = process_pddl_to_graphs(
                             name, train_planner, num_problems, args,
                             _create_graph_dataset_ltp,
@@ -581,6 +596,13 @@ if __name__ == "__main__":
                 # Update num_global_features from actual graph data: union/
                 # structural metadata predates graph creation, so its value
                 # may not match the wider globals produced by the merged vocab.
+                if _test_only:
+                    # No graphs loaded to read it from; the globals row is
+                    # built as zeros(1, num_node_features) (_state_to_graph_ltp),
+                    # so its width IS the node feature width - the same value
+                    # the graph-derived patch below would produce.
+                    graph_metadata['num_global_features'] = \
+                        graph_metadata['num_node_features']
                 for _dg in per_domain_graphs.values():
                     if _dg:
                         try:
@@ -592,7 +614,10 @@ if __name__ == "__main__":
                 # Tag each graph with its domain index for per-domain loss tracking.
                 # Stratified train/val split: 10% from EACH domain goes to
                 # validation, so every domain is proportionally represented.
-                _domain_names_ordered = list(per_domain_graphs.keys())
+                # From the config, not the graphs dict: identical order when
+                # training (the dict is built by iterating train_domains) and
+                # still correct in test mode where no graphs are loaded.
+                _domain_names_ordered = [n for n, _ in train_domains]
                 args._domain_names_ordered = _domain_names_ordered
                 for dom_idx, (name, dom_graphs) in enumerate(per_domain_graphs.items()):
                     for g in dom_graphs:
