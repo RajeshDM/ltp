@@ -14,7 +14,7 @@ table and the per-problem fallback RNG. None of that is ever sent anywhere.
 Per round the parent exchanges two small messages with each worker:
 
     parent -> worker   FEATURIZE  [ids still active]
-    worker -> parent   {id: graph dict}                 ~0.16 MB, ~0.05 ms
+    worker -> parent   {id: HeteroData}                 ~1 MB, ~0.3 ms
     parent -> worker   STEP  {id: beam candidates}      tens of bytes
     worker -> parent   {id: (finished, success, ...)}   tens of bytes
 
@@ -218,7 +218,7 @@ def _worker_loop(conn, my_ids, build_state, featurize_one, step_one):
             if cmd == FEATURIZE:
                 out = {}
                 for p in payload:
-                    graph, grounding = featurize_one(states[p])
+                    graph, grounding = featurize_one(states[p], to_pyg=True)
                     groundings[p] = grounding
                     out[p] = graph
 
