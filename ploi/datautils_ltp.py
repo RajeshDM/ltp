@@ -274,7 +274,13 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     #literals = list(state.literals)
     literals = [literal for literal in sorted(state.literals)]
     #goal_literals = [G(literal) for literal in sorted(state.goal.literals)]
-    goal_literals = [G(literal) for literal in sorted(goal_state.literals)]
+    _sorted_goal = sorted(goal_state.literals)
+    goal_literals = [G(literal) for literal in _sorted_goal]
+    # Set, not list: `lit in goal_literals` below runs once per literal, and
+    # list membership is a linear scan of Literal.__eq__ - O(|literals| *
+    # |goal|) per state. Measured on visitall test instances (goal = every
+    # cell): ~62k comparisons per state, half of featurization time.
+    _goal_literal_set = set(goal_literals)
     #goal_literals_without_g = list(state.goal.literals)
     #all_literals = list(state.literals) + list(state.goal.literals)
     #all_literals_without_g = literals + goal_literals_without_g
@@ -405,7 +411,7 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
         if predicate_feature_index is not None:
             input_node_features[pred_index, predicate_feature_index] = 1
 
-        if lit in goal_literals and 'goal_pred' in _node_feature_to_index:
+        if lit in _goal_literal_set and 'goal_pred' in _node_feature_to_index:
             goal_index = _node_feature_to_index['goal_pred']
             input_node_features[pred_index, goal_index] = 1
 
@@ -422,7 +428,7 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
             from ploi.lifted_layer import add_chain_node_features
             add_chain_node_features(input_node_features, _lifted_spec,
                                     all_actions, literals,
-                                    sorted(goal_state.literals),
+                                    _sorted_goal,
                                     objects_to_node, _node_feature_to_index)
 
     all_edge_features_stack = [_EdgeSlice(_num_edge_features)
@@ -527,7 +533,7 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
         _unsat_goal_nodes = {}
         # goal_literals was built as [G(g) for g in sorted(goal_state.literals)]
         # -- zip recovers each unwrapped goal atom's WANT node index.
-        for _g, _wrapped in zip(sorted(goal_state.literals), goal_literals):
+        for _g, _wrapped in zip(_sorted_goal, goal_literals):
             if _g not in state.literals:
                 _unsat_goal_nodes[(_g.predicate.name, tuple(_g.variables))] = \
                     objects_to_node[_wrapped]
