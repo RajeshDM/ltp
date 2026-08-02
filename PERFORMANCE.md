@@ -90,14 +90,35 @@ would be ~180s.
 
 ## Worker count
 
-Scaling of graph build, A40 node, visitall 20 problems:
+**H100 node, 32 cores, visitall 50 problems** (the definitive curve):
+
+| workers | 0 | 2 | 4 | 8 | 16 | 25 | 32 |
+|---|---|---|---|---|---|---|---|
+| total | 389.2s | 234.6s | 159.8s | 118.3s | **104.6s** | 110.6s | 103.5s |
+| graph build | 242.2s | 136.6s | 84.9s | 56.1s | 47.4s | 52.6s | 45.3s |
+
+Graph build scales 5.3x; the total plateaus at ~104s from 16 workers on, so
+**16 is the operating point** - beyond it you buy ~1% and would do better
+spending those cores on a concurrent run. The 25-worker dip is load
+imbalance (50 problems into 25 workers leaves an awkward remainder as
+problems finish; 16 and 32 divide 50 more gracefully).
+
+`forward pass` is flat at ~28s across every row, as it must be - worker
+count does not touch the GPU. Useful as a sanity check on the profiler.
+
+Even at 32 workers graph build is still the largest bucket (45%, against
+forward pass at 27%): 500 rounds with a shrinking active set cannot
+saturate that many workers.
+
+**A40 node, 16 cores, visitall 20 problems** (too few problems to fill the
+workers, which is the point):
 
 | workers | 0 | 2 | 4 | 8 | 16 |
 |---|---|---|---|---|---|
 | graph build | 114.1s | 64.7s | 41.2s | **29.0s** | 38.3s |
 
-16 is worse than 8 here because 20 problems cannot fill 16 workers, and a
-worker idles once its own problems finish. Rule of thumb:
+Here 16 is worse than 8: a worker idles once its own problems finish. Rule
+of thumb:
 
     workers ~ min(available cores, problems / 2)
 
