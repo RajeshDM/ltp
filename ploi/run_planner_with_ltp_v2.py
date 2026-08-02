@@ -12,7 +12,7 @@ from ploi.planning import FD
 from icecream import ic
 import tempfile
 import ploi.constants as constants
-from ploi.datautils_ltp import state_to_graph_wrapper, graph_to_pyg_data
+from ploi.datautils_ltp import state_to_graph_wrapper
 from ploi.parallel_rollout import (RolloutWorkerPool,
                                    compact_beam,
                                    configured_workers)
@@ -384,37 +384,10 @@ def _pad_variable_width_attrs(graphs):
     return graphs
 
 
-def _pad_pyg_action_object_width(hetero_graphs):
-    """_pad_variable_width_attrs, applied after conversion to HeteroData.
-
-    Needed when the rollout workers convert their own graphs: the pad width
-    is the max across the whole batch, which no single worker knows."""
-    if not hetero_graphs:
-        return hetero_graphs
-    keys = ('action_object_scores', 'target_action_object_scores')
-    max_width = max(g['action_object_scores'].x.shape[1] for g in hetero_graphs)
-    for g in hetero_graphs:
-        for key in keys:
-            tensor = g[key].x
-            if tensor.shape[1] < max_width:
-                padded = torch.zeros((tensor.shape[0], max_width),
-                                     dtype=tensor.dtype)
-                padded[:, :tensor.shape[1]] = tensor
-                g[key].x = padded
-    return hetero_graphs
-
-
 def convert_graph_to_model_input_v2(g_inp, device):
     _pad_variable_width_attrs(g_inp)
     hetero_graphs = graph_dataset_to_pyg_dataset(g_inp, batch_wise=False)
     return Batch.from_data_list(hetero_graphs).to(device)
-
-
-def batch_pyg_graphs(hetero_graphs, device):
-    """Same result as convert_graph_to_model_input_v2, for graphs already
-    converted to HeteroData (by the rollout workers)."""
-    return Batch.from_data_list(
-        _pad_pyg_action_object_width(hetero_graphs)).to(device)
 
 def convert_state_and_run_model_val(model, states, action_space ,
                                      device, groundings, 
@@ -956,7 +929,7 @@ class PlannerTester:
         # The two per-problem units of work. Defined once and used by BOTH
         # the serial loop and the worker pool, so the parallel path cannot
         # drift from the reference implementation.
-        def _featurize_one(st, to_pyg=False):
+        def _featurize_one(st):
             groundings = list(
                 st["env"].action_space.all_ground_literals(st["state"]))
             g_inp, _, node_to_objects = state_to_graph_wrapper(
@@ -966,11 +939,7 @@ class PlannerTester:
                 curr_action=None, objects=None,
                 goal_state=st["state"].goal, cheating_input=None)
             st["node_to_objects"] = node_to_objects
-            # In a worker, convert here too: graph_to_pyg_data is per-graph
-            # (the only cross-graph step is the pad, which stays in the
-            # parent), so it parallelises with the build instead of running
-            # serially afterwards.
-            return (graph_to_pyg_data(g_inp) if to_pyg else g_inp), groundings
+            return g_inp, groundings
 
         def _step_one(st, beam, groundings):
             st["step"] += 1
@@ -1023,9 +992,8 @@ class PlannerTester:
             t_ground += t1 - t0
 
             if pool is not None:
-                # Grounding and PyG conversion happen inside the workers,
-                # alongside the build; they land in the graph-build bucket
-                # rather than their own.
+                # Grounding happens inside the workers, alongside the build;
+                # it lands in the graph-build bucket rather than its own.
                 graphs_by_problem = pool.featurize(batch_order)
                 graphs = [graphs_by_problem[p] for p in batch_order]
             else:
@@ -1037,11 +1005,7 @@ class PlannerTester:
             t2 = time.time()
             t_graph += t2 - t1
 
-            if pool is not None:
-                model_input = batch_pyg_graphs(graphs, self.config.device)
-            else:
-                model_input = convert_graph_to_model_input_v2(
-                    graphs, self.config.device)
+            model_input = convert_graph_to_model_input_v2(graphs, self.config.device)
             t3 = time.time()
             t_convert += t3 - t2
 
