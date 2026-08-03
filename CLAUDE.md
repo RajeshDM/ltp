@@ -126,6 +126,15 @@ ENGINEERING.md                     consolidated improvement history since
                                    observability) + the distilled
                                    principles list, written to be liftable
                                    into sibling projects
+.claude/skills/research/           the research-process skill (/research):
+                                   how to read results (failure patterns
+                                   F1-F5), select ideas under finite time,
+                                   pre-register experiments, start a new
+                                   research stream, and record rejections
+                                   with epistemic status. Evidence base in
+                                   references/casebook.md - update both
+                                   together when an episode teaches a new
+                                   lesson
 tools/graph_fingerprint.py         hashes every array of every featurized
                                    graph over seeded rollouts; record before a
                                    featurizer change, record after, --compare.
