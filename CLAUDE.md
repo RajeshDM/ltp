@@ -120,6 +120,12 @@ PERFORMANCE.md                     measured evaluation timings per machine,
                                    recommended env vars, and the things
                                    tried and rejected with the measurement
                                    that killed each
+ENGINEERING.md                     consolidated improvement history since
+                                   2026-07 (featurizer, harness, storage,
+                                   configs, checkpoints, verification,
+                                   observability) + the distilled
+                                   principles list, written to be liftable
+                                   into sibling projects
 tools/graph_fingerprint.py         hashes every array of every featurized
                                    graph over seeded rollouts; record before a
                                    featurizer change, record after, --compare.
