@@ -202,7 +202,20 @@ fi
 echo
 echo "=== $PASS passed, $FAIL failed ==="
 if [ "$FAIL" -eq 0 ]; then
-    echo "This node is ready. Launch and walk away:"
+    # Record WHICH interpreter passed, not just that something did. The
+    # campaign compares against this and refuses a launch from a shell whose
+    # python is different - the failure mode that cost a day was preflight
+    # passing in a conda shell and the campaign being launched later from a
+    # plain one, where every run died on `import torch`.
+    {
+        echo "python=$(command -v python)"
+        echo "date=$(date '+%F %T')"
+        echo "host=$(hostname)"
+        echo "cores=$CORES"
+    } > .preflight_ok
+    echo "wrote .preflight_ok ($(command -v python))"
+    echo
+    echo "This node is ready. Launch and walk away, FROM THIS SHELL:"
     echo "    ./tmp_scripts/run_campaign.sh <m|d>"
     exit 0
 fi

@@ -216,13 +216,22 @@ re-running by hand. To just launch it and leave:
 git pull origin claude/wizardly-rubin-hqMug
 conda activate <di_ltp_1 | ltp_3>
 
-./tmp_scripts/preflight.sh && touch .preflight_ok   # ~10 min, verifies wandb
-./tmp_scripts/run_campaign.sh m                     # or d on the other node
+./tmp_scripts/preflight.sh          # ~10 min; writes .preflight_ok on success
+./tmp_scripts/run_campaign.sh m     # FROM THE SAME SHELL; or d on the other node
 ```
 
+**From the same shell** is not a formality. `.preflight_ok` records that the
+environment worked in *some* shell at *some* time; it cannot know whether the
+shell you are launching from has the conda env active. Launching from a plain
+shell once cost a full day - every run died on `import torch` while the driver
+walked through all five phases finding nothing. The campaign now import-checks
+the launching shell (and compares its interpreter against the one recorded in
+`.preflight_ok`), and `verify_started` aborts the whole run if no training is
+alive 45s after a launch batch.
+
 `run_campaign.sh` detaches itself with `setsid`, so it outlives the tmux
-session and the ssh connection. It refuses to start without `.preflight_ok`.
-`DRY_RUN=1` prints the phase plan without running anything.
+session and the ssh connection. `DRY_RUN=1` prints the phase plan without
+running anything or needing a working environment.
 
 `preflight.sh` is deliberately end-to-end rather than a checklist: it runs
 four real epochs through the multi-domain harness and joint_chain

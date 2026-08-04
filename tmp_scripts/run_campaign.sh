@@ -61,18 +61,43 @@ if [ -z "${CAMPAIGN_CHILD:-}" ]; then
     # end-to-end check: a 4-epoch run whose coverage numbers are read back off
     # the wandb server. Re-implementing a weaker version of it here is how the
     # two drift apart and the campaign launches on a node that cannot report.
+    # 1. Did the full verification ever pass here?
     if [ ! -f ".preflight_ok" ]; then
         echo "No .preflight_ok in $REPO."
         echo
         echo "Run the verification first (~10 min, and it is the thing that"
         echo "catches a broken wandb login before it costs you two days):"
         echo
-        echo "    ./tmp_scripts/preflight.sh && touch .preflight_ok"
+        echo "    ./tmp_scripts/preflight.sh"
         echo
         echo "SKIP_PREFLIGHT=1 overrides, at your own risk."
         [ "${SKIP_PREFLIGHT:-0}" = "1" ] || exit 1
     else
         echo "preflight passed $(date -r .preflight_ok '+%F %T')"
+    fi
+
+    # 2. Can THIS shell, right now, run the code? .preflight_ok says the
+    # environment worked in SOME shell at SOME time; it cannot say whether
+    # this one has the conda env active. That gap cost a full day: five runs
+    # launched into a shell with no torch, each dying instantly, while the
+    # driver walked through every phase finding nothing. Two seconds here.
+    if [ "$DRY_RUN" != "1" ] && ! python -c "import torch, pddlgym, wandb" 2>/dev/null; then
+        echo
+        echo "This shell cannot import torch/pddlgym/wandb."
+        echo "  python: $(command -v python || echo 'not found')"
+        _want=$(sed -n 's/^python=//p' .preflight_ok 2>/dev/null)
+        [ -n "$_want" ] && echo "  preflight used: $_want"
+        echo
+        echo "  conda activate <di_ltp_1 | ltp_3>   then relaunch."
+        exit 1
+    fi
+    # Same env, different interpreter, is worth a warning but not a refusal.
+    _want=$(sed -n 's/^python=//p' .preflight_ok 2>/dev/null)
+    _have=$(command -v python)
+    if [ -n "$_want" ] && [ "$_want" != "$_have" ]; then
+        echo "  WARN  python differs from the preflight run"
+        echo "        preflight: $_want"
+        echo "        this shell: $_have"
     fi
 
     RUNNING=$(pgrep -u "$ME" -f "main.py" | wc -l)
@@ -115,8 +140,28 @@ train() {   # config-basename  run-tag  [extra flags...]
         echo "  train  $cfg  tag=$tag  $*"
         return
     fi
+    # Launcher output goes to the campaign log, NOT /dev/null: run_config.sh
+    # reports a missing config or a failed start on stdout, and discarding it
+    # turned a hard failure into a silent one.
     RUN_TAG="$tag" ./train_test_scripts/run_config.sh "configs/${cfg}.yaml" \
-        cuda:0 --wandb True --num-workers "$DL_WORKERS" "$@" >/dev/null
+        cuda:0 --wandb True --num-workers "$DL_WORKERS" "$@" \
+        2>&1 | sed 's/^/    /'
+}
+
+verify_started() {   # expected-count - abort loudly if the launches did not take
+    [ "$DRY_RUN" = "1" ] && { echo "  check  that $1 trainings are alive"; return; }
+    sleep 45                       # past import, argument parsing and config load
+    local n; n=$(n_trainings)
+    if [ "$n" -lt 1 ]; then
+        say "FATAL: launched $1 training(s); none are running 45s later."
+        say "       Something is killing them at startup - read the newest"
+        say "       logs/*_run.log or logs/*_s*.log for the traceback."
+        say "       Stopping instead of walking through every phase finding"
+        say "       nothing, which is what wasted the previous attempt."
+        exit 1
+    fi
+    [ "$n" -lt "$1" ] && say "WARN: only $n of $1 trainings are running"
+    say "$n training(s) confirmed running"
 }
 
 stagger() {   # let one run get past its cache load before the next starts
@@ -163,10 +208,12 @@ if [ "$NODE" = "m" ]; then
     # ---- Node M: the sweep, then the data-need arms --------------------
     say "PHASE 1  sweep arms, $SLOTS at a time (the rest queue behind them)"
     ARMS=(sweep_jc_base sweep_jc_drop01 sweep_jc_drop02 sweep_jc_l2 sweep_jc_heads4)
-    for cfg in "${ARMS[@]:0:$SLOTS}"; do
+    FIRST=("${ARMS[@]:0:$SLOTS}")
+    for cfg in "${FIRST[@]}"; do
         train "$cfg" "run"
         stagger           # simultaneous cache loads thrash the filesystem
     done
+    verify_started "${#FIRST[@]}"
 
     say "PHASE 2  remaining arms as slots free"
     for cfg in "${ARMS[@]:$SLOTS}"; do
@@ -193,6 +240,7 @@ if [ "$NODE" = "m" ]; then
         train sweep_jc_base "d$n" --num-train-problems "$n"
         stagger
     done
+    verify_started 3
     wait_for_trainings
 
     say "PHASE 5  evaluate the data-need arms"
@@ -215,6 +263,7 @@ cores; seed 10 already exists, so this makes three)"
         train all8_joint_chain "s$s" --seed "$s" --mode train
         stagger
     done
+    verify_started "$N_SEEDS"
 
     say "PHASE 2  evaluate the existing all8 checkpoints alongside them"
     # Configs this filesystem never trained report NO MODELS and are skipped,
