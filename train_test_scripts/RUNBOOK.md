@@ -16,7 +16,7 @@ shorter with combined-only selection) → ~1-1.3 runs/GPU/day.
 | Paper artifact | Claim | Runs required | Count |
 |---|---|---|---|
 | Table 2: GADAR + UNION columns, all 8 LOO splits | C1 | `loo8_joint_no_*` x8, `loo8_union_no_*` x8 | 16 |
-| Table 2: DOM + BIND columns, 4 splits | C2 + ladder | `loo8_{structural,joint_lite}_no_{manyblocks,miconic,spanner,rovers}` | 8 |
+| Table 2: BIND column, 4 splits | C2 + ladder | `loo8_joint_lite_no_{manyblocks,miconic,spanner,rovers}` | 4 |
 | Table 2: Random floor | C1 integrity | `tools/random_policy_baseline.py` (CPU) | 1 cmd |
 | Table 2: GABAR† ceiling | calibration | published numbers | 0 |
 | Table 3: price of generality (endpoints) | C1(c) | `all8_union`, `all8_joint` | 2 |
@@ -61,7 +61,11 @@ Optional strengtheners, only if GPUs idle (in order of value):
   ./train_test_scripts/run_config.sh configs/loo8_joint_lite_no_spanner.yaml    cuda:0
   ./train_test_scripts/run_config.sh configs/loo8_joint_lite_no_rovers.yaml     cuda:0
   ```
-- **P3 — DOM ablation, same 4 splits:** as P2 with `loo8_structural_no_*`.
+- ~~P3 — DOM ablation~~ **CUT.** The submitted paper is a ladder of THREE
+  systems (UNION / GADAR-BIND / GADAR); `\gadarstruct` is still defined in
+  gadar.tex but never used, which is the fingerprint of the cut. Plain
+  `joint` never had a paper identity either. Both remain valid internal
+  ablation rungs - just do not run them expecting a table column.
 - **P4 — Table 3 endpoints:**
   ```bash
   ./train_test_scripts/run_config.sh configs/all8_union.yaml cuda:0
@@ -125,7 +129,7 @@ tabulate:
 rsync -av <other-fs>:<repo>/cache/results/'*'/results_*.json cache/results/  # mirror across filesystems
 python tools/analyze_results.py --csv paper_numbers.csv
 ```
-Per-state inference times (GADAR vs BIND vs DOM cost note) come from the
+Per-state inference times (GADAR vs BIND cost note) come from the
 Time column in the same JSONs — no extra runs.
 
 ## If time still runs out — cut in this order
