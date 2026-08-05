@@ -129,7 +129,12 @@ fi
 
 # ------------------------------------------------------- 3. end-to-end -----
 echo
-echo "[3/6] end-to-end run (4 epochs, train + evaluate; a few minutes)"
+echo "[3/6] end-to-end run (train + evaluate; a few minutes)"
+# Marker file for step 4. Comparing two files on the SAME filesystem is
+# immune to clock skew between this host and the NFS server, which a
+# "newer than N seconds ago" test is not - a freshly written checkpoint can
+# carry a server mtime that looks older than the client's own clock.
+rm -f .preflight_marker && touch .preflight_marker
 T0=$SECONDS
 GABAR_WANDB_GROUP=preflight GABAR_BATCH_EVAL=1 GABAR_FEATURIZE_WORKERS=4 \
   python main.py --config tmp_scripts/preflight.yaml --device cuda:0 \
@@ -147,9 +152,25 @@ grep -aq "No models found" "$LOG" && bad "evaluation found no checkpoint to test
 # --------------------------------------------------------- 4. artifacts ----
 echo
 echo "[4/6] artifacts on disk"
-CKPT=$(find models -name '*.pt' -newermt "-${ELAPSED} seconds" 2>/dev/null | head -1)
-if [ -n "$CKPT" ]; then ok "checkpoint written: $CKPT"
-else bad "no checkpoint written in the last ${ELAPSED}s under models/"; fi
+# Ask the process, not the filesystem: traineval.py prints this line as it
+# saves. Filesystem-independent, so no clock-skew or mtime-granularity
+# failure mode, and it names the exact path.
+CKPT=$(grep -a "Saved model checkpoint" "$LOG" | tail -1 | sed 's/.*checkpoint \([^,]*\),.*/\1/')
+if [ -n "$CKPT" ]; then
+    ok "checkpoint written: $CKPT"
+else
+    # Fall back to the filesystem before calling it a failure - the log line
+    # could change, and the artifact is what actually matters.
+    CKPT=$(find models -name '*.pt' -newer .preflight_marker 2>/dev/null | head -1)
+    if [ -n "$CKPT" ]; then
+        ok "checkpoint written: $CKPT (found on disk; no save line in the log)"
+    else
+        bad "no checkpoint written under models/ during the run"
+        info "checkpoints save every 10 epochs (save_iter in traineval.py);"
+        info "a config with fewer epochs than that writes none"
+    fi
+fi
+rm -f .preflight_marker
 
 RJSON=$(ls -t cache/results/preflight/results_*.json 2>/dev/null | head -1)
 if [ -n "$RJSON" ]; then ok "results JSON written: $RJSON"
