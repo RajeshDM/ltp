@@ -58,8 +58,39 @@ MAX_SLOTS="${MAX_SLOTS:-$(( CORES / 5 ))}"
 
 say() { echo "[$(date '+%F %T')] $*"; }
 
-avail_gb() {   # "available", not "free": page cache is reclaimable
+avail_gb() {
+    # The CGROUP limit is what kills you, not the machine's memory. On an HPC
+    # node `free` reports the whole box (2 TB on dgxh-1) while the job may be
+    # capped far below that, and a cgroup OOM kill leaves NO traceback - the
+    # process just disappears. Prefer the cgroup accounting when present.
+    local max cur v1max v1cur
+    if [ -r /sys/fs/cgroup/memory.max ] && [ -r /sys/fs/cgroup/memory.current ]; then
+        max=$(cat /sys/fs/cgroup/memory.max 2>/dev/null)
+        cur=$(cat /sys/fs/cgroup/memory.current 2>/dev/null)
+        if [ "$max" != "max" ] && [ -n "${max:-}" ] && [ -n "${cur:-}" ]; then
+            echo $(( (max - cur) / 1073741824 )); return
+        fi
+    elif [ -r /sys/fs/cgroup/memory/memory.limit_in_bytes ]; then
+        v1max=$(cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null)
+        v1cur=$(cat /sys/fs/cgroup/memory/memory.usage_in_bytes 2>/dev/null)
+        # An "unlimited" v1 limit is a huge sentinel, not a real cap.
+        if [ -n "${v1max:-}" ] && [ "$v1max" -lt 1000000000000000 ] 2>/dev/null; then
+            echo $(( (v1max - ${v1cur:-0}) / 1073741824 )); return
+        fi
+    fi
     free -g 2>/dev/null | awk '/^Mem:/ {print ($7 != "" ? $7 : $4)}' || echo 999
+}
+
+mem_source() {   # for the startup line, so the number is interpretable
+    if [ -r /sys/fs/cgroup/memory.max ] && \
+       [ "$(cat /sys/fs/cgroup/memory.max 2>/dev/null)" != "max" ]; then
+        echo "cgroup v2 limit"
+    elif [ -r /sys/fs/cgroup/memory/memory.limit_in_bytes ] && \
+         [ "$(cat /sys/fs/cgroup/memory/memory.limit_in_bytes)" -lt 1000000000000000 ] 2>/dev/null; then
+        echo "cgroup v1 limit"
+    else
+        echo "host free -g (no cgroup cap seen)"
+    fi
 }
 
 # ---- read the queue --------------------------------------------------------
@@ -81,7 +112,7 @@ TOTAL=${#Q_CFG[@]}
 
 say "queue: $TOTAL job(s) from $JOBS_FILE"
 say "$CORES cores -> max $MAX_SLOTS concurrent; require ${RAM_PER_RUN_GB}G available per launch"
-say "currently available: $(avail_gb)G"
+say "currently available: $(avail_gb)G  [source: $(mem_source)]"
 
 # ---- schedule --------------------------------------------------------------
 # One array of "pid|name|queue-index|start-epoch" records. Parallel arrays and
