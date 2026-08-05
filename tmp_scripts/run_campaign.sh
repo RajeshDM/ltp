@@ -171,17 +171,35 @@ stagger() {   # let one run get past its cache load before the next starts
 wait_for_trainings() {
     [ "$DRY_RUN" = "1" ] && { echo "  wait   until all trainings finish"; return; }
     say "waiting for trainings to finish"
-    while pgrep -u "$ME" -f "main.py .*--device cuda" >/dev/null; do
+    while [ "$(n_trainings)" -gt 0 ]; do
         sleep 300
     done
     say "all trainings finished"
 }
 
-# Number of main.py training processes currently running (dataloader workers
-# share the cmdline, so count distinct configs, not pids).
+# Number of training runs currently alive.
+#
+# Neither obvious counting method works. Distinct CONFIG PATHS undercounts:
+# node D runs one config twice with different --seed, so two healthy runs
+# report as 1. Raw PIDS overcounts: DataLoader workers are forks carrying the
+# identical cmdline, so one run with 4 workers reports as 5.
+#
+# What identifies a run is being a ROOT: a main.py process whose parent is not
+# itself a main.py process. run_config.sh backgrounds under nohup and exits,
+# so a real run is reparented to init (ppid 1); a DataLoader worker's parent
+# is its own trainer, which is in the set.
 n_trainings() {
-    pgrep -u "$ME" -af "main.py .*--device cuda" 2>/dev/null \
-        | grep -o 'configs/[^ ]*' | sort -u | wc -l
+    local pids n=0 p ppid
+    # Anchored at the interpreter so a shell whose command line merely
+    # CONTAINS this pattern (a grep, this script quoted in a wrapper) is not
+    # counted as a training run.
+    pids=$(pgrep -u "$ME" -f "^[^ ]*python[^ ]* main\.py .*--device cuda" 2>/dev/null)
+    [ -z "$pids" ] && { echo 0; return; }
+    for p in $pids; do
+        ppid=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+        printf '%s\n' "$pids" | grep -qx "${ppid:-0}" || n=$((n + 1))
+    done
+    echo "$n"
 }
 
 wait_until_below() {   # target
@@ -271,10 +289,15 @@ cores; seed 10 already exists, so this makes three)"
     _lane=$(eval_workers_for "$N_SEEDS")
     say "         eval lane: $_lane workers alongside $N_SEEDS trainings"
     WORKERS=$_lane \
+    # The paper's three rungs only: UNION, GADAR-BIND (joint_lite) and GADAR
+    # (joint_chain) are Table 2's columns. Plain `joint` and `structural` are
+    # internal ablation rungs that appear nowhere in the paper, and if their
+    # checkpoints DO exist here they would spend hours of the eval lane on
+    # columns nobody reads. Add them back deliberately if the ladder ever
+    # needs filling out.
     evalq "all8" "" \
-        configs/all8_union.yaml configs/all8_joint_chain.yaml \
-        configs/all8_joint.yaml configs/all8_joint_lite.yaml \
-        configs/all8_structural.yaml
+        configs/all8_union.yaml configs/all8_joint_lite.yaml \
+        configs/all8_joint_chain.yaml
 
     wait_for_trainings
 
