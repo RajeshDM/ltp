@@ -15,6 +15,15 @@ directory named "tmp".
 
 ## Current contents
 
+- `queue_runner.sh` — dynamic scheduler: takes a job file, keeps as many
+  trainings running as MEMORY (not cores) allows, refills a slot the moment
+  one frees, and retries a run that dies in its first five minutes. Built
+  after four concurrent 8-domain trainings were OOM-killed at "Epoch 0" on a
+  32-core node — the fixed per-phase concurrency in `run_campaign.sh` was
+  sized from the wrong resource.
+- `status.sh` — what is actually running here, what each run is doing, and
+  which launched runs are gone plus the traceback that killed them.
+
 - `run_campaign.sh` — unattended two-day campaign driver for the two H100
   nodes. Detaches itself, runs every phase in order, reports to wandb.
   See RUNBOOK.md, "The two-H100 campaign", for what it is doing and why.
