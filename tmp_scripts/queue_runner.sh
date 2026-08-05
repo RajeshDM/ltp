@@ -13,19 +13,22 @@
 #     all8_joint_chain  s14   --seed 14 --mode train
 #
 # Why this exists: run_campaign.sh launches a FIXED number of runs per phase,
-# sized from the core count. That is the wrong resource. On an 8-domain
-# joint_chain config each training holds the entire graph dataset in RAM
-# (~16 GB just to load 8 domains), so four concurrent runs on a 32-core box
-# were killed by the OOM killer at "Epoch 0" - no traceback, because SIGKILL
-# leaves none. Cores were never the binding constraint; memory was.
+# sized from the CORE count, and cores are almost never what binds. Three of
+# four sweep arms died at "Epoch 0/1000" with no traceback on a 32-core node.
+# Host RAM was not the cause (2 TB total, 1.8 TB available, ~16 GB per run) -
+# the leading candidate is GPU memory on a card shared with other users, where
+# 37 GB was already taken and four runs at ~12 GB each do not fit in 81 GB.
 #
-# So this schedules against MEMORY first and cores second, refills a slot the
-# moment one frees instead of waiting for a whole phase, and retries a run
-# that dies early (which is almost always OOM contention, and usually
-# succeeds on a second attempt once the node is quieter).
+# So every launch is gated on THREE resources: a concurrency cap from cores,
+# host memory (read from the cgroup limit where one exists, since that is what
+# actually kills you), and free memory on the GPU this run will use. It also
+# refills a slot the moment one frees rather than at phase boundaries, and
+# retries a run that dies in its first five minutes - contention deaths
+# usually succeed on a second attempt once the node is quieter.
 #
 # Env:
-#   RAM_PER_RUN_GB=N   headroom required before launching (default 20)
+#   RAM_PER_RUN_GB=N   host-memory headroom required per launch (default 20)
+#   GPU_PER_RUN_GB=N   GPU-memory headroom required per launch (default 15)
 #   MAX_SLOTS=N        hard cap on concurrent runs (default: from cores)
 #   POLL=N             seconds between checks (default 60)
 #   RETRIES=N          re-attempts for a run that dies early (default 1)
@@ -42,6 +45,7 @@ JOBS_FILE="$1"
 [ -f "$JOBS_FILE" ] || { echo "No such job file: $JOBS_FILE"; exit 1; }
 
 RAM_PER_RUN_GB="${RAM_PER_RUN_GB:-20}"
+GPU_PER_RUN_GB="${GPU_PER_RUN_GB:-15}"
 POLL="${POLL:-60}"
 RETRIES="${RETRIES:-1}"
 DEVICE="${DEVICE:-cuda:0}"
@@ -93,6 +97,35 @@ mem_source() {   # for the startup line, so the number is interpretable
     fi
 }
 
+gpu_free_gb() {
+    # Free memory on the device this run will ACTUALLY use.
+    #
+    # DEVICE is a CUDA ordinal, and CUDA ordinals index into
+    # CUDA_VISIBLE_DEVICES when it is set - while nvidia-smi indexes PHYSICAL
+    # devices and ignores the mask entirely. Query without mapping and on a
+    # shared 8-GPU node you cheerfully read somebody else's card.
+    local dev="${DEVICE#cuda:}" phys used total
+    case "$dev" in ''|*[!0-9]*) dev=0 ;; esac
+    phys="$dev"
+    if [ -n "${CUDA_VISIBLE_DEVICES:-}" ]; then
+        phys=$(printf '%s' "$CUDA_VISIBLE_DEVICES" | cut -d, -f$(( dev + 1 )))
+    fi
+    read -r used total <<< "$(nvidia-smi -i "${phys:-0}" \
+        --query-gpu=memory.used,memory.total --format=csv,noheader,nounits \
+        2>/dev/null | tr -d ',' )"
+    [ -z "${total:-}" ] && { echo 999; return; }   # no nvidia-smi: do not block
+    echo $(( (total - used) / 1024 ))
+}
+
+gpu_label() {
+    local dev="${DEVICE#cuda:}" phys
+    case "$dev" in ''|*[!0-9]*) dev=0 ;; esac
+    phys="$dev"
+    [ -n "${CUDA_VISIBLE_DEVICES:-}" ] && \
+        phys=$(printf '%s' "$CUDA_VISIBLE_DEVICES" | cut -d, -f$(( dev + 1 )))
+    echo "$DEVICE -> physical GPU ${phys:-0}"
+}
+
 # ---- read the queue --------------------------------------------------------
 declare -a Q_CFG Q_TAG Q_EXTRA
 while read -r line; do
@@ -112,7 +145,13 @@ TOTAL=${#Q_CFG[@]}
 
 say "queue: $TOTAL job(s) from $JOBS_FILE"
 say "$CORES cores -> max $MAX_SLOTS concurrent; require ${RAM_PER_RUN_GB}G available per launch"
-say "currently available: $(avail_gb)G  [source: $(mem_source)]"
+say "host memory available: $(avail_gb)G  [source: $(mem_source)]"
+say "GPU: $(gpu_label), $(gpu_free_gb)G free; require ${GPU_PER_RUN_GB}G per launch"
+_nvis=$(nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null | wc -l)
+[ "${_nvis:-0}" -gt 1 ] && [ -z "${CUDA_VISIBLE_DEVICES:-}" ] && \
+    say "NOTE: $_nvis GPUs on this host and no CUDA_VISIBLE_DEVICES set - every"
+[ "${_nvis:-0}" -gt 1 ] && [ -z "${CUDA_VISIBLE_DEVICES:-}" ] && \
+    say "      run will pile onto $DEVICE. Spread them with DEVICE=cuda:N per queue."
 
 # ---- schedule --------------------------------------------------------------
 # One array of "pid|name|queue-index|start-epoch" records. Parallel arrays and
@@ -171,7 +210,7 @@ launch() {          # queue-index -> 0 on success
         return 1
     fi
     RUNS+=("$pid|${cfg}_${tag}|$ix|$(date +%s)")
-    say "launched $cfg (tag=$tag, pid=$pid); ${av:-?}G was available"
+    say "launched $cfg (tag=$tag, pid=$pid); host ${av:-?}G, GPU ${gv:-?}G free at launch"
     return 0
 }
 
@@ -194,9 +233,17 @@ while :; do
             break
         fi
 
-        av=$(avail_gb)
-        if [ "$DRY_RUN" != "1" ] && [ "$av" -lt "$RAM_PER_RUN_GB" ]; then
-            say "holding ${Q_CFG[ix]}: ${av}G available < ${RAM_PER_RUN_GB}G needed"
+        # Both resources, because either one alone lets you overcommit the
+        # other. On a shared node the GPU is usually the tighter of the two,
+        # and other users' jobs move it under you between launches.
+        av=$(avail_gb); gv=$(gpu_free_gb)
+        if [ "$DRY_RUN" != "1" ] && \
+           { [ "$av" -lt "$RAM_PER_RUN_GB" ] || [ "$gv" -lt "$GPU_PER_RUN_GB" ]; }; then
+            if [ "$av" -lt "$RAM_PER_RUN_GB" ]; then
+                say "holding ${Q_CFG[ix]}: host ${av}G < ${RAM_PER_RUN_GB}G needed"
+            else
+                say "holding ${Q_CFG[ix]}: GPU ${gv}G free < ${GPU_PER_RUN_GB}G needed (shared card?)"
+            fi
             PENDING=("$ix" ${PENDING[@]+"${PENDING[@]}"})
             break
         fi
