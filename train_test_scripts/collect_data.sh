@@ -12,9 +12,17 @@
 # epochs-0 trick stops before training; some versions exit uncleanly).
 #
 # Usage:
-#   ./train_test_scripts/collect_data.sh              # everything (all 4 methods)
-#   ./train_test_scripts/collect_data.sh joint        # GADAR only (fastest start)
-#   ./train_test_scripts/collect_data.sh joint union  # multiple methods
+#   ./train_test_scripts/collect_data.sh                    # every method
+#   ./train_test_scripts/collect_data.sh joint_chain        # one method
+#   ./train_test_scripts/collect_data.sh joint union        # several methods
+#   ./train_test_scripts/collect_data.sh all8_joint_chain \
+#       loo8_joint_chain_no_visitall                        # EXACT configs
+#
+# The last form is what you want when two nodes split the work by method:
+# collecting a method pulls in all 8 of its LOO variants (~2 min each once
+# the plans exist), and you may only intend to train three of them. Naming
+# configs collects exactly those and nothing else. Arguments are matched
+# against configs/<arg>.yaml first, then treated as a method name.
 #
 # Order: all8 configs first (does the one-time FD plan collection for all
 # 8 domains - the expensive part, hours), then LOO / ho2 / ho4 tags
@@ -33,12 +41,25 @@ if [ ${#FEATS[@]} -eq 0 ]; then
 fi
 
 CONFIGS=()
-for feat in "${FEATS[@]}"; do
+# Any argument naming a real config is taken literally; the rest are methods.
+REMAINING=()
+for a in "${FEATS[@]}"; do
+    if [ -f "configs/${a}.yaml" ]; then
+        CONFIGS+=("configs/${a}.yaml")
+    elif [ -f "$a" ]; then
+        CONFIGS+=("$a")
+    else
+        REMAINING+=("$a")
+    fi
+done
+FEATS=(${REMAINING[@]+"${REMAINING[@]}"})
+
+for feat in ${FEATS[@]+"${FEATS[@]}"}; do
     for cfg in configs/all8_${feat}.yaml; do
         [ -f "$cfg" ] && CONFIGS+=("$cfg")
     done
 done
-for feat in "${FEATS[@]}"; do
+for feat in ${FEATS[@]+"${FEATS[@]}"}; do
     for cfg in configs/loo8_${feat}_no_*.yaml configs/ho2_${feat}_*.yaml configs/ho4_${feat}.yaml; do
         [ -f "$cfg" ] || continue
         # 'joint' globs also match 'joint_lite'/'joint_chain' files - skip those
@@ -50,7 +71,7 @@ for feat in "${FEATS[@]}"; do
 done
 
 total=${#CONFIGS[@]}
-echo "Data collection for ${total} config(s), methods: ${FEATS[*]}"
+echo "Data collection for ${total} config(s)${FEATS[0]+, methods: ${FEATS[*]}}"
 echo "Started: $(date)"
 echo ""
 
