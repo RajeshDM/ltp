@@ -89,7 +89,10 @@ detect_memory() {
     local rel dir lim best="" bestdir=""
     rel=$(awk -F: '$1=="0"{print $3}' /proc/self/cgroup 2>/dev/null | head -1)
     if [ -n "${rel:-}" ]; then
-        dir="/sys/fs/cgroup${rel}"
+        # Strip any trailing slash: when /proc/self/cgroup reports "/" the path
+        # becomes "/sys/fs/cgroup/", which never equals the break target, and
+        # dirname "/" returns "/" forever - an infinite loop at startup.
+        dir="/sys/fs/cgroup${rel}"; dir="${dir%/}"
         while : ; do
             if [ -r "$dir/memory.max" ]; then
                 lim=$(cat "$dir/memory.max" 2>/dev/null)
@@ -100,7 +103,9 @@ detect_memory() {
                 fi
             fi
             [ "$dir" = "/sys/fs/cgroup" ] && break
-            dir=$(dirname "$dir")
+            _parent=$(dirname "$dir")
+            [ "$_parent" = "$dir" ] && break        # reached /, cannot ascend
+            dir="$_parent"
         done
         if [ -n "$best" ]; then
             MEM_LIMIT_BYTES="$best"
@@ -113,7 +118,7 @@ detect_memory() {
     # cgroup v1: same hierarchy argument, different file names.
     rel=$(awk -F: '$2 ~ /(^|,)memory(,|$)/{print $3}' /proc/self/cgroup 2>/dev/null | head -1)
     if [ -n "${rel:-}" ]; then
-        dir="/sys/fs/cgroup/memory${rel}"
+        dir="/sys/fs/cgroup/memory${rel}"; dir="${dir%/}"
         best=""; bestdir=""
         while : ; do
             if [ -r "$dir/memory.limit_in_bytes" ]; then
@@ -126,7 +131,9 @@ detect_memory() {
                 fi
             fi
             [ "$dir" = "/sys/fs/cgroup/memory" ] && break
-            dir=$(dirname "$dir")
+            _parent=$(dirname "$dir")
+            [ "$_parent" = "$dir" ] && break        # reached /, cannot ascend
+            dir="$_parent"
         done
         if [ -n "$best" ]; then
             MEM_LIMIT_BYTES="$best"
