@@ -13,18 +13,19 @@
 #     all8_joint_chain  s14   --seed 14 --mode train
 #
 # Why this exists: run_campaign.sh launches a FIXED number of runs per phase,
-# sized from the CORE count, and cores are almost never what binds. Three of
-# four sweep arms died at "Epoch 0/1000" with no traceback on a 32-core node.
-# Host RAM was not the cause (2 TB total, 1.8 TB available, ~16 GB per run) -
-# the leading candidate is GPU memory on a card shared with other users, where
-# 37 GB was already taken and four runs at ~12 GB each do not fit in 81 GB.
+# sized from the CORE count, and cores are not what binds. Runs died at
+# "Epoch 0" with no traceback on a 32-core node; dmesg named the cause -
+# constraint=CONSTRAINT_MEMCG inside the SLURM job's memory cgroup, capped at
+# 64 GB, with each 8-domain training at ~16 GB anon-rss. Four runs is exactly
+# the cap. The machine had 2 TB free and that was irrelevant: what the OOM
+# killer enforces is the job's cgroup limit, and `free` cannot see it.
 #
-# So every launch is gated on THREE resources: a concurrency cap from cores,
-# host memory (read from the cgroup limit where one exists, since that is what
-# actually kills you), and free memory on the GPU this run will use. It also
-# refills a slot the moment one frees rather than at phase boundaries, and
-# retries a run that dies in its first five minutes - contention deaths
-# usually succeed on a second attempt once the node is quieter.
+# So every launch is gated on THREE resources: a cap from cores, the JOB's
+# memory limit (found by walking the cgroup hierarchy - the limit sits on the
+# job cgroup while every step and task below reads "max"), and free memory on
+# the GPU this run will use. It also refills a slot the moment one frees
+# rather than at phase boundaries, and retries a run that dies early, since
+# contention deaths usually succeed once the node is quieter.
 #
 # Env:
 #   RAM_PER_RUN_GB=N   host-memory headroom required per launch (default 20)
