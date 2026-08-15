@@ -79,28 +79,62 @@ MEM_USAGE_FILE=""      # re-read every poll; usage moves, the limit does not
 MEM_SOURCE="host free -g (no cap found)"
 
 detect_memory() {
-    local rel lim
+    # cgroup v2 limits are HIERARCHICAL: the effective cap is the minimum
+    # memory.max over the whole chain from this cgroup up to the root. SLURM
+    # sets it on the JOB cgroup (job_<id>) while the step and task cgroups
+    # below it read "max", and an interactive shell lands in step_extern while
+    # the work runs in step_0 - so reading only the leaf finds nothing and
+    # reports the machine as uncapped. Walk up and take the smallest.
+    local rel dir lim best="" bestdir=""
     rel=$(awk -F: '$1=="0"{print $3}' /proc/self/cgroup 2>/dev/null | head -1)
-    if [ -n "${rel:-}" ] && [ -r "/sys/fs/cgroup${rel}/memory.max" ]; then
-        lim=$(cat "/sys/fs/cgroup${rel}/memory.max" 2>/dev/null)
-        if [ "$lim" != "max" ] && [ -n "${lim:-}" ]; then
-            MEM_LIMIT_BYTES="$lim"
-            MEM_USAGE_FILE="/sys/fs/cgroup${rel}/memory.current"
-            MEM_SOURCE="cgroup v2 ${rel}"
+    if [ -n "${rel:-}" ]; then
+        dir="/sys/fs/cgroup${rel}"
+        while : ; do
+            if [ -r "$dir/memory.max" ]; then
+                lim=$(cat "$dir/memory.max" 2>/dev/null)
+                if [ "$lim" != "max" ] && [ -n "${lim:-}" ]; then
+                    if [ -z "$best" ] || [ "$lim" -lt "$best" ] 2>/dev/null; then
+                        best="$lim"; bestdir="$dir"
+                    fi
+                fi
+            fi
+            [ "$dir" = "/sys/fs/cgroup" ] && break
+            dir=$(dirname "$dir")
+        done
+        if [ -n "$best" ]; then
+            MEM_LIMIT_BYTES="$best"
+            MEM_USAGE_FILE="$bestdir/memory.current"
+            MEM_SOURCE="cgroup v2 ${bestdir#/sys/fs/cgroup}"
             return
         fi
     fi
+
+    # cgroup v1: same hierarchy argument, different file names.
     rel=$(awk -F: '$2 ~ /(^|,)memory(,|$)/{print $3}' /proc/self/cgroup 2>/dev/null | head -1)
-    if [ -n "${rel:-}" ] && [ -r "/sys/fs/cgroup/memory${rel}/memory.limit_in_bytes" ]; then
-        lim=$(cat "/sys/fs/cgroup/memory${rel}/memory.limit_in_bytes" 2>/dev/null)
-        # An "unlimited" v1 limit is a huge sentinel, not a real cap.
-        if [ -n "${lim:-}" ] && [ "$lim" -lt 1000000000000000 ] 2>/dev/null; then
-            MEM_LIMIT_BYTES="$lim"
-            MEM_USAGE_FILE="/sys/fs/cgroup/memory${rel}/memory.usage_in_bytes"
-            MEM_SOURCE="cgroup v1 ${rel}"
+    if [ -n "${rel:-}" ]; then
+        dir="/sys/fs/cgroup/memory${rel}"
+        best=""; bestdir=""
+        while : ; do
+            if [ -r "$dir/memory.limit_in_bytes" ]; then
+                lim=$(cat "$dir/memory.limit_in_bytes" 2>/dev/null)
+                # An "unlimited" v1 limit is a huge sentinel, not a real cap.
+                if [ -n "${lim:-}" ] && [ "$lim" -lt 1000000000000000 ] 2>/dev/null; then
+                    if [ -z "$best" ] || [ "$lim" -lt "$best" ] 2>/dev/null; then
+                        best="$lim"; bestdir="$dir"
+                    fi
+                fi
+            fi
+            [ "$dir" = "/sys/fs/cgroup/memory" ] && break
+            dir=$(dirname "$dir")
+        done
+        if [ -n "$best" ]; then
+            MEM_LIMIT_BYTES="$best"
+            MEM_USAGE_FILE="$bestdir/memory.usage_in_bytes"
+            MEM_SOURCE="cgroup v1 ${bestdir#/sys/fs/cgroup/memory}"
             return
         fi
     fi
+
     # SLURM states it directly when the cgroup files are not readable.
     if [ -n "${SLURM_MEM_PER_NODE:-}" ]; then
         MEM_LIMIT_BYTES=$(( SLURM_MEM_PER_NODE * 1048576 ))
