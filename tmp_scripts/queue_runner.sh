@@ -57,45 +57,73 @@ STAGGER="${STAGGER:-60}"
 CORES=$(python -c 'import os; print(len(os.sched_getaffinity(0)))' 2>/dev/null || echo 8)
 # One main process plus its dataloaders; 5 cores per run matches _common.yaml's
 # num_workers: 4. The memory guard below is what usually binds first.
-MAX_SLOTS="${MAX_SLOTS:-$(( CORES / 5 ))}"
-[ "$MAX_SLOTS" -lt 1 ] && MAX_SLOTS=1
+_CORE_SLOTS=$(( CORES / 5 ))
+[ "$_CORE_SLOTS" -lt 1 ] && _CORE_SLOTS=1
 
 say() { echo "[$(date '+%F %T')] $*"; }
 
-avail_gb() {
-    # The CGROUP limit is what kills you, not the machine's memory. On an HPC
-    # node `free` reports the whole box (2 TB on dgxh-1) while the job may be
-    # capped far below that, and a cgroup OOM kill leaves NO traceback - the
-    # process just disappears. Prefer the cgroup accounting when present.
-    local max cur v1max v1cur
-    if [ -r /sys/fs/cgroup/memory.max ] && [ -r /sys/fs/cgroup/memory.current ]; then
-        max=$(cat /sys/fs/cgroup/memory.max 2>/dev/null)
-        cur=$(cat /sys/fs/cgroup/memory.current 2>/dev/null)
-        if [ "$max" != "max" ] && [ -n "${max:-}" ] && [ -n "${cur:-}" ]; then
-            echo $(( (max - cur) / 1073741824 )); return
+# --- memory limit discovery -------------------------------------------------
+# Under SLURM the process runs inside a memory cgroup
+# (/system.slice/slurmstepd.scope/job_<id>/...), and THAT limit is what the
+# OOM killer enforces - `free` reports the whole machine and is irrelevant.
+# The trap: /sys/fs/cgroup/memory.max is the ROOT cgroup, which is unlimited.
+# The job's limit lives under the relative path in /proc/self/cgroup. Reading
+# the root instead reported 1712G free inside a job capped far lower, and four
+# runs were OOM-killed at "Epoch 0" while the guard saw nothing wrong.
+#
+# Detection runs ONCE, directly (not in a command substitution) so it can set
+# globals - the previous version set them inside $( ) and lost them with the
+# subshell, which is why the source read "unknown".
+MEM_LIMIT_BYTES=0      # 0 = no cap found
+MEM_USAGE_FILE=""      # re-read every poll; usage moves, the limit does not
+MEM_SOURCE="host free -g (no cap found)"
+
+detect_memory() {
+    local rel lim
+    rel=$(awk -F: '$1=="0"{print $3}' /proc/self/cgroup 2>/dev/null | head -1)
+    if [ -n "${rel:-}" ] && [ -r "/sys/fs/cgroup${rel}/memory.max" ]; then
+        lim=$(cat "/sys/fs/cgroup${rel}/memory.max" 2>/dev/null)
+        if [ "$lim" != "max" ] && [ -n "${lim:-}" ]; then
+            MEM_LIMIT_BYTES="$lim"
+            MEM_USAGE_FILE="/sys/fs/cgroup${rel}/memory.current"
+            MEM_SOURCE="cgroup v2 ${rel}"
+            return
         fi
-    elif [ -r /sys/fs/cgroup/memory/memory.limit_in_bytes ]; then
-        v1max=$(cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null)
-        v1cur=$(cat /sys/fs/cgroup/memory/memory.usage_in_bytes 2>/dev/null)
+    fi
+    rel=$(awk -F: '$2 ~ /(^|,)memory(,|$)/{print $3}' /proc/self/cgroup 2>/dev/null | head -1)
+    if [ -n "${rel:-}" ] && [ -r "/sys/fs/cgroup/memory${rel}/memory.limit_in_bytes" ]; then
+        lim=$(cat "/sys/fs/cgroup/memory${rel}/memory.limit_in_bytes" 2>/dev/null)
         # An "unlimited" v1 limit is a huge sentinel, not a real cap.
-        if [ -n "${v1max:-}" ] && [ "$v1max" -lt 1000000000000000 ] 2>/dev/null; then
-            echo $(( (v1max - ${v1cur:-0}) / 1073741824 )); return
+        if [ -n "${lim:-}" ] && [ "$lim" -lt 1000000000000000 ] 2>/dev/null; then
+            MEM_LIMIT_BYTES="$lim"
+            MEM_USAGE_FILE="/sys/fs/cgroup/memory${rel}/memory.usage_in_bytes"
+            MEM_SOURCE="cgroup v1 ${rel}"
+            return
         fi
+    fi
+    # SLURM states it directly when the cgroup files are not readable.
+    if [ -n "${SLURM_MEM_PER_NODE:-}" ]; then
+        MEM_LIMIT_BYTES=$(( SLURM_MEM_PER_NODE * 1048576 ))
+        MEM_SOURCE="SLURM_MEM_PER_NODE"
+    fi
+}
+
+mem_limit_gb() { echo $(( MEM_LIMIT_BYTES / 1073741824 )); }
+
+avail_gb() {
+    local used
+    if [ "$MEM_LIMIT_BYTES" -gt 0 ]; then
+        used=0
+        [ -r "$MEM_USAGE_FILE" ] && used=$(cat "$MEM_USAGE_FILE" 2>/dev/null || echo 0)
+        echo $(( (MEM_LIMIT_BYTES - ${used:-0}) / 1073741824 ))
+        return
     fi
     free -g 2>/dev/null | awk '/^Mem:/ {print ($7 != "" ? $7 : $4)}' || echo 999
 }
 
-mem_source() {   # for the startup line, so the number is interpretable
-    if [ -r /sys/fs/cgroup/memory.max ] && \
-       [ "$(cat /sys/fs/cgroup/memory.max 2>/dev/null)" != "max" ]; then
-        echo "cgroup v2 limit"
-    elif [ -r /sys/fs/cgroup/memory/memory.limit_in_bytes ] && \
-         [ "$(cat /sys/fs/cgroup/memory/memory.limit_in_bytes)" -lt 1000000000000000 ] 2>/dev/null; then
-        echo "cgroup v1 limit"
-    else
-        echo "host free -g (no cgroup cap seen)"
-    fi
-}
+mem_source() { echo "$MEM_SOURCE"; }
+
+detect_memory
 
 gpu_free_gb() {
     # Free memory on the device this run will ACTUALLY use.
@@ -143,9 +171,27 @@ done < "$JOBS_FILE"
 TOTAL=${#Q_CFG[@]}
 [ "$TOTAL" -eq 0 ] && { say "job file has no runnable jobs"; exit 1; }
 
+# Cores are a weak bound; the memory cap is the one that kills. Derive the
+# slot count from both and take the smaller, unless MAX_SLOTS was given.
+_LIMIT_GB=$(mem_limit_gb)
+if [ "${_LIMIT_GB:-0}" -gt 0 ]; then
+    _MEM_SLOTS=$(( _LIMIT_GB / RAM_PER_RUN_GB ))
+    [ "$_MEM_SLOTS" -lt 1 ] && _MEM_SLOTS=1
+else
+    _MEM_SLOTS="$_CORE_SLOTS"
+fi
+_AUTO_SLOTS=$_CORE_SLOTS
+[ "$_MEM_SLOTS" -lt "$_AUTO_SLOTS" ] && _AUTO_SLOTS=$_MEM_SLOTS
+MAX_SLOTS="${MAX_SLOTS:-$_AUTO_SLOTS}"
+
 say "queue: $TOTAL job(s) from $JOBS_FILE"
-say "$CORES cores -> max $MAX_SLOTS concurrent; require ${RAM_PER_RUN_GB}G available per launch"
-say "host memory available: $(avail_gb)G  [source: $(mem_source)]"
+_avail=$(avail_gb)
+if [ "${_LIMIT_GB:-0}" -gt 0 ]; then
+    say "memory cap ${_LIMIT_GB}G, ${_avail}G free  [source: $(mem_source)]"
+else
+    say "no memory cap found; ${_avail}G free  [source: $(mem_source)]"
+fi
+say "slots: $_CORE_SLOTS by cores ($CORES), $_MEM_SLOTS by memory at ${RAM_PER_RUN_GB}G/run -> using $MAX_SLOTS"
 say "GPU: $(gpu_label), $(gpu_free_gb)G free; require ${GPU_PER_RUN_GB}G per launch"
 _nvis=$(nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null | wc -l)
 [ "${_nvis:-0}" -gt 1 ] && [ -z "${CUDA_VISIBLE_DEVICES:-}" ] && \
