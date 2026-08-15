@@ -80,16 +80,55 @@ else
 fi
 echo "  workers/forks not shown: $(printf '%s\n' $ALL | grep -c . 2>/dev/null) total matching processes"
 
-# ---- what each live run is doing ------------------------------------------
+# ---- progress per live run -------------------------------------------------
+# The trainer prints "Epoch N/M" as it goes, so that plus the process's own
+# elapsed time gives a real ETA. Without this the only signal is "still
+# running", which is indistinguishable from "wedged".
+echo
+echo "--- PROGRESS ---"
+if [ -z "${ROOTS# }" ]; then
+    echo "  (nothing running)"
+else
+    printf "  %-34s %-12s %-6s %-10s %s\n" RUN EPOCH DONE ELAPSED ETA
+    for p in $ROOTS; do
+        args=$(ps -o args= -p "$p" 2>/dev/null)
+        cfg=$(printf '%s' "$args" | grep -o 'configs/[^ ]*' | head -1)
+        cfg=$(basename "${cfg:-?}" .yaml)
+        # Tag is not in the cmdline, so take the newest log for this config.
+        log=$(ls -t logs/${cfg}_*.log 2>/dev/null | grep -v '[0-9]\{8\}_[0-9]\{6\}\.log$' | head -1)
+        secs=$(ps -o etimes= -p "$p" 2>/dev/null | tr -d ' ')
+        ep=$(grep -ao 'Epoch [0-9]*/[0-9]*' "${log:-/dev/null}" 2>/dev/null | tail -1)
+        now=${ep#Epoch }; now=${now%%/*}
+        tot=${ep##*/}
+        if [ -n "${now:-}" ] && [ "${tot:-0}" -gt 0 ] 2>/dev/null && [ "${now:-0}" -gt 0 ] 2>/dev/null; then
+            pct=$(( now * 100 / tot ))
+            eta=$(( secs * (tot - now) / now ))
+            printf "  %-34s %-12s %-6s %-10s %s\n" \
+                "$(basename "${log:-$cfg}" .log)" "$now/$tot" "${pct}%" \
+                "$(( secs / 3600 ))h$(( (secs % 3600) / 60 ))m" \
+                "~$(( eta / 3600 ))h$(( (eta % 3600) / 60 ))m"
+        else
+            # No epoch line yet: still loading its dataset, or already past
+            # training and into the evaluation phase.
+            phase="loading/eval"
+            grep -aq "Results written to" "${log:-/dev/null}" 2>/dev/null && phase="writing results"
+            printf "  %-34s %-12s %-6s %-10s %s\n" \
+                "$(basename "${log:-$cfg}" .log)" "$phase" "-" \
+                "$(( secs / 3600 ))h$(( (secs % 3600) / 60 ))m" "-"
+        fi
+    done
+fi
+
+# ---- last log line, for anything the epoch counter cannot show -------------
 echo
 echo "--- LAST LOG LINE PER RUN ---"
 shopt -s nullglob
-LOGS=(logs/sweep_jc_*_run.log logs/all8_joint_chain_s*.log logs/sweep_jc_base_d*.log)
+LOGS=(logs/sweep_jc_*_run.log logs/all8_*_run.log logs/loo8_*_run.log logs/all8_joint_chain_s*.log)
 if [ ${#LOGS[@]} -eq 0 ]; then
     echo "  (no campaign run logs here)"
 else
     for f in "${LOGS[@]}"; do
-        line=$(grep -av '^\s*$' "$f" 2>/dev/null | tail -1 | cut -c1-110)
+        line=$(grep -av '^\s*$' "$f" 2>/dev/null | tail -1 | cut -c1-100)
         age=$(( ( $(date +%s) - $(stat -c %Y "$f" 2>/dev/null || echo 0) ) / 60 ))
         printf "  %-38s [%3dm ago] %s\n" "$(basename "$f")" "$age" "${line:-<empty>}"
     done
