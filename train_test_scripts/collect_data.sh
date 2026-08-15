@@ -26,7 +26,10 @@ mkdir -p logs
 
 FEATS=("$@")
 if [ ${#FEATS[@]} -eq 0 ]; then
-    FEATS=(union structural joint_lite joint)
+    # joint_chain is the headline method (full GADAR); leaving it out of the
+    # default meant a bare `collect_data.sh` built caches for every rung
+    # EXCEPT the one the paper leads with.
+    FEATS=(union structural joint_lite joint joint_chain)
 fi
 
 CONFIGS=()
