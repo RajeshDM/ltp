@@ -162,28 +162,36 @@ ATTEMPTS=()
 for ((i = 0; i < TOTAL; i++)); do ATTEMPTS[i]=0; done
 next=0; done_ok=0; done_fail=0
 
-reap() {            # prune finished runs; requeue the ones that died young
-    local keep=() rec pid name ix t0 elapsed
+reap() {            # prune finished runs; requeue anything that did not finish
+    local keep=() rec pid name ix t0 elapsed last
     for rec in ${RUNS[@]+"${RUNS[@]}"}; do
         IFS='|' read -r pid name ix t0 <<< "$rec"
         if kill -0 "$pid" 2>/dev/null; then
             keep+=("$rec"); continue
         fi
         elapsed=$(( $(date +%s) - t0 ))
-        # "Died young" = never got past setup. Here that is almost always
-        # memory contention, and a retry once the node is quieter usually
-        # works - so it is not the same event as a run that completed.
-        if [ "$elapsed" -lt 300 ]; then
-            if [ "${ATTEMPTS[ix]}" -le "$RETRIES" ]; then
-                say "DIED YOUNG after ${elapsed}s: $name - requeueing"
-                PENDING+=("$ix")
-            else
-                say "FAILED (retries exhausted): $name - see logs/${name}.log"
-                done_fail=$(( done_fail + 1 ))
-            fi
-        else
+
+        # Classify on EVIDENCE, not on elapsed time. An earlier version called
+        # anything past five minutes "finished", so three runs that died at
+        # ~4-5 minutes were reported as successes and the queue moved on
+        # cheerfully. A real run prints "Training complete in ..." when the
+        # trainer exits and "Results written to ..." when a train_test run
+        # writes its JSON; absent both, it did not finish, however long it ran.
+        if grep -aq "Results written to\|Training complete in" "logs/${name}.log" 2>/dev/null; then
             say "finished after $(( elapsed / 60 ))m: $name"
             done_ok=$(( done_ok + 1 ))
+            continue
+        fi
+
+        last=$(grep -av '^[[:space:]]*$' "logs/${name}.log" 2>/dev/null | tail -1 | cut -c1-120)
+        say "DIED after $(( elapsed / 60 ))m without completing: $name"
+        say "      last log line: ${last:-<empty>}"
+        if [ "${ATTEMPTS[ix]}" -le "$RETRIES" ]; then
+            say "      requeueing (attempt $(( ATTEMPTS[ix] + 1 )) of $(( RETRIES + 1 )))"
+            PENDING+=("$ix")
+        else
+            say "      retries exhausted - see logs/${name}.log"
+            done_fail=$(( done_fail + 1 ))
         fi
     done
     RUNS=(${keep[@]+"${keep[@]}"})
