@@ -184,7 +184,18 @@ reap() {            # prune finished runs; requeue anything that did not finish
         fi
 
         last=$(grep -av '^[[:space:]]*$' "logs/${name}.log" 2>/dev/null | tail -1 | cut -c1-120)
+        # run_config.sh records the exit status; for a signal death it is the
+        # only evidence there is, since nothing gets written to the log.
+        code=$(cat "logs/${name}.exit" 2>/dev/null)
+        case "${code:-}" in
+            137) why="SIGKILL - OOM killer or the scheduler" ;;
+            139) why="SIGSEGV" ;;
+            134) why="abort - often a CUDA or driver failure" ;;
+            "")  why="no exit status recorded (killed before it could be written)" ;;
+            *)   why="exit $code" ;;
+        esac
         say "DIED after $(( elapsed / 60 ))m without completing: $name"
+        say "      cause: $why"
         say "      last log line: ${last:-<empty>}"
         if [ "${ATTEMPTS[ix]}" -le "$RETRIES" ]; then
             say "      requeueing (attempt $(( ATTEMPTS[ix] + 1 )) of $(( RETRIES + 1 )))"

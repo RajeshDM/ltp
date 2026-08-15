@@ -52,9 +52,19 @@ if [ -f "logs/${NAME}.log" ]; then
     echo "  rotated previous log -> $ROTATED"
 fi
 
-nohup python main.py --config "$CFG" --device "$DEV" "$@" \
-    > "logs/${NAME}.log" 2>&1 &
+# Record the exit status. A run that is killed by a signal writes no
+# traceback anywhere, and the status is the only evidence of what happened:
+# 137 = SIGKILL (OOM killer or scheduler), 139 = SIGSEGV, 134 = abort (often
+# a CUDA/driver failure), 1 = an ordinary Python exception. Without this the
+# post-mortem is guesswork.
+rm -f "logs/${NAME}.exit"
+nohup bash -c '
+    python main.py --config "$1" --device "$2" "${@:3}"
+    echo $? > "logs/'"${NAME}"'.exit"
+' _ "$CFG" "$DEV" "$@" > "logs/${NAME}.log" 2>&1 &
 PID=$!
 echo "Started ${NAME} on ${DEV} (pid ${PID})"
 echo "  log:    tail -f logs/${NAME}.log"
-echo "  stop:   kill ${PID}"
+# ${PID} is the wrapper that records the exit status, not python itself, so
+# killing it would orphan the run. Match on the config instead.
+echo "  stop:   pkill -f \"configs/$(basename "$CFG")\""
