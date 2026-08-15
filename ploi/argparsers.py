@@ -258,6 +258,17 @@ def get_ploi_argument_parser():
     )
 
     parser.add_argument(
+        "--use-amp",
+        type=str2bool,
+        default=False,
+        help="Mixed precision (bf16/fp16 autocast + GradScaler) in the "
+             "training loop. The implementation was already there and wired "
+             "through main.py, but had no flag, so it could never be enabled. "
+             "Off by default because it changes numerics: verify parity on a "
+             "short run before trusting a comparison across the boundary.",
+    )
+
+    parser.add_argument(
         "--representation-size",
         type=int,
         default=constants.REPRESENTATION_SIZE,
