@@ -73,6 +73,7 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
                 chpkt_manager=None,
                 enable_profiling=False,
                 use_amp=False,
+                amp_dtype='bf16',
                 spot_checkpoint_path=None,
                 patience=0,
                 domain_names=None):
@@ -90,7 +91,13 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
         device = "cpu"
 
     device_type = 'cuda' if use_gpu else 'cpu'
-    scaler = _GradScaler(enabled=use_amp and use_gpu)
+    # bf16 by default: it carries fp32's exponent range, so gradients cannot
+    # overflow the way fp16's can, and on an H100 it runs at the same speed.
+    # fp16 needs the loss scaler to avoid underflow and can still produce
+    # skipped steps; keep it available but do not make it the default.
+    _amp_dtype = torch.bfloat16 if str(amp_dtype).lower() in ('bf16', 'bfloat16') else torch.float16
+    # The scaler is only meaningful for fp16; with bf16 it is a no-op.
+    scaler = _GradScaler(enabled=use_amp and use_gpu and _amp_dtype is torch.float16)
 
     epochs = []
     train_loss_values = []
@@ -122,7 +129,7 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
                 loss = 0.
                 optimizer.zero_grad()
                 batch_data = batch_data.to(device)
-                with torch.amp.autocast(device_type, enabled=use_amp):
+                with torch.amp.autocast(device_type, dtype=_amp_dtype, enabled=use_amp):
                     state_val =  model(batch_data).squeeze(1)
                     loss += compute_val_loss(state_val, batch_data)
 
@@ -341,6 +348,7 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
                 chpkt_manager=None,
                 enable_profiling=False,
                 use_amp=False,
+                amp_dtype='bf16',
                 spot_checkpoint_path=None,
                 patience=0,
                 domain_names=None):
@@ -469,6 +477,7 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
                 chpkt_manager=None,
                 enable_profiling=False,
                 use_amp=False,
+                amp_dtype='bf16',
                 spot_checkpoint_path=None,
                 patience=0,
                 domain_names=None):
@@ -486,7 +495,13 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
         device = "cpu"
 
     device_type = 'cuda' if use_gpu else 'cpu'
-    scaler = _GradScaler(enabled=use_amp and use_gpu)
+    # bf16 by default: it carries fp32's exponent range, so gradients cannot
+    # overflow the way fp16's can, and on an H100 it runs at the same speed.
+    # fp16 needs the loss scaler to avoid underflow and can still produce
+    # skipped steps; keep it available but do not make it the default.
+    _amp_dtype = torch.bfloat16 if str(amp_dtype).lower() in ('bf16', 'bfloat16') else torch.float16
+    # The scaler is only meaningful for fp16; with bf16 it is a no-op.
+    scaler = _GradScaler(enabled=use_amp and use_gpu and _amp_dtype is torch.float16)
 
     n_domains = len(domain_names) if domain_names else 0
 
@@ -524,7 +539,7 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
                 optimizer.zero_grad()
                 batch_data = batch_data.to(device)
 
-                with torch.amp.autocast(device_type, enabled=use_amp):
+                with torch.amp.autocast(device_type, dtype=_amp_dtype, enabled=use_amp):
                     if ablation == "main_val" :
                         (action_scores, action_object_scores), state_val = model.forward_with_value(batch_data)
 

@@ -269,6 +269,16 @@ def get_ploi_argument_parser():
     )
 
     parser.add_argument(
+        "--amp-dtype",
+        type=str,
+        choices=["bf16", "fp16"],
+        default="bf16",
+        help="Precision used under --use-amp. bf16 has fp32's exponent range "
+             "so gradients cannot overflow and no loss scaling is needed; on "
+             "an H100 it is the same speed as fp16 and strictly more robust.",
+    )
+
+    parser.add_argument(
         "--representation-size",
         type=int,
         default=constants.REPRESENTATION_SIZE,

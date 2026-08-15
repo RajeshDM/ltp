@@ -235,6 +235,16 @@ else
 fi
 say "slots: $_CORE_SLOTS by cores ($CORES), $_MEM_SLOTS by memory at ${RAM_PER_RUN_GB}G/run -> using $MAX_SLOTS"
 say "GPU: $(gpu_label), $(gpu_free_gb)G free; require ${GPU_PER_RUN_GB}G per launch"
+# Without MPS, concurrent processes TIME-SLICE one CUDA context rather than
+# running side by side, so extra slots buy throughput only if the GPU is
+# already idle waiting. Worth saying out loud, since the slot count otherwise
+# implies a parallelism that is not happening.
+if [ -n "${CUDA_MPS_PIPE_DIRECTORY:-}" ] && [ -S "${CUDA_MPS_PIPE_DIRECTORY}/control" ]; then
+    say "MPS: active ($CUDA_MPS_PIPE_DIRECTORY) - runs share the GPU concurrently"
+else
+    say "MPS: not active - concurrent runs will TIME-SLICE the GPU, not overlap"
+    say "     (source tmp_scripts/mps.sh start, then relaunch, to change that)"
+fi
 _nvis=$(nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null | wc -l)
 [ "${_nvis:-0}" -gt 1 ] && [ -z "${CUDA_VISIBLE_DEVICES:-}" ] && \
     say "NOTE: $_nvis GPUs on this host and no CUDA_VISIBLE_DEVICES set - every"

@@ -1237,6 +1237,7 @@ if __name__ == "__main__":
                 chpkt_manager=manager,
                 enable_profiling=enable_profiling,
                 use_amp=getattr(args, 'use_amp', False),
+                amp_dtype=getattr(args, 'amp_dtype', 'bf16'),
                 spot_checkpoint_path=_spot_path,
                 patience=getattr(args, 'early_stopping_patience', 0),
             )
