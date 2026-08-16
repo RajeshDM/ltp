@@ -275,9 +275,19 @@ reap() {            # prune finished runs; requeue anything that did not finish
         # cheerfully. A real run prints "Training complete in ..." when the
         # trainer exits and "Results written to ..." when a train_test run
         # writes its JSON; absent both, it did not finish, however long it ran.
-        if grep -aq "Results written to\|Training complete in" "logs/${name}.log" 2>/dev/null; then
+        if grep -aq "Results written to" "logs/${name}.log" 2>/dev/null; then
             say "finished after $(( elapsed / 60 ))m: $name"
             done_ok=$(( done_ok + 1 ))
+            continue
+        fi
+        # Trained but never wrote results: it got through training and died in
+        # the evaluation phase. The checkpoints are on disk, so retraining
+        # would burn hours to hit the same bug - report it and move on.
+        if grep -aq "Training complete in" "logs/${name}.log" 2>/dev/null; then
+            say "TRAINED but EVAL FAILED after $(( elapsed / 60 ))m: $name"
+            say "      checkpoints exist; rerun evaluation with --mode test"
+            say "      $(grep -a -m1 -A2 Traceback "logs/${name}.log" 2>/dev/null | tail -1 | cut -c1-110)"
+            done_fail=$(( done_fail + 1 ))
             continue
         fi
 

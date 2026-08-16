@@ -147,18 +147,25 @@ for f in "${LOGS[@]}"; do
         ps -o args= -p "$p" 2>/dev/null | grep -q "configs/${cfg}.yaml" && alive=1
     done
     [ "$alive" -eq 1 ] && continue
-    err=$(grep -a -m1 -A3 "Traceback\|Error:\|error:" "$f" 2>/dev/null | tail -3 | tr '\n' ' ' | cut -c1-150)
-    if [ -n "$err" ]; then
-        echo "  $base"
+    # Three outcomes, and the middle one matters most: a run that finished
+    # TRAINING and then crashed in run_tests has its checkpoints on disk and
+    # only needs the evaluation re-run - retraining it would waste hours.
+    has_train=$(grep -ac "Training complete in" "$f" 2>/dev/null | head -1)
+    has_res=$(grep -ac "Results written to" "$f" 2>/dev/null | head -1)
+    err=$(grep -a -m1 -A3 "Traceback" "$f" 2>/dev/null | tail -2 | tr '\n' ' ' | cut -c1-140)
+    if [ "${has_res:-0}" -gt 0 ]; then
+        echo "  $base  COMPLETE (trained + evaluated, results written)"
+    elif [ "${has_train:-0}" -gt 0 ]; then
+        echo "  $base  TRAINED, EVAL FAILED - checkpoints exist, rerun --mode test"
+        [ -n "$err" ] && echo "      $err"
+    elif [ -n "$err" ]; then
+        echo "  $base  died during training"
         echo "      $err"
-        DEAD=1
-    elif grep -aq "Results written to\|Training complete" "$f" 2>/dev/null; then
-        echo "  $base  (finished normally)"
-        DEAD=1
     else
-        echo "  $base  (no traceback, no completion - check the tail yourself)"
-        DEAD=1
+        code=$(cat "logs/${base}.exit" 2>/dev/null)
+        echo "  $base  died, no traceback${code:+ (exit $code)}"
     fi
+    DEAD=1
 done
 [ "$DEAD" -eq 0 ] && echo "  (none)"
 
