@@ -34,11 +34,16 @@ Usage
 -----
     python tools/reachability_probe.py \\
         --config configs/all8_joint_chain.yaml \\
-        --checkpoint models/<dir>/model_e450_<ts>.pt \\
-        --domain Manyblocks_ipcc_big \\
-        --problems 20
+        --domain Manyblocks_ipcc_big --problems 20
 
-CPU is fine and preferred - this competes with nothing.
+--checkpoint is optional: without it the newest .pt whose model directory
+matches the config's featurization and seed is used, and the choice is
+printed. Pass one explicitly to pin a specific epoch.
+
+Runs on the GPU by default. It is a few thousand tiny forward passes and a
+short optimisation each - the CPU is the resource under contention on a node
+with trainings in flight (their dataloader workers), while the GPU has
+headroom, so cuda is the neighbourly choice here as well as the faster one.
 """
 
 import argparse
@@ -59,6 +64,27 @@ def _find_one(pattern, what):
     if not hits:
         raise FileNotFoundError(f"no {what} matching {pattern}")
     return hits[-1]
+
+
+def _find_checkpoint(featurization, seed):
+    """Newest checkpoint whose model directory matches this config.
+
+    ModelManager encodes the run's identity in the directory name
+    (get_readable_folder_name), including feat<featurization> and seed<N>, so
+    matching on those two picks out runs of this config without having to
+    rebuild the hyperparameter hash.
+    """
+    cands = []
+    for path in glob.glob(os.path.join('models', '*', 'model_e*.pt')):
+        parent = os.path.basename(os.path.dirname(path))
+        if f'feat{featurization}' in parent and f'seed{seed}' in parent:
+            cands.append(path)
+    if not cands:
+        raise FileNotFoundError(
+            f"no checkpoint under models/ with feat{featurization} and seed{seed}. "
+            f"Existing directories:\n  " +
+            "\n  ".join(sorted(os.path.basename(d) for d in glob.glob('models/*'))[:10]))
+    return max(cands, key=os.path.getmtime)
 
 
 def _load_sidecar_metadata(domain, tag):
@@ -129,13 +155,17 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--config', required=True, help="the config the model was trained with")
-    ap.add_argument('--checkpoint', required=True, help="a .pt under models/")
+    ap.add_argument('--checkpoint', default=None,
+                    help="a .pt under models/; omit to auto-select the newest "
+                         "matching this config's featurization and seed")
     ap.add_argument('--domain', required=True, help="pddlgym domain, e.g. Manyblocks_ipcc_big")
     ap.add_argument('--problems', type=int, default=20)
     ap.add_argument('--states-per-problem', type=int, default=15,
                     help="decision points sampled per problem (evenly spaced)")
     ap.add_argument('--iters', type=int, default=300, help="optimisation steps per test")
-    ap.add_argument('--device', default='cpu')
+    ap.add_argument('--device', default='cuda:0',
+                    help="cuda:0 by default; the CPU is the contended resource "
+                         "when trainings are running, not the GPU")
     args_cli = ap.parse_args()
 
     import torch
@@ -173,10 +203,13 @@ def main():
         device=args_cli.device, action_options=args.action_options,
         object_options=args.object_options, ablation=args.ablation,
     ).to(args_cli.device)
-    blob = torch.load(args_cli.checkpoint, map_location=args_cli.device)
+    ckpt = args_cli.checkpoint or _find_checkpoint(args.featurization, args.seed)
+    if not args_cli.checkpoint:
+        print(f"auto-selected checkpoint: {ckpt}")
+    blob = torch.load(ckpt, map_location=args_cli.device)
     model.load_state_dict(blob['state_dict'] if 'state_dict' in blob else blob)
     model.eval()
-    print(f"loaded {args_cli.checkpoint}  (nf={nf} ef={ef} d={args.representation_size})")
+    print(f"loaded {ckpt}  (nf={nf} ef={ef} d={args.representation_size})")
 
     problems, cache_path = _load_problems(domain, args_cli.problems)
     print(f"{len(problems)} problems from {cache_path}\n")
