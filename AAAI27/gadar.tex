@@ -640,7 +640,7 @@ subsets).}
 \toprule
 Domain & GABAR$^\dagger$ & \union{} & \gadarbind{} & \gadar{} \\
 \midrule
-Blocks    & 100.0 & 41.0 & 53.0 & 57.0 \\ % UNION PROVISIONAL: 57/139 of 200, refresh
+Blocks    & 100.0 & 30.0 & 53.0 & 57.0 \\ % UNION PROVISIONAL: 57/139 of 200, refresh
 Miconic   & 100.0 & 100.0 & 61.3 & 83.0 \\
 Spanner   & 92.0 & 1.0 & 1.0 & 35.4 \\
 Gripper   & 100.0 & 100.0 & 94.2 & 93.1 \\ % UNION PROVISIONAL: 137/137 of 173, refresh
@@ -649,7 +649,7 @@ Grid      & 96.3 & 2.1 & 70.8 & 97.9 \\
 Logistics & 79.0 & 14.6 & 0.0 & 16.6 \\
 Rovers    & 82.0 & 5.6 & 5.6 & 9.3 \\
 \midrule
-Combined  & 92.5 & 34.8 & 44.2 & 60.5 \\
+Combined  & 92.5 & 33.4 & 44.2 & 60.5 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -679,7 +679,7 @@ any held-out split and is 0.0\% on four of the six, and its top-ranked
 proposal is applicable in at most 0.2\% of states there, so the one or two
 instances it does solve come from the executor and not from the policy,
 while \gadar{} reaches 100\% and 68\% on the two Visitall splits.
-The advantage does not survive averaging: 34.8\% over the eight domains
+The advantage does not survive averaging: 33.4\% over the eight domains
 against \gadarbind{}'s 44.2\% and \gadar{}'s 60.5\%, because \union{} is
 bimodal, near-perfect on Miconic and Gripper and near-zero on Spanner and
 Grid, which \gadar{} solves at 35.4\% and 97.9\%. We read this as
