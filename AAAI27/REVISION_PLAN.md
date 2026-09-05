@@ -261,6 +261,43 @@ would move the paper to 5–6.
   reviewer raised.
 - **Do not soften the capability claim.** C1 is accepted and called the
   strongest part of the paper. The revision is about C2 and C3.
+- **Do not expand the training set before the data-fraction curve says
+  it would help** — status *deferred*, not refuted. Data is a capacity
+  knob, and capacity knobs come after the representation to-do list is
+  empty (research skill §1, plateau). No observed failure implicates data
+  quantity: the union control fails at V1 0%, and with constrained
+  decoding at V1 100% it still scores 0% — a representation failure that
+  more instances of the same size cannot touch. The licensing test is
+  already scheduled (RUNBOOK, node M day 2) and costs two short trainings,
+  not a dataset build:
+
+      for n in 25 50 100; do
+        RUN_TAG="d$n" ./train_test_scripts/run_config.sh \
+          configs/<arm>.yaml cuda:0 --num-train-problems $n --mode train
+      done
+
+  `d` is already in the checkpoint key, so each fraction gets its own
+  directory. Read the curve at the full count: still climbing steeply →
+  expansion is licensed; flat → it buys nothing and the idea dies for the
+  price of two runs. Budget a data-collection pass per fraction (new
+  unified caches and sidecars; the full-size ones are not reused).
+
+  Two prices to pay if it *is* licensed, both of which the reviewer will
+  check:
+
+  1. **Comparability.** Training GADAR on more data than the per-domain
+     GABAR baselines makes the comparison unfair in GADAR's favour. The
+     fix is retraining GABAR on the same expanded set — eight trainings,
+     which is the real cost of the expansion, not an afterthought.
+  2. **Bigger instances contaminate the claim** (status
+     *excluded-by-design* for the headline runs). "Trains on small
+     instances, generalizes to much larger" is the setup; training on
+     larger instances weakens it, and the training plans come from
+     satisficing `fd-lama-first`, whose plan quality degrades with size —
+     so the supervision itself gets worse exactly where the instances get
+     bigger. If run at all, run it as a separate labelled arm (e.g.
+     logistics, where the intuition is strongest), never folded into the
+     headline numbers.
 
 ---
 
@@ -383,7 +420,7 @@ ground actions, same executor/monitor/step bound):
 | domain | test | train-split |
 |---|---|---|
 | Visitall | 6.00% | **99.73%** |
-| Miconic | 0.00% | **88.30%** |
+| Miconic | 1.12% | **88.30%** |
 | Rovers | **30.86%** | 75.21% |
 | Spanner | **43.75%** | 63.39% |
 | Grid | 0.00% | 2.95% |
@@ -409,8 +446,7 @@ Add a random-floor row (or column) to Table 1. It costs nothing, it is
 already computed, and it converts "our zero-shot coverage is X%" into a
 claim that survives the first control a reviewer thinks of.
 
-Caveat on the miconic test floor: measured on 5 problems here. Re-run at the
-full 119 before it goes in the paper —
-`python tools/random_policy_baseline.py --domains miconic_ipcc:119 --rollouts 3`.
-The neighbouring hard splits (gripper 173, logistics 96, both 0.00%) make
-0% plausible, but a 5-problem floor is not a reportable number.
+The miconic test floor is **1.12%** at the full 119 problems (the 5-problem
+probe said 0.00%; a 5-problem floor is not a reportable number). It stays a
+near-zero, discriminative cell — and 1.12% rather than 0% is the honest bar
+the union control's 0% has to be stated against.
