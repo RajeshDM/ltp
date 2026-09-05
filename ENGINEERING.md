@@ -149,7 +149,20 @@ on Literal (pddlgym already caches it — the cost was call count).
 - **Dependency-free unit tests**: sparse-vs-dense equality
   (`test_sparse_edges.py`), lifted spec/metadata/renaming invariance
   (`test_lifted_layer.py`), union merge + structural classes
-  (`test_multidomain_metadata.py`).
+  (`test_multidomain_metadata.py`), batched row→graph map
+  (`test_beam_parallel_indexing.py`).
+- **Show the regression test can fail.** After fixing the batched
+  decoder's mixed-arity map, the same command was re-run with only the
+  pre-fix `modelutils_ltp.py` checked out
+  (`git checkout <old> -- ploi/modelutils_ltp.py`) and had to raise the
+  original error — 20 graphs, stride 3 → 7, matching the reported
+  200 → 67. A "it passes now" check that was never seen to fail
+  certifies nothing; this costs one run.
+- **"Does not crash" is not "is correct".** A wrong row→graph map runs
+  fine and silently scores another problem's objects. The claim came
+  from parity against `beam_search_v2`, which decodes one graph at a time
+  with no stride and was deliberately left untouched as the reference:
+  8/8 cells matched on outcome *and* on per-step actions.
 - **`GABAR_DETERMINISTIC=1`**: bit-reproducible runs at ~1.7x cost — for
   parity checks only, never production.
 - **N-way verification against pristine baselines**: the original GABAR

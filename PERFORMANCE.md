@@ -175,6 +175,20 @@ running many seeds at once, divide the worker count down or drop it.
 - **Caching `repr` on `Literal`.** pddlgym already caches `_str` and `_hash`
   at construction. The cost was call *count*, not call *cost*.
 
+## Correctness fixes that cost nothing (measured, not assumed)
+
+- **Batched decoder row→graph map** (2026-09-05, cn-gpu5 H100,
+  `configs/ab_visitall.yaml`, `visitall_ipcc:50`, batched, 8 workers).
+  Replacing the fixed stride with `n_parameters`-derived offsets adds a
+  `cumsum` and two elementwise ops on a length-B vector once per decode,
+  plus one `minimum`+add per parameter slot, against one `arange` per slot
+  removed. Measured: `forward pass` (the only bucket it can touch)
+  93.39s -> 93.02s, total 255.2s -> 249.3s, coverage 35/50 both runs, plan
+  quality identical to 16 digits. The 6s of "speedup" is `graph build` +
+  `pyg convert` (94.8 -> 92.2, 31.8 -> 29.5) — page-cache warmth from the
+  first run, not the change. Recorded because the alternative to measuring
+  was declining a correctness fix on a guess about its cost.
+
 ## Recommended settings
 
     GABAR_BATCH_EVAL=1 GABAR_FEATURIZE_WORKERS=16

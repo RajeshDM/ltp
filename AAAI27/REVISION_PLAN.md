@@ -308,18 +308,59 @@ previously-working run moves), the row-count disagreement raises with both
 numbers, and the failing batch recovers 200 graphs where the old stride
 recovered 67.
 
-**Before trusting batched numbers again, run the parity matrix** - the fix is
-inside the batched decoder and that is exactly what the harness exists for:
+### How wide the blast radius was
 
-    POOL_WORKERS=16 bash tools/parity_matrix.sh configs/ab_visitall.yaml \
-        "visitall_ipcc:20" check
+`n_parameters` is the graph's own `max_action_arity`. During TRAINING
+`pad_pyg_action_scores` pads every graph to the global max, so all graphs
+agree and the old stride was right. At TEST time only one domain is
+featurized and nothing pads, so `n_parameters` is that domain's arity while
+`max_number_action_parameters` came from the merged training action space.
+The stride was therefore correct only when
+`test_domain_max_arity == model.max_number_action_parameters` - i.e. the
+crash hit every evaluation of a multi-domain model on a narrower domain,
+including most zero-shot cells (the held-out domain is usually narrower than
+the union of seven training domains). This is not one broken config; it is
+why a large part of the LOO grid has checkpoints and empty results.
+
+### Verified 2026-09-05 (cn-gpu5, H100, union no_miconic, epoch 490)
+
+- **Crash closed.** `--test-domains visitall_ipcc:20` (arity 1, cap 3):
+  18/20 solved, no error. On `07c19b1` the same command raises
+  `size of tensor a (20) must match the size of tensor b (7)` - 20 graphs,
+  stride 3 -> 7, the same signature as the original 200/67. The regression
+  test is real, not vacuous.
+- **Correctness, not just non-crashing.** `tools/parity_matrix.sh` on the
+  same config, all 8 cells ({cpu,gpu} x {det,nodet} x {seq,batch}): outcome
+  matches AND *SAME actions*. `beam_search_v2` decodes one graph at a time
+  with no stride, so agreement with it certifies the new row->graph map.
+- **No previously-working case moved.** `logistics_ipcc:20` (arity == cap):
+  40.0%, V1 30.6%.
+- **No inference cost.** `configs/ab_visitall.yaml`, `visitall_ipcc:50`,
+  batched, 8 workers, before vs after: `forward pass` 93.39s -> 93.02s
+  (0.4%, noise), total 255.2s -> 249.3s, coverage 35/50 both, plan quality
+  identical to 16 digits (0.9116086450110004) - i.e. byte-identical
+  decisions, as `test_uniform_case_matches_legacy` predicts. The 2% total is
+  `graph build` + `pyg convert`, which the change does not touch.
 
 **Fallback if it is ever suspected again:** drop `GABAR_BATCH_EVAL=1`, which
 routes through `beam_search_v2` and never calls the affected code. ~2.5x
 slower, same outcomes.
 
-Cost so far: the eval phase of at least two completed trainings
-(`loo8_union_no_miconic`, `loo8_joint_lite_no_miconic`), which have
-checkpoints but no results JSON. Every `--mode test` invocation in
+Cost: the eval phase of every completed training whose test domains are
+narrower than its training set - at least `loo8_union_no_miconic` and
+`loo8_joint_lite_no_miconic`, and every zero-shot cell of the LOO grid.
+Checkpoints survive, so these are re-runnable with `--mode test`; no
+retraining is needed. Every `--mode test` invocation in
 `tmp_scripts/queue_runner.sh` sets `GABAR_BATCH_EVAL=1`, so the whole queue
 was exposed.
+
+### Open, from the first zero-shot number the fix unblocked
+
+`union no_miconic` zero-shot on `miconic_ipcc:20` now runs and scores
+**0/20, V1 0.0%, all 20 dead at round 1** (5.1s). Directionally this is what
+C1 predicts of the union control, but "0% at the first step" and "0% after
+search" are different failure modes and only one is evidence for C1. Before
+quoting it: re-run without `GABAR_BATCH_EVAL` (sequential reference), and
+compare against `tools/random_policy_baseline.py` on miconic. If uniform-
+random applicable actions beat it, the control is *worse than random*, which
+is a stronger and more quotable statement than "it fails".
