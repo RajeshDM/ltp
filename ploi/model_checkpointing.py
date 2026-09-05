@@ -82,6 +82,12 @@ class ModelManager:
         self.hyperparameters = hyperparameters
         self.ignore_defaults = ignore_defaults
         #self.tracking_file = self.base_dir / "model_tracking.json"
+        # Kept for diagnostics: these two pick the DIRECTORY, while the `seed`
+        # passed to save_checkpoint/get_best_model_info (hardcoded 42 on both
+        # sides) only picks the config hash inside it. Comparing the wrong one
+        # against a directory's config_info.json reports a phantom mismatch.
+        self._dir_train_env_name = train_env_name
+        self._dir_seed = seed
         self.model_dir = self._get_model_dir(train_env_name, seed )
         self.tracking_file = self.model_dir / "model_tracking.json"
         
@@ -393,6 +399,59 @@ class ModelManager:
         
         return save_path
     
+    def _explain_missing_tracking(self):
+        """Say WHICH directory was looked in, and which trained one is closest.
+
+        The checkpoint key is a dozen values wide (§1.4 contract 8), and a
+        single one moving - a featurization change shifting `nf`/`ef`, a
+        different `d`, a stale `--ablation` - silently sends a `--mode test`
+        run to a fresh empty directory. The old message ("No tracking file
+        found") named neither the directory nor the mismatch, so the answer
+        cost a manual diff of two config_info.json files every time.
+
+        Every directory that has ever trained carries a config_info.json with
+        the exact hyperparameter dict it was keyed by, so the differing keys
+        can be read off directly.
+        """
+        logger.warning("No tracking file found: %s", self.tracking_file)
+
+        want = dict(self.hyperparameters or {})
+        want['(train_env_name)'] = self._dir_train_env_name
+        want['(seed)'] = self._dir_seed
+
+        candidates = []
+        try:
+            for d in sorted(self.base_dir.iterdir()):
+                if not (d / "model_tracking.json").exists():
+                    continue           # never trained; often one of these stubs
+                try:
+                    with open(d / "config_info.json") as f:
+                        info = json.load(f)
+                except (OSError, ValueError):
+                    continue
+                have = dict(info.get('hyperparameters') or {})
+                have['(train_env_name)'] = info.get('train_env_name')
+                have['(seed)'] = info.get('seed')
+                diff = {k: (want.get(k), have.get(k))
+                        for k in set(want) | set(have)
+                        if want.get(k) != have.get(k)}
+                candidates.append((len(diff), d.name, diff))
+        except OSError:
+            return
+
+        if not candidates:
+            logger.warning("  no trained model directory exists under %s",
+                           self.base_dir)
+            return
+
+        candidates.sort(key=lambda c: c[0])
+        logger.warning("  closest trained directories (differing keys, "
+                       "wanted -> found):")
+        for n_diff, name, diff in candidates[:3]:
+            logger.warning("    [%d] %s", n_diff, name)
+            for k, (w, h) in sorted(diff.items()):
+                logger.warning("         %-18s %r -> %r", k, w, h)
+
     def get_best_model_info(self,
                            train_env_name: str,
                            seed: int,
@@ -401,7 +460,7 @@ class ModelManager:
                            ) -> Dict[str, List[Dict]]:
         """Get information about best models for a configuration"""
         if not self.tracking_file.exists():
-            logger.warning("No tracking file found")
+            self._explain_missing_tracking()
             return {}
         
         try:

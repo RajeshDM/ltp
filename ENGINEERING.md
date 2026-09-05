@@ -112,6 +112,19 @@ on Literal (pddlgym already caches it — the cost was call count).
 - **Periodic checkpoints** (`--checkpoint-every`): zero-shot transfer
   peaks well before training loss bottoms out; loss-ranked slots keep late
   epochs and silently discard the best-transferring models.
+- **A missing checkpoint names its own cause.** The wide key is easy to
+  miss by one value, and `--mode test` then resolves to a fresh empty
+  directory and reported only "No tracking file found" — naming neither
+  the path nor the mismatch, so every occurrence cost a hand diff of two
+  `config_info.json` files. `_explain_missing_tracking` now logs the
+  directory it looked in and the three closest directories that *have*
+  been trained, with the differing keys as `wanted -> found`. Cheap
+  because every trained directory already records the exact
+  hyperparameter dict it was keyed by. (The directory is picked by
+  `train_env_name` + `args.seed`; the `seed` passed to
+  `save_checkpoint`/`get_best_model_info` is hardcoded 42 on both sides
+  and only picks the hash *inside* it — comparing that one reports a
+  phantom mismatch, so the manager keeps the directory-picking values.)
 - **Test-blind selection** (combined train+val loss) decided once,
   recorded in the paper, held fixed — also cut the multi-hour test phase
   ~3x vs testing three metrics.
