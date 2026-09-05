@@ -263,11 +263,11 @@ would move the paper to 5–6.
 
 ---
 
-## 9. Known issue: the batched evaluator crashes on mixed arity
+## 9. FIXED: the batched evaluator crashed on mixed arity
 
-Diagnosed 2026-08 from `logs/loo8_union_no_miconic_run.log`. **This is a code
-bug, so re-running from scratch does not avoid it** - every fresh run hits it
-when it reaches its eval phase.
+Diagnosed and fixed 2026-08 from `logs/loo8_union_no_miconic_run.log`. Kept
+here because it explains missing results, and because the workaround below is
+still the fallback if the fix is ever suspected.
 
 ```
 ploi/modelutils_ltp.py, beam_search_parallel -> get_best_object_embeddings_ltp
@@ -291,17 +291,32 @@ the wrong number of graphs (67 against 200 here, consistent with stride 3
 over 201 rows), and the per-graph offsets built from `n_node` no longer
 align.
 
-**Workaround, available now:** drop `GABAR_BATCH_EVAL=1`. That routes
-evaluation through `forward_beam_decode` -> `beam_search_v2`, which never
-calls the broken function. ~2.5x slower; the parity matrix already
-established the two harnesses agree on outcomes, so the numbers are the same
-numbers.
+**Fix applied.** Both places now derive the row->graph map from
+`n_parameters`, the same arithmetic `compute_object_scores` has always used:
+`get_best_action_object_scores_locations` takes an optional `n_parameters`
+(omitting it keeps the legacy map, so the training path and `ablations.py`
+are untouched), and `parameter_locations` uses cumulative offsets with a
+per-graph clamp instead of a fixed stride. `beam_search_parallel` also checks
+`sum(n_parameters) == ao_scores.shape[0]` once at entry, so a future
+disagreement names itself rather than surfacing as a broadcast error deep in
+the loop. `beam_search_v2` is deliberately untouched - it is the parity
+reference.
 
-**Fix:** index the parameter rows by per-graph cumulative offsets from
-`n_parameters` rather than a uniform stride - the pattern
-`compute_object_scores` already uses for `current_parameter_indexes`. It is
-inside the batched decoder, so `tools/parity_matrix.sh` against the
-sequential reference is the gate afterwards.
+Pinned by `tests/test_beam_parallel_indexing.py`: the mixed-arity map is
+exact, a uniform batch is byte-identical to the legacy path (so no
+previously-working run moves), the row-count disagreement raises with both
+numbers, and the failing batch recovers 200 graphs where the old stride
+recovered 67.
+
+**Before trusting batched numbers again, run the parity matrix** - the fix is
+inside the batched decoder and that is exactly what the harness exists for:
+
+    POOL_WORKERS=16 bash tools/parity_matrix.sh configs/ab_visitall.yaml \
+        "visitall_ipcc:20" check
+
+**Fallback if it is ever suspected again:** drop `GABAR_BATCH_EVAL=1`, which
+routes through `beam_search_v2` and never calls the affected code. ~2.5x
+slower, same outcomes.
 
 Cost so far: the eval phase of at least two completed trainings
 (`loo8_union_no_miconic`, `loo8_joint_lite_no_miconic`), which have

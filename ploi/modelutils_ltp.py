@@ -313,16 +313,22 @@ class EncodeDecode(nn.Module):
 
         return all_objects_batches, all_objects_scores
 
-    def get_best_action_object_scores_locations(self, ao_scores, n_node, k, n_objects=None):
+    def get_best_action_object_scores_locations(self, ao_scores, n_node, k, n_objects=None,
+                                                n_parameters=None):
         """
         Get top-k action-object scores and their indices using tensor operations.
         Args:
-            ao_scores: Tensor of shape [batch_size * max_params, max_nodes]
+            ao_scores: Tensor of [sum(n_parameters), max_nodes] - one row per
+                (graph, parameter slot). Rows per graph are NOT uniform in
+                general; pass n_parameters so the row->graph map is exact.
             n_node: Tensor containing total number of nodes per graph (including all node types)
             k: Number of top objects to select
             n_objects: Per-graph object counts; when given, selection is
                 restricted to object nodes (see comment below). None keeps
                 the legacy all-nodes mask (training targets path).
+            n_parameters: Per-graph parameter-slot counts. When given, the
+                row->graph map is built from them; when omitted the legacy
+                uniform-stride map is used (see below).
 
         Returns:
             Tuple of (indices_tensor, values_tensor)
@@ -332,9 +338,29 @@ class EncodeDecode(nn.Module):
         # Create a mask to ignore scores beyond valid nodes for each graph
         max_nodes = ao_scores.shape[1]
 
-        # Calculate which graph each row in ao_scores belongs to
-        graph_indices = torch.div(torch.arange(batch_size, device=ao_scores.device),
-                                self.max_number_action_parameters, rounding_mode='floor').long()
+        # Which graph does each row of ao_scores belong to?
+        #
+        # The legacy answer, row // max_number_action_parameters, assumes every
+        # graph contributes exactly max_number_action_parameters rows. That is
+        # false whenever the batch's rows-per-graph differs from the decoder's
+        # arity cap, and it is how a 200-graph batch came to be read as 67
+        # graphs (RuntimeError in get_best_object_embeddings_ltp: "size of
+        # tensor a (200) must match tensor b (67)"). compute_object_scores has
+        # always derived this from n_parameters; do the same here when the
+        # caller supplies them, and keep the old map otherwise so the training
+        # path and ablations.py are untouched.
+        if n_parameters is not None:
+            n_par = n_parameters.to(torch.long)
+            graph_indices = torch.repeat_interleave(
+                torch.arange(n_par.numel(), device=ao_scores.device), n_par)
+            if graph_indices.numel() != batch_size:
+                raise RuntimeError(
+                    f"ao_scores has {batch_size} rows but n_parameters sums to "
+                    f"{int(n_par.sum())} over {n_par.numel()} graphs; the batch "
+                    f"and its parameter counts disagree")
+        else:
+            graph_indices = torch.div(torch.arange(batch_size, device=ao_scores.device),
+                                    self.max_number_action_parameters, rounding_mode='floor').long()
 
         # Get number of nodes for each row in ao_scores
         # n_node represents total nodes in the graph (including object, predicate, action nodes)
@@ -1038,6 +1064,16 @@ class GNN_GRU(EncodeDecode):
                     n_parameters,n_objects,object_idxs,n_actions,
                     action_idxs):
 
+        # n_parameters is authoritative for how ao_scores' rows map to graphs;
+        # everything below indexes through it rather than through the decoder's
+        # arity cap. Check the invariant once, here, so a disagreement reports
+        # itself instead of surfacing as a broadcast error deep in the loop.
+        n_par_long = n_parameters.to(torch.long)
+        if int(n_par_long.sum()) != ao_scores.shape[0]:
+            raise RuntimeError(
+                f"ao_scores has {ao_scores.shape[0]} rows but n_parameters sums "
+                f"to {int(n_par_long.sum())} over {n_par_long.numel()} graphs")
+
         a_scores_new = self.compute_action_scores(x,n_actions,hidden_state,action_idxs)
         # Clamp to the graph's schema count: a multi-domain model's
         # action_options can exceed it on schema-poor domains (Visitall: 1),
@@ -1099,11 +1135,20 @@ class GNN_GRU(EncodeDecode):
                                                         object_idxs,parameter_number)
                 all_objects_batches_all_params,all_objects_scores_all_params = self.get_best_action_object_scores_locations(
                                         ao_scores=ao_scores_new, n_node=n_node, k=self.max_num_objects,
-                                        n_objects=n_objects)
+                                        n_objects=n_objects, n_parameters=n_parameters)
 
-                #all_objects_scores = all_objects_scores_all_params[parameter_number]
-                #all_objects_batches = all_objects_batches_all_params[parameter_number]
-                parameter_locations = torch.arange(parameter_number, all_objects_batches_all_params.shape[0], self.max_number_action_parameters)
+                # One row per graph for THIS parameter slot. Rows per graph are
+                # not uniform, so the offset is the cumulative sum of
+                # n_parameters (the same arithmetic compute_object_scores
+                # uses), not a fixed stride. A graph whose action needs fewer
+                # parameters than this slot has no row here; clamp into its own
+                # last row so the gather stays in bounds - its score is frozen
+                # by done_prev just below, so the value is never used.
+                _starts = torch.cumsum(n_par_long, 0) - n_par_long
+                _offs = torch.minimum(
+                    torch.full_like(n_par_long, parameter_number),
+                    (n_par_long - 1).clamp(min=0))
+                parameter_locations = (_starts + _offs).long()
                 all_objects_batches = all_objects_batches_all_params[parameter_locations]
                 all_objects_scores = all_objects_scores_all_params[parameter_locations]
 
