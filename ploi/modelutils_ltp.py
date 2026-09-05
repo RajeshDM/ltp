@@ -1066,13 +1066,14 @@ class GNN_GRU(EncodeDecode):
 
         # n_parameters is authoritative for how ao_scores' rows map to graphs;
         # everything below indexes through it rather than through the decoder's
-        # arity cap. Check the invariant once, here, so a disagreement reports
-        # itself instead of surfacing as a broadcast error deep in the loop.
+        # arity cap. Hoisted here because it is invariant over both loops, and
+        # in a launch-bound decoder the cost of these is the launch, not the
+        # arithmetic. No .item()/.sum() readback: that would be a device sync
+        # per decode. get_best_action_object_scores_locations raises on a
+        # row-count disagreement, and its check is free there.
         n_par_long = n_parameters.to(torch.long)
-        if int(n_par_long.sum()) != ao_scores.shape[0]:
-            raise RuntimeError(
-                f"ao_scores has {ao_scores.shape[0]} rows but n_parameters sums "
-                f"to {int(n_par_long.sum())} over {n_par_long.numel()} graphs")
+        _par_starts = torch.cumsum(n_par_long, 0) - n_par_long   # first row of each graph
+        _par_last = (n_par_long - 1).clamp(min=0)                # its last, for clamping
 
         a_scores_new = self.compute_action_scores(x,n_actions,hidden_state,action_idxs)
         # Clamp to the graph's schema count: a multi-domain model's
@@ -1127,6 +1128,17 @@ class GNN_GRU(EncodeDecode):
             # the same shape; nothing reads its contents either.
             ao_scores_new = ao_scores
 
+            # One row per graph for THIS parameter slot. Rows per graph are not
+            # uniform, so the offset is the cumulative start of each graph's
+            # rows (the arithmetic compute_object_scores uses) rather than a
+            # fixed stride of max_number_action_parameters. A graph whose
+            # action needs fewer parameters than this slot has no row here;
+            # clamp into its own last row so the gather stays in bounds - its
+            # score is frozen by done_prev below, so the value is never used.
+            # Invariant across beams, so computed once here.
+            parameter_locations = _par_starts + torch.minimum(
+                torch.full_like(n_par_long, parameter_number), _par_last)
+
             for beam_idx, beam in enumerate(active_beams):
                 ao_scores_new = self.compute_object_scores(x, n_parameters,n_objects,
                                                             ao_scores_new,
@@ -1137,18 +1149,6 @@ class GNN_GRU(EncodeDecode):
                                         ao_scores=ao_scores_new, n_node=n_node, k=self.max_num_objects,
                                         n_objects=n_objects, n_parameters=n_parameters)
 
-                # One row per graph for THIS parameter slot. Rows per graph are
-                # not uniform, so the offset is the cumulative sum of
-                # n_parameters (the same arithmetic compute_object_scores
-                # uses), not a fixed stride. A graph whose action needs fewer
-                # parameters than this slot has no row here; clamp into its own
-                # last row so the gather stays in bounds - its score is frozen
-                # by done_prev just below, so the value is never used.
-                _starts = torch.cumsum(n_par_long, 0) - n_par_long
-                _offs = torch.minimum(
-                    torch.full_like(n_par_long, parameter_number),
-                    (n_par_long - 1).clamp(min=0))
-                parameter_locations = (_starts + _offs).long()
                 all_objects_batches = all_objects_batches_all_params[parameter_locations]
                 all_objects_scores = all_objects_scores_all_params[parameter_locations]
 
