@@ -73,6 +73,7 @@ No training. Days, not weeks.
 | 1.6 | Instance counts per split; consistent decimals; dispersion where it exists | text | W9 (half) |
 | 1.7 | Untrained control as a full column in Table 1; pure-greedy numbers promoted from prose | table | W12/#14 |
 | 1.8 | Per-decision wall clock + mean applicable groundings per state, vs the planner | already in the results JSONs and PERFORMANCE.md | W6 |
+| 1.9 | **Random-policy floor beside every zero-shot number** (§9) | already computed | the first control a reviewer runs |
 
 **1.3 is the highest value-per-hour item in the whole plan.** The
 checkpoints exist; it is an evaluation pass, not a training run. Run the
@@ -354,13 +355,62 @@ retraining is needed. Every `--mode test` invocation in
 `tmp_scripts/queue_runner.sh` sets `GABAR_BATCH_EVAL=1`, so the whole queue
 was exposed.
 
-### Open, from the first zero-shot number the fix unblocked
+### Resolved: the first zero-shot number the fix unblocked
 
-`union no_miconic` zero-shot on `miconic_ipcc:20` now runs and scores
-**0/20, V1 0.0%, all 20 dead at round 1** (5.1s). Directionally this is what
-C1 predicts of the union control, but "0% at the first step" and "0% after
-search" are different failure modes and only one is evidence for C1. Before
-quoting it: re-run without `GABAR_BATCH_EVAL` (sequential reference), and
-compare against `tools/random_policy_baseline.py` on miconic. If uniform-
-random applicable actions beat it, the control is *worse than random*, which
-is a stronger and more quotable statement than "it fails".
+`union no_miconic` zero-shot on miconic scores **0%, V1 0.0%, every problem
+dead at round 1** — the executor's `if not valid_actions: return True`, i.e.
+the whole beam was inapplicable.
+
+Two follow-ups settled what that means:
+
+1. **It is a policy result, not a pipeline fault.** With
+   `GABAR_CONSTRAINED_DECODE=1` (each parameter slot restricted to objects
+   some applicable grounding puts there, sequential path only): **V1 100%,
+   coverage still 0%**. Groundings are enumerated and legal actions are
+   decodable on the unseen domain; handed only legal actions, the union
+   model still cannot order them. That is the C1 control, stated precisely:
+   it fails at *constructing* legal actions, and also at ranking them once
+   construction is free.
+2. **But the cell has no discriminative power.** The random-policy floor on
+   `Miconic_ipcc@test` is also **0.00%**. 0 against 0 separates nothing; the
+   union control's zero here is not evidence that anything else is better.
+
+### Every zero-shot number must be reported against its split's random floor
+
+`cache/results/random_floor_summary.txt` (uniform choice among applicable
+ground actions, same executor/monitor/step bound):
+
+| domain | test | train-split |
+|---|---|---|
+| Visitall | 6.00% | **99.73%** |
+| Miconic | 0.00% | **88.30%** |
+| Rovers | **30.86%** | 75.21% |
+| Spanner | **43.75%** | 63.39% |
+| Grid | 0.00% | 2.95% |
+| Manyblocks | 0.17% | 1.67% |
+| Gripper | 0.00% | 0.00% |
+| Logistics | 0.00% | 0.00% |
+
+Consequences, both directions:
+
+- **The `@train` splits are the dangerous ones.** The suite's zero-shot
+  cells include `miconic_ipcc@train:228`, whose floor is 88.3%, and
+  visitall's is 99.7%. A zero-shot number below the floor on those splits is
+  *worse than random* however large it looks in isolation, and a reviewer
+  who runs the obvious control will find it. Nothing on an `@train` split
+  should be reported without the floor beside it.
+- **The discriminative cells are the hard test splits** with a floor at or
+  near zero: Gripper, Logistics, Miconic, Grid, Manyblocks. That is where a
+  nonzero GADAR/GADAR-BIND number carries the C1/C2 claim.
+- Rovers and Spanner test sit in between (30.9% / 43.8%) — beatable, but the
+  margin over the floor is the result, not the raw coverage.
+
+Add a random-floor row (or column) to Table 1. It costs nothing, it is
+already computed, and it converts "our zero-shot coverage is X%" into a
+claim that survives the first control a reviewer thinks of.
+
+Caveat on the miconic test floor: measured on 5 problems here. Re-run at the
+full 119 before it goes in the paper —
+`python tools/random_policy_baseline.py --domains miconic_ipcc:119 --rollouts 3`.
+The neighbouring hard splits (gripper 173, logistics 96, both 0.00%) make
+0% plausible, but a 5-problem floor is not a reportable number.
