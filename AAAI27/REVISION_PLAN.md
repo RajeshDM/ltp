@@ -260,3 +260,51 @@ would move the paper to 5–6.
   reviewer raised.
 - **Do not soften the capability claim.** C1 is accepted and called the
   strongest part of the paper. The revision is about C2 and C3.
+
+---
+
+## 9. Known issue: the batched evaluator crashes on mixed arity
+
+Diagnosed 2026-08 from `logs/loo8_union_no_miconic_run.log`. **This is a code
+bug, so re-running from scratch does not avoid it** - every fresh run hits it
+when it reaches its eval phase.
+
+```
+ploi/modelutils_ltp.py, beam_search_parallel -> get_best_object_embeddings_ltp
+RuntimeError: The size of tensor a (200) must match the size of tensor b (67)
+```
+
+`beam_search_parallel` selects one parameter row per graph with
+
+```python
+parameter_locations = torch.arange(parameter_number,
+                                   all_objects_batches_all_params.shape[0],
+                                   self.max_number_action_parameters)
+```
+
+which is correct only if every graph contributes exactly
+`max_number_action_parameters` rows.
+`get_best_action_object_scores_locations` documents the same assumption
+(`ao_scores: [batch_size * max_params, max_nodes]`). When a batch mixes
+arities the row count is not `number_graphs * max_params`, the stride returns
+the wrong number of graphs (67 against 200 here, consistent with stride 3
+over 201 rows), and the per-graph offsets built from `n_node` no longer
+align.
+
+**Workaround, available now:** drop `GABAR_BATCH_EVAL=1`. That routes
+evaluation through `forward_beam_decode` -> `beam_search_v2`, which never
+calls the broken function. ~2.5x slower; the parity matrix already
+established the two harnesses agree on outcomes, so the numbers are the same
+numbers.
+
+**Fix:** index the parameter rows by per-graph cumulative offsets from
+`n_parameters` rather than a uniform stride - the pattern
+`compute_object_scores` already uses for `current_parameter_indexes`. It is
+inside the batched decoder, so `tools/parity_matrix.sh` against the
+sequential reference is the gate afterwards.
+
+Cost so far: the eval phase of at least two completed trainings
+(`loo8_union_no_miconic`, `loo8_joint_lite_no_miconic`), which have
+checkpoints but no results JSON. Every `--mode test` invocation in
+`tmp_scripts/queue_runner.sh` sets `GABAR_BATCH_EVAL=1`, so the whole queue
+was exposed.
