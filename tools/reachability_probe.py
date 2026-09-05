@@ -222,12 +222,18 @@ def main():
         n = min(len(states), len(plan))
         if n == 0:
             continue
+        # `grnd` is per STEP, not per problem: grnd[j] is the applicable
+        # grounding list for states[j]. Passing the whole list makes
+        # _state_to_graph_ltp iterate lists where it wants Literals
+        # ("'set' object has no attribute 'predicate'") and every state is
+        # skipped, leaving an empty table that looks like a finished run.
+        n = min(n, len(grnd))
         step = max(1, n // max(args_cli.states_per_problem, 1))
         for j in range(0, n, step):
             state, action = states[j], plan[j]
             try:
                 g, _, node_to_objects = state_to_graph_wrapper(
-                    state, action_space, grnd, prev_actions=None, prev_state=None,
+                    state, action_space, grnd[j], prev_actions=None, prev_state=None,
                     graph_metadata=metadata, curr_action=None, objects=None,
                     goal_state=state.goal)
                 with torch.inference_mode():
@@ -295,6 +301,14 @@ def main():
     print(f"duplicate-embedding collisions: {dups}")
     if skipped:
         print(f"skipped: {skipped}")
+    # An empty table is a failed run, not a result. Without this the probe
+    # prints its header, its legend and nothing in between, which reads as
+    # "measured, found nothing" rather than "measured nothing".
+    if not tot_n:
+        print("\nNO DECISIONS MEASURED - this is a failure, not a finding.")
+        print("Every state was skipped (see the reasons above). Fix that before")
+        print("reading anything into the empty table.")
+        return
     print("\nCompare across domains. Uniformly high = learnability question;")
     print("low in the weak domains = the geometry is the constraint there.")
 
