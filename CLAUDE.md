@@ -191,12 +191,18 @@ tests/test_multidomain_metadata.py dependency-free unit tests: union merge,
 tests/test_sparse_edges.py         dependency-free unit tests: sparse edge
                                    accumulation is byte-identical to the dense
                                    array it replaced (edges, order, values)
-tests/test_checkpoint_key.py       dependency-free unit tests: every setting
-                                   that changes trained weights separates the
-                                   model directory AND the config hash, and
-                                   no EXISTING directory name moves (a real
-                                   pre-change name from models/ is pinned
-                                   verbatim). Run it after touching
+tests/test_checkpoint_key.py       dependency-free unit tests: every VARIED
+                                   setting separates the model directory AND
+                                   the config hash, and no EXISTING directory
+                                   name moves (a real pre-change name from
+                                   models/ is pinned verbatim). The key covers
+                                   only what the suite varies; weight-changing
+                                   settings outside it are guarded at startup
+                                   by main.py's _assert_key_covers_variation,
+                                   which refuses to train when one is moved
+                                   off the suite value (GABAR_ALLOW_UNKEYED=1
+                                   overrides, accepting the collision). Run
+                                   this test after touching
                                    training_hyperparameters or ignore_defaults
 tests/test_beam_parallel_indexing.py dependency-free unit tests: the batched
                                    decoder's row->graph map on mixed arity;

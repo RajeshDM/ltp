@@ -109,17 +109,21 @@ on Literal (pddlgym already caches it — the cost was call count).
   must be in the key; anything defaulted-away must keep old directories
   byte-identical (verified against the folder-name/hash functions
   directly before landing).
-- **Audit the key, don't patch it one flag at a time.** `l2` was added
-  after a sweep destroyed itself; the same audit then found nine more
-  settings that change trained weights and were absent from the key —
-  `representation_size` and `gru_layers` (tensor shapes), `batch_size`,
-  `pos_weight`, `gamma`, `data_augmentation`, AMP dtype, `all_problems`,
-  and the arity overrides. Two rules made adding them safe: every new key
-  is defaulted away at **the value the suite actually runs at, not the
-  argparse default** (`batch_size` is 16 in constants.py and 64 in
-  `_common.yaml`; using 16 would have renamed every directory in
-  `models/`), and a test pins a real pre-change directory name verbatim so
-  a rename fails loudly instead of orphaning every checkpoint.
+- **Audit the key, then keep only what is varied — and assert the rest.**
+  `l2` was added after a sweep destroyed itself; the audit found ten more
+  weight-changing settings outside the key. Only two were actually varied
+  across `configs/` (`batch_size`: 16 in the legacy configs, 64 in
+  `_common.yaml`; `max_action_arity`: 0 vs 6 in the rovers folds), so only
+  those were keyed — a directory name people have to read is worth
+  keeping short. The other eight are covered instead by a startup check
+  (`_assert_key_covers_variation`) that refuses to train when one is moved
+  off the suite's value, naming it and the two-line fix. Short key,
+  readable names, and "we never vary that" is an assertion rather than a
+  memory. Two rules make adding a key safe: default it away at **the value
+  the suite actually runs at, not the argparse default** (keying
+  `batch_size` off constants.py's 16 would have renamed every directory in
+  `models/`), and pin a real pre-change directory name verbatim in a test
+  so a rename fails loudly instead of orphaning every checkpoint.
 - **Identity must not depend on the operator remembering.** `RUN_TAG` was
   required for concurrent launches of one config and was forgotten, so two
   sweep arms shared a log *and* a checkpoint key. The log name is now

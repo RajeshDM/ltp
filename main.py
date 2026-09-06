@@ -190,6 +190,61 @@ def _apply_arity_override(model, args):
     return model
 
 
+# (parameter, attribute, the ONE value the whole suite runs it at).
+# These change the trained weights but are not in the checkpoint key,
+# because the key names what we vary and none of these is varied. The moment
+# one of them IS varied the key stops separating runs, and two configs
+# differing only there share a model directory and evict each other's
+# loss-ranked checkpoints - which is precisely how sweep_jc_base and
+# sweep_jc_l2 destroyed each other's arm (AAAI27/REVISION_PLAN.md §8).
+# Verified against every configs/*.yaml on 2026-09-06.
+_UNKEYED_WEIGHT_PARAMS = [
+    ('representation_size', 'representation_size', 64),   # n_hidden, shapes
+    ('gru_layers',          'gru_layers',          3),    # decoder depth
+    ('pos_weight',          'pos_weight',          10.0), # loss weighting
+    ('gamma',               'gamma',               0.9),  # LR schedule
+    ('data_augmentation',   'data_augmentation',   False),
+    ('use_amp',             'use_amp',             False),
+    ('max_pred_arity',      'max_pred_arity',      0),
+]
+
+
+def _assert_key_covers_variation(args, hyperparameters):
+    """Refuse to train under a key that cannot separate this run.
+
+    The alternative to a long key is a short key plus this check: keep the
+    directory names readable, and make "we never vary that one" an assertion
+    instead of a memory. Silent checkpoint eviction is far more expensive
+    than a blocked launch, and the fix is two lines the message spells out.
+    """
+    off = [(name, getattr(args, attr), default)
+           for name, attr, default in _UNKEYED_WEIGHT_PARAMS
+           if getattr(args, attr, default) != default]
+    if not off:
+        return
+    if os.environ.get("GABAR_ALLOW_UNKEYED", "") == "1":
+        print("GABAR_ALLOW_UNKEYED=1: proceeding with " +
+              ", ".join(f"{n}={v!r}" for n, v, _ in off) +
+              " outside the checkpoint key. Checkpoints from runs differing "
+              "only here will overwrite each other.", flush=True)
+        return
+    lines = "\n".join(f"    {n} = {v!r}  (suite value {d!r})"
+                      for n, v, d in off)
+    raise SystemExit(
+        "\nThis run changes a setting that is NOT part of the checkpoint key:\n"
+        f"{lines}\n\n"
+        "The key names what we vary, and this was not varied until now, so it\n"
+        "cannot separate this run from one at the suite value: they would share\n"
+        "a model directory and evict each other's loss-ranked checkpoints.\n\n"
+        "Fix (two lines, in main.py):\n"
+        "  1. add it to training_hyperparameters with a short key\n"
+        "  2. add that key to ignore_defaults at the suite value above, so\n"
+        "     every EXISTING directory keeps its name\n"
+        "  then run tests/test_checkpoint_key.py, which fails if a name moved.\n\n"
+        "To proceed anyway (one-off, accepting the collision): "
+        "GABAR_ALLOW_UNKEYED=1\n")
+
+
 def run_tests(
             curr_manager,
             model_class,
@@ -1117,30 +1172,15 @@ if __name__ == "__main__":
             # writing into one directory. Defaulted away in ignore_defaults,
             # so every run at 0.0 keeps the directory it already has.
             'l2' : args.weight_decay,
-            # Everything below has the same story as 'l2': it changes the
-            # trained weights (shape, optimization, loss, or the dataset) and
-            # was NOT part of the model's identity, so two configs differing
-            # only here shared one directory and evicted each other's
-            # loss-ranked checkpoints. That is not hypothetical - it is
-            # exactly how sweep_jc_base and sweep_jc_l2 destroyed each
-            # other's arm (AAAI27/REVISION_PLAN.md §8).
-            #
-            # EVERY ONE is defaulted away in ignore_defaults at the value the
-            # existing suite actually uses, so no current directory name or
-            # hash moves. When adding to this list, put the SUITE'S effective
-            # value in ignore_defaults - not necessarily the argparse default
-            # (batch_size is 16 in constants.py and 64 in _common.yaml; using
-            # 16 here would rename every directory in models/).
-            'rs' : args.representation_size,     # n_hidden - changes shapes
-            'gru' : args.gru_layers,             # decoder depth - shapes
-            'bs' : args.batch_size,              # optimization
-            'pw' : args.pos_weight,              # loss weighting
-            'gam' : args.gamma,                  # LR schedule
-            'aug' : args.data_augmentation,      # dataset
-            'amp' : (getattr(args, 'amp_dtype', 'bf16')
-                     if getattr(args, 'use_amp', False) else 'off'),
-            'all' : bool(getattr(args, 'all_problems', False)),
-            'kp' : args.max_pred_arity,          # metadata width overrides
+            # Same story as 'l2', and these two are ACTUALLY varied across the
+            # suite, so the collision is live rather than hypothetical:
+            #   batch_size       16 in the 13 legacy configs, 64 in _common
+            #   max_action_arity 0 by default, 6 in the 9 rovers configs
+            # Everything else that could change trained weights is at one
+            # value everywhere and is deliberately NOT keyed - the key names
+            # what we vary. _assert_key_covers_variation (below) is what keeps
+            # that honest when a new knob starts being varied.
+            'bs' : args.batch_size,
             'ka' : args.max_action_arity,
         }
 
@@ -1171,17 +1211,10 @@ if __name__ == "__main__":
             #'abl_' : 'main'
             'mlp_layers' : 2,
             'l2' : 0.0,
-            'rs' : 64,          # constants.REPRESENTATION_SIZE
-            'gru' : 3,          # constants.GRU_LAYERS
             'bs' : 64,          # _common.yaml, NOT constants.BATCH_SIZE (16)
-            'pw' : 10.0,
-            'gam' : 0.9,
-            'aug' : False,
-            'amp' : 'off',
-            'all' : True,       # _common.yaml sets all_problems: true
-            'kp' : 0,
             'ka' : 0,
         }
+        _assert_key_covers_variation(args, training_hyperparameters)
 
         continue_training = args.continue_training
         train_env_name = args.domain

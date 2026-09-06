@@ -15,6 +15,11 @@ Two properties, and the second is the dangerous one:
      the suite actually runs at - which is not always the argparse default
      (batch_size is 16 in constants.py and 64 in _common.yaml).
 
+The key deliberately covers only what the suite VARIES, so directory names
+stay readable. What keeps that safe is main.py's
+_assert_key_covers_variation, which refuses to train when a weight-changing
+parameter that is not in the key is moved off the suite's value.
+
 The reference names below were taken from real directories in models/ on
 2026-09-05, before the keys were added. If a change here renames them, the
 test says so with both names.
@@ -37,14 +42,10 @@ SUITE = {
     'lr': 0.0005, 'gnn_rounds': 9, 'd': 0, 'ad': 0.0, 'wd': 0.0, 'heads': 1,
     'g_node': True, 'abl_': 'main', 'mlp_layers': 2,
     'feat': 'joint_chain', 'nf': 38, 'ef': 60, 'l2': 0.0,
-    'rs': 64, 'gru': 3, 'bs': 64, 'pw': 10.0, 'gam': 0.9, 'aug': False,
-    'amp': 'off', 'all': True, 'kp': 0, 'ka': 0,
+    'bs': 64, 'ka': 0,
 }
 
-IGNORE = {
-    'mlp_layers': 2, 'l2': 0.0, 'rs': 64, 'gru': 3, 'bs': 64, 'pw': 10.0,
-    'gam': 0.9, 'aug': False, 'amp': 'off', 'all': True, 'kp': 0, 'ka': 0,
-}
+IGNORE = {'mlp_layers': 2, 'l2': 0.0, 'bs': 64, 'ka': 0}
 
 ENV = ("MULTI-Manyblocks_ipcc_big-Gripper_ipcc-Miconic_ipcc-Visitall_ipcc-"
        "Grid_ipcc-Logistics_ipcc-Spanner_ipcc-Rovers_ipcc")
@@ -69,11 +70,12 @@ def test_every_weight_changing_setting_separates():
 
     # (key, a different value) for everything that changes trained weights.
     variants = [
-        ('l2', 1e-4), ('rs', 128), ('gru', 2), ('bs', 128), ('pw', 2.0),
-        ('gam', 0.95), ('aug', True), ('amp', 'bf16'), ('all', False),
-        ('kp', 3), ('ka', 6), ('lr', 1e-3), ('gnn_rounds', 6), ('heads', 4),
-        ('wd', 0.1), ('ad', 0.1), ('feat', 'union'), ('d', 100),
-        ('abl_', 'non_CD'), ('mlp_layers', 3), ('nf', 163), ('ef', 111),
+        ('l2', 1e-4),           # sweep_jc_l2 vs sweep_jc_base
+        ('bs', 16),             # legacy configs vs _common.yaml
+        ('ka', 6),              # the 9 rovers configs
+        ('lr', 1e-3), ('gnn_rounds', 6), ('heads', 4), ('wd', 0.1),
+        ('ad', 0.1), ('feat', 'union'), ('d', 100), ('abl_', 'non_CD'),
+        ('mlp_layers', 3), ('nf', 163), ('ef', 111),
     ]
     for key, other in variants:
         hp = dict(SUITE, **{key: other})
