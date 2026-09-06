@@ -63,14 +63,34 @@ for CFG in "$@"; do
     fi
     RUNFILE=$(printf '%s' "$OUT" | sed -n 's/.*tail -f \(logs\/.*\)\.log/\1.running/p')
     LOG="${RUNFILE%.running}.log"
+    EXITF="${RUNFILE%.running}.exit"
 
-    # Poll the run file: it is written by the wrapper on start and removed on
-    # exit, so its disappearance is the completion signal. Nothing here has
-    # to know the pid.
+    # run_config.sh backgrounds the wrapper and returns BEFORE the wrapper
+    # has written .running, so testing for the file straight away finds
+    # nothing, the wait below falls through, and the queue launches every
+    # config at once - the exact thing it exists to prevent. Wait for the
+    # file to appear first, and treat "never appeared" as an error rather
+    # than as "finished".
+    APPEARED=0
+    for _ in $(seq 1 120); do
+        [ -f "$RUNFILE" ] && { APPEARED=1; break; }
+        [ -f "$EXITF" ] && break        # died before we ever saw it start
+        sleep 1
+    done
+
+    if [ "$APPEARED" = "0" ] && [ ! -f "$EXITF" ]; then
+        echo "NO START  (no $RUNFILE after 120s; not waiting, not launching more)"
+        tail -5 "$LOG" 2>/dev/null | sed 's/^/    /'
+        exit 1
+    fi
+
+    # Now the run is genuinely under way: the wrapper removes .running on
+    # exit, so its disappearance is the completion signal and no pid
+    # bookkeeping is needed here.
     while [ -f "$RUNFILE" ]; do sleep 30; done
 
     ELAPSED=$((SECONDS - T0))
-    RC=$(cat "${LOG%.log}.exit" 2>/dev/null || echo "?")
+    RC=$(cat "$EXITF" 2>/dev/null || echo "?")
     if [ "$RC" = "0" ]; then
         printf 'ok    %5dm\n' "$((ELAPSED / 60))"
     else
