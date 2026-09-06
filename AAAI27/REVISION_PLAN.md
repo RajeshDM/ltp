@@ -181,6 +181,52 @@ signatures, arity profiles, and chain patterns across folds — and it turns
 a weakness into a contribution: a predictor of *when* transfer occurs.
 Recommended even under a tight budget.
 
+**Now motivated by a result, not just by the reviewer.** Controlled
+comparison on Logistics, 2026-09-05, same fold (no_miconic), same 20
+problems, in-domain for both:
+
+| featurization | epoch | V1 | coverage |
+|---|---|---|---|
+| union | 490 | 30.6% | **40.0%** |
+| joint_chain | 470 | **40.4%** | **0.0%** |
+
+joint_chain constructs valid actions *more* often than union and solves
+none. So Logistics' persistent 0% is **not** a construction failure — the
+decoder can build the 4-parameter groundings. It is a ranking failure: the
+actions are applicable and not goal-directed.
+
+The hypothesis that fits, and that the theory already predicts, is
+**aliasing**. Logistics is the suite's worst case: `load-truck(?obj ?veh
+?loc)` / `load-airplane(?obj ?veh ?loc)` are structurally isomorphic, as
+are the two unloads — two transport modalities that differ only in symbol
+identity, which is exactly what union keeps and structural features erase
+by construction (CLAUDE.md §7: aliasing is a theorem, not a bug).
+
+The whole `all8_joint_chain` column ranks like "how many isomorphic schema
+pairs does this domain have":
+
+    gripper 98.8   grid 97.9   visitall 92.0    <- few or none
+    miconic 63.0                                <- up/down
+    manyblocks 21.5   rovers 9.3   spanner 1.0  <- pairs
+    logistics 0.0                               <- two full modalities
+
+**The schema pairings above are from memory and MUST be verified against
+the PDDL files before any of this is written up.** The measurement is the
+4.2 analysis itself: count structurally isomorphic schema pairs per domain
+from the lifted spec, correlate against that coverage column. Zero GPU. If
+it holds, 4.2 stops being a defensive answer to W3 and becomes a predictor
+of when the method works — which is a contribution, and the honest framing
+of the ladder's one clear in-domain loss to UNION.
+
+Two corollaries to carry into the error analysis (3.4):
+
+- **V1 is not a quality proxy.** Here the two metrics anticorrelate. Report
+  both, never V1 alone.
+- **Aliasing is not a data problem.** If two schemas are structurally
+  indistinguishable, more examples of both supply contradictory targets for
+  identical inputs. This is independent of the generalization gap measured
+  below, and no amount of data addresses it.
+
 **4.3 The GOOSE baseline question (W5).** Running GOOSE's DI heuristic with
 greedy hill-climbing is a real integration project. The argument is cheap
 and, I think, correct: greedy hill-climbing evaluates *every* applicable
@@ -261,15 +307,40 @@ would move the paper to 5–6.
   reviewer raised.
 - **Do not soften the capability claim.** C1 is accepted and called the
   strongest part of the paper. The revision is about C2 and C3.
-- **Do not expand the training set before the data-fraction curve says
-  it would help** — status *deferred*, not refuted. Data is a capacity
-  knob, and capacity knobs come after the representation to-do list is
-  empty (research skill §1, plateau). No observed failure implicates data
-  quantity: the union control fails at V1 0%, and with constrained
-  decoding at V1 100% it still scores 0% — a representation failure that
-  more instances of the same size cannot touch. The licensing test is
-  already scheduled (RUNBOOK, node M day 2) and costs two short trainings,
-  not a dataset build:
+- **Expanding the training set is licensed by a measured generalization
+  gap — size it with the data-fraction curve first.** Status revised
+  2026-09-05 from *deferred* to *licensed, unsized*. Normalizing the
+  summed train/val losses by the epoch-0 ratio (at initialization the
+  model is identical on both sets, so that ratio is purely how much is
+  being summed), per-example validation loss is **4–12x** training loss on
+  every headline run:
+
+      no_manyblocks 10.9x   no_miconic 6.9–12.0x   sweep base 8.7x
+      no_visitall 6.6x      no_grid 5.3x           no_spanner 4.3x
+      no_gripper 3.8x       sweep drop01 2.8x      sweep l2 3.0x
+
+  The two regularized sweep arms have the smallest gaps and `sweep_jc_l2`
+  has the **lowest absolute validation loss in the suite** (12.56 vs base
+  16.41, −23%) — independent corroboration that the model is data-limited,
+  and a trained checkpoint nobody has evaluated yet. Evaluate it before
+  spending anything on data (`eval_queue.sh configs/sweep_jc_l2.yaml
+  configs/sweep_jc_base.yaml`); lower validation loss does not imply better
+  coverage, and best-loss selection has already discarded the
+  best-transferring checkpoints once in this project.
+
+  **Adding capacity now would make this worse, not better.** With a 4–12x
+  gap the model is memorizing; a wider or deeper net memorizes harder. Data
+  first, capacity after the gap closes.
+
+  Two things the gap does NOT cover: validation here is a stratified 10% of
+  *states* from the same problems, so it measures generalization to new
+  states, not new problems and not new domains; and **aliasing (§4.2) is
+  orthogonal to it** — where two schemas are structurally indistinguishable
+  more data supplies contradictory targets for identical inputs.
+
+  Size the expansion with the curve (RUNBOOK, node M day 2) — two short
+  trainings, not a dataset build. The slope from 25→50→100 says whether
+  the target is 2x or 10x:
 
       for n in 25 50 100; do
         RUN_TAG="d$n" ./train_test_scripts/run_config.sh \
@@ -277,13 +348,15 @@ would move the paper to 5–6.
       done
 
   `d` is already in the checkpoint key, so each fraction gets its own
-  directory. Read the curve at the full count: still climbing steeply →
-  expansion is licensed; flat → it buys nothing and the idea dies for the
-  price of two runs. Budget a data-collection pass per fraction (new
-  unified caches and sidecars; the full-size ones are not reused).
+  directory. Read the slope at the full count: still climbing steeply →
+  a large expansion is worth it; already bending → a modest one, or better
+  regularization, captures most of what is available. (A flat curve would
+  contradict the measured gap and means something else is wrong — read it
+  as a signal to check the split, not as licence to skip the data work.)
+  Budget a data-collection pass per fraction (new unified caches and
+  sidecars; the full-size ones are not reused).
 
-  Two prices to pay if it *is* licensed, both of which the reviewer will
-  check:
+  Two prices, both of which the reviewer will check:
 
   1. **Comparability.** Training GADAR on more data than the per-domain
      GABAR baselines makes the comparison unfair in GADAR's favour. The
@@ -295,9 +368,9 @@ would move the paper to 5–6.
      larger instances weakens it, and the training plans come from
      satisficing `fd-lama-first`, whose plan quality degrades with size —
      so the supervision itself gets worse exactly where the instances get
-     bigger. If run at all, run it as a separate labelled arm (e.g.
-     logistics, where the intuition is strongest), never folded into the
-     headline numbers.
+     bigger. If run at all, run it as a separate labelled arm, never folded
+     into the headline numbers — and not on Logistics, whose 0% is an
+     aliasing failure (§4.2) that instance size does not touch.
 
 ---
 
