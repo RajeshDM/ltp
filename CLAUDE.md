@@ -173,6 +173,14 @@ train_test_scripts/run_config.sh   nohup-launch one config on one GPU. The
                                    records the process GROUP in
                                    logs/<name>.running so `kill -- -<pgid>`
                                    stops the python child too
+train_test_scripts/train_queue.sh  train N configs on ONE GPU, one at a time
+                                   (--mode train, no evaluation). Exists
+                                   because run_config.sh backgrounds each
+                                   launch, so a loop over it puts every
+                                   config on the GPU at once and they
+                                   time-slice. Waits on logs/<name>.running,
+                                   reports rc + the last 3 log lines on
+                                   failure, and continues
 train_test_scripts/eval_queue.sh   run N configs through --mode test one at
                                    a time on --device cpu (evaluation is
                                    host-CPU bound, so it leaves the GPU to
