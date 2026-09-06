@@ -1,0 +1,6 @@
+description: LOO joint_lite - gripper held out, zero-shot on hard+easy splits
+base: _common.yaml
+expid: loo8_joint_lite_no_gripper
+domains: manyblocks_ipcc_big,miconic_ipcc,visitall_ipcc,grid_ipcc,logistics_ipcc,spanner_ipcc,rovers_ipcc
+featurization: joint_lite
+test_domains: manyblocks_ipcc_big:200,gripper_ipcc:173,miconic_ipcc:119,visitall_ipcc:50,grid_ipcc:48,logistics_ipcc:96,spanner_ipcc:96,rovers_ipcc:54,gripper_ipcc@train:147

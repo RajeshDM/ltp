@@ -2,9 +2,18 @@
 import argparse
 import json
 import os
+import sys
 import pickle
 import warnings
+
+# Deterministic execution: eliminate FP non-determinism from scatter/cuBLAS ops.
+# Off by default (faster). Enable with GABAR_DETERMINISTIC=1 for reproducible results.
+os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')
+
 import torch
+if os.environ.get('GABAR_DETERMINISTIC'):
+    torch.use_deterministic_algorithms(True)
+
 import wandb
 import time
 #from torch.utils.data import DataLoader
@@ -90,6 +99,7 @@ from ploi.baselines.exp_3.architecture import g_model_classes
 from icecream import ic
 import subprocess
 import numpy as np
+import pddlgym
 
 '''
 baselines = [PlannerType.EXP_BASELINE, 
@@ -165,6 +175,76 @@ def initialize_model(model_class, args, action_space):
     )
 
 
+def _apply_arity_override(model, args):
+    """Lift the decoder's parameter capacity to --max-action-arity.
+
+    The capacity is derived from the training action space at init; a wider
+    override (used to featurize at canonical arities above the training
+    set's, so a high-arity held-out domain decodes at full width) must
+    extend the beam loop bound too. No weights are sized by it - the
+    parameter loop is length-only (CLAUDE.md 5.7).
+    """
+    if getattr(args, 'max_action_arity', 0) > 0:
+        model.max_number_action_parameters = max(
+            model.max_number_action_parameters, args.max_action_arity)
+    return model
+
+
+# (parameter, attribute, the ONE value the whole suite runs it at).
+# These change the trained weights but are not in the checkpoint key,
+# because the key names what we vary and none of these is varied. The moment
+# one of them IS varied the key stops separating runs, and two configs
+# differing only there share a model directory and evict each other's
+# loss-ranked checkpoints - which is precisely how sweep_jc_base and
+# sweep_jc_l2 destroyed each other's arm (AAAI27/REVISION_PLAN.md §8).
+# Verified against every configs/*.yaml on 2026-09-06.
+_UNKEYED_WEIGHT_PARAMS = [
+    ('representation_size', 'representation_size', 64),   # n_hidden, shapes
+    ('gru_layers',          'gru_layers',          3),    # decoder depth
+    ('pos_weight',          'pos_weight',          10.0), # loss weighting
+    ('gamma',               'gamma',               0.9),  # LR schedule
+    ('data_augmentation',   'data_augmentation',   False),
+    ('use_amp',             'use_amp',             False),
+    ('max_pred_arity',      'max_pred_arity',      0),
+]
+
+
+def _assert_key_covers_variation(args, hyperparameters):
+    """Refuse to train under a key that cannot separate this run.
+
+    The alternative to a long key is a short key plus this check: keep the
+    directory names readable, and make "we never vary that one" an assertion
+    instead of a memory. Silent checkpoint eviction is far more expensive
+    than a blocked launch, and the fix is two lines the message spells out.
+    """
+    off = [(name, getattr(args, attr), default)
+           for name, attr, default in _UNKEYED_WEIGHT_PARAMS
+           if getattr(args, attr, default) != default]
+    if not off:
+        return
+    if os.environ.get("GABAR_ALLOW_UNKEYED", "") == "1":
+        print("GABAR_ALLOW_UNKEYED=1: proceeding with " +
+              ", ".join(f"{n}={v!r}" for n, v, _ in off) +
+              " outside the checkpoint key. Checkpoints from runs differing "
+              "only here will overwrite each other.", flush=True)
+        return
+    lines = "\n".join(f"    {n} = {v!r}  (suite value {d!r})"
+                      for n, v, d in off)
+    raise SystemExit(
+        "\nThis run changes a setting that is NOT part of the checkpoint key:\n"
+        f"{lines}\n\n"
+        "The key names what we vary, and this was not varied until now, so it\n"
+        "cannot separate this run from one at the suite value: they would share\n"
+        "a model directory and evict each other's loss-ranked checkpoints.\n\n"
+        "Fix (two lines, in main.py):\n"
+        "  1. add it to training_hyperparameters with a short key\n"
+        "  2. add that key to ignore_defaults at the suite value above, so\n"
+        "     every EXISTING directory keeps its name\n"
+        "  then run tests/test_checkpoint_key.py, which fails if a name moved.\n\n"
+        "To proceed anyway (one-off, accepting the collision): "
+        "GABAR_ALLOW_UNKEYED=1\n")
+
+
 def run_tests(
             curr_manager,
             model_class,
@@ -181,9 +261,18 @@ def run_tests(
              starting_model_num: int = 0,
              planner_types = [PlannerType.LEARNED_MODEL],
              baseline_models = None,
-             ignore_defaults : Dict[str, Any] = None) -> List[Dict]:
+             ignore_defaults : Dict[str, Any] = None,
+             decode_action_space = None) -> List[Dict]:
     """
     Run tests on best models for a specific configuration
+
+    decode_action_space: the TEST domain's own action space. Beam decoding
+    terminates each beam when its depth reaches the arity of the selected
+    schema, looked up by graph-local schema index. The model's dict is built
+    from the (possibly merged multi-domain) training action space, whose
+    ordering does not match graphs of any domain but the first, so the dict
+    must be rebuilt from the domain being tested. Everything else on the
+    model stays as trained.
     """
     
     # Get best models for this configuration
@@ -218,12 +307,50 @@ def run_tests(
             # Create fresh model instance
             #model = model_class()
             curr_models = {}
-            curr_model = initialize_model(model_class, args, action_space)
-            
-            # Load model state
-            curr_model.load_state_dict(model_info['state_dict'])
+            curr_model = _apply_arity_override(
+                initialize_model(model_class, args, action_space), args)
+
+            # Load model state. Checkpoints from configs that share the
+            # training-domain set + seed + hyperparameters land in the SAME
+            # model dir and tracking list, because `featurization` is not part
+            # of the ModelManager key - so a union checkpoint (wide symbol
+            # vocabulary) can be offered to a structural model (narrow fixed
+            # width). Widths differ per featurization, so skip mismatches
+            # loudly and keep looking instead of crashing the whole test run.
+            try:
+                curr_model.load_state_dict(model_info['state_dict'])
+            except RuntimeError as _e:
+                if 'size mismatch' not in str(_e):
+                    raise
+                _first = str(_e).split("\n")[1].strip() if "\n" in str(_e) else str(_e)
+                print(f"SKIP checkpoint epoch {model_info['epoch']}: built for "
+                      f"a different featurization (width mismatch). Looking "
+                      f"for one matching --featurization {args.featurization}."
+                      f"\n     mismatch: {_first[:220]}")
+                continue
             curr_model.to(device)
             curr_model.eval()
+
+            if decode_action_space is not None:
+                # Clamp to the model's trained parameter capacity: a test
+                # domain with higher-arity schemas (e.g. Rovers under a
+                # ka=4-trained model) would otherwise never satisfy the beam
+                # finish condition and index past the padded parameter dim
+                # (CUDA device-side assert). Clamped schemas decode truncated
+                # groundings -> invalid actions -> counted as failures, not
+                # crashes.
+                _cap = curr_model.max_number_action_parameters
+                _clamped = [str(schema) for schema, op in
+                            decode_action_space.items()
+                            if len(op.params) > _cap]
+                if _clamped:
+                    print(f"WARNING: schemas exceed the model's parameter "
+                          f"capacity ({_cap}) and cannot be fully decoded "
+                          f"zero-shot: {_clamped}. Train with "
+                          f"--max-action-arity >= their arity to lift this.")
+                curr_model.action_parameter_number_dict = {
+                    i: min(len(op.params), _cap)
+                    for i, op in enumerate(decode_action_space.values())}
 
             if model_info['epoch'] in tested_epoch_numbers:
                 print ("Already tested model from epoch ",model_info['epoch'])
@@ -251,18 +378,25 @@ def run_tests(
             })
             #metrics = results[-1]['test_results'][PlannerType.LEARNED_MODEL]
             metrics = results[-1]['test_results'][planner_type]
-            print ("failed : ",metrics.failures)
+            _fails = metrics.failures
+            _per_div = {d: len(v) for d, v in _fails.items() if v}
+            print(f"failed: {sum(_per_div.values())} problems | "
+                  f"per division: {_per_div}")
+            if args.debug_level > 0:
+                print("failed problem ids: ", _fails)
             #_ = format_metrics(results[-1]['test_results'][PlannerType.LEARNED_MODEL], model_info['epoch'])
             _ = format_metrics(results[-1]['test_results'][planner_type], model_info['epoch'])
             #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
 
-            if PlannerType.NON_OPTIMAL in planner_types : 
+            if PlannerType.NON_OPTIMAL in planner_types :
                  _ = format_metrics(results[-1]['test_results'][PlannerType.NON_OPTIMAL], model_info['epoch'])
-            #print (test_results[PlannerType.LEARNED_MODEL][-1].plan)
-            #combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'], PlannerType.LEARNED_MODEL)
-            combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'], planner_type)
-            #print (f"Combined Metrics for {model_type} : ", combnined_metrics)
-            print ("Plan Quality : ", combnined_metrics.plan_quality)
+            # Plan quality is defined relative to the non-optimal planner's
+            # plans; skip when that planner didn't run (--run-non-optimal False)
+            if PlannerType.NON_OPTIMAL in results[-1]['all_plan_results']:
+                combnined_metrics = compute_combined_metrics(results[-1]['all_plan_results'], planner_type)
+                print ("Plan Quality : ", combnined_metrics.plan_quality)
+            else:
+                print ("Plan Quality :  n/a (non-optimal planner disabled)")
 
     for baseline in baselines:
         if baseline in planner_types:
@@ -295,12 +429,17 @@ if __name__ == "__main__":
         action="store_true",
         help="Run testing on all problems in domain",
     )
+    from ploi.argparsers import apply_config_defaults
+    apply_config_defaults(parser)
     args = parser.parse_args()
 
-    if args.wandb:  
+    if args.wandb:
         run = wandb.init(
             # Set the project where this run will be logged
             project="ltp_gnn_gru_pyg",
+            # Group has to be set HERE: Run.group is a read-only property, so
+            # assigning it after init raises AttributeError and kills the run.
+            group=os.environ.get("GABAR_WANDB_GROUP") or None,
             # Track hyperparameters and run metadata
             config={
                 "learning_rate": args.lr,
@@ -336,6 +475,10 @@ if __name__ == "__main__":
         args.representation_size = 4
         args.batch_size = 1
 
+    # Apply run-mode overrides (toy/sweep/spot) before anything else
+    from ploi.run_modes import apply_run_mode
+    apply_run_mode(args)
+
     # Seed RNG
     set_seed(args)
     #torch.manual_seed(args.seed,args)
@@ -348,14 +491,81 @@ if __name__ == "__main__":
     # Capitalize the first letter of the domain name
     args.domain = args.domain.capitalize()
 
+    # Multi-domain: parsed once, used for both data and test loops
+    train_domain_names = []
+    if args.domains:
+        from ploi.multidomain import parse_domain_arg
+        _parsed = parse_domain_arg(args.domains, args.heldout_domains,
+                                    args.num_train_problems)
+        train_domain_names = [n for n, _, held_out in _parsed if not held_out]
+        if not train_domain_names:
+            raise ValueError("--domains produced no training domains")
+        args.domain = "MULTI-" + "-".join(train_domain_names)
+
+    # wandb.init ran before any of the above, so its config recorded the
+    # constants.py default domain for every --domains run and every run got an
+    # auto-generated name. Unusable when a dozen runs across two nodes have to
+    # be told apart from a phone. Name/group/tag them now that the identity is
+    # actually known. GABAR_WANDB_GROUP labels the machine or campaign.
+    # Wrapped: this is cosmetic run metadata and which of these attributes are
+    # writable has changed between wandb releases (Run.group is read-only and
+    # took down a whole run when assigned here). Never let labelling kill a
+    # training job - warn and carry on.
+    if args.wandb and wandb.run is not None:
+        _grp = os.environ.get("GABAR_WANDB_GROUP", "")
+        _name = f"{args.expid}_s{args.seed}_{args.mode}"
+        if _grp:
+            _name = f"{_grp}/{_name}"
+        try:
+            wandb.run.name = _name
+            wandb.run.tags = tuple(t for t in (
+                _grp, args.mode, args.featurization,
+                f"seed{args.seed}") if t)
+            wandb.config.update({
+                "domain": args.domain,
+                "domains": args.domains or args.domain,
+                "featurization": args.featurization,
+                "expid": args.expid,
+                "dropout": args.dropout,
+                "attention_dropout": args.attention_dropout,
+                "weight_decay": args.weight_decay,
+                "n_heads": args.n_heads,
+            }, allow_val_change=True)
+        except Exception as _exc:
+            print(f"[wandb] could not label this run ({_exc}); "
+                  f"metrics still log normally")
+
     # This datafile is the same for ploi and hierarchical variants
     args.datafile = os.path.join(args.logdir, f"ploi_{args.domain}.pkl")
     if args.domain.endswith("scrub"):
         args.datafile = os.path.join(args.logdir, f"ploi_{args.domain[:-5]}.pkl")
 
-    print(f"Domain: {args.domain}")
-    print(f"Train planner: {args.train_planner_name}")
-    print(f"Test planner: {args.eval_planner_name}")
+    # Set up logging (tee to file for spot/sweep) and auto-shutdown
+    from ploi.run_modes import setup_logging
+    if args.auto_shutdown:
+        import atexit
+        from ploi.run_modes import trigger_auto_shutdown
+        atexit.register(trigger_auto_shutdown)
+    setup_logging(args.domain, args)
+
+    # An unset shell variable (e.g. `python main.py $PROF` where PROF was
+    # never exported in this shell) silently collapses to a bare invocation,
+    # which then falls back to constants.py: domain ManyBlocks, mode
+    # train_test. That looks like a hang while it starts collecting data and
+    # training a model nobody asked for, under a default checkpoint key.
+    # Any real run either names a config or names a domain.
+    if not any(a.startswith(('--config', '--domain')) for a in sys.argv[1:]):
+        raise SystemExit(
+            "refusing to run with no --config and no --domain/--domains: this "
+            "would fall back to the constants.py defaults "
+            f"(domain={args.domain}, mode={args.mode}) and start training.\n"
+            "If a shell variable expanded to nothing, that is the bug. "
+            "Set GABAR_ALLOW_DEFAULTS=1 to override."
+        ) if not os.environ.get("GABAR_ALLOW_DEFAULTS") else None
+
+    print(f"[{args.mode}] {args.domain} | featurization={args.featurization} "
+          f"| planners: train={args.train_planner_name} "
+          f"eval={args.eval_planner_name}")
 
     eval_planner = _create_planner(args.eval_planner_name)
     is_strips_domain = True
@@ -366,24 +576,221 @@ if __name__ == "__main__":
     _dataset_file_prefix=os.path.join(model_dir, "training_data")
 
     training_data = None
-    print("Collecting training data")
     graphs_inp, graphs_tgt, graph_metadata = None, None, None
     if not os.path.exists(args.datafile) or args.force_collect_data:
         if 'ltp' in args.method :
             args.datafile = _dataset_file_prefix + "_{}.pkl".format(args.domain)
 
-            #graphs_inp , graphs_tgt, graph_metadata,action_space =  process_pddl_to_graphs(
-            all_input_graphs , graph_metadata,action_space =  process_pddl_to_graphs(
-                args.domain,
-                train_planner,
-                args.num_train_problems,
-                args,
-                _create_graph_dataset_ltp, 
-            )
-            num_validation = max(1, int(len(all_input_graphs) * 0.1))
-            input_hetero_graphs = all_input_graphs[num_validation:] 
-            val_hetero_graphs = all_input_graphs[:num_validation]
-            #ic(f"Processed {len(graphs_inp)} training examples")
+            if args.domains:
+                # Multi-domain path (CLAUDE.md Phase 0/1, C1)
+                from ploi.multidomain import (merge_action_spaces,
+                    merge_feature_metadata, parse_domain_arg)
+                from ploi.datautils_ltp import load_domain_metadata
+                import random as _random
+
+                domains = parse_domain_arg(args.domains, args.heldout_domains,
+                                           args.num_train_problems)
+                train_domains = [(n, c) for n, c, held_out in domains if not held_out]
+
+                # --mode test never trains, so the featurized training graphs
+                # (the multi-GB sidecar payloads) are dead weight: the test
+                # path re-featurizes every rollout state itself and needs only
+                # graph_metadata + action_space, both from the fast pass-1
+                # metadata load. Was 95s / 16GB of startup per 8-domain
+                # side-eval.
+                _test_only = (args.mode == 'test')
+                if _test_only:
+                    print(f"[test] metadata-only startup: skipping training-graph "
+                          f"load for {len(train_domains)} domain(s)")
+
+                # Domain-set tag: sorted names prevent stale cache when the
+                # domain combination changes (e.g. {A,B} vs {A,B,C}).
+                _domain_set_tag = "_" + "_".join(
+                    sorted(n.lower() for n, _ in train_domains))
+
+                # Pass 1: per-domain metadata + action_space (fast, no graphs)
+                per_domain_meta = {}
+                for name, num_problems in train_domains:
+                    md, aspace = load_domain_metadata(
+                        name, train_planner, num_problems, args,
+                        _create_graph_dataset_ltp)
+                    per_domain_meta[name] = (md, aspace)
+
+                if args.featurization == 'union':
+                    # Pass 2: re-featurize with shared union vocab (Baseline 0).
+                    # Held-out domains contribute nothing to the union.
+                    union_md = merge_feature_metadata(
+                        [md for (md, _) in per_domain_meta.values()])
+                    tag = "_union" + _domain_set_tag
+                    per_domain_graphs = {}
+                    for name, num_problems in train_domains:
+                        if _test_only:
+                            continue
+                        graphs, _, _ = process_pddl_to_graphs(
+                            name, train_planner, num_problems, args,
+                            _create_graph_dataset_ltp,
+                            metadata_override=union_md, cache_tag=tag)
+                        per_domain_graphs[name] = graphs
+                    graph_metadata = union_md
+                    action_space = merge_action_spaces(
+                        [a for (_, a) in per_domain_meta.values()])
+                elif args.featurization in ('structural', 'joint', 'joint_lite',
+                                            'joint_chain'):
+                    from ploi.structural import build_structural_metadata
+                    from ploi.lifted_layer import build_lifted_metadata
+                    kp = max(p.arity for (md, _) in per_domain_meta.values()
+                             for p in md['all_predicates'])
+                    ka = max(len(op.params) for (_, a) in per_domain_meta.values()
+                             for op in a.values())
+                    # Optional overrides: train at wider canonical arities
+                    # than the training set needs, so a held-out domain with
+                    # higher-arity symbols (e.g. Rovers under a no-rovers
+                    # set) featurizes and decodes at full width. Sidecars are
+                    # shared with any set computing the same (kp, ka).
+                    if args.max_pred_arity > 0:
+                        kp = max(kp, args.max_pred_arity)
+                    if args.max_action_arity > 0:
+                        ka = max(ka, args.max_action_arity)
+                    # Structural/lifted metadata for a domain depends on the
+                    # TRAINING SET only through (kp, ka) - each domain is
+                    # featurized from its own action space at those canonical
+                    # arities. So tag sidecars by (feat, kp, ka), NOT the
+                    # domain set: every config whose set shares the same
+                    # arity maxima (in practice, every set containing rovers)
+                    # reuses the same featurized graphs. Union keeps
+                    # domain-set tags (its merged vocab genuinely differs).
+                    tag = f"_{args.featurization}_kp{kp}_ka{ka}"
+                    if args.featurization != 'structural':
+                        # Type compilation: 'has_type' edges + per-typed-slot
+                        # occurrence nodes. _ty1 changed widths (typed domains
+                        # only); _ty2 added has_type for predicate-typed
+                        # domains, which changes CONTENT at the same width --
+                        # so it needs its own namespace or stale sidecars
+                        # would be reused silently.
+                        tag += "_ty2"
+                    if args.cheating_input:
+                        tag += "_cheat"  # widths differ: never share sidecars
+                    per_domain_graphs = {}
+                    for name, num_problems in train_domains:
+                        if args.featurization == 'structural':
+                            struct_md = build_structural_metadata(
+                                per_domain_meta[name][1], kp, ka,
+                                cheating=args.cheating_input)
+                        else:
+                            struct_md = build_lifted_metadata(
+                                per_domain_meta[name][1], kp, ka,
+                                args.featurization,
+                                cheating=args.cheating_input)
+                        if _test_only:
+                            continue
+                        graphs, _, _ = process_pddl_to_graphs(
+                            name, train_planner, num_problems, args,
+                            _create_graph_dataset_ltp,
+                            metadata_override=struct_md, cache_tag=tag)
+                        per_domain_graphs[name] = graphs
+                    graph_metadata = struct_md
+                    action_space = merge_action_spaces(
+                        [a for (_, a) in per_domain_meta.values()])
+                else:
+                    if len(train_domains) > 1:
+                        raise ValueError("per_domain featurization cannot mix domains; use --featurization union, structural, joint_lite, joint, or joint_chain")
+                    name = train_domains[0][0]
+                    if _test_only:
+                        # per_domain takes its metadata from the graph build,
+                        # unlike union/structural which build it separately -
+                        # but pass 1 already loaded exactly this.
+                        graph_metadata, action_space = per_domain_meta[name]
+                        per_domain_graphs = {}
+                    else:
+                        graphs, graph_metadata, action_space = process_pddl_to_graphs(
+                            name, train_planner, train_domains[0][1], args,
+                            _create_graph_dataset_ltp)
+                        per_domain_graphs = {name: graphs}
+
+                # Update num_global_features from actual graph data: union/
+                # structural metadata predates graph creation, so its value
+                # may not match the wider globals produced by the merged vocab.
+                if _test_only:
+                    # No graphs loaded to read it from; the globals row is
+                    # built as zeros(1, num_node_features) (_state_to_graph_ltp),
+                    # so its width IS the node feature width - the same value
+                    # the graph-derived patch below would produce.
+                    graph_metadata['num_global_features'] = \
+                        graph_metadata['num_node_features']
+                for _dg in per_domain_graphs.values():
+                    if _dg:
+                        try:
+                            graph_metadata['num_global_features'] = _dg[0]['globals'].x.shape[-1]
+                        except (KeyError, AttributeError, IndexError):
+                            pass
+                        break
+
+                # Tag each graph with its domain index for per-domain loss tracking.
+                # Stratified train/val split: 10% from EACH domain goes to
+                # validation, so every domain is proportionally represented.
+                # From the config, not the graphs dict: identical order when
+                # training (the dict is built by iterating train_domains) and
+                # still correct in test mode where no graphs are loaded.
+                _domain_names_ordered = [n for n, _ in train_domains]
+                args._domain_names_ordered = _domain_names_ordered
+                for dom_idx, (name, dom_graphs) in enumerate(per_domain_graphs.items()):
+                    for g in dom_graphs:
+                        g.domain_id = dom_idx
+
+                rng = _random.Random(args.seed)
+                input_hetero_graphs = []
+                val_hetero_graphs = []
+                for name, dom_graphs in per_domain_graphs.items():
+                    _random.Random(args.seed).shuffle(dom_graphs)
+                    n_val = max(1, int(len(dom_graphs) * 0.1))
+                    val_hetero_graphs.extend(dom_graphs[:n_val])
+                    input_hetero_graphs.extend(dom_graphs[n_val:])
+                    print(f"  {name}: {len(dom_graphs)} graphs "
+                          f"(train={len(dom_graphs) - n_val}, val={n_val})")
+                rng.shuffle(input_hetero_graphs)
+                rng.shuffle(val_hetero_graphs)
+
+            elif args.mode == 'test':
+                # Single-domain test run (the per-domain GABAR baselines use
+                # --domain, not --domains): metadata and action space are all
+                # the test path needs, and load_domain_metadata returns them
+                # from the unified cache without building any graphs.
+                from ploi.datautils_ltp import load_domain_metadata
+                print("[test] metadata-only startup: skipping training-graph "
+                      f"load for {args.domain}")
+                graph_metadata, action_space = load_domain_metadata(
+                    args.domain, train_planner, args.num_train_problems, args,
+                    _create_graph_dataset_ltp)
+                input_hetero_graphs, val_hetero_graphs = [], []
+                all_input_graphs = []
+            else:
+                all_input_graphs , graph_metadata,action_space =  process_pddl_to_graphs(
+                    args.domain,
+                    train_planner,
+                    args.num_train_problems,
+                    args,
+                    _create_graph_dataset_ltp,
+                )
+                # Subset data for toy/sweep modes
+                if getattr(args, 'toy_max_graphs', None):
+                    from ploi.run_modes import subset_graphs
+                    print(f"TOY mode: subsetting {len(all_input_graphs)} graphs to {args.toy_max_graphs}")
+                    all_input_graphs = subset_graphs(all_input_graphs, max_count=args.toy_max_graphs, seed=args.seed)
+                elif getattr(args, 'data_fraction', None):
+                    from ploi.run_modes import subset_graphs
+                    target = max(1, int(len(all_input_graphs) * args.data_fraction))
+                    print(f"SWEEP mode: subsetting {len(all_input_graphs)} graphs to {target} ({args.data_fraction:.0%})")
+                    all_input_graphs = subset_graphs(all_input_graphs, fraction=args.data_fraction, seed=args.seed)
+
+                num_validation = max(1, int(len(all_input_graphs) * 0.1))
+                input_hetero_graphs = all_input_graphs[num_validation:]
+                val_hetero_graphs = all_input_graphs[:num_validation]
+
+            # Pad action_object_scores to uniform width across all graphs so
+            # PyG Batch.from_data_list can collate them. Different domains (or
+            # problems with different object counts) need uniform tensor widths.
+            from ploi.datautils_ltp import pad_pyg_action_scores
+            pad_pyg_action_scores(input_hetero_graphs + val_hetero_graphs)
         else :
             training_data = collect_training_data(
                 args.domain, train_planner, num_train_problems=args.num_train_problems
@@ -452,20 +859,29 @@ if __name__ == "__main__":
         #graph_dataset_val = pyg_dataloader(val_graphs_pyg,batch_size=batch_size,shuffle=True)
         num_workers = args.num_workers
         shuffle = True
-        graph_dataset = PyGDataLoader(
-            input_hetero_graphs,
-            batch_size=batch_size,
-            shuffle=shuffle,
-            num_workers=num_workers,
-            pin_memory=True
-        )
-        graph_dataset_val =  PyGDataLoader(
-            val_hetero_graphs,
-            batch_size=batch_size,
-            shuffle=shuffle,
-            num_workers=num_workers,
-            pin_memory=True
-        )
+        if not input_hetero_graphs and not val_hetero_graphs:
+            # Metadata-only startup (--mode test): a shuffling DataLoader over
+            # an empty set raises (RandomSampler needs num_samples > 0), and
+            # nothing on the test path consumes these - only train_func does,
+            # and it is not reached.
+            graph_dataset = graph_dataset_val = None
+        else:
+            graph_dataset = PyGDataLoader(
+                input_hetero_graphs,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                num_workers=num_workers,
+                pin_memory=True,
+                persistent_workers=(num_workers > 0)
+            )
+            graph_dataset_val =  PyGDataLoader(
+                val_hetero_graphs,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                num_workers=num_workers,
+                pin_memory=True,
+                persistent_workers=(num_workers > 0)
+            )
 
         '''
         graph_dataset = graph_dataset_to_pyg_dataset(
@@ -686,7 +1102,6 @@ if __name__ == "__main__":
                 # force_include_goal_objects=False,
             )
 
-            ic (planner_to_eval)
             test_stats, global_stats = test_planner(
                 planner_to_eval,
                 args.domain,
@@ -710,7 +1125,6 @@ if __name__ == "__main__":
         exp_baseline_train(args)
 
     elif 'ltp' in args.method:
-        ic ("LTP start")
         representation_size = args.representation_size
         gnn_rounds = args.gnn_rounds
         n_heads = args.n_heads
@@ -725,6 +1139,12 @@ if __name__ == "__main__":
         elif args.ablation == 'val' :
             model_class = GNN_Val
 
+        # NOTE: no _apply_arity_override here. Training data has exactly
+        # as many parameter slots as the TRAINING action space's max arity;
+        # the decode loop indexes action_object_scores by slot, so raising
+        # capacity above the data's width indexes out of bounds (CUDA
+        # device-side assert). The override is test-time only, where graphs
+        # come from the test domain's own action space.
         _model = initialize_model(model_class, args, action_space)
 
         training_hyperparameters = {
@@ -738,19 +1158,63 @@ if __name__ == "__main__":
             #'model_class' : model_class.__name__,
             'abl_' : args.ablation ,
             'mlp_layers' : args.num_mlp_layers_gnn,
+            # Featurization and the input widths it produces are part of the
+            # model's identity: two runs differing only here train state
+            # dicts that cannot be loaded into each other. Without them in
+            # the key, runs on the same domain set and seed share one model
+            # directory and compete for the same three loss-ranked slots, so
+            # a union run can evict a joint_chain checkpoint and vice versa.
+            'feat' : args.featurization,
+            'nf' : int(graph_metadata['num_node_features']),
+            'ef' : int(graph_metadata['num_edge_features']),
+            # L2 reaches the optimizer but used to be absent here, so a
+            # regularization sweep would have had every weight_decay value
+            # writing into one directory. Defaulted away in ignore_defaults,
+            # so every run at 0.0 keeps the directory it already has.
+            'l2' : args.weight_decay,
+            # Same story as 'l2', and these two are ACTUALLY varied across the
+            # suite, so the collision is live rather than hypothetical:
+            #   batch_size       16 in the 13 legacy configs, 64 in _common
+            #   max_action_arity 0 by default, 6 in the 9 rovers configs
+            # Everything else that could change trained weights is at one
+            # value everywhere and is deliberately NOT keyed - the key names
+            # what we vary. _assert_key_covers_variation (below) is what keeps
+            # that honest when a new knob starts being varied.
+            'bs' : args.batch_size,
+            'ka' : args.max_action_arity,
         }
+
+        # Escape hatch for checkpoints saved before those three keys existed:
+        # they live under the old folder name and hash, so a run that adds the
+        # keys cannot find them. Set GABAR_LEGACY_CKPT_KEY=1 to look in the old
+        # location. Only for reading pre-existing models; new runs should not
+        # use it, or the clash it fixes comes back.
+        if os.environ.get("GABAR_LEGACY_CKPT_KEY", "") == "1":
+            for _legacy_drop in ('feat', 'nf', 'ef', 'l2', 'rs', 'gru', 'bs',
+                                 'pw', 'gam', 'aug', 'amp', 'all', 'kp', 'ka'):
+                training_hyperparameters.pop(_legacy_drop, None)
+            print("GABAR_LEGACY_CKPT_KEY=1: using the pre-featurization "
+                  "checkpoint key (old model directories)")
 
         testing_hyperparameters = {
             'domain_name' : args.domain,
             'search' : args.search_strat,
         }
 
+        # The value here is "what the existing suite runs at", so a parameter
+        # at that value leaves the directory name and hash untouched. Pinned
+        # by tests/test_checkpoint_key.py, which fails if any current config's
+        # folder name moves.
         ignore_defaults = {
             #'g_node' : True ,
             #'model_class' : GNN_GRU.__name__
             #'abl_' : 'main'
             'mlp_layers' : 2,
+            'l2' : 0.0,
+            'bs' : 64,          # _common.yaml, NOT constants.BATCH_SIZE (16)
+            'ka' : 0,
         }
+        _assert_key_covers_variation(args, training_hyperparameters)
 
         continue_training = args.continue_training
         train_env_name = args.domain
@@ -759,6 +1223,8 @@ if __name__ == "__main__":
         dataset_size = len(input_hetero_graphs) + len(val_hetero_graphs)#len(training_data[0])
         save_folder = os.path.join(Path.cwd(),"models")
         manager = ModelManager(save_folder, hyperparameters=training_hyperparameters,
+                               max_checkpoints_per_metric=args.keep_checkpoints,
+                               periodic_every=args.checkpoint_every,
                                train_env_name=train_env_name,seed=args.seed, ignore_defaults=ignore_defaults)
 
         model_outfile, message_string,save_folder = get_filenames(dataset_size,train_env_name,
@@ -790,36 +1256,74 @@ if __name__ == "__main__":
                 else :
                     train_func = train_model_graphnetwork_ltp_batch_val
 
-            #optimizer = torch.optim.AdamW(self._model.parameters(), lr=5 * 1e-4,weight_decay=0.01)
-            if continue_training == True and os.path.exists(model_outfile) :
-                _model_state = torch.load(model_outfile)
-                _model.load_state_dict(_model_state['state_dict'])
-                optimizer.load_state_dict(_model_state['optimizer'])
-                _starting_epoch = _model_state['epochs'] + 1
+            if continue_training:
+                _resumed = False
+                # Try ModelManager checkpoints first (current save format)
+                _best = manager.load_best_models(
+                    train_env_name=train_env_name, seed=args.seed,
+                    hyperparameters=training_hyperparameters,
+                    metric='validation', ignore_defaults=ignore_defaults)
+                if _best:
+                    _ckpt = _best[-1]  # best val model (sorted ascending)
+                    _model.load_state_dict(_ckpt['state_dict'])
+                    _ckpt_full = torch.load(_ckpt['save_path'], map_location='cpu')
+                    if 'optimizer' in _ckpt_full:
+                        optimizer.load_state_dict(_ckpt_full['optimizer'])
+                    args.starting_epoch = _ckpt['epoch'] + 1
+                    print(f"Resuming from ModelManager checkpoint epoch {_ckpt['epoch']}")
+                    _resumed = True
+                # Fall back to legacy model_outfile
+                if not _resumed and os.path.exists(model_outfile):
+                    _model_state = torch.load(model_outfile)
+                    _model.load_state_dict(_model_state['state_dict'])
+                    if 'optimizer' in _model_state:
+                        optimizer.load_state_dict(_model_state['optimizer'])
+                    args.starting_epoch = _model_state.get('epoch', 0) + 1
+                    print(f"Resuming from legacy checkpoint epoch {args.starting_epoch - 1}")
+                    _resumed = True
+                if not _resumed:
+                    print("No checkpoint found, starting fresh")
+
+            # Spot-mode resume (overrides --continue-training if checkpoint exists)
+            _spot_path = None
+            if getattr(args, 'spot_resume', False):
+                from ploi.run_modes import get_spot_checkpoint_path, load_spot_checkpoint
+                _spot_path = get_spot_checkpoint_path(train_env_name)
+                _device = "cuda:0" if args.use_gpu else "cpu"
+                _resume_epoch = load_spot_checkpoint(_spot_path, _model, optimizer, _device)
+                if _resume_epoch > 0:
+                    args.starting_epoch = _resume_epoch
 
             #criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
             # Train model
-            #model_dict = train_model_graphnetwork_ltp_batch(_model, 
-            train_func(_model, 
-                                    datasets,
-                                    #dataloaders,
-                                    criterion=criterion, optimizer=optimizer,
-                                    use_gpu=args.use_gpu,
-                                    starting_epoch = args.starting_epoch,
-                                    save_folder = save_folder,
-                                    final_epoch= args.epochs,
-                                    train_env_name=train_env_name,seed=args.seed,
-                                    message_string=message_string,
-                                    log_wandb=args.wandb,
-                                    ablation=args.ablation,
-                                    chpkt_manager=manager,
-                                    enable_profiling=enable_profiling)
-            ic (args.attention_dropout)
-            ic (args.dropout)
-            ic (args.weight_decay)
-            ic (args.n_heads)
-            ic (args.gnn_rounds)
-            ic (args.lr)
+            #model_dict = train_model_graphnetwork_ltp_batch(_model,
+            _train_kwargs = dict(
+                criterion=criterion, optimizer=optimizer,
+                use_gpu=args.use_gpu,
+                starting_epoch=args.starting_epoch,
+                save_folder=save_folder,
+                final_epoch=args.epochs,
+                train_env_name=train_env_name, seed=args.seed,
+                message_string=message_string,
+                log_wandb=args.wandb,
+                ablation=args.ablation,
+                chpkt_manager=manager,
+                enable_profiling=enable_profiling,
+                use_amp=getattr(args, 'use_amp', False),
+                amp_dtype=getattr(args, 'amp_dtype', 'bf16'),
+                spot_checkpoint_path=_spot_path,
+                patience=getattr(args, 'early_stopping_patience', 0),
+            )
+            if hasattr(args, '_domain_names_ordered'):
+                _train_kwargs['domain_names'] = args._domain_names_ordered
+            if datasets["train"] is None:
+                raise RuntimeError(
+                    "no training data loaded but training was requested; "
+                    "metadata-only startup applies to --mode test only")
+            train_func(_model, datasets, **_train_kwargs)
+            print(f"  model: L={args.gnn_rounds} heads={args.n_heads} "
+                  f"lr={args.lr} dropout={args.dropout}/{args.attention_dropout} "
+                  f"wd={args.weight_decay}")
 
         if args.mode != 'test' and args.mode != 'train_test' :
            exit() 
@@ -873,68 +1377,200 @@ if __name__ == "__main__":
         elif args.search_strat == 'mcts' : 
             learned_search_strat.append(LearnedSearchStrat.MCTS)
 
-        config = PlannerConfig(
-            #planner_types=[PlannerType.NON_OPTIMAL],
-            #planner_types=[PlannerType.LEARNED_MODEL],
-            #planner_types=[PlannerType.LEARNED_MODEL, PlannerType.NON_OPTIMAL],
-            planner_types=planner_types,
-            domain_name=args.domain , 
-            num_problems=args.num_test_problems,
-            timeout=30.0,
-            enable_state_monitor=args.monitor,  # Enable monitoring
-            max_plan_length=args.max_plan_length,
-            problems_per_division=args.problems_per_division,
-            eval_planner_name = args.eval_planner_name,
-            train_planner_name = args.train_planner_name,
-            model_hyperparameters = training_hyperparameters,
-            ignore_defaults = ignore_defaults,
-            testing_hyperparameters = testing_hyperparameters,
-            learned_search_strat= learned_search_strat,
-        )
+        # Build the list of (domain_name, test_count, is_zero_shot) to eval on.
+        # --test-domains overrides everything; otherwise default to training
+        # domains + held-out domains.
+        from ploi.multidomain import parse_domain_arg
+        _train_set = set(train_domain_names) if train_domain_names else {args.domain}
 
-        tester = PlannerTester(config)
-        problems_to_solve = list(range(args.starting_test_number, args.starting_test_number + args.num_test_problems))
+        # A '@train' suffix on a test domain evaluates on that domain's TRAIN
+        # env (PDDLEnv<name>-v0: the easy problems) instead of the Test env
+        # (hard, size-generalization problems). For held-out domains those
+        # easy problems are unseen, so this is the zero-shot easy split.
+        eval_plan = []  # [(name, count, is_zero_shot, split), ...]
+        if args.test_domains:
+            for name, count, _ in parse_domain_arg(args.test_domains, "",
+                                                    args.num_test_problems):
+                split = 'test'
+                if name.endswith('@train'):
+                    name = name[:-len('@train')]
+                    split = 'train'
+                is_zs = name not in _train_set
+                eval_plan.append((name, count, is_zs, split))
+        else:
+            _default_domains = train_domain_names if train_domain_names else [args.domain]
+            for name in _default_domains:
+                eval_plan.append((name, args.num_test_problems, False, 'test'))
+            if args.heldout_domains:
+                for name, count, _ in parse_domain_arg("", args.heldout_domains,
+                                                        args.num_test_problems):
+                    eval_plan.append((name, count, True, 'test'))
 
-        def test_function_v2(curr_models):
-            return tester.test_planners(problems_to_solve=problems_to_solve,
-                                        models=curr_models, 
-                                        graph_metadata=graph_metadata)
-
-        all_model_types = ['validation','training','combined']
-        #all_model_types = ['validation','training']
-        #all_model_types = ['validation']#,'training']
-        #all_model_types = ['training' ]
-        #all_model_types = ['combined' ]
-
-        #curr_test_function = test_function
-        curr_test_function = test_function_v2
-        num_models_to_test = 2
+        _valid_metrics = {'validation', 'training', 'combined', 'periodic'}
+        all_model_types = [m.strip() for m in args.test_model_metrics.split(',')
+                           if m.strip()]
+        _bad = set(all_model_types) - _valid_metrics
+        if _bad:
+            raise ValueError(f"Invalid --test-model-metrics entries: {sorted(_bad)} "
+                             f"(valid: {sorted(_valid_metrics)})")
+        num_models_to_test = args.num_models_to_test
         starting_model_num = 0
+        all_results = {}
 
-        def run_tests_model_type(model_type, tested_epoch_numbers):
-            return run_tests(
-                curr_manager=manager,
-                model_class=model_class,
-                train_env_name=train_env_name,
-                seed=42,
-                hyperparameters=training_hyperparameters,
-                test_function=curr_test_function,
-                metric=model_type,  # or 'training' or 'combined',
-                args=args,
-                action_space=action_space,
-                tested_epoch_numbers=tested_epoch_numbers,
-                num_models_to_test=num_models_to_test,
-                starting_model_num=starting_model_num,
+        for test_domain, requested_count, is_zero_shot, test_split in eval_plan:
+            tag = "zero-shot" if is_zero_shot else "in-domain"
+            display_name = (test_domain if test_split == 'test'
+                            else f"{test_domain}@train")
+            print(f"\n=== {tag} evaluation: {display_name} ===")
+
+            # Cap against the problem count of the env that will actually be
+            # evaluated ('test' -> PDDLEnv<name>Test-v0; 'train' -> the base
+            # env with the easy problems).
+            _env_suffix = "Test" if test_split == 'test' else ""
+            try:
+                t_env = pddlgym.make(f"PDDLEnv{test_domain}{_env_suffix}-v0")
+            except Exception:
+                t_env = pddlgym.make(f"PDDLEnv{test_domain}-v0")
+            domain_test_count = min(requested_count, len(t_env.problems))
+            if domain_test_count < requested_count:
+                print(f"  {display_name}: capping test at {domain_test_count} "
+                      f"(requested {requested_count})")
+
+            # The domain's own action space. Used for (a) structural test
+            # metadata and (b) overriding the decoder's arity lookup: beam
+            # termination indexes action_parameter_number_dict by GRAPH-LOCAL
+            # schema position, but the dict is built from the action space the
+            # model was initialized with (merged, in multi-domain runs), so
+            # any domain after the first maps schemas to the wrong arities and
+            # decodes malformed actions. Only this dict is swapped; the
+            # schema-embedding offset is graph-local (per-graph n_action) so
+            # it needs no per-domain handling. Checkpoints trained before the
+            # graph-local offset fix need GABAR_LEGACY_ACTION_OFFSET=1.
+            test_action_space = t_env.action_space._action_predicate_to_operators
+
+            # Build per-domain graph metadata for testing. Structural/lifted
+            # modes rebuild from the test domain's own action space at the
+            # canonical training arities, so any domain (zero-shot included)
+            # featurizes at the trained widths.
+            _feat = graph_metadata.get('featurization')
+            _cheat_cols = ('node_feature_to_index' in graph_metadata and
+                           'is_correct_action' in graph_metadata['node_feature_to_index'])
+            if _feat == 'structural':
+                from ploi.structural import build_structural_metadata
+                test_md = build_structural_metadata(
+                    test_action_space,
+                    graph_metadata['max_pred_arity'],
+                    graph_metadata['max_action_arity'],
+                    cheating=_cheat_cols)
+            elif _feat in ('joint', 'joint_lite', 'joint_chain'):
+                from ploi.lifted_layer import build_lifted_metadata
+                test_md = build_lifted_metadata(
+                    test_action_space,
+                    graph_metadata['max_pred_arity'],
+                    graph_metadata['max_action_arity'],
+                    _feat,
+                    cheating=_cheat_cols)
+            elif is_zero_shot:
+                test_md = dict(graph_metadata)
+                test_md['allow_unknown_symbols'] = True
+            else:
+                test_md = graph_metadata
+
+            test_hypers = {**testing_hyperparameters, 'domain_name': display_name}
+            config = PlannerConfig(
                 planner_types=planner_types,
-                baseline_models=baseline_models,
+                domain_name=test_domain,
+                num_problems=domain_test_count,
+                timeout=30.0,
+                enable_state_monitor=args.monitor,
+                max_plan_length=args.max_plan_length,
+                problems_per_division=args.problems_per_division,
+                eval_planner_name=args.eval_planner_name,
+                train_planner_name=args.train_planner_name,
+                model_hyperparameters=training_hyperparameters,
                 ignore_defaults=ignore_defaults,
+                testing_hyperparameters=test_hypers,
+                learned_search_strat=learned_search_strat,
+                test_split=test_split,
             )
 
-        tested_epoch_numbers = set()
+            tester = PlannerTester(config)
+            problems_to_solve = list(range(args.starting_test_number,
+                                           args.starting_test_number + domain_test_count))
 
-        all_results = {}
-        for model_type in all_model_types:
-            results = run_tests_model_type(model_type, tested_epoch_numbers)
-            all_results[model_type] = results
+            def test_function_v2(curr_models, _tester=tester,
+                                 _problems=problems_to_solve, _md=test_md):
+                return _tester.test_planners(problems_to_solve=_problems,
+                                             models=curr_models,
+                                             graph_metadata=_md)
+
+            curr_test_function = test_function_v2
+            tested_epoch_numbers = set()
+
+            # Zero-shot domains test one metric only (validation if selected)
+            if is_zero_shot:
+                _model_types = (['validation'] if 'validation' in all_model_types
+                                else all_model_types[:1])
+            else:
+                _model_types = all_model_types
+
+            for model_type in _model_types:
+                results = run_tests(
+                    curr_manager=manager,
+                    model_class=model_class,
+                    train_env_name=train_env_name,
+                    seed=42,
+                    hyperparameters=training_hyperparameters,
+                    test_function=curr_test_function,
+                    metric=model_type,
+                    args=args,
+                    action_space=action_space,
+                    decode_action_space=test_action_space,
+                    tested_epoch_numbers=tested_epoch_numbers,
+                    num_models_to_test=num_models_to_test,
+                    starting_model_num=starting_model_num,
+                    planner_types=planner_types,
+                    baseline_models=baseline_models if not is_zero_shot else {},
+                    ignore_defaults=ignore_defaults,
+                )
+                prefix = "zeroshot_" if is_zero_shot else ""
+                suffix = f"_{model_type}" if len(eval_plan) > 1 else model_type
+                all_results[f"{prefix}{display_name}{suffix}"] = results
+
+        # Structured results dump for cross-run aggregation
+        # (tools/analyze_results.py). One JSON per invocation, keyed by
+        # <domain>_<metric>; wandb/stdout logging is unchanged.
+        import dataclasses
+        _summary = {}
+        for _key, _results in all_results.items():
+            _summary[_key] = []
+            for _r in _results:
+                _entry = {
+                    'epoch': _r['epoch'],
+                    'validation_loss': _r.get('validation_loss'),
+                    'training_loss': _r.get('training_loss'),
+                    'metrics': {}
+                }
+                for _ptype, _m in _r['test_results'].items():
+                    _entry['metrics'][str(_ptype)] = dataclasses.asdict(_m)
+                _summary[_key].append(_entry)
+        _dump = {
+            'experiment': args.expid,
+            'train_domain': args.domain,
+            'featurization': args.featurization,
+            'test_model_metrics': all_model_types,
+            'num_models_to_test': num_models_to_test,
+            'eval_plan': [
+                {'domain': (d if s == 'test' else f"{d}@train"),
+                 'count': c, 'zero_shot': z, 'split': s}
+                for d, c, z, s in eval_plan],
+            'results': _summary,
+            'timestamp': datetime.now().strftime('%Y%m%d_%H%M%S'),
+        }
+        _dump_path = os.path.join(
+            args.expdir, f"results_{args.domain}_{_dump['timestamp']}.json")
+        with open(_dump_path, 'w') as _f:
+            json.dump(_dump, _f, indent=2, default=str)
+        print(f"\nResults written to {_dump_path}")
 
         _ = log_model_metrics(all_results,args)

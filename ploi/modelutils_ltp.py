@@ -1,3 +1,4 @@
+import os
 import torch
 from torch import Tensor
 import torch.nn as nn
@@ -292,7 +293,10 @@ class EncodeDecode(nn.Module):
     def get_best_action_scores_locations(self, a_scores, k):
         # Get top-k action scores and their indices using tensor operations.
         # Apply topk across all batches at once
-        # Returns (values, indices) both of shape [batch_size, k]
+        # Returns (values, indices) both of shape [batch_size, min(k, num_actions)]
+        # k can exceed the schema count when a multi-domain model decodes a
+        # schema-poor domain (e.g. Visitall has 1 schema): clamp to width.
+        k = min(k, a_scores.shape[1])
         values, indices = torch.topk(a_scores, k, dim=1)
         return indices, values
 
@@ -309,36 +313,75 @@ class EncodeDecode(nn.Module):
 
         return all_objects_batches, all_objects_scores
 
-    def get_best_action_object_scores_locations(self, ao_scores, n_node, k):
+    def get_best_action_object_scores_locations(self, ao_scores, n_node, k, n_objects=None,
+                                                n_parameters=None):
         """
         Get top-k action-object scores and their indices using tensor operations.
         Args:
-            ao_scores: Tensor of shape [batch_size * max_params, max_nodes]
+            ao_scores: Tensor of [sum(n_parameters), max_nodes] - one row per
+                (graph, parameter slot). Rows per graph are NOT uniform in
+                general; pass n_parameters so the row->graph map is exact.
             n_node: Tensor containing total number of nodes per graph (including all node types)
             k: Number of top objects to select
-            
+            n_objects: Per-graph object counts; when given, selection is
+                restricted to object nodes (see comment below). None keeps
+                the legacy all-nodes mask (training targets path).
+            n_parameters: Per-graph parameter-slot counts. When given, the
+                row->graph map is built from them; when omitted the legacy
+                uniform-stride map is used (see below).
+
         Returns:
             Tuple of (indices_tensor, values_tensor)
         """
         batch_size = ao_scores.shape[0]
-        
+
         # Create a mask to ignore scores beyond valid nodes for each graph
         max_nodes = ao_scores.shape[1]
-        
-        # Calculate which graph each row in ao_scores belongs to
-        graph_indices = torch.div(torch.arange(batch_size, device=ao_scores.device), 
-                                self.max_number_action_parameters, rounding_mode='floor').long()
-        
+
+        # Which graph does each row of ao_scores belong to?
+        #
+        # The legacy answer, row // max_number_action_parameters, assumes every
+        # graph contributes exactly max_number_action_parameters rows. That is
+        # false whenever the batch's rows-per-graph differs from the decoder's
+        # arity cap, and it is how a 200-graph batch came to be read as 67
+        # graphs (RuntimeError in get_best_object_embeddings_ltp: "size of
+        # tensor a (200) must match tensor b (67)"). compute_object_scores has
+        # always derived this from n_parameters; do the same here when the
+        # caller supplies them, and keep the old map otherwise so the training
+        # path and ablations.py are untouched.
+        if n_parameters is not None:
+            n_par = n_parameters.to(torch.long)
+            graph_indices = torch.repeat_interleave(
+                torch.arange(n_par.numel(), device=ao_scores.device), n_par)
+            if graph_indices.numel() != batch_size:
+                raise RuntimeError(
+                    f"ao_scores has {batch_size} rows but n_parameters sums to "
+                    f"{int(n_par.sum())} over {n_par.numel()} graphs; the batch "
+                    f"and its parameter counts disagree")
+        else:
+            graph_indices = torch.div(torch.arange(batch_size, device=ao_scores.device),
+                                    self.max_number_action_parameters, rounding_mode='floor').long()
+
         # Get number of nodes for each row in ao_scores
         # n_node represents total nodes in the graph (including object, predicate, action nodes)
         row_n_nodes = n_node[graph_indices]
-        
+
         # Create range tensor for masking
         node_indices = torch.arange(max_nodes, device=ao_scores.device).expand(batch_size, -1)
-        
-        # Create mask where valid nodes are True
-        # All node types are valid targets, as n_node includes all node types
-        mask = node_indices < row_n_nodes.unsqueeze(1)
+
+        # Action parameters are always OBJECTS (the first n_objects nodes of
+        # each graph). compute_object_scores writes real scores (which can be
+        # NEGATIVE) only into object columns and leaves literal/schema columns
+        # at exactly 0, so masking by n_node lets topk select a 0-scored
+        # literal node whenever every object scores below zero - producing a
+        # malformed action. Never triggered by trained in-domain scores
+        # (correct objects score positive) but systematic in zero-shot eval.
+        # Pass n_objects to restrict selection to real objects.
+        if n_objects is not None:
+            valid_counts = n_objects[graph_indices]
+        else:
+            valid_counts = row_n_nodes
+        mask = node_indices < valid_counts.unsqueeze(1)
         
         # Apply mask to scores (set invalid scores to -inf)
         masked_scores = torch.where(mask, ao_scores, torch.tensor(float('-inf'), device=ao_scores.device))
@@ -357,6 +400,22 @@ class EncodeDecode(nn.Module):
             required_correct_features[a][0] = x[current_number_nodes+action_curr_graph+action][:]
             current_number_nodes += n_node[a]
         return required_correct_features#,number_action_parameters
+
+    def _decode_action_count(self, n_actions):
+        """Schema-node count used to locate the selected schema's embedding.
+
+        Each graph lays out its schema nodes as the LAST n_action nodes, so
+        the per-graph count from the data (n_actions) is the correct offset.
+        Models trained before this fix used len(model action space) instead,
+        which points below the schema block whenever a graph's domain has
+        fewer schemas than the (merged multi-domain) training action space -
+        the GRU was then conditioned on arbitrary literal-node embeddings.
+        Set GABAR_LEGACY_ACTION_OFFSET=1 when testing checkpoints trained
+        with that behavior; train/test offsets must match.
+        """
+        if os.environ.get('GABAR_LEGACY_ACTION_OFFSET', '') == '1':
+            return self.number_actions
+        return n_actions
 
     def get_best_action_embeddings(self,x,all_actions,n_node,domain_number_actions):
         # 1. Calculate the starting index of each graph in the flattened tensor `x`
@@ -838,7 +897,7 @@ class GNN_GRU(EncodeDecode):
         #action_scores_total_time = time.time() - action_scores_time
 
         #computing_best_action_embedding = time.time()
-        decoder_input = self.get_best_action_embeddings(x,all_actions,n_node,domain_number_actions=self.number_actions)
+        decoder_input = self.get_best_action_embeddings(x,all_actions,n_node,domain_number_actions=self._decode_action_count(n_actions))
         #computing_best_action_embedding_time = time.time() - computing_best_action_embedding
 
         #decoder_time = time.time()
@@ -883,7 +942,10 @@ class GNN_GRU(EncodeDecode):
                     action_idxs):
 
         a_scores_new = self.compute_action_scores(x,n_actions,hidden_state,action_idxs)
-        self.max_num_actions = self.action_options
+        # Clamp to the graph's schema count: a multi-domain model's
+        # action_options can exceed it on schema-poor domains (Visitall: 1),
+        # and the loop below indexes columns up to max_num_actions.
+        self.max_num_actions = min(self.action_options, a_scores_new.shape[1])
         self.max_num_objects = self.object_options
         all_actions_batches,all_actions_scores = self.get_best_action_scores_locations(a_scores_new,self.max_num_actions)
 
@@ -896,7 +958,7 @@ class GNN_GRU(EncodeDecode):
         curr_depth = 0
 
         for action_idx in range(self.max_num_actions):
-            decoder_input = self.get_best_action_embeddings(x,all_actions_batches[:,action_idx],n_node,domain_number_actions=self.number_actions)
+            decoder_input = self.get_best_action_embeddings(x,all_actions_batches[:,action_idx],n_node,domain_number_actions=self._decode_action_count(n_actions))
             all_curr_action_scores = [elem[action_idx] for elem in all_actions_scores]
             active_beams.append(([all_actions_batches[:,action_idx][0]], decoder_input, 
                                  all_curr_action_scores[0], hidden_state, curr_depth ))
@@ -916,23 +978,58 @@ class GNN_GRU(EncodeDecode):
 
             # Prepare for next step
             new_active_beams = []
-            ao_scores_new = torch.zeros(ao_scores.shape,device=self.device)
-            #ao_scores_new = torch.zeros_like(ao_scores)
+            # compute_object_scores reads only .shape of this argument and
+            # returns a fresh tensor, so allocating and zero-filling one here
+            # was pure waste, once per parameter slot per decode. ao_scores has
+            # the same shape; nothing reads its contents either.
+            ao_scores_new = ao_scores
+
+            # Grounding-constrained decoding (GABAR_CONSTRAINED_DECODE=1):
+            # _decode_allowed maps (schema, objects chosen so far) -> the object
+            # nodes that some APPLICABLE grounding puts in the next slot. The
+            # applicable set is already enumerated for the graph, so this costs
+            # a dict lookup and makes every completed action applicable by
+            # construction (V1 = 100%). Without it the decoder can compose
+            # (schema, objects) freely and spend its beam on actions that do
+            # not exist -- e.g. drive-truck(package, package, loc, city).
+            _allowed = getattr(self, "_decode_allowed", None)
 
             for beam_idx, beam in enumerate(active_beams):
-                ao_scores_new = self.compute_object_scores(x, n_parameters,n_objects, 
+                ao_scores_new = self.compute_object_scores(x, n_parameters,n_objects,
                                                             ao_scores_new,
                                                             #new_hidden_split[beam_idx],
                                                             new_hidden[:, beam_idx:beam_idx+1],
                                                         object_idxs,parameter_number)
+
+                ok_nodes = None
+                if _allowed is not None:
+                    seq = active_beams[beam_idx][0]
+                    key = (int(seq[0]), tuple(int(t) for t in seq[1:]))
+                    ok_nodes = _allowed.get(key) or set()
+                    # Score -inf outside the allowed set so top-k is drawn from
+                    # legal objects; rows are [param, node] and single-graph
+                    # decode puts this parameter on row `parameter_number`.
+                    if parameter_number < ao_scores_new.shape[0]:
+                        row = ao_scores_new[parameter_number]
+                        keep = torch.zeros_like(row, dtype=torch.bool)
+                        if ok_nodes:
+                            keep[torch.tensor(sorted(ok_nodes), dtype=torch.long,
+                                              device=row.device)] = True
+                        row[~keep] = float("-inf")
+
                 all_objects_batches_all_params,all_objects_scores_all_params = self.get_best_action_object_scores_locations(
-                                        ao_scores=ao_scores_new, n_node=n_node, k=self.max_num_objects)
+                                        ao_scores=ao_scores_new, n_node=n_node, k=self.max_num_objects,
+                                        n_objects=n_objects)
 
                 all_objects_scores = all_objects_scores_all_params[parameter_number]
                 all_objects_batches = all_objects_batches_all_params[parameter_number]
                 for object_option in range(self.max_num_objects):
-                    all_objects = all_objects_batches[object_option] 
+                    all_objects = all_objects_batches[object_option]
                     all_curr_obj_scores = all_objects_scores[object_option]
+                    # Fewer legal objects than k: top-k still returns k rows,
+                    # the surplus being masked-out ones. Drop them.
+                    if ok_nodes is not None and int(all_objects) not in ok_nodes:
+                        continue
                     new_decoder_input = self.get_best_object_embeddings_ltp(x, 
                                                                             all_objects,
                                                                              n_node, number_graphs)
@@ -967,25 +1064,47 @@ class GNN_GRU(EncodeDecode):
                     n_parameters,n_objects,object_idxs,n_actions,
                     action_idxs):
 
+        # n_parameters is authoritative for how ao_scores' rows map to graphs;
+        # everything below indexes through it rather than through the decoder's
+        # arity cap. Hoisted here because it is invariant over both loops, and
+        # in a launch-bound decoder the cost of these is the launch, not the
+        # arithmetic. No .item()/.sum() readback: that would be a device sync
+        # per decode. get_best_action_object_scores_locations raises on a
+        # row-count disagreement, and its check is free there.
+        n_par_long = n_parameters.to(torch.long)
+        _par_starts = torch.cumsum(n_par_long, 0) - n_par_long   # first row of each graph
+        _par_last = (n_par_long - 1).clamp(min=0)                # its last, for clamping
+
         a_scores_new = self.compute_action_scores(x,n_actions,hidden_state,action_idxs)
-        self.max_num_actions = self.action_options
+        # Clamp to the graph's schema count: a multi-domain model's
+        # action_options can exceed it on schema-poor domains (Visitall: 1),
+        # and the loop below indexes columns up to max_num_actions.
+        self.max_num_actions = min(self.action_options, a_scores_new.shape[1])
         self.max_num_objects = self.object_options
         all_actions_batches,all_actions_scores = self.get_best_action_scores_locations(a_scores_new,self.max_num_actions)
 
+        # Mixed-arity fix: per-action-index arity lookup, used to freeze the
+        # scores of graphs whose action is already fully parameterized while
+        # other graphs in the same beam still need more parameters.
+        # (Comment this + the FIX lines below to restore old behavior.)
+        arity_lookup = torch.tensor(
+            [self.action_parameter_number_dict[i] for i in sorted(self.action_parameter_number_dict)],
+            device=self.device)
+
         # Active beams now contain (token_ids, embeddings, scores)
         active_beams = []
-        
+
         # Storage for completed sequences
         finished_beams = []
         finished_scores = []
         curr_depth = 0
 
         for action_idx in range(self.max_num_actions):
-            decoder_input = self.get_best_action_embeddings(x,all_actions_batches[:,action_idx],n_node,domain_number_actions=self.number_actions)
+            decoder_input = self.get_best_action_embeddings(x,all_actions_batches[:,action_idx],n_node,domain_number_actions=self._decode_action_count(n_actions))
             #all_curr_action_scores = [elem[action_idx] for elem in all_actions_scores]
-            #active_beams.append(([all_actions_batches[:,action_idx][0]], decoder_input, 
+            #active_beams.append(([all_actions_batches[:,action_idx][0]], decoder_input,
             #                     all_curr_action_scores[0], hidden_state, curr_depth ))
-            active_beams.append(([all_actions_batches[:,action_idx]], decoder_input, 
+            active_beams.append(([all_actions_batches[:,action_idx]], decoder_input,
                                  all_actions_scores[:,action_idx], hidden_state, curr_depth ))
 
         for parameter_number in range(self.max_number_action_parameters):  # replace with the actual maximum sequence length
@@ -1003,43 +1122,72 @@ class GNN_GRU(EncodeDecode):
 
             # Prepare for next step
             new_active_beams = []
-            ao_scores_new = torch.zeros(ao_scores.shape,device=self.device)
-            #ao_scores_new = torch.zeros_like(ao_scores)
+            # compute_object_scores reads only .shape of this argument and
+            # returns a fresh tensor, so allocating and zero-filling one here
+            # was pure waste, once per parameter slot per decode. ao_scores has
+            # the same shape; nothing reads its contents either.
+            ao_scores_new = ao_scores
+
+            # One row per graph for THIS parameter slot. Rows per graph are not
+            # uniform, so the offset is the cumulative start of each graph's
+            # rows (the arithmetic compute_object_scores uses) rather than a
+            # fixed stride of max_number_action_parameters. A graph whose
+            # action needs fewer parameters than this slot has no row here;
+            # clamp into its own last row so the gather stays in bounds - its
+            # score is frozen by done_prev below, so the value is never used.
+            # Invariant across beams, so computed once here.
+            parameter_locations = _par_starts + torch.minimum(
+                torch.full_like(n_par_long, parameter_number), _par_last)
 
             for beam_idx, beam in enumerate(active_beams):
-                ao_scores_new = self.compute_object_scores(x, n_parameters,n_objects, 
+                ao_scores_new = self.compute_object_scores(x, n_parameters,n_objects,
                                                             ao_scores_new,
                                                             #new_hidden_split[beam_idx],
                                                             new_hidden[:, beam_idx*number_graphs :(beam_idx+1)*number_graphs],
                                                         object_idxs,parameter_number)
                 all_objects_batches_all_params,all_objects_scores_all_params = self.get_best_action_object_scores_locations(
-                                        ao_scores=ao_scores_new, n_node=n_node, k=self.max_num_objects)
+                                        ao_scores=ao_scores_new, n_node=n_node, k=self.max_num_objects,
+                                        n_objects=n_objects, n_parameters=n_parameters)
 
-                #all_objects_scores = all_objects_scores_all_params[parameter_number]
-                #all_objects_batches = all_objects_batches_all_params[parameter_number]
-                parameter_locations = torch.arange(parameter_number, all_objects_batches_all_params.shape[0], self.max_number_action_parameters)
                 all_objects_batches = all_objects_batches_all_params[parameter_locations]
                 all_objects_scores = all_objects_scores_all_params[parameter_locations]
+
+                # Mixed-arity fix: which graphs in this beam are already done
+                # (their action needed <= curr_depth params) - their scores are
+                # frozen below. The finish check depends only on the beam's
+                # actions, so it is hoisted out of the object loop.
+                beam_actions = beam[0][0]
+                beam_arities = arity_lookup[beam_actions]
+                done_prev = beam_arities <= curr_depth
+                beam_finished = bool((beam_arities <= curr_depth + 1).all())
+
                 for object_option in range(self.max_num_objects):
-                    all_objects = all_objects_batches[:,object_option] 
+                    all_objects = all_objects_batches[:,object_option]
                     all_curr_obj_scores = all_objects_scores[:,object_option]
-                    new_decoder_input = self.get_best_object_embeddings_ltp(x, 
+                    new_decoder_input = self.get_best_object_embeddings_ltp(x,
                                                                             all_objects,
                                                                              n_node, number_graphs)
-                    
 
-                    curr_sequence = active_beams[beam_idx][0] + [all_objects] 
+
+                    curr_sequence = active_beams[beam_idx][0] + [all_objects]
                     #action = curr_sequence[0].item()
                     actions = curr_sequence[0]
-                    new_score = (current_scores[beam_idx]*(curr_depth+1) + all_curr_obj_scores)/ (curr_depth + 2 )
-                    #if curr_depth + 1 == self.action_parameter_number_dict[action]:
-                    if all([curr_depth + 1 >= self.action_parameter_number_dict[actions[idx].item()] for idx in range(actions.shape[0])]):
+                    # Old version (updates every graph's score even after its
+                    # action is fully parameterized - dilutes early finishers;
+                    # finish check re-done per object option with .item() syncs):
+                    #new_score = (current_scores[beam_idx]*(curr_depth+1) + all_curr_obj_scores)/ (curr_depth + 2 )
+                    ##if curr_depth + 1 == self.action_parameter_number_dict[action]:
+                    #if all([curr_depth + 1 >= self.action_parameter_number_dict[actions[idx].item()] for idx in range(actions.shape[0])]):
+                    # Mixed-arity fix: freeze scores of already-done graphs
+                    new_score_updated = (current_scores[beam_idx]*(curr_depth+1) + all_curr_obj_scores)/ (curr_depth + 2 )
+                    new_score = torch.where(done_prev, current_scores[beam_idx], new_score_updated)
+                    if beam_finished:
                         finished_beams.append(curr_sequence)
                         finished_scores.append(new_score)
                         continue
 
-                    new_active_beams.append((curr_sequence, new_decoder_input, 
-                                             new_score, 
+                    new_active_beams.append((curr_sequence, new_decoder_input,
+                                             new_score,
                                              #new_hidden_split[beam_idx],
                                              new_hidden[:, beam_idx*number_graphs:(beam_idx+1)*number_graphs],
                                              curr_depth+1))
@@ -1098,20 +1246,41 @@ class GNN_GRU(EncodeDecode):
                     else:
                         # Shape is [batch_size, 2] or similar
                         beam_for_batch.append(token_tensor[batch_idx])
+                # Mixed-arity fix: graphs whose action finished before the rest
+                # of the beam carry padding object tokens past their arity -
+                # truncate to (action + its true parameter count).
+                # (Comment the next two lines to restore old behavior.)
+                arity = self.action_parameter_number_dict[int(beam_for_batch[0])]
+                beam_for_batch = beam_for_batch[:1 + arity]
                 batch_beams.append(beam_for_batch)
-            
+
             # Convert scores to tensor for sorting
             scores_tensor = torch.tensor(batch_scores, device=finished_scores_parallel[0].device)
-            
+
             # Sort indices in descending order
             indices = torch.argsort(scores_tensor, descending=True)
-            
+
             # Create sorted beams and scores
             sorted_beams = [batch_beams[i] for i in indices.tolist()]
             sorted_scores = scores_tensor[indices].tolist()
-            
+
             # Create results for this batch
             batch_results = list(zip(sorted_scores, sorted_beams))
+
+            # Mixed-arity fix: truncation makes the padded continuations of an
+            # early-finished graph identical - drop duplicates, keeping the
+            # highest-scored occurrence (list is already sorted descending).
+            # (Comment this block to restore old behavior.)
+            seen_sequences = set()
+            deduped_results = []
+            for score, beam in batch_results:
+                key = tuple(int(t) for t in beam)
+                if key in seen_sequences:
+                    continue
+                seen_sequences.add(key)
+                deduped_results.append((score, beam))
+            batch_results = deduped_results
+
             all_results.append(batch_results)
-        
+
         return all_results

@@ -89,6 +89,10 @@ class PlannerConfig:
     model_hyperparameters: Dict[str, float] = None
     ignore_defaults : Dict[str, Any] = None
     testing_hyperparameters: Dict[str, Any] = None
+    # 'test' = PDDLEnv<name>Test-v0 (hard/size-generalization problems),
+    # 'train' = PDDLEnv<name>-v0 (easy problems - a legitimate zero-shot
+    # eval set for held-out domains, since the model never saw them).
+    test_split: str = "test"
 
 @dataclass
 class PlannerMetrics:
@@ -103,6 +107,11 @@ class PlannerMetrics:
     max_time_taken: float = 0
     plan_quality: float = 0
     median_plan_length: float = 0
+    # Fraction of rollout steps where the model's TOP-RANKED proposal was an
+    # applicable ground action. Measures zero-shot action-construction
+    # validity independently of plan completion (C1/C2 intermediate signal).
+    # -1 = not tracked (external planners).
+    top1_valid_rate: float = -1
 
 class PlanningResult:
     def __init__(self):
@@ -110,8 +119,10 @@ class PlanningResult:
         self.time_taken = 0
         self.success = False
         self.plan_length = 0
-        self.repeated_states = 0 
+        self.repeated_states = 0
         self.problem_idx = -1
+        self.steps = 0
+        self.top1_valid = 0
         self.nodes_expanded = 0
         self.cutoffs = 0
 
@@ -149,8 +160,13 @@ def compute_metrics(problems_per_division,
             median_plan_length = 0
             
         total_repeated_states = sum(r.repeated_states for r in planner_results)
-        
+
+        total_steps = sum(getattr(r, 'steps', 0) for r in planner_results)
+        top1_valid_rate = (sum(getattr(r, 'top1_valid', 0) for r in planner_results)
+                           / total_steps) if total_steps else -1
+
         metrics[planner_type] = PlannerMetrics(
+            top1_valid_rate=top1_valid_rate,
             success_rate_with_monitor=len(successful_results_with_monitor) / num_problems,
             success_rate_without_monitor=len(successful_results_without_monitor) / num_problems,
             avg_plan_length=avg_plan_length,
@@ -265,6 +281,8 @@ def format_metrics(metrics, epoch=None):
         'Plan': f"{metrics.avg_plan_length:.1f}/{metrics.median_plan_length:.1f}/{metrics.max_plan_length}",
         'Time': f"{metrics.avg_time_taken:.2f}/{metrics.max_time_taken:.2f}"
     }
+    if getattr(metrics, 'top1_valid_rate', -1) >= 0:
+        formatted_metrics['V1'] = f"{metrics.top1_valid_rate:.1%}"
 
     # Print header and metrics in one line
     if epoch is not None:
@@ -380,14 +398,36 @@ def log_model_metrics(all_results_dict, args):
                 if planner_type in result['test_results']:
                     metrics = result['test_results'][planner_type]
                     
-                    # Log to wandb
+                    # Log to wandb.
+                    #
+                    # NO step=epoch here. model_type is "<domain>_<metric>",
+                    # so this loop walks domain by domain and the epoch
+                    # RESTARTS at each one. wandb requires steps to increase
+                    # monotonically and silently drops out-of-order points, so
+                    # with step=epoch only the first test domain's numbers ever
+                    # arrived - the rest of an 8-domain evaluation vanished.
+                    # Epoch travels as an ordinary field instead.
+                    #
+                    # The summary write is what makes the runs TABLE readable:
+                    # history needs a chart per key, summary puts one sortable
+                    # column per domain next to the run name.
                     if args.wandb:
-                        wandb.log({
-                            f"{model_type}/{planner_type}/success_rate_monitor": metrics.success_rate_with_monitor,
-                            f"{model_type}/{planner_type}/success_rate_no_monitor": metrics.success_rate_without_monitor,
-                            f"{model_type}/{planner_type}/plan_length": metrics.avg_plan_length,
-                        }, step=epoch)
-                    
+                        _pref = f"{model_type}/{planner_type}"
+                        _point = {
+                            f"{_pref}/success_rate_monitor": metrics.success_rate_with_monitor,
+                            f"{_pref}/success_rate_no_monitor": metrics.success_rate_without_monitor,
+                            f"{_pref}/plan_length": metrics.avg_plan_length,
+                            f"{_pref}/epoch": epoch,
+                        }
+                        wandb.log(_point)
+                        # Best-so-far per key, so a later, worse checkpoint
+                        # cannot overwrite the headline number.
+                        _k = f"{_pref}/success_rate_monitor"
+                        if metrics.success_rate_with_monitor > (
+                                wandb.summary.get(_k) or -1):
+                            for _sk, _sv in _point.items():
+                                wandb.summary[_sk] = _sv
+
                     # Track best model for this planner type
                     if metrics.success_rate_with_monitor > best_results[planner_type]["success_rate"]:
                         best_results[planner_type]["success_rate"] = metrics.success_rate_with_monitor

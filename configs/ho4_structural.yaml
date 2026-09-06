@@ -1,0 +1,8 @@
+description: Train 4, zero-shot 4 domains hard+easy (structural)
+base: _common.yaml
+expid: ho4_structural
+domains: manyblocks_ipcc_big,gripper_ipcc,visitall_ipcc,logistics_ipcc
+featurization: structural
+test_domains: manyblocks_ipcc_big:200,gripper_ipcc:173,miconic_ipcc:119,visitall_ipcc:50,grid_ipcc:48,logistics_ipcc:96,spanner_ipcc:96,rovers_ipcc:54,miconic_ipcc@train:228,grid_ipcc@train:192,spanner_ipcc@train:234,rovers_ipcc@train:312
+# rovers is held out: featurize/decode at its max schema arity
+max_action_arity: 6

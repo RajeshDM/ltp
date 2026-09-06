@@ -1,0 +1,12 @@
+description: 2-epoch CPU sanity check, not part of the paper suite
+expid: toy_check
+domain: manyblocks_ipcc_big
+mode: train
+run_mode: toy
+epochs: 2
+lr: 0.0005
+num_train_problems: 20
+num_test_problems: 5
+all_problems: true
+use_gpu: false
+wandb: false

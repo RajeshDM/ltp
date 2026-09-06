@@ -1,0 +1,21 @@
+# Regularization sweep, arm 4 of 5: four attention heads.
+#
+# Read ploi/attention_layer.py before interpreting this arm. is_concat=False
+# and n_hidden == out_features, so heads do NOT split the width - each head
+# is a full-width attention computed against the SAME shared score projection
+# (self.attn is one Linear(.., 1)), and the heads are combined with
+# .mean(dim=1). So --n-heads here is an averaging ensemble / variance
+# reducer, not extra capacity. Expect a small effect, and treat a large one
+# as a reason to re-read that file.
+description: Sweep arm - 4 attention heads
+base: _common.yaml
+expid: sweep_jc_heads4
+domains: manyblocks_ipcc_big,gripper_ipcc,miconic_ipcc,visitall_ipcc,grid_ipcc,logistics_ipcc,spanner_ipcc,rovers_ipcc
+featurization: joint_chain
+test_domains: manyblocks_ipcc_big:200,gripper_ipcc:173,miconic_ipcc:119,visitall_ipcc:50,grid_ipcc:48,logistics_ipcc:96,spanner_ipcc:96,rovers_ipcc:54
+mode: train
+epochs: 1000
+seed: 11
+checkpoint_every: 100
+keep_checkpoints: 3
+n_heads: 4

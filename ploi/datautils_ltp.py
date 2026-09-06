@@ -78,6 +78,36 @@ def reverse_binary_literal(x):
     assert len(variables) == 2
 
 
+class _EdgeSlice:
+    """Edge features for one parameter position: {(sender, receiver): {feature: value}}.
+
+    Replaces a dense (num_nodes, num_nodes, num_edge_features) array. The
+    dense form had to be allocated and then scanned in full for every state,
+    costing O(N^2 * k) time and memory even though a state graph has only a
+    few thousand edges; with the parameter dimension on top of that it was
+    the dominant cost of re-featurizing states at test time. Supports exactly
+    the access patterns the feature writers use: a three-index set and a
+    two-index row read.
+    """
+
+    __slots__ = ('rows', 'width')
+
+    def __init__(self, width):
+        self.rows = {}
+        self.width = width
+
+    def __setitem__(self, key, value):
+        sender, receiver, feature = key
+        row = self.rows.get((sender, receiver))
+        if row is None:
+            row = self.rows[(sender, receiver)] = {}
+        row[feature] = value
+
+    def __getitem__(self, key):
+        sender, receiver = key
+        return self.rows.get((sender, receiver))
+
+
 def graph_to_pyg_data(graph):
     hetero_data = HeteroData()
     all_dtype = torch.float32
@@ -223,6 +253,7 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
 
     #_model_version = graph_metadata['model_version']
     _all_predicates = graph_metadata['all_predicates']
+    _allow_unknown = graph_metadata.get('allow_unknown_symbols', False)
     assert _node_feature_to_index is not None, "Must initialize first"
     G = wrap_goal_literal
     R = reverse_binary_literal
@@ -241,9 +272,15 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     #literals = [literal for literal in state.literals if literal.predicate.arity != 0]
     #goal_literals = [ G(literal) for literal in list(state.goal.literals) if literal.predicate.arity != 0]
     #literals = list(state.literals)
-    literals = [literal for literal in sorted(state.literals)]
+    literals = sorted(state.literals, key=repr)
     #goal_literals = [G(literal) for literal in sorted(state.goal.literals)]
-    goal_literals = [G(literal) for literal in sorted(goal_state.literals)]
+    _sorted_goal = sorted(goal_state.literals, key=repr)
+    goal_literals = [G(literal) for literal in _sorted_goal]
+    # Set, not list: `lit in goal_literals` below runs once per literal, and
+    # list membership is a linear scan of Literal.__eq__ - O(|literals| *
+    # |goal|) per state. Measured on visitall test instances (goal = every
+    # cell): ~62k comparisons per state, half of featurization time.
+    _goal_literal_set = set(goal_literals)
     #goal_literals_without_g = list(state.goal.literals)
     #all_literals = list(state.literals) + list(state.goal.literals)
     #all_literals_without_g = literals + goal_literals_without_g
@@ -251,8 +288,20 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     all_literals = literals + goal_literals
     #all_literals = literals + goal_literals_without_g
     #all_literals = literals + goal_literals_without_g
+
+    # Lifted domain layer (CLAUDE.md 5.4/5.5): extra nodes between the
+    # literals and the schema block. Objects stay first and schemas stay
+    # last, so all decoder indexing invariants are preserved.
+    _lifted_spec = graph_metadata.get('lifted_spec')
+    if _lifted_spec:
+        from ploi.lifted_layer import lifted_node_keys
+        lifted_keys = lifted_node_keys(_lifted_spec)
+    else:
+        lifted_keys = []
+    num_lifted = len(lifted_keys)
+
     #node_to_objects = dict(enumerate(all_agents + all_objects + _all_predicates + all_actions))
-    node_to_objects = dict(enumerate(all_agents + all_objects + all_literals + all_actions))
+    node_to_objects = dict(enumerate(all_agents + all_objects + all_literals + lifted_keys + all_actions))
     if test == True:
         pass
         #ic (node_to_objects)
@@ -268,7 +317,7 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     num_predicates = len(all_literals)
     #num_globals = len(all_global_nodes)
     #num_nodes = num_objects+ num_actions + num_agents
-    num_nodes = num_objects+ num_actions + num_agents +num_predicates
+    num_nodes = num_objects+ num_actions + num_agents +num_predicates + num_lifted
     #num_nodes = num_objects + num_actions + num_agents + num_globals
 
     action_nodes = []
@@ -299,8 +348,10 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     #action_object_to_edge = {v: k for k, v in edge_to_action_object.items()}
     graph_input = {}
 
-    # Nodes: one per object
-    input_node_features = np.zeros((num_nodes, _num_node_features))
+    # Nodes: one per object. uint8, not the default float64: every node
+    # feature is a flag or a one-hot, so this is lossless, and it is what
+    # dominates the size of the cached graphs. Consumers cast to float32.
+    input_node_features = np.zeros((num_nodes, _num_node_features), dtype=np.uint8)
     num_nodes = np.array(num_nodes)
     #num_nodes = np.reshape(num_nodes,[1]).astype(np.int64)
     #graph_input["n_node"] = np.array(num_nodes)
@@ -310,7 +361,7 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
     action_scores = np.zeros((1,num_actions))
     #action_object_scores = np.zeros((1, num_objects)) #TODO - need to think about how to make this variable
     action_object_scores = np.zeros((max_action_arity, num_objects)) #TODO - need to think about how to make this variable
-    n_non_action_nodes = num_objects + num_agents + num_predicates
+    n_non_action_nodes = num_objects + num_agents + num_predicates + num_lifted
     prev_state_copy = None
 
     if prev_state != None :
@@ -325,19 +376,21 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
 
     # Add features for types
     for obj_index, obj in enumerate(all_objects):
-        var_type_index = _node_feature_to_index[obj.var_type]
-        input_node_features[obj_index+num_agents, var_type_index] = 1
+        var_type_index = _feature_index(_node_feature_to_index, obj.var_type, _allow_unknown)
+        if var_type_index is not None:
+            input_node_features[obj_index+num_agents, var_type_index] = 1
         if 'object_node' in _node_feature_to_index:
             type_index = _node_feature_to_index['object_node']
             input_node_features[obj_index+num_agents, type_index] = 1
 
     #ic (all_actions)
     for action_index, action in enumerate(all_actions):
-        action_feature_pos = _node_feature_to_index[action]
+        action_feature_pos = _feature_index(_node_feature_to_index, action, _allow_unknown)
         type_index = _node_feature_to_index['action_node']
         #input_node_features[action_index+len(all_objects), type_index] = 1
         input_node_features[action_index+n_non_action_nodes, type_index] = 1
-        input_node_features[action_index+n_non_action_nodes,action_feature_pos] = 1
+        if action_feature_pos is not None:
+            input_node_features[action_index+n_non_action_nodes,action_feature_pos] = 1
 
     #ic (all_literals)
     #ic (_node_feature_to_index)
@@ -353,22 +406,57 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
         type_index = _node_feature_to_index['predicate_node']
         pred_index = objects_to_node[lit]
         pred = lit.predicate
-        predicate_feature_index = _node_feature_to_index[pred]
+        predicate_feature_index = _feature_index(_node_feature_to_index, pred, _allow_unknown)
         input_node_features[pred_index, type_index] = 1
-        input_node_features[pred_index, predicate_feature_index] = 1
+        if predicate_feature_index is not None:
+            input_node_features[pred_index, predicate_feature_index] = 1
 
-        if lit in goal_literals and 'goal_pred' in _node_feature_to_index:
+        if lit in _goal_literal_set and 'goal_pred' in _node_feature_to_index:
             goal_index = _node_feature_to_index['goal_pred']
             input_node_features[pred_index, goal_index] = 1
 
-    all_edge_features_stack = np.zeros((max_action_arity,num_nodes, num_nodes,_num_edge_features))
-    all_edge_features = all_edge_features_stack[0][:]
+    if _lifted_spec:
+        from ploi.lifted_layer import add_lifted_node_features
+        add_lifted_node_features(input_node_features, lifted_keys, _lifted_spec,
+                                 objects_to_node, _node_feature_to_index,
+                                 graph_metadata['max_pred_arity'])
+        if _lifted_spec.get('mode') == 'joint_chain':
+            # Goal-conditioned features (#5): schema goal-distance buckets +
+            # adds_goal_pred, goal_relevant_obj on unsatisfied-goal objects.
+            # Goal atoms are passed UNWRAPPED (no WANT prefix) so they compare
+            # against state literals directly.
+            from ploi.lifted_layer import add_chain_node_features
+            add_chain_node_features(input_node_features, _lifted_spec,
+                                    all_actions, literals,
+                                    _sorted_goal,
+                                    objects_to_node, _node_feature_to_index)
+
+    all_edge_features_stack = [_EdgeSlice(_num_edge_features)
+                               for _ in range(max_action_arity)]
+    all_edge_features = all_edge_features_stack[0]
 
     '''
     All edge features of predicate object are being added in this function
     '''
     # self.add_all_predicate_edge_info_in_graph(state,objects_to_node,all_edge_features)
-    _add_all_predicate_edge_info_in_graph(all_literals, objects_to_node, all_edge_features,_edge_feature_to_index)
+    _add_all_predicate_edge_info_in_graph(all_literals, objects_to_node, all_edge_features,_edge_feature_to_index,
+                                          allow_unknown=_allow_unknown)
+
+    if _lifted_spec:
+        from ploi.lifted_layer import add_lifted_layer_edges, add_type_edges
+        add_lifted_layer_edges(all_edge_features, all_literals, all_actions,
+                               _lifted_spec, objects_to_node,
+                               _edge_feature_to_index,
+                               graph_metadata['max_pred_arity'],
+                               graph_metadata['max_action_arity'])
+        # Type compilation: object <-> its declared type's symbol node. The
+        # compiled stand-in for the ground type literal a predicate-typed
+        # domain would have. No-op for untyped/predicate-typed domains.
+        # `literals`, not `all_literals`: goal atoms are WANT-prefixed and are
+        # not assertions about the current state.
+        add_type_edges(all_edge_features, all_objects, _lifted_spec,
+                       objects_to_node, _edge_feature_to_index,
+                       state_literals=literals)
 
     node_to_only_actions = dict(enumerate(all_actions))
     action_positions = dict(enumerate(list(range(max_action_arity))))
@@ -391,54 +479,121 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
             #TODO - Change this - currently using same features both ways
             #all_edge_features[obj_index, action_index, pred_index] = 1
 
-            position_index = _edge_feature_to_index['pos_' + str(position)]
-            all_edge_features_stack[position,action_index, obj_index, pred_index] = 1
-            all_edge_features_stack[position,obj_index, action_index, pred_index] = 1
-            all_edge_features_stack[position,action_index, obj_index, position_index] = 1
-            all_edge_features_stack[position,obj_index, action_index, position_index] = 1
+            position_index = _feature_index(_edge_feature_to_index, 'pos_' + str(position), _allow_unknown)
+            if position_index is None:
+                continue
+            _slice = all_edge_features_stack[position]
+            _slice[action_index, obj_index, pred_index] = 1
+            _slice[obj_index, action_index, pred_index] = 1
+            _slice[action_index, obj_index, position_index] = 1
+            _slice[obj_index, action_index, position_index] = 1
 
+    # Binding layer (CLAUDE.md 5.5, 'joint'/'joint_chain' modes): grounded
+    # applicability edges also link the object to the precondition
+    # OCCURRENCE node it instantiates.
+    _binding_ctx = None
+    if _lifted_spec and _lifted_spec.get('mode') in ('joint', 'joint_chain'):
+        _binding_ctx = {
+            'objects_to_node': objects_to_node,
+            'ka': graph_metadata['max_action_arity'],
+            # {schema: {slot: occurrence index}} for the type-compiled
+            # preconditions; an applicable grounding is type-correct by
+            # construction, so its object binds to the slot's type occurrence.
+            'type_occ': _lifted_spec.get('type_occ', {}),
+        }
+
+    # O(1) position lookup instead of list.index (a linear scan per call),
+    # and dedup: an object appearing in many groundings at the same slot was
+    # re-processed once per grounding, though the writes are idempotent.
+    _object_pos = {o: i for i, o in enumerate(all_objects)}
+    _done = set()
     for action, values in actions_to_node_groundings.items():
         action_index = objects_to_node[action]
         for position,objects in values.items():
             for object in objects :
-                object_loc = all_objects.index(object)
+                if (action_index, position, object) in _done:
+                    continue
+                _done.add((action_index, position, object))
+                object_loc = _object_pos[object]
                 _get_precondition_satisfaction_position(action, state.literals, all_objects, all_edge_features_stack[position],
                                                             action_space, action_index, object_loc,
-                                                            position,_edge_feature_to_index)
+                                                            position,_edge_feature_to_index,
+                                                            allow_unknown=_allow_unknown,
+                                                            binding_ctx=_binding_ctx)
+
+    # Grounded effect edges ('joint_chain' only, #6): each applicable
+    # grounding's add effects hitting an unsatisfied goal atom / delete
+    # effects hitting a true state atom link the participating objects to
+    # that existing literal node. Atoms without a node are skipped inside.
+    if _lifted_spec and _lifted_spec.get('mode') == 'joint_chain':
+        from ploi.lifted_layer import add_grounded_effect_edges
+        _true_literal_nodes = {
+            (l.predicate.name, tuple(l.variables)): objects_to_node[l]
+            for l in literals}
+        _unsat_goal_nodes = {}
+        # goal_literals was built as [G(g) for g in sorted(goal_state.literals)]
+        # -- zip recovers each unwrapped goal atom's WANT node index.
+        for _g, _wrapped in zip(_sorted_goal, goal_literals):
+            if _g not in state.literals:
+                _unsat_goal_nodes[(_g.predicate.name, tuple(_g.variables))] = \
+                    objects_to_node[_wrapped]
+        add_grounded_effect_edges(all_edge_features, all_groundings,
+                                  action_space, _unsat_goal_nodes,
+                                  _true_literal_nodes, objects_to_node,
+                                  _edge_feature_to_index)
 
     for action_edge in action_edges :
+        action_index = objects_to_node[action_edge[0]]
+        obj_index = objects_to_node[action_edge[1]]
         for position in range(max_action_arity):
-            #pred_index = _edge_feature_to_index['action_object']
-            action_index = objects_to_node[action_edge[0]]
-            obj_index = objects_to_node[action_edge[1]]
-            assert (all_edge_features_stack[position, action_index, obj_index]==
-                all_edge_features_stack[position,obj_index, action_index]).all()
-            if sum (all_edge_features_stack[position,action_index, obj_index]) == 2:
-                all_edge_features_stack[position, action_index, obj_index] = [0] * _num_edge_features
-                all_edge_features_stack[position, obj_index, action_index] = [0] * _num_edge_features
+            _rows = all_edge_features_stack[position].rows
+            _fwd = _rows.get((action_index, obj_index))
+            _rev = _rows.get((obj_index, action_index))
+            assert _fwd == _rev, "action-object edges must stay symmetric"
+            # Exactly two flags set means the action_object marker and the
+            # position marker and nothing else: the object satisfies no
+            # precondition at this slot, so it is not a candidate there and
+            # the edge is dropped. (Zeroing the dense row had the same
+            # effect: an all-zero row never entered the adjacency matrix.)
+            if _fwd is not None and sum(_fwd.values()) == 2:
+                del _rows[(action_index, obj_index)]
+                del _rows[(obj_index, action_index)]
     # Organize into expected representation
 
-    receivers, senders, edges = [], [], []
-    sender_rec = []
-    for all_edge_features in all_edge_features_stack :
-        adjacency_mat = np.any(all_edge_features, axis=2)
-        #ic (adjacency_mat.size)
-        #ic (np.argwhere(adjacency_mat))
-        for sender, receiver in np.argwhere(adjacency_mat):
-            edge = all_edge_features[sender, receiver]
-            senders.append(sender)
-            receivers.append(receiver)
-            edges.append(edge)
-            sender_rec.append((sender,receiver))
+    # Flatten to (row, feature, value) triples, then scatter once. Writing
+    # edges[i, feature] = value per feature is a numpy scalar assignment
+    # (~0.3us through numpy's indexing machinery) and there are several
+    # thousand per state; one fancy-index assignment does the lot in C.
+    _senders, _receivers = [], []
+    _rows_idx, _feat_idx, _vals = [], [], []
+    _i = 0
+    for _slice in all_edge_features_stack :
+        # sorted() reproduces np.argwhere's row-major order over the dense
+        # adjacency matrix, so edge ordering is unchanged.
+        for _key in sorted(_slice.rows):
+            _row = _slice.rows[_key]
+            if not any(_row.values()):
+                continue
+            _senders.append(_key[0])
+            _receivers.append(_key[1])
+            for _feature, _value in _row.items():
+                _rows_idx.append(_i)
+                _feat_idx.append(_feature)
+                _vals.append(_value)
+            _i += 1
 
-    n_edge = len(edges)
-    edges = np.reshape(edges, [n_edge, _num_edge_features])
-    receivers = np.reshape(receivers, [n_edge]).astype(np.int64)
-    senders = np.reshape(senders, [n_edge]).astype(np.int64)
+    n_edge = _i
+    edges = np.zeros((n_edge, _num_edge_features), dtype=np.uint8)
+    if _rows_idx:
+        edges[np.fromiter(_rows_idx, dtype=np.intp, count=len(_rows_idx)),
+              np.fromiter(_feat_idx, dtype=np.intp, count=len(_feat_idx))] = \
+            np.fromiter(_vals, dtype=np.uint8, count=len(_vals))
+    senders = np.fromiter(_senders, dtype=np.int64, count=n_edge)
+    receivers = np.fromiter(_receivers, dtype=np.int64, count=n_edge)
     n_edge = np.reshape(n_edge, [1]).astype(np.int64)
     num_actions = np.reshape(num_actions,[1]).astype(np.int64)
     num_objects = np.reshape(num_objects+num_agents,[1]).astype(np.int64)
-    num_non_action_nodes = np.reshape(num_objects+num_agents+num_predicates,[1]).astype(np.int64)
+    num_non_action_nodes = np.reshape(n_non_action_nodes,[1]).astype(np.int64)
     max_action_arity = np.reshape(max_action_arity,[1]).astype(np.int64)
     goal_dist = np.reshape(goal_dist,[1]).astype(np.float64)
 
@@ -481,7 +636,8 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
 
 
 def _add_all_predicate_edge_info_in_graph(all_literals, objects_to_node, 
-                                          all_edge_features,_edge_feature_to_index):
+                                          all_edge_features,_edge_feature_to_index,
+                                          allow_unknown=False):
     # ic ("New unary literals start")
     # Add features for unary state literals
     G = wrap_goal_literal
@@ -497,7 +653,28 @@ def _add_all_predicate_edge_info_in_graph(all_literals, objects_to_node,
         for i in range(len(lit.variables)):
             # self.add_predicate_info_in_edge_in_graph(lit, objects_to_node, all_edge_features, pred_index,lit_index, i)
             _add_predicate_edge_info_in_graph(lit, objects_to_node,
-                                              all_edge_features, pred_index, i,_edge_feature_to_index)
+                                              all_edge_features, pred_index, i,_edge_feature_to_index,
+                                              allow_unknown=allow_unknown)
+
+
+def _feature_index(feature_map, key, allow_unknown=False):
+    """Symbol -> feature index lookup (CLAUDE.md 5.2, C1 zero-shot eval).
+
+    In normal (training/parity) mode a missing symbol is a bug: raise.
+    With allow_unknown=True (set via graph_metadata['allow_unknown_symbols']
+    when featurizing a held-out domain with a union vocabulary), unknown
+    symbols get NO feature slot (return None; caller skips the bit). This is
+    the intended Baseline 0 semantics: unseen symbols land in no trained
+    slot, so the control fails by scoring badly - not by crashing.
+    """
+    # NOTE: must use [] (not `in`): `in` bypasses StructuralMap.__missing__,
+    # which classes unseen symbols on the fly in structural/joint modes.
+    try:
+        return feature_map[key]
+    except KeyError:
+        if allow_unknown:
+            return None
+        raise
 
 def _add_predicate_info_in_edge_in_graph(lit,objects_to_node,all_edge_features,pred_index,lit_index,pos):
     obj_index = objects_to_node[lit.variables[pos]]
@@ -505,17 +682,22 @@ def _add_predicate_info_in_edge_in_graph(lit,objects_to_node,all_edge_features,p
     all_edge_features[obj_index, pred_index, lit_index] = 1
 
 def _add_predicate_edge_info_in_graph(lit,objects_to_node,
-                                      all_edge_features,pred_index,pos,_edge_feature_to_index):
+                                      all_edge_features,pred_index,pos,_edge_feature_to_index,
+                                      allow_unknown=False):
     obj_index = objects_to_node[lit.variables[pos]]
-    obj_pos_index = _edge_feature_to_index['pred_pos_' + str(pos)]
+    obj_pos_index = _feature_index(_edge_feature_to_index, 'pred_pos_' + str(pos), allow_unknown)
+    if obj_pos_index is None:
+        return
     all_edge_features[pred_index, obj_index, obj_pos_index] = 1
     all_edge_features[obj_index, pred_index, obj_pos_index] = 1
 
 def _get_precondition_satisfaction_position(curr_action, all_literals, all_objects,all_edge_features,
                                             action_space, action_index, object_index,
-                                            position,_edge_feature_to_index):
+                                            position,_edge_feature_to_index,
+                                            allow_unknown=False, binding_ctx=None):
     precond_for_current_action_object_pos_var = []
     precond_for_current_action_object = []
+    precond_for_current_action_object_occ = []
     for action in action_space:
         if action.name == curr_action:
             #ic (curr_action)
@@ -523,15 +705,17 @@ def _get_precondition_satisfaction_position(curr_action, all_literals, all_objec
             param_name = action_space[curr_action].params[position]
             #ic (all_action_preconds)
             #ic (param_name)
-            for precond in all_action_preconds:
+            for occ_k, precond in enumerate(all_action_preconds):
                 if len(precond.variables) == 0 :
                     precond_var = ''
                     precond_for_current_action_object_pos_var.append(precond_var)
                     precond_for_current_action_object.append(precond)
+                    precond_for_current_action_object_occ.append(occ_k)
                 for pos_in_precond, precond_var in enumerate(precond.variables) :
                     if param_name == precond_var :
                         precond_for_current_action_object_pos_var.append(precond_var)
                         precond_for_current_action_object.append(precond)
+                        precond_for_current_action_object_occ.append(occ_k)
 
             for pos,precond in enumerate(precond_for_current_action_object):
                 precond_var = precond_for_current_action_object_pos_var[pos]
@@ -540,15 +724,57 @@ def _get_precondition_satisfaction_position(curr_action, all_literals, all_objec
                     curr_pos = 0
                 else :
                     curr_pos = position + 1
-                precondition_index = _edge_feature_to_index[precond_str+str(curr_pos)]
-                all_edge_features[action_index, object_index, precondition_index] = 1
-                # action_obj_inversion
-                all_edge_features[object_index, action_index, precondition_index] = 1
+                precondition_index = _feature_index(
+                    _edge_feature_to_index, precond_str + str(curr_pos),
+                    allow_unknown)
+                if precondition_index is not None:
+                    all_edge_features[action_index, object_index, precondition_index] = 1
+                    # action_obj_inversion
+                    all_edge_features[object_index, action_index, precondition_index] = 1
+
+                # Binding layer (joint mode): object <-> the precondition
+                # OCCURRENCE node this applicability fact instantiates.
+                # Precondition k of a schema is occurrence k by the
+                # build_lifted_spec ordering contract.
+                if binding_ctx is not None:
+                    from ploi.lifted_layer import occ_node_key
+                    occ_key = occ_node_key(
+                        getattr(curr_action, 'name', str(curr_action)),
+                        precond_for_current_action_object_occ[pos])
+                    occ_index = binding_ctx['objects_to_node'].get(occ_key)
+                    if occ_index is not None:
+                        slot = min(position, binding_ctx['ka'] - 1)
+                        bind_index = _edge_feature_to_index[f'bind_slot_{slot}']
+                        all_edge_features[occ_index, object_index, bind_index] = 1
+                        all_edge_features[object_index, occ_index, bind_index] = 1
+
+            # Type-compiled precondition for this slot: this object is
+            # applicable at the slot, so it satisfies the slot's declared
+            # type. Same binding edge the real preconditions get, which is
+            # exactly what a predicate-typed domain produces for `(block ?x)`.
+            if binding_ctx is not None:
+                _schema = getattr(curr_action, 'name', str(curr_action))
+                _occ_k = binding_ctx['type_occ'].get(_schema, {}).get(position)
+                if _occ_k is not None:
+                    from ploi.lifted_layer import occ_node_key
+                    occ_index = binding_ctx['objects_to_node'].get(
+                        occ_node_key(_schema, _occ_k))
+                    if occ_index is not None:
+                        slot = min(position, binding_ctx['ka'] - 1)
+                        bind_index = _edge_feature_to_index[f'bind_slot_{slot}']
+                        all_edge_features[occ_index, object_index, bind_index] = 1
+                        all_edge_features[object_index, occ_index, bind_index] = 1
             break
 
-def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent=None,args=None):
+def _create_graph_dataset_ltp(training_data,dom_file=None,domain_name=None,agent=None,args=None,metadata_override=None):
+    # metadata_override (CLAUDE.md §5.2, C1): featurize this domain's states
+    # with a shared (e.g. union-vocabulary) feature dictionary instead of the
+    # per-domain one, so feature widths agree across domains. Grounding still
+    # uses this domain's own action space.
     graph_metadata, action_space = _create_graph_structure_ltp(training_data,dom_file,domain_name,agent,args)
-    input_graphs, target_graphs = _create_graph_from_state_ltp(training_data,action_space,graph_metadata=graph_metadata,args=args) 
+    if metadata_override is not None:
+        graph_metadata = metadata_override
+    input_graphs, target_graphs = _create_graph_from_state_ltp(training_data,action_space,graph_metadata=graph_metadata,args=args)
     return input_graphs, target_graphs, graph_metadata
 
 def _create_graph_structure_ltp(training_data,dom_file=None,domain_name=None,agent=None,args=None):
@@ -645,12 +871,15 @@ def _create_graph_structure_ltp(training_data,dom_file=None,domain_name=None,age
     cheating_input = args.cheating_input
 
     if cheating_input == True :
+        # One column per parameter slot up to this domain's max schema
+        # arity (was hardcoded to 2 - crashed on arity-3+ schemas).
+        _max_arity = max((len(op.params) for op in action_space.values()),
+                         default=2)
         _node_feature_to_index['is_correct_action'] = index
         index += 1
-        _node_feature_to_index['is_correct_obj_1'] = index
-        index += 1
-        _node_feature_to_index['is_correct_obj_2'] = index
-        index += 1
+        for _i in range(_max_arity):
+            _node_feature_to_index[f'is_correct_obj_{_i + 1}'] = index
+            index += 1
 
     # Initialize edge features
     _edge_feature_to_index = {}
@@ -870,10 +1099,10 @@ def state_to_graph_wrapper(state,action_space,grounding,prev_actions,prev_state,
     all_actions = [k for k, v in action_space.items()]
     num_actions =len(all_actions)
     # Target nodes
-    literals = [literal for literal in sorted(state.literals)]
+    literals = sorted(state.literals, key=repr)
     G = wrap_goal_literal
     #goal_literals_old = [G(literal) for literal in sorted(state.goal.literals)]
-    goal_literals = [G(literal) for literal in sorted(goal_state.literals)]
+    goal_literals = [G(literal) for literal in sorted(goal_state.literals, key=repr)]
     num_objects = len(node_to_objects) - (num_actions) - (len(literals + goal_literals))
     num_non_action_nodes = len(node_to_objects) - num_actions
     objects_to_node = {v: k for k, v in node_to_objects.items()}
@@ -900,18 +1129,21 @@ def state_to_graph_wrapper(state,action_space,grounding,prev_actions,prev_state,
     graph_target = copy_info_from_graph(graph_input)
 
     if objects is not None :
-        add_extra_info_in_graph(graph_input, action_scores, num_actions,action_object_scores, objects, 
-                                num_objects, max_number_action_parameters,action_index,cheating_input,objects_to_node)
+        add_extra_info_in_graph(graph_input, action_scores, num_actions,action_object_scores, objects,
+                                num_objects, max_number_action_parameters,action_index,cheating_input,objects_to_node,
+                                graph_metadata=graph_metadata)
 
         add_extra_info_in_graph(graph_target, action_scores, num_actions,action_object_scores, objects,
-                                    num_objects, max_number_action_parameters,action_index,cheating_input,objects_to_node)
+                                    num_objects, max_number_action_parameters,action_index,cheating_input,objects_to_node,
+                                    graph_metadata=graph_metadata)
 
     return graph_input, graph_target, node_to_objects
 
 
 def add_extra_info_in_graph(graph_input, action_scores, num_actions,action_object_scores,
                              objects, num_objects, max_number_action_parameters,
-                             action_index,cheating_input,objects_to_node):
+                             action_index,cheating_input,objects_to_node,
+                             graph_metadata=None):
     graph_input['action_scores'] = np.reshape(np.array(action_scores),[1,num_actions]).astype(np.int64)
     graph_input['action_object_scores'] = np.reshape(np.array(action_object_scores),[max_number_action_parameters,num_objects]).astype(np.int64)
     graph_input['n_parameters'] = np.reshape(max_number_action_parameters,[1]).astype(np.int64)
@@ -921,10 +1153,26 @@ def add_extra_info_in_graph(graph_input, action_scores, num_actions,action_objec
     The Cheating encoding experiment 
     '''
     if cheating_input == True :
-        graph_input['nodes'][action_index][-3] = 1
-        for c,curr_object in enumerate(reversed(objects)):
+        # Name-based column lookup: the legacy positional writes ([-3],
+        # [-1-c] over reversed objects) assumed the 3 hardcoded per-domain
+        # columns and arity <= 2, silently clobbering real features in
+        # structural/joint metadata. Fail loudly if the metadata was not
+        # built with cheating columns.
+        nf = graph_metadata['node_feature_to_index'] if graph_metadata else None
+        if nf is None or 'is_correct_action' not in nf:
+            raise RuntimeError(
+                "--cheating-input requires metadata built with cheating "
+                "columns (structural/joint featurization passes "
+                "cheating=True; rebuild caches with the _cheat tag).")
+        graph_input['nodes'][action_index][nf['is_correct_action']] = 1
+        for c, curr_object in enumerate(objects):
             obj_index = objects_to_node[curr_object]
-            graph_input['nodes'][obj_index][-1-c] =1
+            col = nf.get(f'is_correct_obj_{c + 1}')
+            if col is None:
+                raise RuntimeError(
+                    f"cheating column is_correct_obj_{c + 1} missing "
+                    f"(expert action arity exceeds registered ka columns)")
+            graph_input['nodes'][obj_index][col] = 1
 
 def copy_info_from_graph(graph_input):
     graph_target = {
@@ -1278,9 +1526,9 @@ def get_filenames(dataset_size,train_env_name,epochs,_model_version,
         message_string += "_wd" + str(args.weight_decay)
 
     if _debug_level < constants.max_debug_level :
-        ic (message_string)
-        ic (representation_size,gnn_rounds,dataset_size)
-        ic (_save_model_prefix)
+        logger.debug("run=%s repr=%d rounds=%d dataset=%d prefix=%s",
+                     message_string, representation_size, gnn_rounds,
+                     dataset_size, _save_model_prefix)
     if epochs == None or epochs == 0 :
         model_outfile = _save_model_prefix+"_{}_{}.pt".format(train_env_name, message_string)
     elif model_class == GNN_GRU :
@@ -1317,7 +1565,8 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
     env = pddlgym.make(f"PDDLEnv{train_env_name}-v0")
     action_space = env.action_space
     domain_name = env.domain.domain_name
-    
+    batch_end = min(batch_end, len(env.problems))
+
     # Initialize data containers
     inputs = []         # List of state sequences
     outputs = []        # List of object sets in plans
@@ -1335,14 +1584,15 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
         problem_key = f"problem_{problem_idx}"
         
         # Check if this problem is already in the cache
-        if (unified_cache and 
-            'problems' in unified_cache and 
+        if (unified_cache and
+            'problems' in unified_cache and
             problem_key in unified_cache['problems'] and
-            'training_data' in unified_cache['problems'][problem_key]):
-            
+            'training_data' in unified_cache['problems'][problem_key] and
+            len(unified_cache['problems'][problem_key]['training_data']) >= 5):
+
             logger.info(f"Problem {problem_idx} found in cache, loading...")
             problem_data = unified_cache['problems'][problem_key]['training_data']
-            
+
             # Extract data for this problem
             inputs.append(problem_data[0])
             outputs.append(problem_data[1])
@@ -1449,7 +1699,8 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
                         state_sequence,     # inputs
                         objects_in_plan,    # outputs
                         current_plan,       # plans
-                        state_grounding     # all_groundings
+                        state_grounding,    # all_groundings
+                        goal_dist           # goal_distances
                     ),
                     'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
                 }
@@ -1465,7 +1716,158 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
     return training_data, None, domain_name, cache_modified, processed_problems
 
 
-def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, create_graph_dataset_func):
+def load_domain_metadata(train_env_name, planner, num_train_problems, args,
+                         create_graph_dataset_func):
+    """Load per-domain graph_metadata + action_space without building full graphs.
+
+    Returns (graph_metadata, action_space).  If metadata is already cached in
+    the unified cache file it is returned immediately (no graph construction).
+    Otherwise falls back to a full process_pddl_to_graphs call and discards
+    the graphs.
+    """
+    cache_dir = os.path.join(os.getcwd(), "cache", "results")
+    num_train_problems = _effective_problem_count(train_env_name, num_train_problems)
+    unified_cache_file = os.path.join(
+        cache_dir,
+        f"{train_env_name}_unified_cache_{0}_{num_train_problems}.pkl")
+
+    env = pddlgym.make(f"PDDLEnv{train_env_name}-v0")
+    action_space = env.action_space._action_predicate_to_operators
+
+    if os.path.exists(unified_cache_file):
+        try:
+            with open(unified_cache_file, 'rb') as f:
+                unified_cache = pickle.load(f)
+            md = unified_cache.get('graph_metadata')
+            if md is not None:
+                logger.info(f"Loaded cached metadata for {train_env_name}")
+                return md, action_space
+        except Exception as e:
+            logger.warning(f"Could not load metadata cache for {train_env_name}: {e}")
+
+    logger.info(f"No cached metadata for {train_env_name}, running full collection")
+    _, md, _ = process_pddl_to_graphs(
+        train_env_name, planner, num_train_problems, args,
+        create_graph_dataset_func)
+    return md, action_space
+
+
+def _ensure_pyg_graphs(graphs):
+    """Convert raw-dict graphs to PyG HeteroData if needed (stale cache)."""
+    if graphs and isinstance(graphs[0], dict):
+        return graph_dataset_to_pyg_dataset(graphs, batch_wise=False), True
+    return graphs, False
+
+
+def _effective_problem_count(train_env_name, num_train_problems):
+    """Resolve the requested train-problem count against what the domain has.
+
+    num_train_problems <= 0 means "use ALL problems the domain provides".
+    Otherwise cap the request at the domain size. The RESULT is what keys the
+    unified cache filename (_unified_cache_0_<N>.pkl), so the name reflects the
+    ACTUAL problems collected - honest, and shareable across any config that
+    requests >= the domain size (they all resolve to the same N). This also
+    retires the old "requested count in the key, all_complete never true"
+    hazard: the collection now targets exactly what it can reach.
+    """
+    n_available = len(pddlgym.make(f"PDDLEnv{train_env_name}-v0").problems)
+    if num_train_problems is None or num_train_problems <= 0:
+        return n_available
+    return min(num_train_problems, n_available)
+
+
+def _atomic_pickle_dump(obj, path):
+    """Write-then-rename so concurrent runs on shared storage never see a
+    torn file. Last writer wins per whole file: a concurrently-added cache
+    tag can be lost (that run keeps its graphs in memory and a later run
+    just re-featurizes), but a reader can never load a corrupt pickle."""
+    tmp_path = f"{path}.tmp.{os.getpid()}"
+    with open(tmp_path, 'wb') as f:
+        pickle.dump(obj, f)
+    os.replace(tmp_path, path)
+
+
+def _get_store_tensor(g, key):
+    """Get tensor from a HeteroData node store, or None if absent.
+
+    PyG 2.3.1 HeteroData.__contains__ does not check _node_store_dict,
+    so `key in g` returns False even when the store exists.  Access the
+    store via __getitem__ and catch KeyError instead.
+    """
+    try:
+        return g[key].x
+    except (KeyError, AttributeError):
+        return None
+
+
+def pad_pyg_action_scores(hetero_graphs):
+    """Pad multi-domain score tensors to uniform shapes for batching.
+
+    The model and loss code assume every graph has the same max_arity
+    (n_parameters) and use stride-based indexing into the concatenated
+    action_object_scores.  Different domains have different max_arity and
+    num_objects, so we must pad both dimensions of action_object_scores and
+    update n_parameters to the global max.  action_scores only varies in
+    dim 1 (num_actions).
+    """
+    if not hetero_graphs:
+        return
+
+    # --- action_scores / target_action_scores: pad dim 1 only ---
+    as_keys = ('action_scores', 'target_action_scores')
+    max_dim1 = 0
+    for g in hetero_graphs:
+        for key in as_keys:
+            t = _get_store_tensor(g, key)
+            if t is not None and t.dim() >= 2:
+                max_dim1 = max(max_dim1, t.shape[1])
+    if max_dim1 > 0:
+        padded = 0
+        for g in hetero_graphs:
+            for key in as_keys:
+                t = _get_store_tensor(g, key)
+                if t is None or t.dim() < 2:
+                    continue
+                if t.shape[1] < max_dim1:
+                    g[key].x = torch.nn.functional.pad(t, (0, max_dim1 - t.shape[1]))
+                    padded += 1
+        if padded > 0:
+            logger.info(f"Padded action_scores dim 1 to {max_dim1} ({padded} tensors)")
+
+    # --- action_object_scores / target: pad BOTH dims + update n_parameters ---
+    ao_keys = ('action_object_scores', 'target_action_object_scores')
+    max_d0, max_d1 = 0, 0
+    for g in hetero_graphs:
+        for key in ao_keys:
+            t = _get_store_tensor(g, key)
+            if t is not None and t.dim() >= 2:
+                max_d0 = max(max_d0, t.shape[0])
+                max_d1 = max(max_d1, t.shape[1])
+    if max_d0 > 0:
+        padded = 0
+        for g in hetero_graphs:
+            for key in ao_keys:
+                t = _get_store_tensor(g, key)
+                if t is None or t.dim() < 2:
+                    continue
+                pad_d0 = max_d0 - t.shape[0]
+                pad_d1 = max_d1 - t.shape[1]
+                if pad_d0 > 0 or pad_d1 > 0:
+                    g[key].x = torch.nn.functional.pad(t, (0, pad_d1, 0, pad_d0))
+                    padded += 1
+            # Keep n_parameters consistent with padded dim 0.
+            np_t = _get_store_tensor(g, 'n_parameters')
+            if np_t is not None:
+                val = int(np_t.item()) if np_t.numel() == 1 else int(np_t.max().item())
+                if val < max_d0:
+                    g['n_parameters'].x = torch.tensor([max_d0], dtype=np_t.dtype)
+        if padded > 0:
+            logger.info(f"Padded action_object_scores to ({max_d0}, {max_d1}) "
+                        f"and n_parameters to {max_d0} ({padded} tensors)")
+
+
+def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, create_graph_dataset_func,
+                           metadata_override=None, cache_tag=""):
     """
     Process PDDL files to graphs with per-problem caching using a unified cache file.
     Ensures all graphs are properly accumulated and returned, even when restarting.
@@ -1478,13 +1880,8 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
         create_graph_dataset_func: Function to create graphs from training data
         
     Returns:
-        Tuple of (input_graphs, target_graphs, graph_metadata)
+        Tuple of (input_graphs, graph_metadata, action_space)
     """
-    import os
-    import time
-    import pickle
-    import math
-    
     # Initialize parameters
     max_files_per_batch = getattr(args, 'max_file_open', 50)
     
@@ -1497,12 +1894,41 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
 
     env = pddlgym.make(f"PDDLEnv{train_env_name}-v0")
     action_space = env.action_space._action_predicate_to_operators
-    
-    # Path to the unified cache file
+
+    # Resolve the requested count against the domain size (<=0 = use all), and
+    # key the cache by that ACTUAL count so every downstream calc (batches,
+    # expected_min_graphs, all_complete) targets exactly what can be collected.
+    num_train_problems = _effective_problem_count(train_env_name, num_train_problems)
+
+    # Path to the unified cache file. The file is shared across featurization
+    # modes (plan collection is mode-independent and expensive); featurized
+    # graph entries inside it are namespaced by cache_tag (C1 union mode).
     unified_cache_file = os.path.join(cache_dir, f"{train_env_name}_unified_cache_{0}_{num_train_problems}.pkl")
-    
-    # Initialize or load the unified cache
-    unified_cache = {'metadata': {'completed_problems': []}, 'problems': {}, 'all_graphs': None}
+    all_graphs_key = 'all_graphs' + cache_tag
+    # Featurized graphs for THIS (domain, tag) live in their own sidecar file,
+    # NOT inside the shared unified pickle. Accumulating every config's graphs
+    # in one per-domain pickle made it grow to 10+ GB and OOM on rewrite; a
+    # sidecar per tag keeps each read/write small.
+    graphs_file = os.path.join(
+        cache_dir, f"{train_env_name}_graphs_{0}_{num_train_problems}{cache_tag}.pkl")
+
+    # Fast path: this tag's graphs are already featurized and cached.
+    if os.path.exists(graphs_file):
+        try:
+            with open(graphs_file, 'rb') as f:
+                cached_graphs, cached_md = pickle.load(f)
+            expected_min_graphs = num_train_problems
+            if len(cached_graphs) >= expected_min_graphs:
+                cached_graphs, converted = _ensure_pyg_graphs(cached_graphs)
+                if converted:
+                    _atomic_pickle_dump((cached_graphs, cached_md), graphs_file)
+                logger.info(f"Returning {len(cached_graphs)} graphs from sidecar {os.path.basename(graphs_file)}")
+                return cached_graphs, cached_md, action_space
+        except Exception as e:
+            logger.warning(f"Could not load graph sidecar {graphs_file}: {e}; re-featurizing")
+
+    # Initialize or load the unified cache (raw plans + metadata ONLY)
+    unified_cache = {'metadata': {'completed_problems': []}, 'problems': {}}
     if os.path.exists(unified_cache_file):
         try:
             with open(unified_cache_file, 'rb') as f:
@@ -1512,26 +1938,24 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
                 unified_cache['metadata'] = {'completed_problems': []}
             elif 'completed_problems' not in unified_cache['metadata']:
                 unified_cache['metadata']['completed_problems'] = []
-            if 'all_graphs' not in unified_cache:
-                unified_cache['all_graphs'] = None
-                
+
+            # MIGRATION: drop any legacy in-pickle featurized graphs (the
+            # 'all_graphs*' / 'batch_graphs' blobs that bloated old caches).
+            # They are regenerated into per-tag sidecars; stripping them here
+            # slims the shared pickle back to raw plans on the next write.
+            _stripped = [k for k in list(unified_cache.keys())
+                         if k == 'batch_graphs' or k.startswith('all_graphs')]
+            for k in _stripped:
+                del unified_cache[k]
+            if _stripped:
+                logger.info(f"Migrated cache: dropped {len(_stripped)} legacy in-pickle graph blob(s)")
+
             logger.info(f"Loaded unified cache from {unified_cache_file}")
             logger.info(f"Cache contains data for {len(unified_cache['problems'])} problems")
             logger.info(f"Completed problems: {len(unified_cache['metadata']['completed_problems'])}")
-            
-            # Check if we already have final results in the cache
-            if unified_cache['all_graphs'] is not None:
-                all_graphs = unified_cache['all_graphs']
-                logger.info(f"Found complete graph data in cache with {len(all_graphs[0])} graphs")
-                
-                # Check if the graph count looks correct (significantly more than problem count)
-                expected_min_graphs = num_train_problems  # At minimum, one graph per problem
-                if len(all_graphs[0]) >= expected_min_graphs and unified_cache['metadata'].get('all_complete', False):
-                    logger.info(f"All graphs are already processed, returning from cache")
-                    return all_graphs[0], all_graphs[1], action_space
         except Exception as e:
             logger.error(f"Error loading unified cache: {e}, creating new cache")
-            unified_cache = {'metadata': {'completed_problems': []}, 'problems': {}, 'all_graphs': None}
+            unified_cache = {'metadata': {'completed_problems': []}, 'problems': {}}
     
     # Get domain name from metadata if available
     domain_name = unified_cache['metadata'].get('domain_name', train_env_name)
@@ -1549,8 +1973,9 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
     graph_metadata = None
     
     # Load any existing graph metadata
-    if 'graph_metadata' in unified_cache and unified_cache['graph_metadata'] is not None:
-        graph_metadata = unified_cache['graph_metadata']
+    graph_metadata_key = 'graph_metadata' + cache_tag
+    if graph_metadata_key in unified_cache and unified_cache[graph_metadata_key] is not None:
+        graph_metadata = unified_cache[graph_metadata_key]
     
     # Process each batch
     batch_training_data_full = []
@@ -1570,24 +1995,26 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
         
         # First, check if we can load cached graph data for this batch
         batch_graphs_loaded = False
-        batch_key = f"batch_{batch_start}_{batch_end}"
+        batch_key = f"batch_{batch_start}_{batch_end}{cache_tag}"
         
         if 'batch_graphs' in unified_cache and batch_key in unified_cache['batch_graphs']:
             try:
                 logger.info(f"Loading cached graph data for batch {batch_idx+1}")
                 batch_data = unified_cache['batch_graphs'][batch_key]
                 batch_input_graphs = batch_data['input_graphs']
-                #batch_target_graphs = batch_data['target_graphs']
                 if graph_metadata is None and 'metadata' in batch_data:
                     graph_metadata = batch_data['metadata']
-                
-                # Add these graphs to our results
+
+                batch_input_graphs, converted = _ensure_pyg_graphs(batch_input_graphs)
+                if converted:
+                    batch_data['input_graphs'] = batch_input_graphs
+                    cache_modified = True
+
                 all_input_graphs.extend(batch_input_graphs)
-                #all_target_graphs.extend(batch_target_graphs)
-                
+
                 batch_graphs_loaded = True
                 logger.info(f"Loaded {len(batch_input_graphs)} graphs for batch {batch_idx+1}")
-                
+
                 # If all problems in this batch are complete, we can skip processing
                 if batch_all_complete:
                     logger.info(f"Skipping processing for batch {batch_idx+1} - all problems complete")
@@ -1640,104 +2067,77 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
             batch_training_data_full.append(batch_training_data)
             processed_problems_full.extend(processed_problems)
             
-    batch_training_data_full_formatted = [[],[],[],None,[],[]]
+    # Create graphs from any newly collected training data
+    if batch_training_data_full:
+        merged = [[], [], [], None, [], []]
+        for bd in batch_training_data_full:
+            for i, elem in enumerate(bd):
+                if i != 3:
+                    merged[i].extend(elem)
+                else:
+                    merged[i] = elem
 
-    for batch_data in batch_training_data_full :
-        for i, elem in enumerate(batch_data):
-            if i != 3 :
-                batch_training_data_full_formatted[i].extend(elem)
-            else :
-                batch_training_data_full_formatted[i] = elem
+        raw_graphs, _, batch_metadata = create_graph_dataset_func(
+            merged, dom_file, domain_name, None, args, metadata_override)
 
-    batch_input_graphs, batch_target_graphs, batch_metadata = create_graph_dataset_func(
-        batch_training_data_full_formatted, dom_file, domain_name, None, args)
-    
-    # If this is the first valid batch with metadata, store it
-    if graph_metadata is None:
-        graph_metadata = batch_metadata
-        unified_cache['graph_metadata'] = batch_metadata
+        if graph_metadata is None:
+            graph_metadata = batch_metadata
+            unified_cache[graph_metadata_key] = batch_metadata
+        else:
+            # Merge int fields across batches, but tolerate keys the fresh
+            # batch metadata doesn't carry: num_global_features (and any other
+            # graph-derived field) is added AFTER this merge, so a
+            # graph_metadata loaded from a partially-cached prior run has it
+            # while batch_metadata does not.
+            for key, value in graph_metadata.items():
+                if type(value) is int and key in batch_metadata:
+                    graph_metadata[key] = max(value, batch_metadata[key])
+
+        logger.info(f"Generated {len(raw_graphs)} new graphs")
+
+        if raw_graphs and 'globals' in raw_graphs[0]:
+            graph_metadata['num_global_features'] = raw_graphs[0]['globals'][0].shape[-1]
+
+        input_graphs_hetero = graph_dataset_to_pyg_dataset(raw_graphs, batch_wise=False)
+
+        for problem_idx in processed_problems_full:
+            if problem_idx not in completed_problems:
+                completed_problems.add(problem_idx)
+                unified_cache['metadata']['completed_problems'].append(problem_idx)
+
+        all_input_graphs.extend(input_graphs_hetero)
         cache_modified = True
 
-    else :
-        for key, value in graph_metadata.items() :
-            if type(value) is int : 
-                graph_metadata[key] = max(value, batch_metadata[key])
-    
-    # Log the number of graphs generated
-    logger.info(f"Generated {len(batch_input_graphs)} graphs for batch {batch_idx+1}")
-    
-    # Store the graphs for this batch in the cache
-    if 'batch_graphs' not in unified_cache:
-        unified_cache['batch_graphs'] = {}
-    
-    unified_cache['batch_graphs'][batch_key] = {
-        'input_graphs': batch_input_graphs,
-        #'target_graphs': batch_target_graphs,
-        'metadata': batch_metadata,
-        'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
-    }
-    cache_modified = True
-    
-    # Mark all problems in this batch as processed
-    for problem_idx in processed_problems_full:
-        if problem_idx not in completed_problems:
-            completed_problems.add(problem_idx)
-            unified_cache['metadata']['completed_problems'].append(problem_idx)
-            cache_modified = True
+    # Cap at actual domain size — requested count may exceed available
+    # problems (CLAUDE.md §1.5 pt 4).
+    actual_num_problems = min(num_train_problems, len(env.problems))
+    all_problems_complete = len(completed_problems) >= actual_num_problems
 
-    input_graphs_hetero = graph_dataset_to_pyg_dataset(batch_input_graphs,
-                                                        batch_wise=False)
-
-    # Add these graphs to our overall results
-    #all_input_graphs.extend(batch_input_graphs)
-    #all_target_graphs.extend(batch_target_graphs)
-    all_input_graphs.extend(input_graphs_hetero)
-        
-        
-    # Save the cache if modified
-    if cache_modified:
-        try:
-            # Store current complete graph data in the cache
-            unified_cache['all_graphs'] = (all_input_graphs, graph_metadata)
-            
-            with open(unified_cache_file, 'wb') as f:
-                pickle.dump(unified_cache, f)
-            logger.info(f"Updated unified cache at {unified_cache_file}")
-            cache_modified = False
-        except Exception as e:
-            logger.error(f"Error saving unified cache: {e}")
-    
-    logger.info(f"Completed batch {batch_idx+1}, total graphs so far: {len(all_input_graphs)}")
-
-    # Check if we processed all problems
-    all_problems_complete = len(completed_problems) >= num_train_problems
-    
-    # Update the final results in metadata section
-    unified_cache['metadata']['total_problems'] = num_train_problems
-    unified_cache['metadata']['problems_processed'] = len(completed_problems)
-    unified_cache['metadata']['total_graphs'] = len(all_input_graphs)
-    unified_cache['metadata']['all_complete'] = all_problems_complete
-    unified_cache['metadata']['last_updated'] = time.strftime("%Y-%m-%d %H:%M:%S")
-    
-    # Store final graph data in the cache
-    unified_cache['all_graphs'] = (all_input_graphs, graph_metadata)
-
-    if 'globals' in batch_input_graphs[0] :
-        graph_metadata['num_global_features'] =  batch_input_graphs[0]['globals'][0].shape[-1]
-    
-    # Save the final cache
+    unified_cache['metadata'].update({
+        'total_problems': num_train_problems,
+        'problems_processed': len(completed_problems),
+        'total_graphs': len(all_input_graphs),
+        'all_complete': all_problems_complete,
+        'last_updated': time.strftime("%Y-%m-%d %H:%M:%S"),
+    })
+    # Featurized graphs -> per-tag sidecar (small). Metadata (tiny) also stays
+    # in the shared pickle for load_domain_metadata's fast metadata lookup.
+    unified_cache[graph_metadata_key] = graph_metadata
     try:
-        with open(unified_cache_file, 'wb') as f:
-            pickle.dump(unified_cache, f)
-        logger.info(f"Saved final unified cache to {unified_cache_file}")
+        _atomic_pickle_dump((all_input_graphs, graph_metadata), graphs_file)
+        logger.info(f"Saved {len(all_input_graphs)} graphs to sidecar "
+                    f"{os.path.basename(graphs_file)}")
     except Exception as e:
-        logger.error(f"Error saving final unified cache: {e}")
-    
+        logger.error(f"Error saving graph sidecar: {e}")
 
-    # Return the combined results
-    logger.info(f"Completed all problems, total graphs: {len(all_input_graphs)}")
+    # Shared pickle now holds only raw plans + metadata (small).
+    try:
+        _atomic_pickle_dump(unified_cache, unified_cache_file)
+        logger.info(f"Saved unified cache (raw plans + metadata)")
+    except Exception as e:
+        logger.error(f"Error saving unified cache: {e}")
+
     return all_input_graphs, graph_metadata, action_space
-    #return input_graphs_hetero_all, val_graphs_hetero_all, graph_metadata, action_space
 
 def compare_graph_lists(old_graphs, new_graphs):
     """
