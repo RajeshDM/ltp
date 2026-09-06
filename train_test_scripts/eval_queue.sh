@@ -20,8 +20,9 @@
 #   DEV=cuda:0      evaluate on GPU instead (only if nothing is training)
 #   WANDB=1         --wandb True, so coverage lands online as well as in JSON
 #   EXTRA="..."     extra main.py flags, e.g. EXTRA="--seed 12"
-#   TAG=<suffix>    appended to the log name; use it when the same config is
-#                   queued more than once (per-seed evaluation)
+#   TAG=<suffix>    extra log-name suffix. Rarely needed: EXTRA is already
+#                   folded into the log name, so EXTRA="--seed 12" writes
+#                   logs/eval_<config>_seed_12.log by itself.
 #
 # Survives ssh disconnect: launch it under nohup itself.
 #   nohup ./train_test_scripts/eval_queue.sh configs/*.yaml > logs/queue.log 2>&1 &
@@ -56,6 +57,14 @@ for CFG in "$@"; do
         continue
     fi
     NAME=$(basename "$CFG" .yaml)
+    # Same rule as run_config.sh: the flags that make this run different ARE
+    # the name, so per-seed or per-metric queues separate themselves without
+    # anyone remembering TAG.
+    if [ -n "$EXTRA" ]; then
+        NAME="${NAME}_$(printf '%s' "$EXTRA" \
+                        | sed -e 's/--//g' -e 's|[^A-Za-z0-9_.-]|_|g' \
+                              -e 's/__*/_/g' -e 's/^_//' -e 's/_$//')"
+    fi
     [ -n "$TAG" ] && NAME="${NAME}_${TAG}"
     LOG="logs/eval_${NAME}.log"
     [ -f "$LOG" ] && mv "$LOG" "logs/eval_${NAME}.$(date +%Y%m%d_%H%M%S).log"

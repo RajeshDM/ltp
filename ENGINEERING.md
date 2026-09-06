@@ -109,6 +109,24 @@ on Literal (pddlgym already caches it — the cost was call count).
   must be in the key; anything defaulted-away must keep old directories
   byte-identical (verified against the folder-name/hash functions
   directly before landing).
+- **Audit the key, don't patch it one flag at a time.** `l2` was added
+  after a sweep destroyed itself; the same audit then found nine more
+  settings that change trained weights and were absent from the key —
+  `representation_size` and `gru_layers` (tensor shapes), `batch_size`,
+  `pos_weight`, `gamma`, `data_augmentation`, AMP dtype, `all_problems`,
+  and the arity overrides. Two rules made adding them safe: every new key
+  is defaulted away at **the value the suite actually runs at, not the
+  argparse default** (`batch_size` is 16 in constants.py and 64 in
+  `_common.yaml`; using 16 would have renamed every directory in
+  `models/`), and a test pins a real pre-change directory name verbatim so
+  a rename fails loudly instead of orphaning every checkpoint.
+- **Identity must not depend on the operator remembering.** `RUN_TAG` was
+  required for concurrent launches of one config and was forgotten, so two
+  sweep arms shared a log *and* a checkpoint key. The log name is now
+  derived from the config plus the flags that differ, and a launch whose
+  derived name is already alive is refused — the flags that make a run
+  different are exactly what names it. A convention that only works when
+  recalled is a latent bug with a timer on it.
 - **Periodic checkpoints** (`--checkpoint-every`): zero-shot transfer
   peaks well before training loss bottoms out; loss-ranked slots keep late
   epochs and silently discard the best-transferring models.

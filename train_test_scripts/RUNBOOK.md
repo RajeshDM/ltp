@@ -37,6 +37,25 @@ Optional strengtheners, only if GPUs idle (in order of value):
 
 ## Priority order (launch top-down as GPUs free up)
 
+- **P-1 — Re-evaluate what the mixed-arity crash broke (CPU, no GPU, do
+  this FIRST).** The batched decoder crashed whenever the test domain's max
+  arity differed from the model's cap, i.e. on most zero-shot cells
+  (REVISION_PLAN §9). Those checkpoints all still exist, so this is an
+  evaluation pass, not training, and it fills the LOO zero-shot column that
+  carries C1/C2. `combined` + 1 model is the paper's decided rule and is 6x
+  less work than the queue's default metrics:
+  ```bash
+  nohup env METRICS=combined NMODELS=1 WORKERS=16 \
+    ./train_test_scripts/eval_queue.sh \
+      configs/loo8_joint_chain_no_miconic.yaml \
+      configs/loo8_joint_chain_no_grid.yaml \
+      configs/loo8_joint_lite_no_miconic.yaml \
+      configs/loo8_joint_lite_no_grid.yaml \
+      configs/loo8_union_no_miconic.yaml \
+    > logs/queue_refill.log 2>&1 &
+  ```
+  CPU on purpose: evaluation is host-CPU bound, so this leaves every GPU
+  free for the training below.
 - **P0 — Random floor (CPU, run today, any node, no GPU):**
   ```bash
   nohup python tools/random_policy_baseline.py --domains \
@@ -291,6 +310,18 @@ All five arms are `mode: train`, seed 11, `epochs: 1000`,
 `checkpoint_every: 100`. Testing is deliberately separate so the arms can be
 compared on loss before anything is spent evaluating them.
 
+> **The 2026-08-05 sweep's base and l2 checkpoints are unusable — retrain
+> both.** They ran concurrently, and `weight_decay` was not yet in the
+> checkpoint key, so both wrote into one directory and competed for the same
+> three loss-ranked slots. Timestamps cannot separate them (07:40:29 and
+> 07:43:29, overlapping windows). `drop01`, `drop02` and `heads4` are fine —
+> `wd` and `heads` were always in the key. What survives for base and l2 is
+> the loss curves in the logs, which is where the finding came from: l2's
+> validation loss is 23% below base's (12.56 vs 16.41), the lowest in the
+> suite. `weight_decay` is in the key now, along with every other setting
+> that changes trained weights (`tests/test_checkpoint_key.py`), so a repeat
+> is not possible.
+
 **Day 1, once the first periodic checkpoints land: the 12-core eval lane.**
 Twelve, not sixteen, because four trainings are holding 20 cores. The curve
 is flat enough there (8 workers 118s, 16 workers 105s on 50 problems) that
@@ -305,12 +336,13 @@ nohup env WORKERS=12 ./train_test_scripts/eval_queue.sh \
 
 **Day 2: the data-need question.** Pick the winning arm, then vary
 `--num-train-problems` (already in the checkpoint key as `d`, so each
-fraction gets its own directory). `RUN_TAG` is REQUIRED here - three
-launches of one config would otherwise all write the same log file.
+fraction gets its own directory). No `RUN_TAG`: the log name is derived
+from the config plus the flags, so the three arms land in
+`logs/<arm>_num-train-problems_25.log` and so on by themselves.
 
 ```bash
 for n in 25 50 100; do
-  RUN_TAG="d$n" ./train_test_scripts/run_config.sh \
+  ./train_test_scripts/run_config.sh \
     configs/<winning-arm>.yaml cuda:0 --num-train-problems $n --mode train
 done
 ```

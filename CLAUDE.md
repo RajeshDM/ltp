@@ -161,10 +161,18 @@ tools/bench_featurize.py           times state_to_graph_wrapper on real
 tools/random_policy_baseline.py    zero-shot floor: uniform-random applicable
                                    action rollouts, config test-domains syntax
                                    (incl. @train), no model/training needed
-train_test_scripts/run_config.sh   nohup-launch one config on one GPU;
-                                   RUN_TAG=<suffix> separates the logs of
-                                   concurrent launches of the SAME config
-                                   (seed replicates, data-fraction arms)
+train_test_scripts/run_config.sh   nohup-launch one config on one GPU. The
+                                   log name is DERIVED from the config plus
+                                   the extra flags (`--seed 12` ->
+                                   logs/<cfg>_seed_12.log), so replicates and
+                                   data-fraction arms separate themselves;
+                                   RUN_TAG remains only for runs differing in
+                                   no flag. Refuses to launch a name already
+                                   alive (identical flags = identical
+                                   checkpoint key = mutual eviction), and
+                                   records the process GROUP in
+                                   logs/<name>.running so `kill -- -<pgid>`
+                                   stops the python child too
 train_test_scripts/eval_queue.sh   run N configs through --mode test one at
                                    a time on --device cpu (evaluation is
                                    host-CPU bound, so it leaves the GPU to
@@ -183,6 +191,17 @@ tests/test_multidomain_metadata.py dependency-free unit tests: union merge,
 tests/test_sparse_edges.py         dependency-free unit tests: sparse edge
                                    accumulation is byte-identical to the dense
                                    array it replaced (edges, order, values)
+tests/test_checkpoint_key.py       dependency-free unit tests: every setting
+                                   that changes trained weights separates the
+                                   model directory AND the config hash, and
+                                   no EXISTING directory name moves (a real
+                                   pre-change name from models/ is pinned
+                                   verbatim). Run it after touching
+                                   training_hyperparameters or ignore_defaults
+tests/test_beam_parallel_indexing.py dependency-free unit tests: the batched
+                                   decoder's row->graph map on mixed arity;
+                                   uniform batches byte-identical to the
+                                   legacy stride
 tests/test_lifted_layer.py         dependency-free unit tests: lifted spec
                                    (roles, bindings, occurrence order),
                                    metadata widths, joint vs joint_lite,

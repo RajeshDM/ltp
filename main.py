@@ -1117,6 +1117,31 @@ if __name__ == "__main__":
             # writing into one directory. Defaulted away in ignore_defaults,
             # so every run at 0.0 keeps the directory it already has.
             'l2' : args.weight_decay,
+            # Everything below has the same story as 'l2': it changes the
+            # trained weights (shape, optimization, loss, or the dataset) and
+            # was NOT part of the model's identity, so two configs differing
+            # only here shared one directory and evicted each other's
+            # loss-ranked checkpoints. That is not hypothetical - it is
+            # exactly how sweep_jc_base and sweep_jc_l2 destroyed each
+            # other's arm (AAAI27/REVISION_PLAN.md §8).
+            #
+            # EVERY ONE is defaulted away in ignore_defaults at the value the
+            # existing suite actually uses, so no current directory name or
+            # hash moves. When adding to this list, put the SUITE'S effective
+            # value in ignore_defaults - not necessarily the argparse default
+            # (batch_size is 16 in constants.py and 64 in _common.yaml; using
+            # 16 here would rename every directory in models/).
+            'rs' : args.representation_size,     # n_hidden - changes shapes
+            'gru' : args.gru_layers,             # decoder depth - shapes
+            'bs' : args.batch_size,              # optimization
+            'pw' : args.pos_weight,              # loss weighting
+            'gam' : args.gamma,                  # LR schedule
+            'aug' : args.data_augmentation,      # dataset
+            'amp' : (getattr(args, 'amp_dtype', 'bf16')
+                     if getattr(args, 'use_amp', False) else 'off'),
+            'all' : bool(getattr(args, 'all_problems', False)),
+            'kp' : args.max_pred_arity,          # metadata width overrides
+            'ka' : args.max_action_arity,
         }
 
         # Escape hatch for checkpoints saved before those three keys existed:
@@ -1125,7 +1150,8 @@ if __name__ == "__main__":
         # location. Only for reading pre-existing models; new runs should not
         # use it, or the clash it fixes comes back.
         if os.environ.get("GABAR_LEGACY_CKPT_KEY", "") == "1":
-            for _legacy_drop in ('feat', 'nf', 'ef', 'l2'):
+            for _legacy_drop in ('feat', 'nf', 'ef', 'l2', 'rs', 'gru', 'bs',
+                                 'pw', 'gam', 'aug', 'amp', 'all', 'kp', 'ka'):
                 training_hyperparameters.pop(_legacy_drop, None)
             print("GABAR_LEGACY_CKPT_KEY=1: using the pre-featurization "
                   "checkpoint key (old model directories)")
@@ -1135,12 +1161,26 @@ if __name__ == "__main__":
             'search' : args.search_strat,
         }
 
+        # The value here is "what the existing suite runs at", so a parameter
+        # at that value leaves the directory name and hash untouched. Pinned
+        # by tests/test_checkpoint_key.py, which fails if any current config's
+        # folder name moves.
         ignore_defaults = {
             #'g_node' : True ,
             #'model_class' : GNN_GRU.__name__
             #'abl_' : 'main'
             'mlp_layers' : 2,
             'l2' : 0.0,
+            'rs' : 64,          # constants.REPRESENTATION_SIZE
+            'gru' : 3,          # constants.GRU_LAYERS
+            'bs' : 64,          # _common.yaml, NOT constants.BATCH_SIZE (16)
+            'pw' : 10.0,
+            'gam' : 0.9,
+            'aug' : False,
+            'amp' : 'off',
+            'all' : True,       # _common.yaml sets all_problems: true
+            'kp' : 0,
+            'ka' : 0,
         }
 
         continue_training = args.continue_training
