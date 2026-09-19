@@ -182,15 +182,24 @@ train_test_scripts/train_queue.sh  train N configs on ONE GPU, one at a time
                                    reports rc + the last 3 log lines on
                                    failure, and continues
 train_test_scripts/queue_status.sh one line per training run: epoch/total,
-                                   seconds per 10 epochs, time left, and
-                                   RUN/STALE/done. Reads only files, so it
-                                   works from the login node (pgrep sees no
-                                   remote processes and reports nothing, which
-                                   looks identical to "everything died").
-                                   ALIVE is the LOG's mtime, not the .running
-                                   marker: a killed run leaves the marker
-                                   behind. Skips the epoch-0 time(10) sample,
-                                   which covers ~1 epoch plus startup
+                                   seconds per print interval, time left, and
+                                   RUN/STALE/done. Finds runs by CONTENT (an
+                                   `Epoch X/Y` line) and queues by their
+                                   `train_queue:` header, so it is independent
+                                   of config, flag and queue naming - log names
+                                   are derived from the flags, so a
+                                   name-matching version would silently miss
+                                   runs launched with a different flag set.
+                                   Reads only files, so it works from the login
+                                   node (pgrep sees no remote processes and
+                                   reports nothing, which looks identical to
+                                   "everything died"). ALIVE is the LOG's
+                                   mtime, not the .running marker: a killed run
+                                   leaves the marker behind. Reads the print
+                                   interval N out of `time(N)` rather than
+                                   assuming 10, and skips the epoch-0 sample,
+                                   which covers ~1 epoch plus startup.
+                                   LOGS=<glob>, MAX_AGE_DAYS, STALE_MIN
 train_test_scripts/eval_queue.sh   run N configs through --mode test one at
                                    a time on --device cpu (evaluation is
                                    host-CPU bound, so it leaves the GPU to
