@@ -181,6 +181,16 @@ train_test_scripts/train_queue.sh  train N configs on ONE GPU, one at a time
                                    time-slice. Waits on logs/<name>.running,
                                    reports rc + the last 3 log lines on
                                    failure, and continues
+train_test_scripts/queue_status.sh one line per training run: epoch/total,
+                                   seconds per 10 epochs, time left, and
+                                   RUN/STALE/done. Reads only files, so it
+                                   works from the login node (pgrep sees no
+                                   remote processes and reports nothing, which
+                                   looks identical to "everything died").
+                                   ALIVE is the LOG's mtime, not the .running
+                                   marker: a killed run leaves the marker
+                                   behind. Skips the epoch-0 time(10) sample,
+                                   which covers ~1 epoch plus startup
 train_test_scripts/eval_queue.sh   run N configs through --mode test one at
                                    a time on --device cpu (evaluation is
                                    host-CPU bound, so it leaves the GPU to
