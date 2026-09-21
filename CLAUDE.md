@@ -158,6 +158,19 @@ tools/bench_featurize.py           times state_to_graph_wrapper on real
                                    rollout states, no model/training needed;
                                    the before/after harness for featurization
                                    changes (reads graph_metadata from a sidecar)
+tools/grid_status.py               the leave-one-out grid from models/
+                                   alone: an 8x3 table of (held-out fold x
+                                   UNION/BIND/GADAR) with checkpoint counts,
+                                   complete-ladder count, and the configs still
+                                   to run. The fold is inferred from the
+                                   directory name, which lists the TRAINING
+                                   domains - the absent one is the fold. A cell
+                                   needs >=20 checkpoints (--min-ckpts): every
+                                   real 500-epoch run here has 34-62, runs
+                                   killed early had 7 and 13, and the directory
+                                   exists from the moment a run starts. Reads
+                                   no cluster state, so it answers "how much of
+                                   the paper exists" from the login node
 tools/random_policy_baseline.py    zero-shot floor: uniform-random applicable
                                    action rollouts, config test-domains syntax
                                    (incl. @train), no model/training needed
