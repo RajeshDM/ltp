@@ -255,6 +255,15 @@ train_test_scripts/queue_status.sh one line per training run: epoch/total,
                                    assuming 10, and skips the epoch-0 sample,
                                    which covers ~1 epoch plus startup.
                                    LOGS=<glob>, MAX_AGE_DAYS, STALE_MIN
+train_test_scripts/campaign_status.sh  everything in flight at once, from any
+                                   node: allocations (squeue), live training
+                                   runs (queue_status.sh, STALE_MIN=60),
+                                   the training grid (grid_status.py), eval
+                                   state (eval_status.py), eval claims and
+                                   which machine holds each, and FAIL / NO
+                                   MODELS / tracebacks in the last 24h of
+                                   logs. Owns no logic - it only calls the
+                                   tools that answer each question
 train_test_scripts/eval_all.sh     evaluate many configs, sized to the box:
                                    LANES = clamp(cores/16, 1, 4) concurrent
                                    eval_queue lanes, WORKERS = min(16,
