@@ -279,6 +279,23 @@ train_test_scripts/eval_all.sh     evaluate many configs, sized to the box:
                                    launching - `time` on it measures nothing;
                                    the per-config seconds are in the lane log.
                                    LANES/WORKERS overridable
+train_test_scripts/eval_worker.sh  evaluation across ANY number of machines
+                                   sharing only the disk: every machine runs
+                                   the identical command. Each lane asks
+                                   eval_status.py what is left, CLAIMS one
+                                   config with an atomic `mkdir
+                                   logs/eval_claims/<config>`, evaluates it
+                                   via eval_queue.sh, releases, repeats, and
+                                   exits when nothing is claimable. No split
+                                   to plan: a late-joining machine just starts
+                                   taking work, and a preempted one's claim
+                                   goes stale (older than CLAIM_TTL_MIN,
+                                   default 15, AND its eval log quiet 30 min)
+                                   and is taken over. Sized per machine like
+                                   eval_all.sh. Rare race: two lanes
+                                   reclaiming the same dead claim at the same
+                                   instant can both win - one duplicated eval,
+                                   not a wrong number
 train_test_scripts/eval_queue.sh   run N configs through --mode test one at
                                    a time on --device cpu (evaluation is
                                    host-CPU bound, so it leaves the GPU to
