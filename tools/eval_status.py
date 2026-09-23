@@ -29,7 +29,14 @@ import glob
 import json
 import os
 import re
+import sys
 import time
+
+# Same directory, not a package: make grid_status importable so both tools
+# judge "trained" by one rule.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from grid_status import (DOMAINS, MIN_CKPTS, checkpoint_counts,  # noqa: E402
+                         fold_short)
 
 DEFAULT_METRICS = "training,combined,validation"
 # The paper's ladder is UNION -> GADAR-BIND -> GADAR. `joint` and `structural`
@@ -81,6 +88,13 @@ def still_training(name, logs_dir="logs", stale_min=90):
         except OSError:
             continue
     return False
+
+
+def trained_counts(models, seed):
+    """{config_name: n_checkpoints} for every loo8_<rung>_no_<fold> cell."""
+    grid = checkpoint_counts(models, seed)
+    return {f"loo8_{rung}_no_{fold_short(d)}": n
+            for d in DOMAINS for rung, n in grid[d].items()}
 
 
 def newest_dump(results_dir, expid):
@@ -159,6 +173,11 @@ def main():
     ap.add_argument("--stale-min", type=int, default=90,
                     help="a training log quiet this long is a dead run, "
                          "not a live one")
+    ap.add_argument("--models", default="models")
+    ap.add_argument("--seed", type=int, default=10)
+    ap.add_argument("--min-ckpts", type=int, default=MIN_CKPTS,
+                    help="fewer checkpoints than this = not trained yet "
+                         "(the same threshold as tools/grid_status.py)")
     ap.add_argument("--list-missing", action="store_true",
                     help="print only the config paths still needing eval")
     a = ap.parse_args()
@@ -173,15 +192,26 @@ def main():
         configs = sorted(c for r in PAPER_RUNGS
                          for c in glob.glob(f"configs/loo8_{r}_no_*.yaml"))
 
+    counts = trained_counts(a.models, a.seed)
     rows, todo = [], []
     for c in configs:
         name = os.path.basename(c)[:-5]
         expid = config_expid(c)
         state, detail = assess(newest_dump(a.results_dir, expid), want, since)
-        if state != "done" and still_training(name, a.logs_dir, a.stale_min):
-            state, detail = "training", "run in flight - evaluate once it finishes"
+        if state != "done":
+            n_ckpt = counts.get(name)
+            if still_training(name, a.logs_dir, a.stale_min):
+                state, detail = "training", "run in flight - evaluate once it finishes"
+            elif n_ckpt is not None and n_ckpt < a.min_ckpts:
+                # Not trained by grid_status's standard. Covers configs QUEUED
+                # behind a live run (no marker yet) and stubs left by killed
+                # runs: a 1-checkpoint directory would evaluate, write a
+                # complete dump, read as `done`, and never be re-run.
+                state = "untrained"
+                detail = (f"{n_ckpt} checkpoint(s) < {a.min_ckpts} - "
+                          "train it first (tools/grid_status.py)")
         rows.append((name, state, detail))
-        if state not in ("done", "training"):
+        if state not in ("done", "training", "untrained"):
             todo.append(c)
 
     if a.list_missing:
@@ -190,12 +220,12 @@ def main():
 
     w = max((len(r[0]) for r in rows), default=20) + 2
     for name, state, detail in rows:
-        print(f"{name:<{w}}{state:<9}{detail}")
+        print(f"{name:<{w}}{state:<11}{detail}")
     n_done = sum(1 for r in rows if r[1] == "done")
-    n_train = sum(1 for r in rows if r[1] == "training")
+    n_train = sum(1 for r in rows if r[1] in ("training", "untrained"))
     print(f"\n{n_done}/{len(rows)} evaluated for metrics={','.join(want)}"
           f"  ({len(todo)} to run"
-          + (f", {n_train} held back while still training" if n_train else "")
+          + (f", {n_train} held back: training or untrained" if n_train else "")
           + ")")
     if todo:
         print("\nrerun just these:")

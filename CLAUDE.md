@@ -170,7 +170,9 @@ tools/grid_status.py               the leave-one-out grid from models/
                                    killed early had 7 and 13, and the directory
                                    exists from the moment a run starts. Reads
                                    no cluster state, so it answers "how much of
-                                   the paper exists" from the login node
+                                   the paper exists" from the login node.
+                                   checkpoint_counts() is imported by
+                                   eval_status.py - one definition of trained
 tools/eval_status.py               which configs have been EVALUATED, from
                                    the dump main.py writes to
                                    cache/results/<expid>/results_*.json -
@@ -194,6 +196,15 @@ tools/eval_status.py               which configs have been EVALUATED, from
                                    would become the reported one. A marker
                                    with a quiet log is a dead run and IS
                                    offered - those partial models are usable.
+                                   A config with fewer checkpoints than
+                                   grid_status's threshold is `untrained` and
+                                   also held back: that covers configs QUEUED
+                                   behind a live run (no marker yet) and
+                                   1-3-checkpoint stubs left by killed runs,
+                                   which would otherwise evaluate, read as
+                                   `done`, and never be re-run. The threshold
+                                   comes from grid_status.checkpoint_counts,
+                                   so the two tools cannot disagree.
                                    --list-missing prints the config paths,
                                    which eval_all.sh consumes to skip finished
                                    work on a relaunch
