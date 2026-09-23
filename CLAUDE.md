@@ -213,6 +213,21 @@ train_test_scripts/queue_status.sh one line per training run: epoch/total,
                                    assuming 10, and skips the epoch-0 sample,
                                    which covers ~1 epoch plus startup.
                                    LOGS=<glob>, MAX_AGE_DAYS, STALE_MIN
+train_test_scripts/eval_all.sh     evaluate many configs, sized to the box:
+                                   LANES = clamp(cores/16, 1, 4) concurrent
+                                   eval_queue lanes, WORKERS = min(16,
+                                   cores/LANES - 1) each, cores read from
+                                   sched_getaffinity (nproc lies under a
+                                   cgroup, and configured_workers() clamps
+                                   against the affinity mask anyway). 16 is
+                                   the measured plateau. Configs are split
+                                   round-robin, not in blocks, so the slow
+                                   union runs do not all land in one lane.
+                                   Defaults METRICS=training,combined,
+                                   validation NMODELS=1 and DEV=cuda:0 (the
+                                   old cpu default predates the featurizer
+                                   speedups; forward pass is now 36-70% of a
+                                   run). LANES/WORKERS overridable
 train_test_scripts/eval_queue.sh   run N configs through --mode test one at
                                    a time on --device cpu (evaluation is
                                    host-CPU bound, so it leaves the GPU to
