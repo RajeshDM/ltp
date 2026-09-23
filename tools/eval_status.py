@@ -31,6 +31,15 @@ import os
 import re
 
 DEFAULT_METRICS = "training,combined,validation"
+# The paper's ladder is UNION -> GADAR-BIND -> GADAR. `joint` and `structural`
+# are internal rungs with no paper column (RUNBOOK P3, CUT), so a bare
+# configs/loo8_*.yaml glob pulls in 16 configs nobody will report.
+PAPER_RUNGS = ("union", "joint_lite", "joint_chain")
+# Evaluations written before the batched decoder's mixed-arity fix are wrong,
+# not merely old: the row->graph map mis-assigned objects whenever a test
+# domain's max arity differed from the model's cap (REVISION_PLAN §9). A dump
+# older than this is reported `stale` and counted as still to run.
+FIX_DATE = "20260905"
 
 
 def config_expid(path):
@@ -60,16 +69,21 @@ def newest_dump(results_dir, expid):
     return None
 
 
-def assess(dump, want_metrics):
-    """-> (state, detail). state in {'done', 'partial', 'empty', 'missing'}"""
+def assess(dump, want_metrics, since):
+    """-> (state, detail). state in {'done','stale','partial','empty','missing'}"""
     if dump is None:
-        return "missing", ""
+        return "missing", "never evaluated"
 
     results = dump.get("results") or {}
     if not results:
-        return "empty", "no models resolved"
+        return "empty", "dump written but no models resolved"
 
-    have = set(dump.get("test_model_metrics") or [])
+    ts = str(dump.get("timestamp", ""))
+    if since and ts[:8] < since:
+        return "stale", f"{ts} predates the mixed-arity fix ({since})"
+
+    raw = dump.get("test_model_metrics")
+    have = set(raw or [])
     missing_m = [m for m in want_metrics if m not in have]
 
     keys = " ".join(results.keys()).lower()
@@ -87,34 +101,50 @@ def assess(dump, want_metrics):
             missing_cells.append(str(cell.get("domain")))
 
     bits = []
-    if missing_m:
+    if raw is None:
+        # Old dumps have no such field, so which metrics ran is unknowable -
+        # say that rather than listing every metric as "missing".
+        bits.append("no metrics recorded (older dump format)")
+    elif missing_m:
         bits.append("metrics: " + ",".join(missing_m))
     if missing_cells:
         bits.append(f"{len(missing_cells)} cell(s): "
                     + ",".join(missing_cells[:3])
                     + ("..." if len(missing_cells) > 3 else ""))
     if bits:
-        return "partial", "; ".join(bits)
-    return "done", f"{len(results)} keys, {dump.get('timestamp', '?')}"
+        return "partial", f"{ts}  " + "; ".join(bits)
+    return "done", f"{len(results)} keys, {ts}"
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("configs", nargs="*", default=None,
-                    help="default: configs/loo8_*.yaml")
+                    help="default: the three paper rungs of the LOO grid")
     ap.add_argument("--results-dir", default="cache/results")
     ap.add_argument("--metrics", default=DEFAULT_METRICS)
+    ap.add_argument("--since", default=FIX_DATE,
+                    help=f"dumps older than this are 'stale' (default "
+                         f"{FIX_DATE}, the mixed-arity fix); 0 to disable")
+    ap.add_argument("--all-rungs", action="store_true",
+                    help="include the cut `joint` and `structural` rungs")
     ap.add_argument("--list-missing", action="store_true",
                     help="print only the config paths still needing eval")
     a = ap.parse_args()
 
     want = [m.strip() for m in a.metrics.split(",") if m.strip()]
-    configs = a.configs or sorted(glob.glob("configs/loo8_*.yaml"))
+    since = "" if a.since in ("0", "") else a.since
+    if a.configs:
+        configs = a.configs
+    elif a.all_rungs:
+        configs = sorted(glob.glob("configs/loo8_*.yaml"))
+    else:
+        configs = sorted(c for r in PAPER_RUNGS
+                         for c in glob.glob(f"configs/loo8_{r}_no_*.yaml"))
 
     rows, todo = [], []
     for c in configs:
         expid = config_expid(c)
-        state, detail = assess(newest_dump(a.results_dir, expid), want)
+        state, detail = assess(newest_dump(a.results_dir, expid), want, since)
         rows.append((os.path.basename(c)[:-5], state, detail))
         if state != "done":
             todo.append(c)

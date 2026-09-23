@@ -1,7 +1,7 @@
 #!/bin/bash
 # eval_all.sh — evaluate many configs, sized to the machine it runs on.
 #
-#   ./train_test_scripts/eval_all.sh                      # every loo8_* config
+#   ./train_test_scripts/eval_all.sh                      # the 3 paper rungs x 8 folds
 #   ./train_test_scripts/eval_all.sh configs/a.yaml ...   # a specific list
 #
 # Splits the configs across LANES concurrent eval_queue.sh lanes and gives
@@ -34,6 +34,7 @@
 #             speedups, when graph build dominated and the GPU was worth
 #             nothing; it no longer is.
 #   WANDB=1   also log coverage online
+#   REDO=1    re-evaluate configs already recorded as done
 set -u
 
 cd "$(dirname "$0")/.." || exit 1
@@ -56,7 +57,11 @@ WANDB="${WANDB:-0}"
 if [ "$#" -ge 1 ]; then
     CONFIGS=("$@")
 else
-    CONFIGS=(configs/loo8_*.yaml)
+    # The three paper rungs only. `joint` and `structural` are internal
+    # ablation rungs with no paper column (RUNBOOK P3, CUT) - a bare
+    # loo8_*.yaml glob adds 16 configs nobody will report.
+    CONFIGS=(configs/loo8_union_no_*.yaml configs/loo8_joint_lite_no_*.yaml
+             configs/loo8_joint_chain_no_*.yaml)
 fi
 
 # Skip what is already evaluated (tools/eval_status.py decides from the

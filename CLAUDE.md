@@ -179,9 +179,16 @@ tools/eval_status.py               which configs have been EVALUATED, from
                                    cells) / empty (a dump with no results: the
                                    checkpoint key did not resolve, which
                                    main.py logs as a warning and exits 0 on) /
-                                   missing. --list-missing prints the config
-                                   paths, which eval_all.sh consumes to skip
-                                   finished work on a relaunch
+                                   stale (older than --since, default
+                                   20260905, the mixed-arity fix: earlier
+                                   numbers are wrong, not merely old) /
+                                   missing. Defaults to the three PAPER rungs
+                                   (union, joint_lite, joint_chain); `joint`
+                                   and `structural` are cut internal rungs
+                                   (--all-rungs includes them).
+                                   --list-missing prints the config paths,
+                                   which eval_all.sh consumes to skip finished
+                                   work on a relaunch
 tools/random_policy_baseline.py    zero-shot floor: uniform-random applicable
                                    action rollouts, config test-domains syntax
                                    (incl. @train), no model/training needed
