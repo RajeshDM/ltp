@@ -204,7 +204,12 @@ tools/eval_status.py               which configs have been EVALUATED, from
                                    which would otherwise evaluate, read as
                                    `done`, and never be re-run. The threshold
                                    comes from grid_status.checkpoint_counts,
-                                   so the two tools cannot disagree.
+                                   so the two tools cannot disagree. A config
+                                   whose EVAL is in flight (logs/eval_<name>*
+                                   written within --eval-quiet-min, default
+                                   30, and no `Results written to` line yet)
+                                   is `evaluating` and held back, so a second
+                                   eval_all.sh cannot evaluate it twice.
                                    --list-missing prints the config paths,
                                    which eval_all.sh consumes to skip finished
                                    work on a relaunch
@@ -267,7 +272,12 @@ train_test_scripts/eval_all.sh     evaluate many configs, sized to the box:
                                    run). Skips configs tools/eval_status.py
                                    reports as done, so a relaunch after an
                                    allocation dies resumes instead of redoing
-                                   ~1h per config; REDO=1 forces.
+                                   ~1h per config; REDO=1 forces. Lane logs
+                                   are timestamped (logs/eval_laneN_<stamp>.log)
+                                   so a relaunch cannot truncate a running
+                                   lane's. It exits immediately after
+                                   launching - `time` on it measures nothing;
+                                   the per-config seconds are in the lane log.
                                    LANES/WORKERS overridable
 train_test_scripts/eval_queue.sh   run N configs through --mode test one at
                                    a time on --device cpu (evaluation is

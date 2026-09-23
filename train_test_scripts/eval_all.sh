@@ -93,6 +93,10 @@ if [ "${#CONFIGS[@]}" -eq 0 ]; then
 fi
 
 mkdir -p logs
+# Timestamped: a fixed logs/eval_lane1.log was truncated by the next launch,
+# losing the running lane's record. Configs are never double-launched -
+# eval_status holds back any config whose eval is still in flight.
+STAMP=$(date +%Y%m%d_%H%M%S)
 echo "eval_all: ${#CONFIGS[@]} configs, $CORES cores -> $LANES lane(s) x $WORKERS workers"
 echo "          metrics=$METRICS  models per metric=$NMODELS  device=$DEV"
 echo
@@ -105,7 +109,7 @@ for ((l = 0; l < LANES; l++)); do
         lane+=("${CONFIGS[$i]}")
     done
     [ "${#lane[@]}" -eq 0 ] && continue
-    log="logs/eval_lane$((l + 1)).log"
+    log="logs/eval_lane$((l + 1))_${STAMP}.log"
     echo "lane $((l + 1)) -> $log  (${#lane[@]} configs)"
     printf '    %s\n' "${lane[@]##*/}"
     WORKERS="$WORKERS" METRICS="$METRICS" NMODELS="$NMODELS" DEV="$DEV" \
@@ -114,7 +118,8 @@ for ((l = 0; l < LANES; l++)); do
 done
 
 echo
-echo "watch:   tail -f logs/eval_lane*.log"
+echo "watch:   tail -f logs/eval_lane*_${STAMP}.log"
+echo "status:  python tools/eval_status.py"
 echo "table:   python tools/analyze_results.py"
 echo "NOTE: 'NO MODELS' means the checkpoint key did not resolve - main.py"
 echo "      logs that as a warning and exits 0, so it is not a failure line."

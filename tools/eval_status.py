@@ -90,6 +90,36 @@ def still_training(name, logs_dir="logs", stale_min=90):
     return False
 
 
+def evaluating(name, logs_dir="logs", quiet_min=30):
+    """True if an evaluation of this config is running right now.
+
+    eval_queue.sh writes each config's output to logs/eval_<name>[_<tag>].log
+    and main.py's last line is `Results written to ...`. A log that is still
+    being written and has no such line is an eval in flight. Without this a
+    second eval_all.sh launch sees the config as `missing` and evaluates it
+    twice, concurrently.
+
+    Decided from the log's CONTENT and mtime, not a marker, because the
+    eval_queue.sh already running cannot be edited safely (bash reads
+    scripts lazily). A log quiet for `quiet_min` without that line is a
+    crashed eval and the config is offered again. The `_` / `.log` anchors
+    keep `..._no_grid` from matching `..._no_gripper`.
+    """
+    now = time.time()
+    logs = (glob.glob(os.path.join(logs_dir, f"eval_{name}.log"))
+            + glob.glob(os.path.join(logs_dir, f"eval_{name}_*.log")))
+    for log in logs:
+        try:
+            if now - os.path.getmtime(log) > quiet_min * 60:
+                continue
+            with open(log, "rb") as f:
+                if b"Results written to" not in f.read():
+                    return True
+        except OSError:
+            continue
+    return False
+
+
 def trained_counts(models, seed):
     """{config_name: n_checkpoints} for every loo8_<rung>_no_<fold> cell."""
     grid = checkpoint_counts(models, seed)
@@ -173,6 +203,9 @@ def main():
     ap.add_argument("--stale-min", type=int, default=90,
                     help="a training log quiet this long is a dead run, "
                          "not a live one")
+    ap.add_argument("--eval-quiet-min", type=int, default=30,
+                    help="an eval log quiet this long without 'Results "
+                         "written to' is a crashed eval, not a running one")
     ap.add_argument("--models", default="models")
     ap.add_argument("--seed", type=int, default=10)
     ap.add_argument("--min-ckpts", type=int, default=MIN_CKPTS,
@@ -200,7 +233,9 @@ def main():
         state, detail = assess(newest_dump(a.results_dir, expid), want, since)
         if state != "done":
             n_ckpt = counts.get(name)
-            if still_training(name, a.logs_dir, a.stale_min):
+            if evaluating(name, a.logs_dir, a.eval_quiet_min):
+                state, detail = "evaluating", "eval in flight - leave it to finish"
+            elif still_training(name, a.logs_dir, a.stale_min):
                 state, detail = "training", "run in flight - evaluate once it finishes"
             elif n_ckpt is not None and n_ckpt < a.min_ckpts:
                 # Not trained by grid_status's standard. Covers configs QUEUED
@@ -211,7 +246,7 @@ def main():
                 detail = (f"{n_ckpt} checkpoint(s) < {a.min_ckpts} - "
                           "train it first (tools/grid_status.py)")
         rows.append((name, state, detail))
-        if state not in ("done", "training", "untrained"):
+        if state not in ("done", "training", "untrained", "evaluating"):
             todo.append(c)
 
     if a.list_missing:
@@ -223,8 +258,10 @@ def main():
         print(f"{name:<{w}}{state:<11}{detail}")
     n_done = sum(1 for r in rows if r[1] == "done")
     n_train = sum(1 for r in rows if r[1] in ("training", "untrained"))
+    n_eval = sum(1 for r in rows if r[1] == "evaluating")
     print(f"\n{n_done}/{len(rows)} evaluated for metrics={','.join(want)}"
           f"  ({len(todo)} to run"
+          + (f", {n_eval} evaluating now" if n_eval else "")
           + (f", {n_train} held back: training or untrained" if n_train else "")
           + ")")
     if todo:
