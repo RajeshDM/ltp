@@ -185,7 +185,15 @@ tools/eval_status.py               which configs have been EVALUATED, from
                                    missing. Defaults to the three PAPER rungs
                                    (union, joint_lite, joint_chain); `joint`
                                    and `structural` are cut internal rungs
-                                   (--all-rungs includes them).
+                                   (--all-rungs includes them). A config
+                                   whose TRAINING is still live (marker + log
+                                   written within --stale-min, default 90) is
+                                   `training` and held back: evaluating it
+                                   picks the best checkpoint so far, and since
+                                   `done` is sticky that half-trained number
+                                   would become the reported one. A marker
+                                   with a quiet log is a dead run and IS
+                                   offered - those partial models are usable.
                                    --list-missing prints the config paths,
                                    which eval_all.sh consumes to skip finished
                                    work on a relaunch

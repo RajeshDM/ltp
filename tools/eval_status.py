@@ -29,6 +29,7 @@ import glob
 import json
 import os
 import re
+import time
 
 DEFAULT_METRICS = "training,combined,validation"
 # The paper's ladder is UNION -> GADAR-BIND -> GADAR. `joint` and `structural`
@@ -56,6 +57,32 @@ def config_expid(path):
     return os.path.splitext(os.path.basename(path))[0]
 
 
+def still_training(name, logs_dir="logs", stale_min=90):
+    """True if a training run for this config is alive right now.
+
+    Evaluating a config mid-training picks the best checkpoint SO FAR, and
+    because `done` is sticky that half-trained number becomes the reported
+    one and is never re-run. So a live run excludes the config from the
+    to-do list.
+
+    Alive = a `.running` marker AND a log written within `stale_min`. The
+    marker alone is not enough: a run killed by its allocation leaves the
+    marker behind, and those partially-trained models (e.g. 360/500 epochs
+    with 30+ checkpoints) are exactly the ones worth evaluating.
+    `_mode_train` anchors the match so `..._no_grid` cannot claim
+    `..._no_gripper`'s marker.
+    """
+    now = time.time()
+    for marker in glob.glob(os.path.join(logs_dir, f"{name}_mode_train*.running")):
+        log = marker[:-len(".running")] + ".log"
+        try:
+            if now - os.path.getmtime(log) <= stale_min * 60:
+                return True
+        except OSError:
+            continue
+    return False
+
+
 def newest_dump(results_dir, expid):
     files = glob.glob(os.path.join(results_dir, expid, "results_*.json"))
     if not files:
@@ -70,7 +97,8 @@ def newest_dump(results_dir, expid):
 
 
 def assess(dump, want_metrics, since):
-    """-> (state, detail). state in {'done','stale','partial','empty','missing'}"""
+    """-> (state, detail). state in {'done','stale','partial','empty','missing'}
+    (the caller may override with 'training')"""
     if dump is None:
         return "missing", "never evaluated"
 
@@ -127,6 +155,10 @@ def main():
                          f"{FIX_DATE}, the mixed-arity fix); 0 to disable")
     ap.add_argument("--all-rungs", action="store_true",
                     help="include the cut `joint` and `structural` rungs")
+    ap.add_argument("--logs-dir", default="logs")
+    ap.add_argument("--stale-min", type=int, default=90,
+                    help="a training log quiet this long is a dead run, "
+                         "not a live one")
     ap.add_argument("--list-missing", action="store_true",
                     help="print only the config paths still needing eval")
     a = ap.parse_args()
@@ -143,10 +175,13 @@ def main():
 
     rows, todo = [], []
     for c in configs:
+        name = os.path.basename(c)[:-5]
         expid = config_expid(c)
         state, detail = assess(newest_dump(a.results_dir, expid), want, since)
-        rows.append((os.path.basename(c)[:-5], state, detail))
-        if state != "done":
+        if state != "done" and still_training(name, a.logs_dir, a.stale_min):
+            state, detail = "training", "run in flight - evaluate once it finishes"
+        rows.append((name, state, detail))
+        if state not in ("done", "training"):
             todo.append(c)
 
     if a.list_missing:
@@ -157,8 +192,11 @@ def main():
     for name, state, detail in rows:
         print(f"{name:<{w}}{state:<9}{detail}")
     n_done = sum(1 for r in rows if r[1] == "done")
+    n_train = sum(1 for r in rows if r[1] == "training")
     print(f"\n{n_done}/{len(rows)} evaluated for metrics={','.join(want)}"
-          f"  ({len(todo)} to run)")
+          f"  ({len(todo)} to run"
+          + (f", {n_train} held back while still training" if n_train else "")
+          + ")")
     if todo:
         print("\nrerun just these:")
         print("  ./train_test_scripts/eval_all.sh "
