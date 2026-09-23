@@ -59,6 +59,34 @@ else
     CONFIGS=(configs/loo8_*.yaml)
 fi
 
+# Skip what is already evaluated (tools/eval_status.py decides from the
+# results dump, not from the file existing). These allocations die mid-queue
+# routinely, and without this a relaunch re-runs finished configs at ~1h each.
+# REDO=1 evaluates everything regardless.
+if [ "${REDO:-0}" != "1" ]; then
+    # Capture the exit status of eval_status.py itself. Testing `$?` after a
+    # `[ ... ]` reads the TEST's status, not python's, so an empty result
+    # (nothing left to do) became indistinguishable from a crash and the
+    # filter silently did nothing.
+    if TODO_RAW=$(python tools/eval_status.py --metrics "$METRICS" \
+                  --list-missing "${CONFIGS[@]}" 2>/dev/null); then
+        mapfile -t TODO <<< "$TODO_RAW"
+        # mapfile on an empty string yields one empty element, not none.
+        [ "${#TODO[@]}" -eq 1 ] && [ -z "${TODO[0]}" ] && TODO=()
+        skipped=$(( ${#CONFIGS[@]} - ${#TODO[@]} ))
+        [ "$skipped" -gt 0 ] && echo "skipping $skipped already evaluated (REDO=1 to force)"
+        CONFIGS=("${TODO[@]}")
+    else
+        echo "eval_status.py failed; evaluating every config given"
+    fi
+fi
+
+if [ "${#CONFIGS[@]}" -eq 0 ]; then
+    echo "nothing to evaluate for metrics=$METRICS - all configs have a complete dump."
+    echo "  python tools/eval_status.py     # what is recorded"
+    exit 0
+fi
+
 mkdir -p logs
 echo "eval_all: ${#CONFIGS[@]} configs, $CORES cores -> $LANES lane(s) x $WORKERS workers"
 echo "          metrics=$METRICS  models per metric=$NMODELS  device=$DEV"

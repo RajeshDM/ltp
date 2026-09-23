@@ -171,6 +171,17 @@ tools/grid_status.py               the leave-one-out grid from models/
                                    exists from the moment a run starts. Reads
                                    no cluster state, so it answers "how much of
                                    the paper exists" from the login node
+tools/eval_status.py               which configs have been EVALUATED, from
+                                   the dump main.py writes to
+                                   cache/results/<expid>/results_*.json -
+                                   NOT from the file existing. States: done /
+                                   partial (names the missing metrics and
+                                   cells) / empty (a dump with no results: the
+                                   checkpoint key did not resolve, which
+                                   main.py logs as a warning and exits 0 on) /
+                                   missing. --list-missing prints the config
+                                   paths, which eval_all.sh consumes to skip
+                                   finished work on a relaunch
 tools/random_policy_baseline.py    zero-shot floor: uniform-random applicable
                                    action rollouts, config test-domains syntax
                                    (incl. @train), no model/training needed
@@ -227,7 +238,11 @@ train_test_scripts/eval_all.sh     evaluate many configs, sized to the box:
                                    validation NMODELS=1 and DEV=cuda:0 (the
                                    old cpu default predates the featurizer
                                    speedups; forward pass is now 36-70% of a
-                                   run). LANES/WORKERS overridable
+                                   run). Skips configs tools/eval_status.py
+                                   reports as done, so a relaunch after an
+                                   allocation dies resumes instead of redoing
+                                   ~1h per config; REDO=1 forces.
+                                   LANES/WORKERS overridable
 train_test_scripts/eval_queue.sh   run N configs through --mode test one at
                                    a time on --device cpu (evaluation is
                                    host-CPU bound, so it leaves the GPU to
