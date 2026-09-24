@@ -2,6 +2,7 @@
 # campaign_status.sh — everything in flight, training and evaluation, at once.
 #
 #   ./train_test_scripts/campaign_status.sh
+#   METRICS=combined ./train_test_scripts/campaign_status.sh   # match the eval workers
 #
 # Reads files on the shared disk (plus squeue if present), so it works from
 # the login node or any compute node, and says the same thing from each.
@@ -32,8 +33,11 @@ hr "training grid"
 python tools/grid_status.py 2>/dev/null | grep -E "COMPLETE|/3$|cells" \
     | sed 's/^/  /'
 
-hr "evaluation"
-python tools/eval_status.py 2>/dev/null | grep -vE "^(rerun just these|  \./train)" \
+hr "evaluation (metrics=${METRICS:-training,combined,validation})"
+# Must match the METRICS the eval workers were started with, or finished
+# configs read as `partial`: METRICS=combined ./campaign_status.sh
+python tools/eval_status.py --metrics "${METRICS:-training,combined,validation}" 2>/dev/null \
+    | grep -vE "^(rerun just these|  \./train)" \
     | grep -E "evaluating|training|untrained|partial|empty|evaluated for"
 
 if ls logs/eval_claims/*/owner >/dev/null 2>&1; then
