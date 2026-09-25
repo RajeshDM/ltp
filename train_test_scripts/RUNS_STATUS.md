@@ -234,3 +234,33 @@ better again (E190 100% / V1 99.2 vs E330 97.6% / V1 68.7).
 Consequence: joint_chain becomes the method (GADAR); joint becomes the
 ablation (GADAR minus chaining). Diversity configs (`ho4_joint_chain`,
 `ho2_joint_chain_*`) are now worth creating.
+
+## RESULT 2026-09-25: 8-fold zero-shot epoch sweep (type-compiled suite)
+
+`EXPID_SUFFIX=_epochs`, periodic checkpoints every 50 epochs (epoch 0 is
+never saved, so the sweep has no untrained control), hard (test) split only,
+single seed. Coverage %, every nonzero cell; all other (rung, fold, epoch)
+cells are 0.0. `loo8_union_no_gripper` untrained (1 checkpoint).
+
+| rung | fold | per-epoch coverage | cross-fold e* -> cov |
+|---|---|---|---|
+| GADAR (joint_chain) | visitall | 0.0 at all of 50..400 (every problem hits step 501) | 0.0 |
+| GADAR | grid | 100: 10.4, 150: 2.1, 300: 20.8 | E250 -> 0.0 |
+| GADAR | manyblocks | 0.5 .. 4.5 | E300 -> 3.0 |
+| BIND (joint_lite) | visitall | 50: 52, 100: 28, 150: 0, 200: 26, 250+: 0 | E200 -> 26.0 |
+| BIND | manyblocks | 0.0 .. 1.5 | E50 -> 1.0 |
+| UNION | visitall | 150: 74, all others 0 | E50 -> 0.0 |
+
+Random floors (hard): visitall 6.0, manyblocks 0.2, grid 0.0.
+
+Reading:
+- The July `no_visitall` 68%/100% was the type-BLIND model (voided above,
+  2026-07-27). Its type-compiled retrain transfers to Visitall at no swept
+  epoch. Both results can be right: type compilation changed what the model
+  learns from the five typed training domains. Not yet separated from seed
+  variance - one seed each.
+- Visitall transfer is checkpoint-unstable for every rung, the control
+  included (0 <-> 74 within 50 epochs). A single Visitall number measures
+  the checkpoint, not the representation.
+- Several runs stopped at 300-400 of 500 epochs (allocations died); the
+  per-fold epoch lists above are what exists.
