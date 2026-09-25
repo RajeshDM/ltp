@@ -34,6 +34,15 @@ fi
 
 DEV=${1:-cuda:0}
 shift
+# Refuse from a shell without the conda env. Otherwise every config is
+# launched, fails at `import torch` in seconds, and the queue reports each
+# as FAIL and exits - easy to miss when the queue was nohup'd and the
+# prompt came straight back. This has lost launches three times.
+if ! python -c "import torch" 2>/dev/null; then
+    echo "REFUSING: 'import torch' fails with $(command -v python || echo 'no python')."
+    echo "  Activate the conda env first (conda activate di_ltp_1), then relaunch."
+    exit 1
+fi
 MODE="${MODE:-train}"
 EXTRA="${EXTRA:-}"
 HERE=$(dirname "$0")
