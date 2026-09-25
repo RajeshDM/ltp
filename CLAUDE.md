@@ -213,6 +213,11 @@ tools/eval_status.py               which configs have been EVALUATED, from
                                    --list-missing prints the config paths,
                                    which eval_all.sh consumes to skip finished
                                    work on a relaunch
+tools/zeroshot_domains.py          prints a LOO config's zero-shot
+                                   --test-domains (the test_domains entries
+                                   whose domain is not in `domains`), exit 1
+                                   if none. Used by eval_queue.sh's
+                                   ZERO_SHOT_ONLY=1
 tools/random_policy_baseline.py    zero-shot floor: uniform-random applicable
                                    action rollouts, config test-domains syntax
                                    (incl. @train), no model/training needed
@@ -309,6 +314,17 @@ train_test_scripts/eval_worker.sh  evaluation across ANY number of machines
                                    login node) and with DEV=cuda* on a host
                                    with no usable CUDA - both checks run before
                                    anything is claimed
+train_test_scripts/eval_queue.sh   ZERO_SHOT_ONLY=1 evaluates only each
+                                   config's held-out domain (~1/5 the cost);
+                                   EXPID_SUFFIX=_x writes to
+                                   cache/results/<config>_x/ so a control or
+                                   sweep pass cannot shadow the real results
+                                   (eval_worker.sh and eval_status.py
+                                   --expid-suffix honour both). NOTE
+                                   run_tests walks the model list REVERSED:
+                                   METRICS=periodic NMODELS=1 is the LATEST
+                                   snapshot, not epoch 0 - take all of them
+                                   (NMODELS=12) for an epoch sweep.
 train_test_scripts/eval_queue.sh   run N configs through --mode test one at
                                    a time on --device cpu (evaluation is
                                    host-CPU bound, so it leaves the GPU to

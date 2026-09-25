@@ -212,6 +212,10 @@ def main():
     ap.add_argument("--eval-quiet-min", type=int, default=30,
                     help="an eval log quiet this long without 'Results "
                          "written to' is a crashed eval, not a running one")
+    ap.add_argument("--expid-suffix", default="",
+                    help="judge the results in cache/results/<config><suffix>/ "
+                         "(a control pass, e.g. _untrained) instead of the "
+                         "config's own")
     ap.add_argument("--models", default="models")
     ap.add_argument("--seed", type=int, default=10)
     ap.add_argument("--min-ckpts", type=int, default=MIN_CKPTS,
@@ -236,10 +240,11 @@ def main():
     for c in configs:
         name = os.path.basename(c)[:-5]
         expid = config_expid(c)
-        state, detail = assess(newest_dump(a.results_dir, expid), want, since)
+        state, detail = assess(newest_dump(a.results_dir, expid + a.expid_suffix),
+                               want, since)
         if state != "done":
             n_ckpt = counts.get(name)
-            if evaluating(name, a.logs_dir, a.eval_quiet_min):
+            if evaluating(name + a.expid_suffix, a.logs_dir, a.eval_quiet_min):
                 state, detail = "evaluating", "eval in flight - leave it to finish"
             elif still_training(name, a.logs_dir, a.stale_min):
                 state, detail = "training", "run in flight - evaluate once it finishes"

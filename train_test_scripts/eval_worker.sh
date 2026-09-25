@@ -28,7 +28,10 @@
 # WORKERS = min(16, cores/LANES - 1), from sched_getaffinity.
 #
 # Env: METRICS (default training,combined,validation), NMODELS (1),
-#      DEV (cuda:0), LANES, WORKERS, CLAIM_TTL_MIN, WANDB=1.
+#      DEV (cuda:0), LANES, WORKERS, CLAIM_TTL_MIN, WANDB=1,
+#      ZERO_SHOT_ONLY=1 (held-out domain only),
+#      EXPID_SUFFIX=_x (a separate results namespace for a control pass).
+#      All are inherited by eval_queue.sh.
 set -u
 
 cd "$(dirname "$0")/.." || exit 1
@@ -94,15 +97,18 @@ lane() {
     local k=$1 got cfg name
     while :; do
         got=""
-        for cfg in $(python tools/eval_status.py --metrics "$METRICS" --list-missing); do
-            name=$(basename "$cfg" .yaml)
+        for cfg in $(python tools/eval_status.py --metrics "$METRICS" \
+                       --expid-suffix "${EXPID_SUFFIX:-}" --list-missing); do
+            # The claim namespace includes the suffix, so a control pass and
+            # the real evaluation of the same config never block each other.
+            name="$(basename "$cfg" .yaml)${EXPID_SUFFIX:-}"
             if claim "$name"; then got="$cfg"; break; fi
         done
         if [ -z "$got" ]; then
             echo "[$HOST lane$k] $(date '+%T') nothing left to claim - exiting"
             return
         fi
-        name=$(basename "$got" .yaml)
+        name="$(basename "$got" .yaml)${EXPID_SUFFIX:-}"
         echo "[$HOST lane$k] $(date '+%T') claimed $name"
         # TAG is unique per machine+lane, so per-config logs never collide
         # and eval_status can see this eval as in flight.
@@ -114,7 +120,8 @@ lane() {
 }
 
 echo "eval_worker on $HOST: $CORES cores -> $LANES lane(s) x $WORKERS workers"
-echo "  metrics=$METRICS  models per metric=$NMODELS  device=$DEV"
+echo "  metrics=$METRICS  models per metric=$NMODELS  device=$DEV" \
+     "${ZERO_SHOT_ONLY:+ zero-shot-only}${EXPID_SUFFIX:+  results-suffix=$EXPID_SUFFIX}"
 for ((k = 1; k <= LANES; k++)); do
     log="logs/eval_worker_${HOST}_lane${k}.log"
     ( lane "$k" ) >> "$log" 2>&1 &

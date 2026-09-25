@@ -20,6 +20,10 @@
 #   DEV=cuda:0      evaluate on GPU instead (only if nothing is training)
 #   WANDB=1         --wandb True, so coverage lands online as well as in JSON
 #   EXTRA="..."     extra main.py flags, e.g. EXTRA="--seed 12"
+#   ZERO_SHOT_ONLY=1  evaluate only each config's held-out domain
+#                   (tools/zeroshot_domains.py) - ~1/5 of a full eval
+#   EXPID_SUFFIX=_x  write results to cache/results/<config>_x/ instead,
+#                   so a control pass cannot shadow the config's real results
 #   TAG=<suffix>    extra log-name suffix. Rarely needed: EXTRA is already
 #                   folded into the log name, so EXTRA="--seed 12" writes
 #                   logs/eval_<config>_seed_12.log by itself.
@@ -65,6 +69,27 @@ for CFG in "$@"; do
                         | sed -e 's/--//g' -e 's|[^A-Za-z0-9_.-]|_|g' \
                               -e 's/__*/_/g' -e 's/^_//' -e 's/_$//')"
     fi
+    BASE=$(basename "$CFG" .yaml)
+    # EXPID_SUFFIX gives this pass its own results directory
+    # (cache/results/<config><suffix>/), so a control pass - e.g. the
+    # untrained epoch-0 checkpoint - cannot become the "latest" results for
+    # the config and shadow its real evaluation.
+    EXPID_ARGS=()
+    if [ -n "${EXPID_SUFFIX:-}" ]; then
+        NAME="${NAME}${EXPID_SUFFIX}"
+        EXPID_ARGS=(--expid "${BASE}${EXPID_SUFFIX}")
+    fi
+    # ZERO_SHOT_ONLY=1: evaluate only the held-out domain (test + @train),
+    # which is what C1/C2 are measured on - ~1/5 of a full evaluation.
+    ZS_ARGS=()
+    if [ "${ZERO_SHOT_ONLY:-0}" = "1" ]; then
+        if ZS=$(python tools/zeroshot_domains.py "$CFG"); then
+            ZS_ARGS=(--test-domains "$ZS")
+        else
+            echo "SKIP (ZERO_SHOT_ONLY, but $CFG holds out no domain)"
+            continue
+        fi
+    fi
     [ -n "$TAG" ] && NAME="${NAME}_${TAG}"
     LOG="logs/eval_${NAME}.log"
     [ -f "$LOG" ] && mv "$LOG" "logs/eval_${NAME}.$(date +%Y%m%d_%H%M%S).log"
@@ -75,6 +100,7 @@ for CFG in "$@"; do
        python main.py --config "$CFG" --mode test --device "$DEV" \
             --test-model-metrics "$METRICS" \
             --num-models-to-test "$NMODELS" \
+            ${ZS_ARGS[@]+"${ZS_ARGS[@]}"} ${EXPID_ARGS[@]+"${EXPID_ARGS[@]}"} \
             $WANDB_FLAG $EXTRA > "$LOG" 2>&1
     RC=$?
 
