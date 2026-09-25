@@ -147,7 +147,12 @@ def assess(dump, want_metrics, since):
         return "missing", "never evaluated"
 
     results = dump.get("results") or {}
-    if not results:
+    # "No models found to test" does NOT produce an empty dict: run_tests
+    # returns [] for every cell, so the dump is {cell: [], ...} - keys present,
+    # nothing in them. Testing the dict alone called 14 such configs `done`
+    # (the union and BIND rungs, all written by one run on a node where the
+    # key did not resolve) and they were never evaluated.
+    if not any(results.values()):
         return "empty", "dump written but no models resolved"
 
     ts = str(dump.get("timestamp", ""))
@@ -158,7 +163,8 @@ def assess(dump, want_metrics, since):
     have = set(raw or [])
     missing_m = [m for m in want_metrics if m not in have]
 
-    keys = " ".join(results.keys()).lower()
+    # Only cells that actually hold a result count as covered.
+    keys = " ".join(k for k, v in results.items() if v).lower()
     missing_cells = []
     for cell in dump.get("eval_plan") or []:
         dom = str(cell.get("domain", "")).split("@")[0].lower()
