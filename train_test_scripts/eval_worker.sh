@@ -33,6 +33,26 @@ set -u
 
 cd "$(dirname "$0")/.." || exit 1
 
+# Refuse to run where evaluation must not run. Launched on the login node it
+# sized itself to 64 shared cores and 4 lanes, and with DEV=cuda:0 on a
+# GPU-less host every lane would claim a config, crash, release it and claim
+# the next - churning the whole queue while loading a machine every cluster
+# user depends on. Both checks are cheap and happen before anything is
+# claimed. ALLOW_OUTSIDE_SLURM=1 skips the first, for a workstation.
+if [ -z "${SLURM_JOB_ID:-}" ] && [ "${ALLOW_OUTSIDE_SLURM:-0}" != "1" ]; then
+    echo "REFUSING: not inside a SLURM allocation (no SLURM_JOB_ID) - this"
+    echo "  looks like a login node. Run it inside an srun/salloc session on a"
+    echo "  compute node. ALLOW_OUTSIDE_SLURM=1 overrides (not on a login node)."
+    exit 1
+fi
+if [[ "${DEV:-cuda:0}" == cuda* ]] \
+   && ! python -c "import torch, sys; sys.exit(0 if torch.cuda.is_available() else 1)" 2>/dev/null; then
+    echo "REFUSING: DEV=${DEV:-cuda:0} but no usable CUDA device on $(hostname -s)."
+    echo "  Every lane would claim a config, crash, and claim the next."
+    echo "  On a CPU-only node use DEV=cpu."
+    exit 1
+fi
+
 CORES=$(python -c "import os; print(len(os.sched_getaffinity(0)))" 2>/dev/null || echo 8)
 LANES="${LANES:-$(( CORES / 16 ))}"
 [ "$LANES" -lt 1 ] && LANES=1

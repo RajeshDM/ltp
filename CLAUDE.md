@@ -304,7 +304,11 @@ train_test_scripts/eval_worker.sh  evaluation across ANY number of machines
                                    eval_all.sh. Rare race: two lanes
                                    reclaiming the same dead claim at the same
                                    instant can both win - one duplicated eval,
-                                   not a wrong number
+                                   not a wrong number. REFUSES to start outside
+                                   a SLURM allocation (no SLURM_JOB_ID: the
+                                   login node) and with DEV=cuda* on a host
+                                   with no usable CUDA - both checks run before
+                                   anything is claimed
 train_test_scripts/eval_queue.sh   run N configs through --mode test one at
                                    a time on --device cpu (evaluation is
                                    host-CPU bound, so it leaves the GPU to
