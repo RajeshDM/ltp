@@ -21,7 +21,8 @@
 #   WANDB=1         --wandb True, so coverage lands online as well as in JSON
 #   EXTRA="..."     extra main.py flags, e.g. EXTRA="--seed 12"
 #   ZERO_SHOT_ONLY=1  evaluate only each config's held-out domain
-#                   (tools/zeroshot_domains.py) - ~1/5 of a full eval
+#                   (tools/zeroshot_domains.py) - ~1/5 of a full eval.
+#                   ZS_SPLITS=test drops the @train split as well
 #   EXPID_SUFFIX=_x  write results to cache/results/<config>_x/ instead,
 #                   so a control pass cannot shadow the config's real results
 #   TAG=<suffix>    extra log-name suffix. Rarely needed: EXTRA is already
@@ -83,7 +84,9 @@ for CFG in "$@"; do
     # which is what C1/C2 are measured on - ~1/5 of a full evaluation.
     ZS_ARGS=()
     if [ "${ZERO_SHOT_ONLY:-0}" = "1" ]; then
-        if ZS=$(python tools/zeroshot_domains.py "$CFG"); then
+        ZS_FLAGS=""
+        [ "${ZS_SPLITS:-all}" = "test" ] && ZS_FLAGS="--test-only"
+        if ZS=$(python tools/zeroshot_domains.py "$CFG" $ZS_FLAGS); then
             ZS_ARGS=(--test-domains "$ZS")
         else
             echo "SKIP (ZERO_SHOT_ONLY, but $CFG holds out no domain)"

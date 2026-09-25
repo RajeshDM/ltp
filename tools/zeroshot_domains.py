@@ -3,6 +3,8 @@
 
     python tools/zeroshot_domains.py configs/loo8_union_no_grid.yaml
     -> grid_ipcc:48,grid_ipcc@train:192
+    python tools/zeroshot_domains.py configs/loo8_union_no_grid.yaml --test-only
+    -> grid_ipcc:48
 
 A LOO config's `test_domains` lists all eight domains; the zero-shot cells
 are the entries whose domain is NOT in `domains` (the training set). Those
@@ -31,6 +33,11 @@ def main():
     cells = [c.strip() for c in read_key(cfg, "test_domains").split(",") if c.strip()]
     held = [c for c in cells
             if re.split(r"[:@]", c, 1)[0].lower() not in train]
+    # --test-only drops the @train split. Its random floor is 63-99% on
+    # several folds, so it cannot discriminate there, and it is the larger
+    # split - dropping it more than halves an epoch sweep.
+    if "--test-only" in sys.argv[2:]:
+        held = [c for c in held if "@" not in c]
     if not held:
         sys.exit(1)
     print(",".join(held))
