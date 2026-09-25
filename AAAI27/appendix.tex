@@ -229,11 +229,10 @@ Plan-quality reference            & \texttt{fd-lama-first} \\
 \end{table}
 
 A run is seeded once, and that seed governs the network initialization, the
-training shuffle, the train and validation split, and the revisit monitor's
-fallback sampling. Each reported configuration is run for three seeds and the
-results averaged. We report means without dispersion: three runs are too few
-for a meaningful interval, and the differences the paper turns on are far
-larger than the spread we observe.
+training shuffle, and the train and validation split; the revisit monitor's
+fallback sampling is seeded per problem, so that it is identical across
+execution harnesses. Every reported configuration is a single run with one
+seed, and we report no dispersion across seeds.
 
 \subsection{Evaluation Protocol}
 \label{app:metrics}

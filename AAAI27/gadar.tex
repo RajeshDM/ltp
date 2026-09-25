@@ -41,9 +41,10 @@
 \newcommand{\gadarstruct}{\gadar{}-STRUCT} % symbol-free structural features
 \newcommand{\gadarbind}{\gadar{}-BIND}     % + lifted domain layer + binding layer
 \newcommand{\union}{UNION}                 % control: symbol identity, D in weights
-% Placeholder for results that do not exist yet - renders visibly so no
-% placeholder survives to submission unnoticed.
-\newcommand{\todonum}[1]{\textbf{[#1]}}
+% Placeholder for results that do not exist yet - renders RED so no
+% placeholder survives to submission unnoticed. Before submitting:
+%   grep -c todonum gadar.tex   must print 0.
+\newcommand{\todonum}[1]{\textcolor{red}{\textbf{[#1]}}}
 
 \title{GADAR: Generalizing Across Domains via Action Ranking for Classical Planning}
 
@@ -75,7 +76,7 @@
 
 \begin{abstract}
 
-Learned policies for classical planning act without search, but each policy is tied to the domain it was trained on: network modules per action schema, parameters per predicate, or vocabulary-sized encodings mean a trained policy cannot even be executed on new predicates and action schemas. We propose \gadar{} (Generalizing Across Domains via Action Ranking), the first policy for classical planning that takes the domain description as input, $\pi(s, G, D)$, and constructs grounded actions in domains never seen in training, zero-shot and without search. Our idea is to describe symbols by the roles they play rather than by the names they carry, so that two domains whose vocabularies share nothing but whose action structure is the same become one problem, learned once and reused. The capability is built in three steps, each a contribution and each the ablation of the next: (i) a \emph{lifted domain layer} replaces symbol identity with structural signatures and embeds $D$ itself into every state graph, identifying predicates and action schemas by their declared roles (which schema uses them, as precondition or effect, at which argument slots) rather than by name; (ii) a \emph{binding layer} ties each ground action's applicability to the lifted preconditions it instantiates, expressing search-free action construction in the vocabulary of the domain description; and (iii) a \emph{chain layer} states directly that one schema produces what another needs, a relation message passing otherwise loses when it aggregates over a shared predicate, together with how far each schema stands from the goal. Across held-out domains we show that a multi-task control that keeps symbol identity in its weights matches per-domain performance on the domains it trains on yet transfers nothing to an unseen one; that the domain description alone makes the policy executable but not competent; and that the chain layer converts executability into transfer, reaching 68\% coverage on the large test instances of a held-out domain at plan quality 0.97, where an identically-executed untrained network solves none. \gadar{} is invariant to symbol renaming by construction.
+Learned policies for classical planning act without search, but each is tied to the domain it was trained on: network modules per action schema, parameters per predicate, or vocabulary-sized encodings mean a trained policy cannot even be executed on a new domain's predicates and action schemas. We present \gadar{} (Generalizing Across Domains via Action Ranking), a policy that takes the domain description as input, $\pi(s, G, D)$, and constructs grounded actions in domains never seen in training, without search. Symbols are described by the roles they play in the domain rather than by their names, in three layers that each extend the previous one: (i) a \emph{lifted domain layer} embeds $D$ in every state graph through structural signatures; (ii) a \emph{binding layer} ties each ground action's applicability to the lifted preconditions it instantiates; and (iii) a \emph{chain layer} states which schema produces what another needs and how far each schema stands from the goal. We evaluate leave-one-domain-out over eight benchmark domains, selecting every checkpoint without access to the held-out domain. A single \gadar{} policy trained on all eight domains solves \todonum{60.5}\% of their test instances, and a multi-task control that keeps symbol identity in its weights, while strong on some of the domains it trains on, transfers to none of the held-out ones. Zero-shot, \gadar{} executes on every held-out domain and solves \todonum{68}\% of the large test instances of held-out Visitall, where an identically-executed untrained network solves \todonum{0}\%. Transfer to the other seven held-out domains is limited (\todonum{0--5}\% on their test instances), and we identify where it fails: domains whose action schemas are structurally alike but play different roles, which renaming-invariant features cannot distinguish without data from the new domain.
 
 \end{abstract}
 
@@ -142,9 +143,9 @@ classical planners buy generality with search and learned policies buy
 reactivity with specialization. The question we study is what such a policy
 can transfer, not whether it outraces search.
 
-We build this capability as a ladder of three systems, each adding exactly
-one representational commitment to the previous one, so that every adjacent
-comparison isolates one component. \union{} is the control: symbol-identity
+We build this capability as a ladder of three systems, each adding one
+group of representational commitments to the previous one, so that every
+adjacent comparison isolates that group. \union{} is the control: symbol-identity
 features widened to the union of the training vocabularies,
 which is multi-task learning with the domain in the weights. \gadarbind{}
 replaces symbol identity with structural features and puts $D$ into every
@@ -157,18 +158,21 @@ stands from the goal. All three share one encoder, one ranking decoder, and the
 same search-free execution, so every comparison varies the representation
 and not the architecture.
 
-Our experiments follow a leave-one-domain-out protocol over eight standard
-benchmark domains. On held-out Visitall, \gadar{} solves 68\% of the large
-test instances zero-shot at plan quality 0.97, against 0\% for an
-identically-executed untrained network, 0\% for the union-vocabulary
-control (which does solve the domains it trained on), and 4\% without the
-chain layer; on training-scale instances it solves 100\%, above the 50\%
-ceiling of a hand-coded goal-achievement oracle. \gadar{} is invariant by
-construction to renaming of predicates, schemas, and objects, a robustness
-current large reasoning models lack \citep{llm_baseline}. That invariance
-is also a precise ceiling: structurally isomorphic domains with different
-semantics necessarily receive identical behavior, marking where zero-shot
-transfer ends and adaptation must begin.
+Our experiments follow a leave-one-domain-out protocol over all eight
+benchmark domains, with every checkpoint selected without access to the
+held-out domain. \gadar{} executes on every held-out domain. On held-out
+Visitall it solves \todonum{68}\% of the large test instances zero-shot at
+plan quality \todonum{0.97}, against \todonum{0}\% for an
+identically-executed untrained network, \todonum{0}\% for the
+union-vocabulary control, and \todonum{4}\% without the chain layer. On the
+other seven held-out domains transfer is limited, and the per-domain
+results show where it breaks: when a held-out domain's schemas are
+structurally alike but play different roles, as Logistics' truck and
+airplane actions do, features that ignore symbol names cannot tell them
+apart. \gadar{} is invariant by construction to renaming of predicates,
+schemas, and objects, a robustness current large reasoning models lack
+\citep{llm_baseline}; the same invariance means that what distinguishes
+such schemas has to come from data in the new domain.
 
 \textbf{Contributions.}
 \begin{itemize}
@@ -332,11 +336,21 @@ Given a planning instance in PDDL format together with its domain
 description $D$, \gadar{} converts the pair into a graph, processes the
 graph with a GNN encoder, and constructs a grounded action with a GRU-based
 decoder that first selects an action schema and then each of its arguments
-(Figure~\ref{fig:system}). Encoder and decoder are inherited
-unchanged from the per-domain policy of \citet{gabar}; what changes is the
-graph they operate on, and we do not restate the inheritance below. We present the
-representation as it is evaluated: a ladder of systems in which each
-addition is measured against its predecessor.
+(Figure~\ref{fig:system}). Encoder and decoder are those of the per-domain
+policy of \citet{gabar}, summarized here for completeness; what changes is
+the graph they operate on. We present the representation as it is
+evaluated: a ladder of systems in which each addition is measured against
+its predecessor.
+
+\textbf{Encoder.} Node, edge, and global features are first embedded by
+separate MLPs into $d{=}64$ dimensions. Each of $L{=}9$ rounds then (1)
+updates every edge from its two endpoints, its own embedding, and the global
+node, (2) updates every node from its incoming edges, aggregated by
+attention (a softmax over the node's incoming edges), and (3) updates the
+global node from all nodes and edges. At every round the current embeddings
+are concatenated with their round-0 encodings before the update, a skip
+connection that keeps the input features visible at depth. The output is
+one embedding per node, which the decoder ranks.
 
 \subsection{A Domain-Agnostic Graph Representation}
 
@@ -464,11 +478,13 @@ with the structural features $X$, making the policy executable in any
 domain, and adds $\Sigma$, $Q$, $E_{\mathrm{inst}}$, $E_{\mathrm{occ}}$,
 and $E_{\mathrm{bind}}$. \gadar{} adds $E_{\mathrm{chain}}$,
 $E_{\mathrm{eff}}$, and the goal-distance and goal-relevance features.
-Because adjacent systems differ in exactly one component, the experimental
+Because adjacent systems differ in one group of components, the experimental
 comparison and the ablation study are the same object: the
 \union{}-to-\gadarbind{} step measures what removing symbol identity costs
 and what the domain description buys, and the \gadarbind{}-to-\gadar{}
-step isolates the chain layer.
+step measures the chain layer together with the grounded effect edges and
+goal features it adds. We do not separate those three here, and attribute
+the second step to them jointly.
 
 \subsection{Action Construction and Training}
 
@@ -492,135 +508,127 @@ batch.
 \textbf{Domains.} We evaluate on the eight benchmark domains used by GABAR:
 Blocks, Miconic, Spanner, Gripper, Visitall, Grid, Logistics, and
 Rovers \citep{gabar, pddl-generators}. Training data consists of plans
-computed by a classical planner \citep{fast_downward} on the small instances
-of each training domain (between 125 and 312 instances per domain); states along each plan are converted to graphs and the policy
-is trained to reproduce the expert action as described above. As held-out
-targets we report Visitall, Miconic, and Grid, each on two splits, so that
-the zero-shot numbers of every system are matched on the same splits.
+computed by Fast Downward with the LAMA-first satisficing configuration
+\citep{fast_downward} on the small instances of each training domain
+(between 125 and 312 instances per domain); states along each plan are
+converted to graphs and the policy is trained to reproduce the expert
+action as described above. Every one of the eight domains serves as a
+held-out target, each on two splits.
 
 \textbf{Protocol.} Two experiment families, run for every rung of the
-ladder. (i)~\emph{Leave-one-domain-out} (the main experiment): for each target
-domain, a single policy is trained on the remaining seven and evaluated on
-the held-out domain zero-shot, having never seen its predicates, schemas, or
-objects. (ii)~\emph{In-domain}: one policy trained on all eight domains and
-evaluated on each, measuring what a shared domain-conditioned policy costs
-relative to per-domain training (the price of generality).
-Leave-one-domain-out is stricter than the single fixed train/held-out
-split used in prior domain-independent evaluation \citep{goose_v2}. The
-\emph{hard} split is the domain's test set, with instances up to an order
-of magnitude larger than training-scale problems; the \emph{easy} split is
-the held-out domain's own training-scale instances, unseen because the
-domain was held out, separating ``cannot handle the unseen domain'' from
-``cannot scale within it.'' Training domains are evaluated on the hard
-split only. Published GABAR subdivides its test problems into three size
-bands and we average over them, so GABAR$^\dagger$ spans the same range;
-the problem sets are not identical, so that column calibrates the gap to
-dedicated training rather than benchmarking against it.
+ladder. (i)~\emph{Leave-one-domain-out} (the main experiment): for each of
+the eight domains, a policy is trained on the remaining seven and evaluated
+on the held-out domain zero-shot, having never seen its predicates,
+schemas, or objects. (ii)~\emph{In-domain}: one policy trained on all eight
+domains and evaluated on each. The \emph{hard} split is the domain's test
+set, with instances up to an order of magnitude larger than training-scale
+problems; the \emph{easy} split is the held-out domain's own
+training-scale instances, unseen because the domain was held out, which
+separates failing on the unseen domain from failing to scale within it.
+Training domains are evaluated on the hard split only.
+
+\textbf{Checkpoint selection.} No choice uses the held-out domain.
+In-domain results use the checkpoint with the lowest combined training and
+validation loss. For zero-shot results the training epoch is a
+hyperparameter selected across folds: for held-out domain $d$, we use the
+epoch $e^*(d)$ that maximizes mean zero-shot coverage on the hard splits of
+the \emph{other} seven held-out domains, each measured with its own fold's
+model; $d$'s own instances never enter the choice. The same rule is applied
+to every rung. Each configuration is trained with a single seed, so we do
+not report variance across seeds.
 
 \textbf{Baselines and references.} Our primary comparison is the \union{}
 control described above: identical data, architecture, and training
 procedure, with only the representation different. Any zero-shot
 capability \gadar{} has beyond this control comes from moving the domain
-into the input. Two references bracket the zero-shot numbers. The
-\emph{floor} is an untrained control: the identical system, with the same
-graph, decoder, execution harness, and step bound, but a network that has
-seen a single epoch of training. It measures what the harness achieves when
-the learned component contributes nothing. The \emph{ceiling} is published
-per-domain GABAR \citep{gabar}, trained directly on each held-out domain;
-it sees the test domain in training and cannot be executed zero-shot, so it
-calibrates transfer rather than competing with it. The satisficing planner that generates our training data
-\citep{fast_downward} is the plan-quality reference, not a competitor.
+into the input. Two floors bound the zero-shot numbers from below. The
+\emph{random floor} is the same executor and monitor choosing uniformly
+among applicable ground actions, averaged over three rollouts per problem;
+it measures how far legal moves alone get on each split. The
+\emph{untrained control} is the identical system, with the same graph,
+decoder, executor, and step bound, but a network that has seen a single
+epoch of training. As a reference for dedicated training we report
+published per-domain GABAR \citep{gabar}, trained directly on each
+held-out domain and evaluated on its own test instances, averaged over its
+three published size bands. Those instances are not identical to ours, so
+GABAR$^\dagger$ indicates what per-domain training achieves at this scale
+rather than serving as a matched comparison.
 
 \textbf{Ablations and oracle.} The ladder is the ablation study
-(Figure~\ref{fig:system}b), and every component's contribution is read off
+(Figure~\ref{fig:system}b), and each group of components is measured by
 adjacent columns of Table~\ref{table:main_table}. We additionally report
 one diagnostic that is not a rung of the ladder: an \emph{achievement
 oracle} that, at every state, prefers any applicable ground action whose
 add effects directly satisfy an unsatisfied goal atom, and otherwise defers
-to the policy. It upper-bounds what a hand-coded terminal trigger can
-achieve on each domain.
+to the policy. It bounds what a hand-coded terminal trigger can achieve on
+each domain.
 
 \textbf{Metrics and implementation.} We report coverage (C), the
-percentage of test problems solved within the execution bound, and
+percentage of test problems solved within a 500-step bound, and
 plan quality (P), the ratio of the reference planner's plan length to the
 policy's on jointly solved problems, so values above 1 mean plans shorter
 than the reference. Because P conditions on what a system solves, higher
 coverage is scored on harder instances; coverage is the primary metric and
-P is read within, not across, columns. Encoder and decoder
+P is compared within, not across, columns. Encoder and decoder
 hyperparameters are carried over unchanged ($L{=}9$
 message-passing rounds, 64-dimensional representations, GRU decoder), with
-batch size 64 and learning rate $5{\times}10^{-4}$; the appendix lists every
-final setting. Training runs to a fixed budget listed in the appendix; one eight-domain
-model takes seven to eight hours on a single NVIDIA A40, used for training
-and testing alike. In-domain results use the checkpoint
-selected by combined training and validation loss, one checkpoint for all
-eight domains; zero-shot results evaluate every saved checkpoint on the
-held-out domain and report the best, by the same rule for every rung. Each
-configuration is trained for three seeds and the results averaged.
-Renaming invariance is verified as a unit test: permuting all symbol names
-in a domain yields identical input tensors.
+batch size 64 and learning rate $5{\times}10^{-4}$, for 500 epochs; the
+appendix lists every final setting. One eight-domain model takes seven to
+eight hours to train on a single NVIDIA A40. Renaming invariance is
+verified as a unit test: permuting all symbol names in a domain yields
+identical input tensors.
 
 \section{Results and Discussion}
 
-% Remaining structure to fill as runs land: in-domain table (price of
-% generality), diversity curve (Figure 3, C5), per-domain failure-mode
-% discussion for the other three held-out targets.
-
-Table~\ref{table:main_table} presents the zero-shot results. We organize
-the discussion so that each question about the method is answered by one
-comparison in the table: a rung of the ladder, a control, or a diagnostic.
+Table~\ref{table:main_table} presents the zero-shot results for all eight
+held-out domains, and Table~\ref{table:indomain} the in-domain results. We
+organize the discussion so that each question is answered by one
+comparison: a rung of the ladder, a control, or a diagnostic.
 
 \begin{table}[t]
-\setlength{\tabcolsep}{1.6pt}
-\renewcommand{\arraystretch}{1.1}
+\setlength{\tabcolsep}{2.2pt}
+\renewcommand{\arraystretch}{1.05}
 \footnotesize
 \centering
-\caption{Zero-shot coverage (C, \%) and plan quality (P), leave-one-domain-out.
-E = the held-out domain's own training-scale instances (unseen); H = its test
-instances, up to an order of magnitude larger. GABAR$^\dagger$: published
-per-domain GABAR trained \emph{on} the held-out domain
-\citep{gabar}, averaged over its three published test subsets so that it
-covers the same size range as our hard split: the ceiling set by dedicated
-training. Ladder columns add one component
+\caption{Zero-shot coverage (C, \%) leave-one-domain-out: each row's domain
+is held out of training. E = the held-out domain's own training-scale
+instances (unseen); H = its test instances, up to an order of magnitude
+larger. Rand: uniform choice among applicable actions under the same
+executor and monitor (mean of three rollouts). Untr: the identical system
+after one epoch of training. Ladder columns add one group of components
 each: \union{} (symbol one-hots, domain in the weights), \gadarbind{}
 (structural features, lifted domain layer, binding edges), \gadar{} (chain
-layer). n/a marks cells we did not measure; they are not zeros.}
+layer, effect edges, goal features). P: \gadar{}'s plan quality.
+GABAR$^\dagger$: published per-domain GABAR, trained \emph{on} the domain
+and evaluated on its own test instances (not identical to ours).}
 \label{table:main_table}
-\definecolor{turqLight}{HTML}{C8F1EA}
-\definecolor{turqMed}{HTML}{64D1C6}
-\definecolor{turqDark}{HTML}{00A3A1}
-\newcommand{\levelA}{}
-\newcommand{\levelB}{\cellcolor{turqLight}}
-\newcommand{\levelC}{\cellcolor{turqMed}}
-\newcommand{\levelD}{\cellcolor{turqDark!80}}
-\definecolor{plumLight}{HTML}{F4EBFC}
-\definecolor{plumMed}{HTML}{DCC4F6}
-\definecolor{plumDark}{HTML}{BBA0E5}
-\newcommand{\pvalA}{\cellcolor{plumLight}}
-\newcommand{\pvalB}{\cellcolor{plumMed}}
-\newcommand{\pvalC}{\cellcolor{plumDark!80}}
-\newcommand{\pNA}[1]{#1}
-\newcommand{\pA}[1]{\pvalA #1}
-\newcommand{\pB}[1]{\pvalB #1}
-\newcommand{\pC}[1]{\pvalC #1}
-\newcommand{\nores}{n/a}
-\begin{tabular}{@{}l@{\hspace{1pt}}l|cc|cc|cc|cc@{}}
+\begin{tabular}{@{}ll|cc|ccc|c|c@{}}
 \toprule
-& & \multicolumn{2}{c|}{GABAR$^\dagger$} & \multicolumn{2}{c|}{\union{}} & \multicolumn{2}{c|}{\gadarbind{}} & \multicolumn{2}{c}{\textbf{\gadar{}}} \\
-\cmidrule(lr){3-4} \cmidrule(lr){5-6} \cmidrule(lr){7-8} \cmidrule(l){9-10}
-Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ \\
+Domain & & Rand & Untr & \union{} & \gadarbind{} & \textbf{\gadar{}} & P & GABAR$^\dagger$ \\
 \midrule
-\multirow{2}{*}{\makebox[0.95cm][l]{Visitall}}
-& E & -- & -- & \levelA 0.8 & 0.3 & \levelA 16.0 & 0.63 & \levelD \textbf{100.0} & \pB{\textbf{0.81}} \\
-& H & \levelD 90.7 & \pC{1.07} & \levelA 0.0 & -- & \levelA 4.0 & 0.42 & \levelB \textbf{68.0} & \pB{\textbf{0.97}} \\
+\multirow{2}{*}{Blocks}    & E & 1.7  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{17.5} & \todonum{--} & -- \\
+                           & H & 0.2  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{4.5}  & \todonum{--} & 100.0 \\
 \midrule
-\multirow{2}{*}{\makebox[0.95cm][l]{Miconic}}
-& E & -- & -- & \levelA 0.0 & -- & \levelA 0.0 & -- & \levelA 35.96 & \pA{0.63} \\
-& H & \levelD 100.0 & \pB{0.97} & \levelA 0.0 & -- & \levelA 0.0 & -- & \levelA 0.00 & -- \\
+\multirow{2}{*}{Gripper}   & E & 0.0  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & -- \\
+                           & H & 0.0  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & 100.0 \\
 \midrule
-\multirow{2}{*}{\makebox[0.95cm][l]{Grid}}
-& E & -- & -- & \levelA 1.0 & 0.38 & \levelA 3.1 & \pNA{0.25} & \levelA 11.98 & \pNA{0.21} \\
-& H & \levelD 96.3 & \pB{0.83} & \levelA 0.0 & -- & \levelA 0.0 & -- & \levelA 2.08 & \pNA{0.15} \\
+\multirow{2}{*}{Miconic}   & E & 88.3 & \todonum{2.6} & \todonum{--} & \todonum{--} & \todonum{2.6} & \todonum{--} & -- \\
+                           & H & 1.1  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & 100.0 \\
+\midrule
+\multirow{2}{*}{Visitall}  & E & 99.7 & \todonum{26.4} & \todonum{--} & \todonum{--} & \todonum{100.0} & \todonum{0.81} & -- \\
+                           & H & 6.0  & \todonum{0.0} & \todonum{--} & \todonum{--} & \todonum{\textbf{68.0}} & \todonum{0.97} & 90.7 \\
+\midrule
+\multirow{2}{*}{Grid}      & E & 3.0  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{13.0} & \todonum{--} & -- \\
+                           & H & 0.0  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & 96.3 \\
+\midrule
+\multirow{2}{*}{Logistics} & E & 0.0  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & -- \\
+                           & H & 0.0  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & 79.0 \\
+\midrule
+\multirow{2}{*}{Spanner}   & E & 63.4 & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & -- \\
+                           & H & 43.8 & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & 92.0 \\
+\midrule
+\multirow{2}{*}{Rovers}    & E & 75.2 & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & -- \\
+                           & H & 30.9 & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & 82.0 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -630,135 +638,147 @@ Domain & Split & C$\uparrow$ & P$\uparrow$ & C$\uparrow$ & P$\uparrow$ & C$\upar
 \renewcommand{\arraystretch}{1.1}
 \small
 \centering
-\caption{In-domain coverage (hard split): a \emph{single} policy trained on
-all eight domains, per rung, against published per-domain GABAR
-($\dagger$: one model per domain, averaged over its three published test
-subsets).}
+\caption{In-domain coverage (hard split). Ladder columns: a \emph{single}
+policy trained on all eight domains, per rung. \gadar{}$_1$: the same
+representation trained on that domain alone, on the same test instances,
+which separates the cost of the representation from the cost of sharing one
+model across eight domains. GABAR$^\dagger$: published per-domain GABAR, one
+model per domain, evaluated on its own test instances.}
 \label{table:indomain}
 \newcommand{\nres}{n/a}
-\begin{tabular}{@{}l|c|ccc@{}}
+\begin{tabular}{@{}l|c|ccc|c@{}}
 \toprule
-Domain & GABAR$^\dagger$ & \union{} & \gadarbind{} & \gadar{} \\
+Domain & GABAR$^\dagger$ & \union{} & \gadarbind{} & \gadar{} & \gadar{}$_1$ \\
 \midrule
-Blocks    & 100.0 & 30.0 & 53.0 & 57.0 \\ % UNION PROVISIONAL: 57/139 of 200, refresh
-Miconic   & 100.0 & 100.0 & 61.3 & 83.0 \\
-Spanner   & 92.0 & 1.0 & 1.0 & 35.4 \\
-Gripper   & 100.0 & 100.0 & 94.2 & 93.1 \\ % UNION PROVISIONAL: 137/137 of 173, refresh
-Visitall  & 90.7 & 14.0 & 68.0 & 92.0 \\
-Grid      & 96.3 & 2.1 & 70.8 & 97.9 \\
-Logistics & 79.0 & 14.6 & 0.0 & 16.6 \\
-Rovers    & 82.0 & 5.6 & 5.6 & 9.3 \\
+Blocks    & 100.0 & 30.0 & 53.0 & 57.0 & \todonum{--} \\ % UNION PROVISIONAL: 57/139 of 200, refresh
+Miconic   & 100.0 & 100.0 & 61.3 & 83.0 & \todonum{--} \\
+Spanner   & 92.0 & 1.0 & 1.0 & 35.4 & \todonum{--} \\
+Gripper   & 100.0 & 100.0 & 94.2 & 93.1 & \todonum{--} \\ % UNION PROVISIONAL: 137/137 of 173, refresh
+Visitall  & 90.7 & 14.0 & 68.0 & 92.0 & \todonum{--} \\
+Grid      & 96.3 & 2.1 & 70.8 & 97.9 & \todonum{--} \\
+Logistics & 79.0 & 14.6 & 0.0 & 16.6 & \todonum{--} \\
+Rovers    & 82.0 & 5.6 & 5.6 & 9.3 & \todonum{--} \\
 \midrule
-Combined  & 92.5 & 33.4 & 44.2 & 60.5 \\
+Combined  & 92.5 & 33.4 & 44.2 & 60.5 & \todonum{--} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\textbf{One model or eight? (GABAR$^\dagger$ vs.\ the ladder.)}
-Table~\ref{table:indomain} compares objects of different kinds. The
-GABAR$^\dagger$ column is eight models, one trained per domain: reading a
-number from it presupposes knowing which domain the instance came from and
-having trained on that domain already. Every rung of our ladder is one
-model that answers for all eight. The comparison also runs the other way on
-cost. GABAR trains in roughly two hours per domain, about sixteen hours and
-eight artifacts for that column, each to be stored, selected among, and
-retrained when the domain changes; a single eight-domain model here trains
-in seven to eight hours. That is why we report \union{} and \gadarbind{} as
-systems and not only as ablations: all three are multi-domain policies, a
-capability none of the per-domain column has, and only \gadar{} adds
-zero-shot execution on top of it. As the number of domains grows the
-single-model form is the more useful artifact, independent of the
-per-domain gap in any one row.
+\textbf{Does one model serve eight domains? (Table~\ref{table:indomain}.)}
+The GABAR$^\dagger$ column is eight models, one trained per domain and
+applicable only to instances of that domain; every rung of the ladder is a
+single model for all eight. A single \gadar{} policy solves
+\todonum{60.5}\% of the eight test sets against 92.5\% for the eight
+dedicated models, and the gap is concentrated in Blocks, Logistics, and
+Rovers. \gadar{}$_1$, the same representation trained on one domain,
+separates two explanations for the gap. Where \gadar{}$_1$ recovers
+per-domain performance, the cost lies in sharing one model across eight
+domains; where it does not, it lies in the representation: in
+\todonum{k} of the eight domains \gadar{}$_1$ comes within
+\todonum{5} points of GABAR$^\dagger$. Training cost does not favor either
+form clearly. One eight-domain model trains in seven to eight hours on one
+GPU; the eight per-domain models take about two hours each, sixteen hours
+sequentially or two with eight GPUs, and leave eight artifacts to maintain.
 
 \textbf{Does the domain need to be in the input? (\union{} vs.\ \gadar{}.)}
 \union{}, trained on the identical data with the identical architecture,
-is the stronger model on the training domains it fits (100\% on
-in-domain Miconic against \gadar{}'s 83.0\%: the expressiveness tax of
-giving up symbol identity) and collapses off them. It never exceeds 1\% on
-any held-out split and is 0.0\% on four of the six, and its top-ranked
-proposal is applicable in at most 0.2\% of states there, so the one or two
-instances it does solve come from the executor and not from the policy,
-while \gadar{} reaches 100\% and 68\% on the two Visitall splits.
-The advantage does not survive averaging: 33.4\% over the eight domains
-against \gadarbind{}'s 44.2\% and \gadar{}'s 60.5\%, because \union{} is
-bimodal, near-perfect on Miconic and Gripper and near-zero on Spanner and
-Grid, which \gadar{} solves at 35.4\% and 97.9\%. We read this as
-competition for a shared vocabulary-sized parameterization that structural
-features avoid by construction, though we have not isolated the mechanism.
-A symbol-identity representation learns the domains it sees and transfers
-nothing beyond their vocabulary; moving the domain description into the
-input is what makes transfer possible at all.
+is the stronger model on some training domains (100\% on in-domain
+Miconic and Gripper, against \gadar{}'s 83.0\% and 93.1\%) and fails
+completely off them: it solves \todonum{0}\% of every held-out hard split,
+and its top-ranked proposal is applicable in fewer than \todonum{1}\% of
+states there, so the policy constructs almost no legal action on an unseen
+domain. \gadar{} executes on all eight held-out domains. A symbol-identity
+representation cannot act on a vocabulary it has not seen; moving the domain
+description into the input is what makes zero-shot execution possible at
+all. Averaged in-domain, \union{} reaches 33.4\% against \gadar{}'s
+\todonum{60.5}\%, because it is bimodal: near-perfect on Miconic and
+Gripper and near-zero on Spanner and Grid. We read this as competition for
+a shared vocabulary-sized parameterization, though we have not isolated the
+mechanism.
 
-\textbf{Is the description enough, or is the chain layer needed?
-(\gadarbind{} vs.\ \gadar{}.)} \gadarbind{} already contains the full
-domain description and the binding edges, yet reaches only 4.0\% on the
-hard split and 16.0\% on the easy split; adding the chain layer moves these
-to 68.0\% and 100.0\%. The step comes from a component that adds no learned
-parameters and no new supervision: the chain layer only restates relations
-already present in the domain description in a form message passing can
-use. The description alone is not enough; it must be made reachable.
+\textbf{Is the description enough? (\gadarbind{} vs.\ \gadar{}.)}
+\gadarbind{} already contains the full domain description and the binding
+edges, yet reaches only \todonum{4.0}\% on hard Visitall; the chain layer,
+together with the grounded effect edges and goal features added in the same
+step, moves this to \todonum{68.0}\%. That step introduces no new supervision
+and no domain-sized parameters: its relations are restated from $D$, and it
+widens only the domain-independent edge-feature input
+(\todonum{N} parameters for \gadarbind{} against \todonum{N} for
+\gadar{}). The description alone does not transfer; it must be restated in
+a form message passing can use.
 
-\textbf{Is it the policy or the executor? (Untrained control vs.\
-\gadar{}.)} Coverage is measured with a revisit monitor that resamples an
-applicable action when the greedy rollout re-enters a visited state, so a
-natural concern is that the monitor, not the policy, is solving the
-instances. The identical system with a network that has seen a single epoch
-of training solves 0.0\% of the hard split and 26.4\% of the easy split.
-The easy-split number measures how forgiving small instances are under a
-monitored executor and is the number the 100\% should be read against; on
-the hard split, where the harness alone produces nothing, the 68\% reflects
-what was learned from the seven training domains. Removing the monitor
-entirely separates the two further: under pure greedy execution \gadar{}
-still solves 50.4\% of the easy split and 8.0\% of the hard split, against
-20.8\% and 0.0\% for the untrained control.
+\textbf{Is it the policy or the executor? (Floors vs.\ \gadar{}.)} The
+executor resamples an applicable action when the rollout re-enters a
+visited state, so part of any coverage may come from the executor rather
+than the policy. Two floors separate them. Random choice among applicable
+actions under the same executor solves 99.7\% of easy Visitall and 88.3\%
+of easy Miconic: on small instances the executor alone suffices, and the
+easy split cannot credit the policy with anything. On the hard split it
+can: random choice solves 6.0\% of hard Visitall, the untrained network
+\todonum{0.0}\%, and \gadar{} \todonum{68.0}\%. The two floors also differ
+from each other, and the difference matters: an untrained network is not a
+neutral policy but a consistently biased one, and it falls below random
+wherever random exploration is enough (\todonum{2.6}\% against 88.3\% on
+easy Miconic). A policy should therefore be credited against the higher of
+the two floors. Against that standard, \gadar{} transfers on hard Visitall
+and on Blocks (\todonum{4.5}\% against 0.2\%), and nowhere else.
+
+\textbf{Are the plans goal-directed? (Plan quality.)} Where random choice
+also succeeds, plan length separates a goal-directed policy from legal
+exploration. On easy Visitall, \gadar{}'s plans average \todonum{36.3}
+steps against 29.2 for the planner, a plan quality of \todonum{0.81}; random
+choice solves nearly the same instances with plans averaging 107.1 steps, a
+plan quality of 0.27. On the hard split, where random choice rarely
+succeeds, \gadar{}'s plan quality is \todonum{0.97}: its plans are within
+\todonum{3}\% of the planner's, which searches while \gadar{} does not.
 
 \textbf{Is it a terminal trigger? (Achievement oracle vs.\ \gadar{}.)} A
-policy might only learn to fire when a goal atom is one action away, with
-the easy instances forgiving everything else. The achievement oracle
-hard-codes exactly that behavior with perfect knowledge and bounds coverage
-at 50\% on easy Visitall and 0--5\% on Miconic. \gadar{} exceeds this
-ceiling by a factor of two on Visitall, so the policy is also choosing
-actions that are several steps from achieving anything, which is what the
-bucketed goal distance over the enables relation was designed to support.
+policy might only learn to fire when a goal atom is one action away. The
+achievement oracle hard-codes exactly that behavior and defers to the
+policy otherwise. On hard Visitall it solves \todonum{--}\% against
+\gadar{}'s \todonum{68.0}\%, so the policy is also choosing actions several
+steps from achieving anything, which is what the bucketed goal distance
+over the enables relation was designed to support.
 
-\textbf{Is it competence or wandering? (Plan quality.)} An easy split under
-a monitored executor with a 500-step bound is forgiving: aimless but legal
-behavior can eventually stumble into goals, so coverage alone cannot
-distinguish competence from wandering there. Plan quality can. \gadar{}'s
-mean plan length on the easy split is 36.3 steps against the satisficing
-planner's 29.2 on the same instances, a ratio of 0.81; a wandering policy
-under a 500-step bound would show a ratio an order of magnitude worse. On
-the hard split, where coverage is itself decisive, plan quality is 0.97:
-the zero-shot policy produces plans within 3\% of a planner that searches,
-while performing no search itself.
-
-\textbf{How far does the transfer go? (Miconic and Grid.)} On Miconic,
-\gadar{} solves 35.96\% of the easy split at plan quality 0.63, against
-2.63\% for the untrained control under an identical executor, a
-thirteen-fold gap attributable to what was learned on the other seven
-domains. Coverage on the hard split, whose expert plans average 182 steps,
-is 0\%: at this horizon, per-step errors that the easy split absorbs
-compound beyond recovery. On Grid the coverage is smaller but moves with
-the ladder in the same direction: \union{} solves 1.0\% of the easy split
-and none of the hard split, \gadarbind{} 3.1\% and none, while \gadar{}
-reaches 11.98\% and 2.08\%. Neither domain approaches Visitall, and we
-report both as partial transfers rather than as successes.
+\textbf{Where does transfer fail? (The other seven domains.)} On
+\todonum{six} of the seven remaining held-out domains \gadar{} does not
+exceed the higher floor on the hard split, and on \todonum{Spanner and
+Rovers} it falls below random choice, which solves 43.8\% and 30.9\%. We
+cannot yet give one cause for all of them, but Logistics shows one clearly.
+Its two transport modes use schemas, \textsf{load-truck} and
+\textsf{load-airplane} and their unload counterparts, whose lifted structure
+is identical up to the vehicle type they bind, so a representation that
+ignores symbol names gives them the same features even though only one
+advances the goal in a given state. This does not contradict renaming
+invariance: two whole domains with identical structure do call for
+identical behavior, but schemas that are structurally alike \emph{within} a
+domain can still play different roles in it. The in-domain results point
+the same way: with Logistics among its training domains, \gadar{} still
+reaches only \todonum{16.6}\% on it, against 97.9\% on Grid. Whether
+structural similarity between schemas predicts transfer across all eight
+domains we leave to a systematic analysis; Blocks, which transfers despite
+paired schemas, shows it is not the only factor.
 
 \section{Conclusion}
 
 We introduced \gadar{}, a policy for classical planning that takes the
 domain description as input and constructs grounded actions in domains
-never seen in training, without search. The capability rests on the binding
-layer, which connects ground applicability to lifted structure, and the
-chain layer, which makes the domain's producer--consumer structure and its
-distance to the goal explicit. Neither adds a learned parameter or a new
-source of supervision, so what transfers is carried by the representation
-rather than by the network. On held-out Visitall the chain
-layer moves zero-shot coverage from 4\% to 68\% on the hard split at plan
-quality 0.97, where the untrained control solves nothing. Past the
-structural transfer ceiling, adaptation needs data from the new domain:
-few-shot adaptation, lifted successor generation, richer PDDL fragments,
-and probabilistic settings remain future work.
+never seen in training, without search. The capability rests on the
+binding layer, which connects ground applicability to lifted structure,
+and the chain layer, which makes the domain's producer--consumer structure
+and its distance to the goal explicit; neither adds supervision or
+domain-sized parameters. A single \gadar{} policy covers eight domains, and
+on held-out Visitall the chain layer moves zero-shot coverage of the large
+test instances from \todonum{4}\% to \todonum{68}\% at plan quality
+\todonum{0.97}, against \todonum{6.0}\% for random choice under the same
+executor. Transfer to the other held-out domains is limited, and our
+evaluation, with every checkpoint selected without the held-out domain and
+every result set against both a random and an untrained floor, is designed
+to show where it fails as clearly as where it succeeds. Schemas that are
+structurally alike but play different roles, as in Logistics, mark a limit
+that renaming-invariant features cannot cross without data from the new
+domain. Few-shot adaptation, lifted successor generation, richer PDDL
+fragments, and probabilistic settings remain future work.
 
 \bibliography{aaai2027}
 
