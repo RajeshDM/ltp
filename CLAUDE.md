@@ -218,6 +218,16 @@ tools/zeroshot_domains.py          prints a LOO config's zero-shot
                                    whose domain is not in `domains`), exit 1
                                    if none. Used by eval_queue.sh's
                                    ZERO_SHOT_ONLY=1
+tools/crossfold_select.py          the paper's test-blind zero-shot rule:
+                                   for fold d, the epoch maximizing MEAN
+                                   hard-split zero-shot coverage over the
+                                   other folds of the same rung (ties ->
+                                   earliest; only epochs every other fold
+                                   has). Reads the EXPID_SUFFIX=_epochs
+                                   periodic sweep. Prints the oracle
+                                   (best-on-test) beside it, labelled NOT
+                                   reportable. Pinned by
+                                   tests/test_crossfold_select.py
 tools/random_policy_baseline.py    zero-shot floor: uniform-random applicable
                                    action rollouts, config test-domains syntax
                                    (incl. @train), no model/training needed
