@@ -290,3 +290,29 @@ original GABAR baselines. Not attempted this revision (no time):
 Caveat for the comparison: `baseline_*` use GABAR's published settings
 (batch 16, <=200 training problems); `sd_joint_chain_*` use the suite's
 (batch 64, all problems). Same test problems, same epochs and selection.
+
+## RESULT 2026-09-26: in-domain, single-domain GADAR vs seven-domain GADAR vs GABAR
+
+Hard (test) split, combined-loss checkpoint, one seed. LOO = mean over the 7
+leave-one-out models that trained on the domain. SD = `sd_joint_chain_*`.
+GABAR = `baseline_*` through our harness, same test problems.
+
+| domain | GABAR† (published) | GABAR (ours) | LOO GADAR | SD GADAR |
+|---|---|---|---|---|
+| blocks | 100.0 | pending (410/500) | 74.6 | 95.5 |
+| gripper | 100.0 | pending (training) | 94.5 | 100.0 |
+| miconic | 100.0 | 99.2 (E330) | 61.9 | 41.2 |
+| spanner | 92.0 | - | 47.9 | 85.4 |
+| visitall | 90.7 | - | 81.1 | 54.0 |
+| grid | 96.3 | - | 94.6 | 87.5 |
+| logistics | 79.0 | - | 2.7 | 3.1 |
+| rovers | 82.0 | - | 9.0 | 7.4 |
+| mean | 92.5 | | 58.3 | 59.3 |
+
+Reading: sharing one model across seven domains costs ~1 point on average
+(58.3 vs 59.3), with positive transfer to visitall (+27), miconic (+21),
+grid (+7) and negative to spanner (-38), blocks (-21). Logistics and rovers
+fail single-domain too, so their gap to GABAR is the representation, not
+sharing; UNION reaches 59.4 in-domain on logistics (n=1), consistent with
+truck/airplane aliasing. Miconic: representation cost is large (SD 41.2 vs
+matched GABAR 99.2).

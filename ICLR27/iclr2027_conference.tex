@@ -80,7 +80,7 @@ Address \\
 
 \begin{abstract}
 
-Learned policies for classical planning act without search, but each is tied to the domain it was trained on: network modules per action schema, parameters per predicate, or vocabulary-sized encodings mean a trained policy cannot even be executed on a new domain's predicates and action schemas. We present \gadar{} (Generalizing Across Domains via Action Ranking), a policy that takes the domain description as input, $\pi(s, G, D)$, and constructs grounded actions in domains never seen in training, without search. Symbols are described by the roles they play in the domain rather than by their names, in three layers that each extend the previous one: (i) a \emph{lifted domain layer} embeds $D$ in every state graph through structural signatures; (ii) a \emph{binding layer} ties each ground action's applicability to the lifted preconditions it instantiates; and (iii) a \emph{chain layer} states which schema produces what another needs and how far each schema stands from the goal. We evaluate leave-one-domain-out over eight benchmark domains, selecting every checkpoint without access to the held-out domain. A single \gadar{} policy trained on seven domains solves 58.3\% of their test instances, trained on one domain it solves \todonum{--}\% against \todonum{--}\% for per-domain GABAR on the same instances, and a multi-task control that keeps symbol identity in its weights, while strong on some of the domains it trains on, transfers to none of the held-out ones. Zero-shot, \gadar{} executes on every held-out domain and solves \todonum{68}\% of the large test instances of held-out Visitall, where an identically-executed untrained network solves \todonum{0}\%. Transfer to the other seven held-out domains is limited (\todonum{0--5}\% on their test instances), and we identify where it fails: domains whose action schemas are structurally alike but play different roles, which renaming-invariant features cannot distinguish without data from the new domain.
+Learned policies for classical planning act without search, but each is tied to the domain it was trained on: network modules per action schema, parameters per predicate, or vocabulary-sized encodings mean a trained policy cannot even be executed on a new domain's predicates and action schemas. We present \gadar{} (Generalizing Across Domains via Action Ranking), a policy that takes the domain description as input, $\pi(s, G, D)$, and constructs grounded actions in domains never seen in training, without search. Symbols are described by the roles they play in the domain rather than by their names, in three layers that each extend the previous one: (i) a \emph{lifted domain layer} embeds $D$ in every state graph through structural signatures; (ii) a \emph{binding layer} ties each ground action's applicability to the lifted preconditions it instantiates; and (iii) a \emph{chain layer} states which schema produces what another needs and how far each schema stands from the goal. We evaluate leave-one-domain-out over eight benchmark domains, selecting every checkpoint without access to the held-out domain. A single \gadar{} policy trained on seven domains solves 58.3\% of their test instances, one point below the 59.3\% of dedicated single-domain \gadar{} models, and a multi-task control that keeps symbol identity in its weights, while strong on some of the domains it trains on, transfers to none of the held-out ones. Zero-shot, \gadar{} executes on every held-out domain and solves \todonum{68}\% of the large test instances of held-out Visitall, where an identically-executed untrained network solves \todonum{0}\%. Transfer to the other seven held-out domains is limited (\todonum{0--5}\% on their test instances), and we identify where it fails: domains whose action schemas are structurally alike but play different roles, which renaming-invariant features cannot distinguish without data from the new domain.
 
 \end{abstract}
 
@@ -616,44 +616,49 @@ GABAR$^\dagger$: published per-domain GABAR on its own test instances.}
 \toprule
 Domain & GABAR$^\dagger$ & GABAR & \union{} & \gadarbind{} & \gadar{} & \gadar{}$_1$ \\
 \midrule
-Blocks    & 100.0 & \todonum{--} & \todonum{--} & \todonum{--} & 74.6 & \todonum{--} \\
-Miconic   & 100.0 & \todonum{--} & \todonum{--} & \todonum{--} & 61.9 & \todonum{--} \\
-Gripper   & 100.0 & \todonum{--} & \todonum{--} & \todonum{--} & 94.5 & \todonum{--} \\
-Spanner   & 92.0  & --           & \todonum{--} & \todonum{--} & 47.9 & \todonum{--} \\
-Visitall  & 90.7  & --           & \todonum{--} & \todonum{--} & 81.1 & \todonum{--} \\
-Grid      & 96.3  & --           & \todonum{--} & \todonum{--} & 94.6 & \todonum{--} \\
-Logistics & 79.0  & --           & \todonum{--} & \todonum{--} & 2.7  & \todonum{--} \\
-Rovers    & 82.0  & --           & \todonum{--} & \todonum{--} & 9.0  & \todonum{--} \\
+Blocks    & 100.0 & \todonum{--} & \todonum{--} & \todonum{--} & 74.6 & 95.5 \\
+Miconic   & 100.0 & 99.2 & \todonum{--} & \todonum{--} & 61.9 & 41.2 \\
+Gripper   & 100.0 & \todonum{--} & \todonum{--} & \todonum{--} & 94.5 & 100.0 \\
+Spanner   & 92.0  & --           & \todonum{--} & \todonum{--} & 47.9 & 85.4 \\
+Visitall  & 90.7  & --           & \todonum{--} & \todonum{--} & 81.1 & 54.0 \\
+Grid      & 96.3  & --           & \todonum{--} & \todonum{--} & 94.6 & 87.5 \\
+Logistics & 79.0  & --           & \todonum{--} & \todonum{--} & 2.7  & 3.1 \\
+Rovers    & 82.0  & --           & \todonum{--} & \todonum{--} & 9.0  & 7.4 \\
 \midrule
-Mean      & 92.5  & \todonum{--} & \todonum{--} & \todonum{--} & 58.3 & \todonum{--} \\
+Mean      & 92.5  & \todonum{--} & \todonum{--} & \todonum{--} & 58.3 & 59.3 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \textbf{Is the representation costly on its own? (\gadar{}$_1$ vs.\ GABAR.)}
-Trained on a single domain, \gadar{}$_1$ solves \todonum{--}\%,
-\todonum{--}\%, and \todonum{--}\% of the Blocks, Gripper, and Miconic test
-instances, against \todonum{--}\%, \todonum{--}\%, and \todonum{--}\% for
-GABAR retrained through the same pipeline on the same instances. Across all
-eight domains \gadar{}$_1$ comes within \todonum{5} points of
-GABAR$^\dagger$ in \todonum{k} of them. Describing symbols by their roles
-instead of their names, which is what makes a policy executable on an unseen
-domain, therefore costs \todonum{little} when the policy is trained on one
-domain.
+Trained on a single domain, \gadar{}$_1$ solves 95.5\%, 100.0\%, and 41.2\%
+of the Blocks, Gripper, and Miconic test instances, against \todonum{--}\%,
+\todonum{--}\%, and 99.2\% for GABAR retrained through the same pipeline on
+the same instances. Against published GABAR$^\dagger$ it is within five
+points on Blocks and Gripper and within ten on Spanner and Grid, but far
+behind on Miconic and Visitall, and it does not learn Logistics or Rovers
+(3.1\% and 7.4\%). Describing symbols by their roles rather than their
+names, which is what makes the policy executable on an unseen domain,
+therefore costs little in four domains and a great deal in the others. On
+Logistics the cost is consistent with the aliasing discussed below: its
+truck and airplane schemas are structurally alike, so a representation
+without names cannot separate them even when the domain is in training,
+while \union{}, which keeps the names, reaches \todonum{59.4}\% there.
 
 \textbf{Does one model serve several domains? (\gadar{} vs.\ \gadar{}$_1$.)}
-Every column except GABAR is a policy that serves seven domains at once.
-Averaged over the seven such policies that train on each domain, \gadar{}
-solves 58.3\% of the test instances against 92.5\% for eight dedicated
-GABAR$^\dagger$ models. The gap is uneven: \gadar{} is within two points on
-Grid (94.6\% against 96.3\%), within six on Gripper, and within ten on
-Visitall, while it is concentrated in Logistics (2.7\%) and Rovers (9.0\%),
-with Miconic and Spanner in between. The difference between \gadar{} and
-\gadar{}$_1$ on the same domain is the price of sharing one model across
-seven domains, which we find to be \todonum{concentrated in Logistics and
-Rovers}. Training cost does not favor either form clearly: one seven-domain
-model trains in \todonum{about 14} hours on one GPU, while dedicated models
-take half an hour to two hours each and leave one artifact per domain.
+Every ladder column is a policy that serves seven domains at once. Averaged
+over the seven such policies that train on each domain, \gadar{} solves
+58.3\% of the test instances, against 59.3\% for eight single-domain
+\gadar{}$_1$ models: sharing one model across seven domains costs one point
+on average. The average hides transfer in both directions. Training
+alongside other domains helps Visitall (81.1\% against 54.0\%), Miconic
+(61.9\% against 41.2\%), and Grid (94.6\% against 87.5\%), and hurts Spanner
+(47.9\% against 85.4\%) and Blocks (74.6\% against 95.5\%). Logistics and
+Rovers are equally low either way, so their gap to dedicated GABAR is a
+cost of the representation, not of sharing. Training cost does not favor
+either form clearly: one seven-domain model trains in \todonum{about 14}
+hours on one GPU, while dedicated models take half an hour to two hours
+each and leave one artifact per domain.
 
 \textbf{Does the domain need to be in the input? (\union{} vs.\ \gadar{}.)}
 \union{}, trained on the identical data with the identical architecture,
@@ -727,7 +732,8 @@ invariance: two whole domains with identical structure do call for
 identical behavior, but schemas that are structurally alike \emph{within} a
 domain can still play different roles in it. The in-domain results point
 the same way: with Logistics among its training domains, \gadar{} still
-reaches only 2.7\% on it, against 94.6\% on Grid. Whether
+reaches only 2.7\% on it, and 3.1\% when trained on Logistics alone,
+against 94.6\% on Grid. Whether
 structural similarity between schemas predicts transfer across all eight
 domains we leave to a systematic analysis; Blocks, which transfers despite
 paired schemas, shows it is not the only factor.
@@ -740,9 +746,9 @@ never seen in training, without search. The capability rests on the
 binding layer, which connects ground applicability to lifted structure,
 and the chain layer, which makes the domain's producer--consumer structure
 and its distance to the goal explicit; neither adds supervision or
-domain-sized parameters. One \gadar{} policy serves seven domains at once,
-trained on a single domain it solves \todonum{--}\% of the test instances
-against \todonum{--}\% for per-domain GABAR, and on held-out Visitall the chain layer moves zero-shot coverage of the large
+domain-sized parameters. One \gadar{} policy serves seven domains at once at
+the in-domain coverage of dedicated single-domain models (58.3\% against
+59.3\%), and on held-out Visitall the chain layer moves zero-shot coverage of the large
 test instances from \todonum{4}\% to \todonum{68}\% at plan quality
 \todonum{0.97}, against \todonum{6.0}\% for random choice under the same
 executor. Transfer to the other held-out domains is limited, and our
@@ -1022,8 +1028,8 @@ suite's settings (batch size 64, all training instances of the domain,
 500 epochs). The retrained GABAR models use the published GABAR settings
 (batch size 16, at most 200 training instances), are evaluated on the same
 test instances as every other column with the same checkpoint rule, and
-were trained for \todonum{N} (Blocks), \todonum{N} (Gripper), and
-\todonum{N} (Miconic) epochs.
+were trained for \todonum{500} (Blocks), \todonum{N} (Gripper), and 500
+(Miconic) epochs.
 
 \subsection{Renaming Invariance}
 \label{app:invariance}
