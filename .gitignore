@@ -175,3 +175,6 @@ ploi/server_information.py
 !cache/results/planner_data/*optimal.json
 
 **sas_plan**
+# Campaign scratch (tmp_scripts/) — see tmp_scripts/README.md
+.preflight_ok
+campaign_node_*.csv

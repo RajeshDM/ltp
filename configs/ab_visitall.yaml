@@ -1,0 +1,17 @@
+# Not an experiment: a small single-domain model whose only purpose is to give
+# the test path something to load, so featurization changes can be timed
+# end to end (see tools/bench_featurize.py for the isolated measurement).
+# Short training on purpose - an undertrained policy runs long rollouts, which
+# is more of the per-state work we want to time, not less.
+description: Timing fixture, single-domain visitall (joint_chain)
+base: _common.yaml
+expid: ab_visitall
+domains: visitall_ipcc
+featurization: joint_chain
+test_domains: visitall_ipcc:10
+mode: train
+epochs: 60
+seed: 101
+checkpoint_every: 20
+keep_checkpoints: 2
+test_model_metrics: combined

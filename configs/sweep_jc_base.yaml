@@ -1,0 +1,17 @@
+# Regularization sweep, arm 0 of 5: unregularized reference.
+#
+# All five sweep_jc_* arms are identical except for one knob, share seed 11
+# (so the paper's seed-10 checkpoints are never touched), and are `mode:
+# train` - testing is a separate pass so the arms can be compared before
+# spending hours evaluating them. See train_test_scripts/RUNBOOK.md.
+description: Sweep arm - no regularization (reference)
+base: _common.yaml
+expid: sweep_jc_base
+domains: manyblocks_ipcc_big,gripper_ipcc,miconic_ipcc,visitall_ipcc,grid_ipcc,logistics_ipcc,spanner_ipcc,rovers_ipcc
+featurization: joint_chain
+test_domains: manyblocks_ipcc_big:200,gripper_ipcc:173,miconic_ipcc:119,visitall_ipcc:50,grid_ipcc:48,logistics_ipcc:96,spanner_ipcc:96,rovers_ipcc:54
+mode: train
+epochs: 1000
+seed: 11
+checkpoint_every: 100
+keep_checkpoints: 3

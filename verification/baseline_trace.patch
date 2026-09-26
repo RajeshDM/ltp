@@ -1,0 +1,53 @@
+diff --git a/ploi/run_planner_with_ltp_v2.py b/ploi/run_planner_with_ltp_v2.py
+index 6216627..256c239 100644
+--- a/ploi/run_planner_with_ltp_v2.py
++++ b/ploi/run_planner_with_ltp_v2.py
+@@ -174,6 +174,24 @@ def _create_planner(planner_name):
+         return FD(alias_flag="--alias seq-opt-lmcut")
+     raise ValueError(f"Uncrecognized planner name {planner_name}")
+ 
++# --- verification-only score-trace instrumentation ---
++# Identical trace format to the speed branch: one JSON line per model call,
++# keyed by (epoch, problem, step). NO behavior/speed changes in this patch.
++_score_trace = {"file": None, "epoch": None, "problem": None, "step": 0}
++
++def _trace_scores(epoch, problem_idx, step_idx, results):
++    path = os.environ.get("GABAR_TRACE_SCORES", "")
++    if not path:
++        return
++    if _score_trace["file"] is None:
++        _score_trace["file"] = open(path, "w")
++    entry = {"epoch": epoch, "problem": int(problem_idx), "step": int(step_idx),
++             "candidates": [[round(float(s), 6), [int(t) for t in seq]]
++                            for s, seq in results]}
++    _score_trace["file"].write(json.dumps(entry) + "\n")
++    _score_trace["file"].flush()
++# --- end verification-only instrumentation ---
++
+ def convert_state_and_run_model(model, state, action_space , device, groundings, 
+                                 graph_metadata,cheating_input=None):
+     g_inp , _, node_to_objects = state_to_graph_wrapper(state,action_space,groundings,
+@@ -193,6 +211,11 @@ def convert_state_and_run_model(model, state, action_space , device, groundings,
+         #results = model.forward_with_parallel_beam_search(model_input, beam_search=True)
+         #results = results[0]
+ 
++    if os.environ.get("GABAR_TRACE_SCORES", ""):
++        _trace_scores(_score_trace["epoch"], _score_trace["problem"],
++                      _score_trace["step"], results)
++        _score_trace["step"] += 1
++
+     #print (results)
+     action_param_list = []
+ 
+@@ -465,6 +488,11 @@ class PlannerTester:
+         if monitor:
+             monitor.add_state(state)
+ 
++        # verification-only: context for GABAR_TRACE_SCORES
++        _score_trace["epoch"] = epoch
++        _score_trace["problem"] = problem_idx
++        _score_trace["step"] = 0
++
+         # CURRENLY SINGLE SEARCH TYPE ALLOWED - CAN EXTEND TO ALL LATER IF NEEDED
+         strategy = self.config.learned_search_strat[0]
+         # Choose strategy based on input

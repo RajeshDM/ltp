@@ -1,0 +1,31 @@
+# Smoke-test config for tmp_scripts/preflight.sh. NOT part of the paper suite.
+#
+# Deliberately exercises the exact code paths the campaign uses rather than
+# the cheapest ones: `domains` (the multi-domain harness, even with one
+# domain), joint_chain featurization, and train_test so that BOTH the
+# training-loss and the test-metric wandb paths run. Everything else is sized
+# down until it finishes in minutes.
+description: preflight smoke test
+base: ../configs/_common.yaml
+expid: preflight
+domains: visitall_ipcc
+featurization: joint_chain
+test_domains: visitall_ipcc:3
+mode: train_test
+# 10, not 4: the live trainer hardcodes save_iter = print_iter = 10, so
+# checkpoints are only written at epochs that are multiples of 10. A 4-epoch
+# run happens to save at epoch 0 and nothing else - a boundary case that
+# makes the checkpoint step of the preflight depend on an accident. Ten
+# epochs exercises a real periodic save.
+epochs: 10
+seed: 999
+num_train_problems: 10
+num_test_problems: 3
+all_problems: false
+# Must be a multiple of 10 for the same reason; smaller values silently
+# degrade because save_checkpoint is only CALLED every 10 epochs.
+checkpoint_every: 10
+keep_checkpoints: 1
+max_plan_length: 50
+test_model_metrics: combined
+num_models_to_test: 1

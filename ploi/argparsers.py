@@ -1,5 +1,60 @@
 import argparse
+import sys
 import ploi.constants as constants
+
+
+def apply_config_defaults(parser):
+    """Apply a YAML config file (if --config was passed) as parser defaults.
+
+    Precedence: constants.py < YAML config < explicit CLI flags.  Call after
+    ALL add_argument calls and before parse_args.  YAML keys use the argparse
+    dest names (underscores, e.g. num_train_problems).  Unknown keys are a
+    hard error so a typo cannot silently fall back to a default.
+    """
+    config_path = None
+    argv = sys.argv[1:]
+    for i, tok in enumerate(argv):
+        if tok == "--config" and i + 1 < len(argv):
+            config_path = argv[i + 1]
+        elif tok.startswith("--config="):
+            config_path = tok.split("=", 1)[1]
+    if config_path is None:
+        return
+
+    import os
+    import yaml
+    with open(config_path) as f:
+        config = yaml.safe_load(f) or {}
+    if not isinstance(config, dict):
+        raise ValueError(f"Config {config_path} must be a mapping, got {type(config)}")
+
+    # 'base' layers a shared-defaults file under this config (one level only):
+    # precedence constants < base < experiment file < CLI flags.  Path is
+    # relative to the experiment file's directory.
+    base_name = config.pop('base', None)
+    if base_name is not None:
+        base_path = os.path.join(os.path.dirname(config_path), base_name)
+        with open(base_path) as f:
+            base = yaml.safe_load(f) or {}
+        if not isinstance(base, dict):
+            raise ValueError(f"Base {base_path} must be a mapping, got {type(base)}")
+        if 'base' in base:
+            raise ValueError(f"Base {base_path} may not itself have a 'base' key")
+        base.pop('description', None)
+        config = {**base, **config}
+
+    # 'description' is documentation-only inside experiment configs
+    config.pop('description', None)
+
+    known_dests = {action.dest for action in parser._actions}
+    unknown = set(config) - known_dests
+    if unknown:
+        raise ValueError(
+            f"Unknown keys in {config_path}: {sorted(unknown)}. "
+            f"Keys must match argparse dest names (underscores).")
+
+    parser.set_defaults(**config)
+    print(f"Loaded config: {config_path} ({len(config)} settings)")
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -203,6 +258,27 @@ def get_ploi_argument_parser():
     )
 
     parser.add_argument(
+        "--use-amp",
+        type=str2bool,
+        default=False,
+        help="Mixed precision (bf16/fp16 autocast + GradScaler) in the "
+             "training loop. The implementation was already there and wired "
+             "through main.py, but had no flag, so it could never be enabled. "
+             "Off by default because it changes numerics: verify parity on a "
+             "short run before trusting a comparison across the boundary.",
+    )
+
+    parser.add_argument(
+        "--amp-dtype",
+        type=str,
+        choices=["bf16", "fp16"],
+        default="bf16",
+        help="Precision used under --use-amp. bf16 has fp32's exponent range "
+             "so gradients cannot overflow and no loss scaling is needed; on "
+             "an H100 it is the same speed as fp16 and strictly more robust.",
+    )
+
+    parser.add_argument(
         "--representation-size",
         type=int,
         default=constants.REPRESENTATION_SIZE,
@@ -403,5 +479,131 @@ def get_ploi_argument_parser():
         type=int,
         default=constants.NUM_MLP_LAYERS_GNN,
         help="Number of layers in MLP of the GNN")
+
+    # Multi-domain harness (CLAUDE.md Phase 0/1, claim C1). When --domains is
+    # given it supersedes --domain; --domain alone keeps the published
+    # single-domain GABAR behavior (parity gate).
+    parser.add_argument(
+        "--domains",
+        type=str,
+        default="",
+        help="Comma-separated training domains, each optionally with a "
+             "problem count, e.g. 'blocks:100,gripper'. Empty = single-domain "
+             "mode via --domain.")
+
+    parser.add_argument(
+        "--heldout-domains",
+        type=str,
+        default="",
+        help="Comma-separated domains excluded from training and used only "
+             "for zero-shot evaluation (C1).")
+
+    parser.add_argument(
+        "--test-domains",
+        type=str,
+        default="",
+        help="Comma-separated domains to test on, each optionally with a "
+             "problem count, e.g. 'blocks:200,gripper:173,spanner:96'. "
+             "Overrides the default (test on training domains). Domains not "
+             "in the training set are treated as zero-shot. If empty, tests "
+             "on training domains + held-out domains as before.")
+
+    parser.add_argument(
+        "--featurization",
+        type=str,
+        choices=["per_domain", "union", "structural", "joint_lite", "joint",
+                 "joint_chain"],
+        default="per_domain",
+        help="Feature dictionary mode: 'per_domain' = published GABAR "
+             "(Phase 0 parity), 'union' = shared union vocabulary across "
+             "training domains (Baseline 0, C1 control), 'structural' = "
+             "symbol-free structural classes (Method 0, zero-shot capable), "
+             "'joint_lite' = structural + lifted domain layer in every state "
+             "graph (GADAR-BIND ablation), 'joint' = joint_lite + occurrence "
+             "nodes + binding layer (full GADAR, Method B), 'joint_chain' = "
+             "full GADAR + schema chaining + goal-relevance features + "
+             "grounded effect edges.")
+
+    parser.add_argument(
+        "--run-mode",
+        type=str,
+        choices=["default", "toy", "sweep", "spot"],
+        default="default",
+        help="Execution mode: 'toy' = 2 epochs on CPU with tiny data subset, "
+             "'sweep' = short runs with AMP and 10%% data for HP tuning, "
+             "'spot' = full training with AMP, per-epoch checkpointing, and "
+             "auto-resume for interruptible instances, 'default' = unchanged.")
+
+    parser.add_argument(
+        "--auto-shutdown",
+        action="store_true",
+        help="Shut down the instance on exit (success or crash). SPOT mode only.")
+
+    parser.add_argument(
+        "--early-stopping-patience",
+        type=int,
+        default=0,
+        help="Stop training after this many val-loss checks with no improvement. "
+             "0 = disabled. Set automatically by --run-mode if not specified.")
+
+    parser.add_argument(
+        "--keep-checkpoints",
+        type=int,
+        default=2,
+        help="Checkpoints retained per selection metric (ModelManager). The "
+             "default 2 can lose the EARLY epochs that transfer best - "
+             "zero-shot peaks well before training loss bottoms out - "
+             "especially when an older run's checkpoints squat the list. "
+             "Use 6+ for zero-shot runs.")
+
+    parser.add_argument(
+        "--max-pred-arity",
+        type=int,
+        default=0,
+        help="Lower bound on the canonical max predicate arity used for "
+             "structural/joint featurization (0 = derive from the training "
+             "set). Raise it when a held-out test domain has higher-arity "
+             "predicates than any training domain.")
+
+    parser.add_argument(
+        "--max-action-arity",
+        type=int,
+        default=0,
+        help="Lower bound on the canonical max schema arity for "
+             "structural/joint featurization (0 = derive from the training "
+             "set). Raise it when a held-out test domain has higher-arity "
+             "schemas (e.g. Rovers under a no-rovers training set).")
+
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="",
+        help="YAML experiment config. Values become argparse defaults, so "
+             "explicit CLI flags still override. Keys use argparse dest "
+             "names (e.g. num_train_problems, test_domains).")
+
+    parser.add_argument(
+        "--num-models-to-test",
+        type=int,
+        default=1,
+        help="How many of the best checkpoints to test per metric "
+             "(ModelManager keeps 2; 1 = best only).")
+
+    parser.add_argument(
+        "--test-model-metrics",
+        type=str,
+        default="validation,training,combined",
+        help="Comma-separated checkpoint-selection metrics to test "
+             "(subset of validation,training,combined,periodic). 'periodic' "
+             "needs --checkpoint-every and is ordered EARLIEST epoch first.")
+
+    parser.add_argument(
+        "--checkpoint-every", type=int, default=0,
+        help="Also snapshot every N epochs regardless of loss, into the "
+             "'periodic' metric. Loss-ranked slots always end up holding "
+             "late epochs; zero-shot transfer peaks early. MUST be a "
+             "multiple of the save cadence (checkpoints are only written "
+             "every 10 epochs): 75 silently degrades to every-150. Use 50 "
+             "for zero-shot runs, then test --test-model-metrics periodic.")
 
     return parser
