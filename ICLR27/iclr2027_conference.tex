@@ -208,7 +208,7 @@ action construction to search, which stays in the execution loop.
 \citet{goose_v2} further prove an expressiveness limitation of message
 passing on their lifted graph and name lifted policy learning as open; our
 binding layer adds exactly the information a policy needs and their graph
-provably lacks (their Theorem 4.3).
+provably lacks (their Theorem 4.3; Appendix~\ref{app:llg}).
 
 \textbf{Learned policies for planning.} Generalized policy learning aims at
 policies that transfer across instances of a domain
@@ -224,13 +224,9 @@ similarly learn policies over relational state representations
 \citep{relational_drl, sr_drl, relational_mdp_learning, rddl_gnn,
 generalized_planning_deep_rl}. GABAR represents ground actions explicitly in the
 state graph and constructs actions autoregressively by ranking
-\citep{gabar}. The same action-centric idea extends beyond full
-observability: GammaZero converts particle beliefs into uncertainty-aware
-graphs to guide belief-space search \citep{gammazero}, which opens the
-approach to tasks such as object rearrangement under partial observation
-\citep{hoo_pomdp}. That line relaxes what the policy can observe while
-holding the domain fixed; we do the opposite, keeping the classical
-fully observable setting and varying the domain. The most recent work remains per-domain: self-improving
+\citep{gabar}. The action-centric idea also extends to partial observability
+\citep{gammazero, hoo_pomdp}, varying what the policy observes while
+holding the domain fixed. The most recent work remains per-domain: self-improving
 search-and-learn loops train a relational value heuristic per domain
 \citep{learning_to_search_2026}, lookahead-based general policies are
 learned over instances of a single domain
@@ -251,12 +247,10 @@ scale-free. \citet{mueller_qvalues} report convergent evidence: Q-value
 regression fails for lack of action discrimination and a ranking-style
 margin repairs it.
 
-\textbf{Large language models and planning.} Large reasoning models degrade
-sharply under symbol renaming \citep{llm_baseline}, an invariance \gadar{}
-has by construction. LLM pipelines that synthesize per-domain programs or
-generate and repair PDDL across domains \citep{halo_orchestrator} operate
-at the specification level and leave planning to search, which is a
-different question from zero-shot policy execution.
+\textbf{Large language models.} Large reasoning models degrade under symbol
+renaming \citep{llm_baseline}, an invariance \gadar{} has by construction;
+LLM pipelines that write or repair PDDL \citep{halo_orchestrator} leave
+planning to search.
 
 \section{Background and Problem Setup}
 
@@ -297,12 +291,9 @@ precondition and effect occurrences, and predicate symbols. \emph{Binding
 edges} (green, dashed) link an object's slot on an applicable ground action
 to the precondition occurrences it satisfies; \emph{instantiation edges}
 (orange, dotted) link each ground literal to its predicate symbol. Filled
-nodes are ground, outlined nodes lifted. \union{} uses the ground layer
-with symbol-identity features; \gadarbind{} makes them structural and adds
-the lifted layer and binding edges; \gadar{} adds the chain layer
-(magenta), shown as one exemplar each of an \emph{enables} edge, a grounded
-deletes-true edge, and goal-relevance rings. No feature encodes symbol
-identity, so the representation is renaming-invariant by construction.}
+nodes are ground, outlined nodes lifted. The chain layer (magenta) is
+shown by one \emph{enables} edge, one grounded deletes-true edge, and
+goal-relevance rings.}
 \label{fig:representation}
 \end{figure*}
 
@@ -314,16 +305,11 @@ identity, so the representation is renaming-invariant by construction.}
 % vertical room. PNG rendered headlessly (chromium via playwright,
 % device_scale_factor=3) and committed.
 \includegraphics[width=1.0\textwidth]{gadar_system_v1.png}
-\caption{\gadar{} system overview. (a) $D$, the state, and the goal are
-converted into a graph. (b) The ladder of domain conditioning, three
-systems each the previous plus one commitment: \union{} (symbol one-hots
-over the joint vocabulary), \gadarbind{} (structural features, lifted
-domain layer, binding layer of Figure~\ref{fig:representation}), \gadar{}
-(chain layer). Every adjacent comparison isolates one component. (c) The
-GNN encoder, $L$ rounds of edge, node, and global updates. (d) The GRU
-decoder constructs a grounded action autoregressively,
-schema then arguments, by scoring schema- and object-node embeddings; no
-component is sized by the number of schemas or objects.}
+\caption{\gadar{} overview. (a) $D$, state, and goal become one graph.
+(b) The ladder: \union{} (symbol one-hots), \gadarbind{} (structural
+features, lifted and binding layers), \gadar{} (chain layer). (c) GNN
+encoder. (d) GRU decoder: schema, then arguments, scored against node
+embeddings; nothing is sized by the number of schemas or objects.}
 \label{fig:system}
 \end{figure*}
 
@@ -339,15 +325,11 @@ the graph they operate on. We present the representation as it is
 evaluated: a ladder of systems in which each addition is measured against
 its predecessor.
 
-\textbf{Encoder.} Node, edge, and global features are first embedded by
-separate MLPs into $d{=}64$ dimensions. Each of $L{=}9$ rounds then (1)
-updates every edge from its two endpoints, its own embedding, and the global
-node, (2) updates every node from its incoming edges, aggregated by
-attention (a softmax over the node's incoming edges), and (3) updates the
-global node from all nodes and edges. At every round the current embeddings
-are concatenated with their round-0 encodings before the update, a skip
-connection that keeps the input features visible at depth. The output is
-one embedding per node, which the decoder ranks.
+\textbf{Encoder.} Features are embedded into $d{=}64$ dimensions, then
+$L{=}9$ rounds update edges, nodes (attention over incoming edges), and a
+global node, with skip connections to the input encodings
+(Appendix~\ref{app:encoder}). The output is one embedding per node, which
+the decoder ranks.
 
 \subsection{A Domain-Agnostic Graph Representation}
 
@@ -452,18 +434,6 @@ predicate. $E_{\mathrm{eff}}$ grounds the layer: the decoder scores object
 nodes, and these edges place ``this object closes an open goal'' and ``this
 object undoes something true'' one hop from the quantity being ranked.
 
-
-\textbf{Relation to GOOSE's LLG.} LLG and our lifted layer share the essential idea of the domain
-description as input, and differ in encoding: argument positions as edge
-features rather than chains of index nodes, and occurrence nodes carrying
-exact argument-to-slot pairs. The fundamental difference is purpose. A
-heuristic graph must support one number read from a global embedding, so
-LLG contains no ground actions and no applicability information, and
-\citet{goose_v2} prove message passing on it cannot compute
-$h^{\mathrm{add}}$. A policy graph must contain the decoder's targets, the
-schema and object nodes to score, and the evidence for scoring them: which
-groundings are applicable and why. The binding layer supplies that evidence
-in $D$'s own vocabulary.
 
 \subsection{A Ladder of Domain Conditioning}
 
@@ -570,17 +540,10 @@ each domain.
 percentage of test problems solved within a 500-step bound, and
 plan quality (P), the ratio of the reference planner's plan length to the
 policy's on jointly solved problems, so values above 1 mean plans shorter
-than the reference. Because P conditions on what a system solves, higher
-coverage is scored on harder instances; coverage is the primary metric and
-P is compared within, not across, columns. Encoder and decoder
-hyperparameters are carried over unchanged ($L{=}9$
-message-passing rounds, 64-dimensional representations, GRU decoder), with
-batch size 64 and learning rate $5{\times}10^{-4}$, for 500 epochs; the
-appendix lists every final setting. One seven-domain model takes
-\todonum{about 14} hours to train on a single GPU, and one single-domain
-model between half an hour and two hours. Renaming invariance is
-verified as a unit test: permuting all symbol names in a domain yields
-identical input tensors.
+than the reference; coverage is the primary metric
+(Appendix~\ref{app:metrics}). Hyperparameters are carried over from
+\citet{gabar} unchanged (Appendix~\ref{app:hyper}), and renaming invariance
+is verified by a unit test (Appendix~\ref{app:invariance}).
 
 \section{Results and Discussion}
 
@@ -865,6 +828,34 @@ $(k_a, |V|, |V|, \dim R)$ array is the obvious alternative and is what we
 wrote first, but it costs $O(k_a |V|^2 \dim R)$ to allocate and scan for
 every state, which dominates the cost of re-featurizing states during
 evaluation on large instances.
+
+\subsection{Encoder}
+\label{app:encoder}
+
+Node, edge, and global features are first embedded by
+separate MLPs into $d{=}64$ dimensions. Each of $L{=}9$ rounds then (1)
+updates every edge from its two endpoints, its own embedding, and the global
+node, (2) updates every node from its incoming edges, aggregated by
+attention (a softmax over the node's incoming edges), and (3) updates the
+global node from all nodes and edges. At every round the current embeddings
+are concatenated with their round-0 encodings before the update, a skip
+connection that keeps the input features visible at depth. The output is
+one embedding per node, which the decoder ranks.
+
+\subsection{Relation to GOOSE's Lifted Learning Graph}
+\label{app:llg}
+
+LLG and our lifted layer share the essential idea of the domain
+description as input, and differ in encoding: argument positions as edge
+features rather than chains of index nodes, and occurrence nodes carrying
+exact argument-to-slot pairs. The fundamental difference is purpose. A
+heuristic graph must support one number read from a global embedding, so
+LLG contains no ground actions and no applicability information, and
+\citet{goose_v2} prove message passing on it cannot compute
+$h^{\mathrm{add}}$. A policy graph must contain the decoder's targets, the
+schema and object nodes to score, and the evidence for scoring them: which
+groundings are applicable and why. The binding layer supplies that evidence
+in $D$'s own vocabulary.
 
 \subsection{Decoding and Training}
 \label{app:decode}
