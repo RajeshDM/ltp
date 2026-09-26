@@ -228,6 +228,13 @@ tools/crossfold_select.py          the paper's test-blind zero-shot rule:
                                    (best-on-test) beside it, labelled NOT
                                    reportable. Pinned by
                                    tests/test_crossfold_select.py
+tools/indomain_table.py            Table 2: in-domain test coverage of the
+                                   multi-domain models (LOO mean over the 7
+                                   folds that trained on the domain, all8_*,
+                                   single-domain sd_joint_chain_*). Each cell
+                                   from the newest dump that HAS it, since
+                                   zero-shot-only dumps hold no in-domain
+                                   cells; pre---since dumps are ignored
 tools/random_policy_baseline.py    zero-shot floor: uniform-random applicable
                                    action rollouts, config test-domains syntax
                                    (incl. @train), no model/training needed
