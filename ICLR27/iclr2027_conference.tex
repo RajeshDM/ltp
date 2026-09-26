@@ -80,7 +80,7 @@ Address \\
 
 \begin{abstract}
 
-Learned policies for classical planning act without search, but each is tied to the domain it was trained on: network modules per action schema, parameters per predicate, or vocabulary-sized encodings mean a trained policy cannot even be executed on a new domain's predicates and action schemas. We present \gadar{} (Generalizing Across Domains via Action Ranking), a policy that takes the domain description as input, $\pi(s, G, D)$, and constructs grounded actions in domains never seen in training, without search. Symbols are described by the roles they play in the domain rather than by their names, in three layers that each extend the previous one: (i) a \emph{lifted domain layer} embeds $D$ in every state graph through structural signatures; (ii) a \emph{binding layer} ties each ground action's applicability to the lifted preconditions it instantiates; and (iii) a \emph{chain layer} states which schema produces what another needs and how far each schema stands from the goal. We evaluate leave-one-domain-out over eight benchmark domains, selecting every checkpoint without access to the held-out domain. A single \gadar{} policy trained on seven domains solves 58.3\% of their test instances, one point below the 59.3\% of dedicated single-domain \gadar{} models, and a multi-task control that keeps symbol identity in its weights, while strong on some of the domains it trains on, transfers to none of the held-out ones. Zero-shot, \gadar{} executes on every held-out domain and solves \todonum{68}\% of the large test instances of held-out Visitall, where an identically-executed untrained network solves \todonum{0}\%. Transfer to the other seven held-out domains is limited (\todonum{0--5}\% on their test instances), and we identify where it fails: domains whose action schemas are structurally alike but play different roles, which renaming-invariant features cannot distinguish without data from the new domain.
+Learned policies for classical planning act without search, but each is tied to the domain it was trained on: network modules per action schema, parameters per predicate, or vocabulary-sized encodings mean a trained policy cannot even be executed on a new domain's predicates and action schemas. We present \gadar{} (Generalizing Across Domains via Action Ranking), a policy that takes the domain description as input, $\pi(s, G, D)$, and constructs grounded actions in domains never seen in training, without search. Symbols are described by the roles they play in the domain rather than by their names, in three layers that each extend the previous one: (i) a \emph{lifted domain layer} embeds $D$ in every state graph through structural signatures; (ii) a \emph{binding layer} ties each ground action's applicability to the lifted preconditions it instantiates; and (iii) a \emph{chain layer} states which schema produces what another needs and how far each schema stands from the goal. The same network therefore runs on every domain, seen or unseen. We evaluate leave-one-domain-out over eight benchmark domains, selecting every checkpoint without access to the held-out domain. A single \gadar{} policy trained on seven domains solves 58.3\% of their test instances, one point below the 59.3\% of dedicated single-domain \gadar{} models, so one policy serves many domains at no cost in coverage; a multi-task control that keeps symbol identity in its weights, while strong on some of the domains it trains on, transfers to none of the held-out ones. Zero-shot, \gadar{} executes on every held-out domain and solves \todonum{68}\% of the large test instances of held-out Visitall, where an identically-executed untrained network solves \todonum{0}\%. Transfer to the other seven held-out domains is limited (\todonum{0--5}\% on their test instances), and we analyze where it fails, including domains whose action schemas are structurally alike but play different roles.
 
 \end{abstract}
 
@@ -157,15 +157,18 @@ and not the architecture.
 
 Our experiments follow a leave-one-domain-out protocol over all eight
 benchmark domains, with every checkpoint selected without access to the
-held-out domain. \gadar{} executes on every held-out domain. On held-out
+held-out domain. One \gadar{} policy serves every domain it is trained on:
+trained on seven domains, it matches the in-domain coverage of dedicated
+single-domain models (58.3\% against 59.3\%). It also executes on every
+held-out domain. On held-out
 Visitall it solves \todonum{68}\% of the large test instances zero-shot at
 plan quality \todonum{0.97}, against \todonum{0}\% for an
 identically-executed untrained network, \todonum{0}\% for the
 union-vocabulary control, and \todonum{4}\% without the chain layer. On the
 other seven held-out domains transfer is limited, and the per-domain
-results show where it breaks: when a held-out domain's schemas are
+results suggest where it breaks: when a held-out domain's schemas are
 structurally alike but play different roles, as Logistics' truck and
-airplane actions do, features that ignore symbol names cannot tell them
+airplane actions do, features that ignore symbol names may not tell them
 apart. \gadar{} is invariant by construction to renaming of predicates,
 schemas, and objects, a robustness current large reasoning models lack
 \citep{llm_baseline}; the same invariance means that what distinguishes
@@ -176,6 +179,9 @@ such schemas has to come from data in the new domain.
 \item To our knowledge, the first domain-agnostic \emph{policy} for
   classical planning: $\pi(s, G, D)$ constructs grounded actions zero-shot
   in unseen domains, without search.
+\item One policy for many domains: a single \gadar{} model trained on seven
+  domains matches dedicated single-domain models in-domain on average, with
+  positive transfer between some domains.
 \item A graph representation with two novel relations, both computable in
   any domain: \emph{binding} edges, which link each applicable ground
   action's objects to the lifted precondition occurrences they satisfy and
@@ -747,9 +753,9 @@ executor. Transfer to the other held-out domains is limited, and our
 evaluation, with every checkpoint selected without the held-out domain and
 every result set against both a random and an untrained floor, is designed
 to show where it fails as clearly as where it succeeds. Schemas that are
-structurally alike but play different roles, as in Logistics, mark a limit
-that renaming-invariant features cannot cross without data from the new
-domain. Few-shot adaptation, lifted successor generation, richer PDDL
+structurally alike but play different roles, as in Logistics, may mark a
+limit that renaming-invariant features cannot cross without data from the
+new domain. Few-shot adaptation, lifted successor generation, richer PDDL
 fragments, and probabilistic settings remain future work.
 
 
