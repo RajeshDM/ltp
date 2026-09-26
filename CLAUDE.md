@@ -258,6 +258,11 @@ train_test_scripts/train_queue.sh  train N configs on ONE GPU, one at a time
                                    time-slice. Waits on logs/<name>.running,
                                    reports rc + the last 3 log lines on
                                    failure, and continues
+train_test_scripts/train_then_eval.sh  per config: evaluate if its models
+                                   exist, else train (train_queue.sh) then
+                                   evaluate. For short single-domain runs
+                                   (baseline_*) whose training state is
+                                   unknown; eval device auto (cuda if usable)
 train_test_scripts/queue_status.sh one line per training run: epoch/total,
                                    seconds per print interval, time left, and
                                    RUN/STALE/done. Finds runs by CONTENT (an

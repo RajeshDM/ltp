@@ -264,3 +264,29 @@ Reading:
   the checkpoint, not the representation.
 - Several runs stopped at 300-400 of 500 epochs (allocations died); the
   per-fold epoch lists above are what exists.
+
+## PLAN 2026-09-26: final results for the revision, and the cut order
+
+Zero-shot transfer did not hold (result above), so the paper's in-domain
+question becomes central: does GADAR trained ALONE match GABAR trained alone
+on the same test problems, and what does sharing one model across seven
+domains cost? Priorities, written once:
+
+| P | result | status | run |
+|---|---|---|---|
+| 1 | single-domain GADAR, 8 domains | trained | eval `sd_joint_chain_*` |
+| 1 | GABAR through our harness, same test problems, 8 domains | 3 configs existed, 5 added | `train_then_eval.sh configs/baseline_*.yaml` |
+| - | 7-domain GADAR in-domain (LOO, n=7) | DONE | `tools/indomain_table.py` |
+| - | zero-shot, 3 rungs x 8 folds, cross-fold rule | DONE (union_no_gripper untrained) | `tools/crossfold_select.py` |
+| 3 | UNION in-domain (7 folds) | eval never ran in-domain | eval `loo8_union_no_*` |
+| 4 | BIND in-domain (8 folds) | eval never ran in-domain | eval `loo8_joint_lite_no_*` |
+
+Cut first -> last: BIND in-domain, UNION in-domain, baselines beyond the
+three original domains. Never cut: single-domain GADAR eval, the three
+original GABAR baselines. Not attempted this revision (no time):
+`loo8_union_no_gripper` training, seeds, an untrained-network control
+(epoch 0 is never checkpointed), `all8_*` (pre-type-compilation).
+
+Caveat for the comparison: `baseline_*` use GABAR's published settings
+(batch 16, <=200 training problems); `sd_joint_chain_*` use the suite's
+(batch 64, all problems). Same test problems, same epochs and selection.

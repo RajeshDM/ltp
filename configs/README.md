@@ -84,6 +84,11 @@ at 200 requested problems - hours of FD time. Do the cache warmup
 | `baseline_blocks.yaml` | blocks (per-domain feat.) | blocks | skyline |
 | `baseline_gripper.yaml` | gripper | gripper | skyline |
 | `baseline_miconic.yaml` | miconic | miconic | skyline |
+| `baseline_visitall.yaml` | visitall | visitall | skyline |
+| `baseline_grid.yaml` | grid | grid | skyline |
+| `baseline_logistics.yaml` | logistics | logistics | skyline |
+| `baseline_spanner.yaml` | spanner | spanner | skyline |
+| `baseline_rovers.yaml` | rovers | rovers | skyline |
 | `union_3dom.yaml` | all 3, union vocab | all 3 in-domain | C1 control (Baseline 0) |
 | `structural_3dom.yaml` | all 3, structural | all 3 in-domain | C1 (expressiveness tax) |
 | `loo_union_no_blocks.yaml` | gripper+miconic, union | all 3 (blocks zero-shot) | C1 control |
