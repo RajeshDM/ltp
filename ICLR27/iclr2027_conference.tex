@@ -633,8 +633,7 @@ alongside other domains helps Visitall (81.1\% against 54.0\%), Miconic
 (47.9\% against 85.4\%) and Blocks (74.6\% against 95.5\%). Logistics and
 Rovers are equally low either way, so their gap to dedicated GABAR is a
 cost of the representation, not of sharing. Training cost does not favor
-either form clearly: one seven-domain model trains in \todonum{about 14}
-hours on one GPU, while dedicated models take half an hour to two hours
+either form clearly: one seven-domain model trains in hours on one GPU, while dedicated models take half an hour to two hours
 each and leave one artifact per domain.
 
 \textbf{Does the domain need to be in the input? (\union{} vs.\ \gadar{}.)}
@@ -657,9 +656,7 @@ edges, yet reaches only \todonum{4.0}\% on hard Visitall; the chain layer,
 together with the grounded effect edges and goal features added in the same
 step, moves this to \todonum{68.0}\%. That step introduces no new supervision
 and no domain-sized parameters: its relations are restated from $D$, and it
-widens only the domain-independent edge-feature input
-(\todonum{N} parameters for \gadarbind{} against \todonum{N} for
-\gadar{}). The description alone does not transfer; it must be restated in
+widens only the domain-independent edge-feature input. The description alone does not transfer; it must be restated in
 a form message passing can use.
 
 \textbf{Is it the policy or the executor? (Floors vs.\ \gadar{}.)} The
@@ -999,8 +996,7 @@ policy's coverage should be read against.
 averages the seven leave-one-out policies whose training set contains the
 domain, each evaluated at its lowest-combined-loss checkpoint. Allocations
 on a shared cluster ended some training runs before 500 epochs; those
-policies were evaluated at the best checkpoint they reached
-(\todonum{list the runs and their final epochs}). \gadar{}$_1$ uses the
+policies were evaluated at the best checkpoint they reached. \gadar{}$_1$ uses the
 suite's settings (batch size 64, all training instances of the domain,
 500 epochs).
 
@@ -1020,9 +1016,8 @@ produce the same structure after type compilation.
 \subsection{Compute and Runtime}
 \label{app:compute}
 
-All training and all evaluation ran on a single GPU per run \todonum{(A40, H100, V100, RTX 8000)}, one
-run per GPU. Training one model on seven domains takes \todonum{about 14}
-hours; a single-domain model takes between half an hour and two hours, so
+All training and all evaluation ran on a single GPU per run, one
+run per GPU. Training one model on seven domains takes several hours; a single-domain model takes between half an hour and two hours, so
 covering eight domains with dedicated models costs a comparable total and
 yields eight separate models rather than one.
 
