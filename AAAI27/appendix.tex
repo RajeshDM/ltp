@@ -38,6 +38,9 @@
 \newcommand{\gadar}{GADAR}
 \newcommand{\gadarbind}{\gadar{}-BIND}
 \newcommand{\union}{UNION}
+% Red placeholder for numbers still to fill; grep -c todonum must print 0.
+\usepackage{xcolor}
+\newcommand{\todonum}[1]{\textcolor{red}{\textbf{[#1]}}}
 
 \title{GADAR: Appendix}
 \author{Anonymous Submission}
@@ -269,6 +272,19 @@ makes the control informative: it measures what the harness alone achieves
 when the learned component contributes nothing, and it is the number the
 policy's coverage should be read against.
 
+\paragraph{In-domain results.} Each in-domain cell of the ladder columns
+averages the seven leave-one-out policies whose training set contains the
+domain, each evaluated at its lowest-combined-loss checkpoint. Allocations
+on a shared cluster ended some training runs before 500 epochs; those
+policies were evaluated at the best checkpoint they reached
+(\todonum{list the runs and their final epochs}). \gadar{}$_1$ uses the
+suite's settings (batch size 64, all training instances of the domain,
+500 epochs). The retrained GABAR models use the published GABAR settings
+(batch size 16, at most 200 training instances), are evaluated on the same
+test instances as every other column with the same checkpoint rule, and
+were trained for \todonum{N} (Blocks), \todonum{N} (Gripper), and
+\todonum{N} (Miconic) epochs.
+
 \subsection{Renaming Invariance}
 \label{app:invariance}
 
@@ -285,11 +301,11 @@ produce the same structure after type compilation.
 \subsection{Compute and Runtime}
 \label{app:compute}
 
-All training and all evaluation ran on a single NVIDIA A40 GPU per run, one
-run per GPU. Training one model on all eight domains takes seven to eight
-hours. For comparison, the per-domain models of \citet{gabar} take roughly
-two hours each, so covering the same eight domains costs about sixteen hours
-and yields eight separate models rather than one.
+All training and all evaluation ran on a single GPU per run \todonum{(A40, H100, V100, RTX 8000)}, one
+run per GPU. Training one model on seven domains takes \todonum{about 14}
+hours; a single-domain model takes between half an hour and two hours, so
+covering eight domains with dedicated models costs a comparable total and
+yields eight separate models rather than one.
 
 Evaluation, not training, is the expensive half of a full experiment. Every
 state of every rollout is featurized from scratch, and the largest test
