@@ -92,13 +92,14 @@ def main():
     if args.missing:
         # Untrained cells (e.g. loo8_union_no_gripper) have nothing to evaluate.
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-        from eval_status import trained_counts
+        from eval_status import trained_counts, evaluating
         from grid_status import MIN_CKPTS
         trained = trained_counts("models", 10)
         for rung in ("union", "joint_lite"):
             for cfg in sorted(glob.glob(f"configs/loo8_{rung}_no_*.yaml")):
                 name = os.path.basename(cfg)[:-len(".yaml")]
-                if not cells.get(name) and trained.get(name, 0) >= MIN_CKPTS:
+                if (not cells.get(name) and trained.get(name, 0) >= MIN_CKPTS
+                        and not evaluating(name)):
                     print(cfg)
         return
     domains = sorted({d for exp in cells.values() for d in exp})
