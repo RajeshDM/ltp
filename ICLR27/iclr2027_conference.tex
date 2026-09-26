@@ -561,44 +561,29 @@ comparison: a rung of the ladder, a control, or a diagnostic.
 \footnotesize
 \centering
 \caption{Zero-shot coverage (C, \%) leave-one-domain-out: each row's domain
-is held out of training. E = the held-out domain's own training-scale
-instances (unseen); H = its test instances, up to an order of magnitude
-larger. Rand: uniform choice among applicable actions under the same
-executor and monitor (mean of three rollouts). Untr: the identical system
-after one epoch of training. Ladder columns add one group of components
-each: \union{} (symbol one-hots, domain in the weights), \gadarbind{}
-(structural features, lifted domain layer, binding edges), \gadar{} (chain
-layer, effect edges, goal features). P: \gadar{}'s plan quality.
-GABAR$^\dagger$: published per-domain GABAR, trained \emph{on} the domain
-and evaluated on its own test instances (not identical to ours).}
+is held out of training and evaluated on its test instances, up to an order
+of magnitude larger than training-scale problems. Rand: uniform choice among
+applicable actions under the same executor and monitor (mean of three
+rollouts). Untr: the identical system after one epoch of training. Ladder
+columns add one group of components each: \union{} (symbol one-hots, domain
+in the weights), \gadarbind{} (structural features, lifted domain layer,
+binding edges), \gadar{} (chain layer, effect edges, goal features). P:
+\gadar{}'s plan quality. GABAR$^\dagger$: published per-domain GABAR, trained
+\emph{on} the domain and evaluated on its own test instances (not identical
+to ours). --: not measured.}
 \label{table:main_table}
-\begin{tabular}{@{}ll|cc|ccc|c|c@{}}
+\begin{tabular}{@{}l|cc|ccc|c|c@{}}
 \toprule
-Domain & & Rand & Untr & \union{} & \gadarbind{} & \textbf{\gadar{}} & P & GABAR$^\dagger$ \\
+Domain & Rand & Untr & \union{} & \gadarbind{} & \textbf{\gadar{}} & P & GABAR$^\dagger$ \\
 \midrule
-\multirow{2}{*}{Blocks}    & E & 1.7  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{17.5} & \todonum{--} & -- \\
-                           & H & 0.2  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{4.5}  & \todonum{--} & 100.0 \\
-\midrule
-\multirow{2}{*}{Gripper}   & E & 0.0  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & -- \\
-                           & H & 0.0  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & 100.0 \\
-\midrule
-\multirow{2}{*}{Miconic}   & E & 88.3 & \todonum{2.6} & \todonum{--} & \todonum{--} & \todonum{2.6} & \todonum{--} & -- \\
-                           & H & 1.1  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & 100.0 \\
-\midrule
-\multirow{2}{*}{Visitall}  & E & 99.7 & \todonum{26.4} & \todonum{--} & \todonum{--} & \todonum{100.0} & \todonum{0.81} & -- \\
-                           & H & 6.0  & \todonum{0.0} & \todonum{--} & \todonum{--} & \todonum{\textbf{68.0}} & \todonum{0.97} & 90.7 \\
-\midrule
-\multirow{2}{*}{Grid}      & E & 3.0  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{13.0} & \todonum{--} & -- \\
-                           & H & 0.0  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & 96.3 \\
-\midrule
-\multirow{2}{*}{Logistics} & E & 0.0  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & -- \\
-                           & H & 0.0  & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & 79.0 \\
-\midrule
-\multirow{2}{*}{Spanner}   & E & 63.4 & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & -- \\
-                           & H & 43.8 & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & 92.0 \\
-\midrule
-\multirow{2}{*}{Rovers}    & E & 75.2 & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & -- \\
-                           & H & 30.9 & \todonum{--} & \todonum{--} & \todonum{--} & \todonum{0.0}  & -- & 82.0 \\
+Blocks    & 0.2  & --  & 0.0 & 1.0 & \textbf{3.0} & -- & 100.0 \\
+Gripper   & 0.0  & --  & --  & 0.0 & 0.0 & -- & 100.0 \\
+Miconic   & 1.1  & --  & 0.0 & 0.0 & 0.0 & -- & 100.0 \\
+Visitall  & 6.0  & \todonum{0.0} & \todonum{--} & \todonum{--} & \todonum{\textbf{68.0}} & \todonum{0.97} & 90.7 \\
+Grid      & 0.0  & --  & 0.0 & 0.0 & 0.0 & -- & 96.3 \\
+Logistics & 0.0  & --  & 0.0 & 0.0 & 0.0 & -- & 79.0 \\
+Spanner   & 43.8 & --  & 0.0 & 0.0 & 0.0 & -- & 92.0 \\
+Rovers    & 30.9 & --  & 0.0 & 0.0 & 0.0 & -- & 82.0 \\
 \bottomrule
 \end{tabular}
 \end{table}
