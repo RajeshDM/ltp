@@ -316,3 +316,24 @@ fail single-domain too, so their gap to GABAR is the representation, not
 sharing; UNION reaches 59.4 in-domain on logistics (n=1), consistent with
 truck/airplane aliasing. Miconic: representation cost is large (SD 41.2 vs
 matched GABAR 99.2).
+
+## FINAL 2026-09-26: in-domain, all folds (as submitted to ICLR 2027)
+
+Mean over the LOO models trained on each domain (UNION 6/7 folds: no_gripper
+untrained; BIND and GADAR 7/7), combined-loss checkpoint, hard split.
+
+| domain | UNION | BIND | GADAR | GADAR_1 (single-domain) |
+|---|---|---|---|---|
+| blocks | 57.2 | 43.4 | 74.6 | 95.5 |
+| gripper | 84.1 | 95.4 | 94.5 | 100.0 |
+| miconic | 86.1 | 67.0 | 61.9 | 41.2 |
+| visitall | 77.3 | 78.6 | 81.1 | 54.0 |
+| grid | 89.6 | 64.9 | 94.6 | 87.5 |
+| logistics | 18.6 | 0.3 | 2.7 | 3.1 |
+| spanner | 48.6 | 40.0 | 47.9 | 85.4 |
+| rovers | 9.6 | 8.2 | 9.0 | 7.4 |
+| mean | 58.9 | 49.7 | 58.3 | 59.3 |
+
+Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
+the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
+compilation) numbers, by the author's decision.
