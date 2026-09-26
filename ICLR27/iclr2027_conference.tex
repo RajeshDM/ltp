@@ -563,22 +563,38 @@ comparison: a rung of the ladder, a control, or a diagnostic.
 \begin{minipage}[t]{0.40\textwidth}
 \centering
 \caption{Zero-shot coverage (\%), leave-one-domain-out: each row's domain is
-held out of training and evaluated on its test instances. Rand: uniform
-choice among applicable actions under the same executor. --: not
+held out of training. E: the held-out domain's training-scale instances
+(unseen); H: its test instances, up to an order of magnitude larger. Rand:
+uniform choice among applicable actions under the same executor. --: not
 measured.}
 \label{table:main_table}
-\resizebox{\linewidth}{!}{\begin{tabular}{@{}l|c|ccc@{}}
+\resizebox{\linewidth}{!}{\begin{tabular}{@{}ll|c|ccc@{}}
 \toprule
-Held out & Rand & \union{} & \gadarbind{} & \textbf{\gadar{}} \\
+Held out & & Rand & \union{} & \gadarbind{} & \textbf{\gadar{}} \\
 \midrule
-Blocks    & 0.2  & 0.0 & 1.0 & \textbf{3.0} \\
-Gripper   & 0.0  & --  & 0.0 & 0.0 \\
-Miconic   & 1.1  & 0.0 & 0.0 & 0.0 \\
-Visitall  & 6.0  & \todonum{--} & \todonum{--} & \todonum{\textbf{68.0}} \\
-Grid      & 0.0  & 0.0 & 0.0 & 0.0 \\
-Logistics & 0.0  & 0.0 & 0.0 & 0.0 \\
-Spanner   & 43.8 & 0.0 & 0.0 & 0.0 \\
-Rovers    & 30.9 & 0.0 & 0.0 & 0.0 \\
+\multirow{2}{*}{Blocks} & E & 1.7 & \todonum{--} & \todonum{--} & \todonum{--} \\
+ & H & 0.2 & 0.0 & 1.0 & \textbf{3.0} \\
+\midrule
+\multirow{2}{*}{Gripper} & E & 0.0 & -- & \todonum{--} & \todonum{--} \\
+ & H & 0.0 & -- & 0.0 & 0.0 \\
+\midrule
+\multirow{2}{*}{Miconic} & E & 88.3 & \todonum{--} & \todonum{--} & \todonum{--} \\
+ & H & 1.1 & 0.0 & 0.0 & 0.0 \\
+\midrule
+\multirow{2}{*}{Visitall} & E & 99.7 & \todonum{--} & \todonum{--} & \todonum{--} \\
+ & H & 6.0 & \todonum{--} & \todonum{--} & \todonum{\textbf{68.0}} \\
+\midrule
+\multirow{2}{*}{Grid} & E & 3.0 & \todonum{--} & \todonum{--} & \todonum{--} \\
+ & H & 0.0 & 0.0 & 0.0 & 0.0 \\
+\midrule
+\multirow{2}{*}{Logistics} & E & 0.0 & \todonum{--} & \todonum{--} & \todonum{--} \\
+ & H & 0.0 & 0.0 & 0.0 & 0.0 \\
+\midrule
+\multirow{2}{*}{Spanner} & E & 63.4 & \todonum{--} & \todonum{--} & \todonum{--} \\
+ & H & 43.8 & 0.0 & 0.0 & 0.0 \\
+\midrule
+\multirow{2}{*}{Rovers} & E & 75.2 & \todonum{--} & \todonum{--} & \todonum{--} \\
+ & H & 30.9 & 0.0 & 0.0 & 0.0 \\
 \bottomrule
 \end{tabular}}
 \end{minipage}\hfill
