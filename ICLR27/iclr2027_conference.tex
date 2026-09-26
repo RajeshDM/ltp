@@ -556,50 +556,40 @@ organize the discussion so that each question is answered by one
 comparison: a rung of the ladder, a control, or a diagnostic.
 
 \begin{table}[t]
-\setlength{\tabcolsep}{2.2pt}
-\renewcommand{\arraystretch}{1.05}
+\centering
 \footnotesize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{minipage}[t]{0.40\textwidth}
 \centering
-\caption{Zero-shot coverage (C, \%) leave-one-domain-out: each row's domain
-is held out of training and evaluated on its test instances, up to an order
-of magnitude larger than training-scale problems. Rand: uniform choice among
-applicable actions under the same executor and monitor (mean of three
-rollouts). Untr: the identical system after one epoch of training. Ladder
-columns add one group of components each: \union{} (symbol one-hots, domain
-in the weights), \gadarbind{} (structural features, lifted domain layer,
-binding edges), \gadar{} (chain layer, effect edges, goal features). P:
-\gadar{}'s plan quality. GABAR$^\dagger$: published per-domain GABAR, trained
-\emph{on} the domain and evaluated on its own test instances (not identical
-to ours). --: not measured.}
+\caption{Zero-shot coverage (\%), leave-one-domain-out: each row's domain is
+held out of training and evaluated on its test instances. Rand: uniform
+choice among applicable actions under the same executor. --: not
+measured.}
 \label{table:main_table}
-\begin{tabular}{@{}l|cc|ccc|c|c@{}}
+\resizebox{\linewidth}{!}{\begin{tabular}{@{}l|c|ccc@{}}
 \toprule
-Domain & Rand & Untr & \union{} & \gadarbind{} & \textbf{\gadar{}} & P & GABAR$^\dagger$ \\
+Held out & Rand & \union{} & \gadarbind{} & \textbf{\gadar{}} \\
 \midrule
-Blocks    & 0.2  & --  & 0.0 & 1.0 & \textbf{3.0} & -- & 100.0 \\
-Gripper   & 0.0  & --  & --  & 0.0 & 0.0 & -- & 100.0 \\
-Miconic   & 1.1  & --  & 0.0 & 0.0 & 0.0 & -- & 100.0 \\
-Visitall  & 6.0  & \todonum{0.0} & \todonum{--} & \todonum{--} & \todonum{\textbf{68.0}} & \todonum{0.97} & 90.7 \\
-Grid      & 0.0  & --  & 0.0 & 0.0 & 0.0 & -- & 96.3 \\
-Logistics & 0.0  & --  & 0.0 & 0.0 & 0.0 & -- & 79.0 \\
-Spanner   & 43.8 & --  & 0.0 & 0.0 & 0.0 & -- & 92.0 \\
-Rovers    & 30.9 & --  & 0.0 & 0.0 & 0.0 & -- & 82.0 \\
+Blocks    & 0.2  & 0.0 & 1.0 & \textbf{3.0} \\
+Gripper   & 0.0  & --  & 0.0 & 0.0 \\
+Miconic   & 1.1  & 0.0 & 0.0 & 0.0 \\
+Visitall  & 6.0  & \todonum{--} & \todonum{--} & \todonum{\textbf{68.0}} \\
+Grid      & 0.0  & 0.0 & 0.0 & 0.0 \\
+Logistics & 0.0  & 0.0 & 0.0 & 0.0 \\
+Spanner   & 43.8 & 0.0 & 0.0 & 0.0 \\
+Rovers    & 30.9 & 0.0 & 0.0 & 0.0 \\
 \bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}[t]
-\setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.1}
-\small
+\end{tabular}}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.56\textwidth}
 \centering
-\caption{In-domain coverage (hard split). \union{}, \gadarbind{},
-\gadar{}: mean over the seven leave-one-out policies whose training set
-includes the domain; each policy serves seven domains. \gadar{}$_1$: the
-same representation trained on that domain alone.
+\caption{In-domain coverage (\%) on the test instances. Ladder columns: mean
+over the seven leave-one-out policies trained on the domain, each serving
+seven domains. \gadar{}$_1$: trained on that domain alone.
 GABAR$^\dagger$: published per-domain GABAR on its own test instances.}
 \label{table:indomain}
-\begin{tabular}{@{}l|c|ccc|c@{}}
+\resizebox{\linewidth}{!}{\begin{tabular}{@{}l|c|ccc|c@{}}
 \toprule
 Domain & GABAR$^\dagger$ & \union{} & \gadarbind{} & \gadar{} & \gadar{}$_1$ \\
 \midrule
@@ -614,8 +604,11 @@ Rovers    & 82.0  & 9.6 & 8.3 & 9.0  & 7.4 \\
 \midrule
 Mean      & 92.5  & 58.9 & 48.3 & 58.3 & 59.3 \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
+\end{minipage}
 \end{table}
+
+
 
 \textbf{Is the representation costly on its own? (\gadar{}$_1$ vs.\ GABAR$^\dagger$.)}
 Trained on a single domain, \gadar{}$_1$ is within five
