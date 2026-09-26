@@ -618,16 +618,16 @@ GABAR$^\dagger$: published per-domain GABAR on its own test instances.}
 \toprule
 Domain & GABAR$^\dagger$ & \union{} & \gadarbind{} & \gadar{} & \gadar{}$_1$ \\
 \midrule
-Blocks    & 100.0 & 52.5 & 37.2 & 74.6 & 95.5 \\
-Miconic   & 100.0 & 74.2 & 68.6 & 61.9 & 41.2 \\
-Gripper   & 100.0 & 88.1 & 98.3 & 94.5 & 100.0 \\
-Spanner   & 92.0  & 30.7 & 30.2 & 47.9 & 85.4 \\
-Visitall  & 90.7  & 81.0 & 82.0 & 81.1 & 54.0 \\
-Grid      & 96.3  & 87.5 & 60.4 & 94.6 & 87.5 \\
-Logistics & 79.0  & 30.2 & 0.3 & 2.7  & 3.1 \\
-Rovers    & 82.0  & 9.3 & 6.8 & 9.0  & 7.4 \\
+Blocks    & 100.0 & 63.2 & 51.3 & 74.6 & 95.5 \\
+Miconic   & 100.0 & 84.5 & 68.4 & 61.9 & 41.2 \\
+Gripper   & 100.0 & 81.5 & 98.6 & 94.5 & 100.0 \\
+Spanner   & 92.0  & 40.2 & 34.9 & 47.9 & 85.4 \\
+Visitall  & 90.7  & 79.2 & 80.0 & 81.1 & 54.0 \\
+Grid      & 96.3  & 91.2 & 57.8 & 94.6 & 87.5 \\
+Logistics & 79.0  & 22.3 & 0.5 & 2.7  & 3.1 \\
+Rovers    & 82.0  & 9.6 & 7.4 & 9.0  & 7.4 \\
 \midrule
-Mean      & 92.5  & 56.7 & 48.0 & 58.3 & 59.3 \\
+Mean      & 92.5  & 59.0 & 49.9 & 58.3 & 59.3 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -642,7 +642,7 @@ therefore costs little in four domains and a great deal in the others. On
 Logistics the cost is consistent with the aliasing discussed below: its
 truck and airplane schemas are structurally alike, so a representation
 without names cannot separate them even when the domain is in training,
-while \union{}, which keeps the names, reaches 30.2\% there.
+while \union{}, which keeps the names, reaches 22.3\% there.
 
 \textbf{Does one model serve several domains? (\gadar{} vs.\ \gadar{}$_1$.)}
 Every ladder column is a policy that serves seven domains at once. Averaged
@@ -661,16 +661,17 @@ each and leave one artifact per domain.
 
 \textbf{Does the domain need to be in the input? (\union{} vs.\ \gadar{}.)}
 \union{}, trained on the identical data with the identical architecture,
-is the stronger model on some training domains (74.2\% on in-domain Miconic
-and 30.2\% on Logistics, against \gadar{}'s 61.9\% and 2.7\%) and fails
+is the stronger model on some training domains (84.5\% on in-domain Miconic
+and 22.3\% on Logistics, against \gadar{}'s 61.9\% and 2.7\%) and fails
 completely off them: it solves \todonum{0}\% of every held-out hard split,
 and its top-ranked proposal is applicable in fewer than \todonum{1}\% of
 states there, so the policy constructs almost no legal action on an unseen
 domain. \gadar{} executes on all eight held-out domains. A symbol-identity
 representation cannot act on a vocabulary it has not seen; moving the domain
 description into the input is what makes zero-shot execution possible at
-all. Averaged in-domain, \union{} reaches 56.7\% against \gadar{}'s 58.3\%:
-giving up symbol names costs little on average, but it costs Logistics.
+all. Averaged in-domain, \union{} reaches 59.0\% against \gadar{}'s 58.3\%:
+giving up symbol names costs under a point on average, but it costs
+Miconic and Logistics.
 
 \textbf{Is the description enough? (\gadarbind{} vs.\ \gadar{}.)}
 \gadarbind{} already contains the full domain description and the binding
