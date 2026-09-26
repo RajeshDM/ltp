@@ -489,10 +489,11 @@ action as described above. Every one of the eight domains serves as a
 held-out target, each on two splits.
 
 \textbf{Protocol.} Two experiment families, run for every rung of the
-ladder. (i)~\emph{Leave-one-domain-out} (the main experiment): for each of
-the eight domains, a policy is trained on the remaining seven and evaluated
+ladder. (i)~\emph{Zero-shot generalization} (leave-one-domain-out, the
+main experiment): for each of the eight domains, a policy is trained on the remaining seven and evaluated
 on the held-out domain zero-shot, having never seen its predicates,
-schemas, or objects. (ii)~\emph{In-domain}: the same seven-domain policies
+schemas, or objects. (ii)~\emph{In-domain, multi-domain}: the same
+seven-domain policies
 are evaluated on the domains they trained on, and for each domain we report
 the mean over the seven policies whose training set includes it; a
 single-domain variant, \gadar{}$_1$, trains the same representation on that
