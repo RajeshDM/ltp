@@ -22,6 +22,7 @@ import glob
 import json
 import os
 import re
+import sys
 from collections import defaultdict
 
 RUNGS = [("union", "UNION"), ("joint_lite", "BIND"), ("joint_chain", "GADAR")]
@@ -82,9 +83,24 @@ def main():
     ap.add_argument("--dir", default="cache/results")
     ap.add_argument("--metric", default="combined")
     ap.add_argument("--since", default="20260905")
+    ap.add_argument("--missing", action="store_true",
+                    help="print the loo8 union/joint_lite configs with no in-domain "
+                         "cells yet, as config paths, and exit")
     args = ap.parse_args()
 
     cells = collect(args.dir, args.metric, args.since)
+    if args.missing:
+        # Untrained cells (e.g. loo8_union_no_gripper) have nothing to evaluate.
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from eval_status import trained_counts
+        from grid_status import MIN_CKPTS
+        trained = trained_counts("models", 10)
+        for rung in ("union", "joint_lite"):
+            for cfg in sorted(glob.glob(f"configs/loo8_{rung}_no_*.yaml")):
+                name = os.path.basename(cfg)[:-len(".yaml")]
+                if not cells.get(name) and trained.get(name, 0) >= MIN_CKPTS:
+                    print(cfg)
+        return
     domains = sorted({d for exp in cells.values() for d in exp})
     if not domains:
         print(f"No in-domain '{args.metric}' cells in dumps since {args.since}.")

@@ -23,6 +23,7 @@
 #   ZERO_SHOT_ONLY=1  evaluate only each config's held-out domain
 #                   (tools/zeroshot_domains.py) - ~1/5 of a full eval.
 #                   ZS_SPLITS=test drops the @train split as well
+#   IN_DOMAIN_ONLY=1  evaluate only the training domains' test splits
 #   EXPID_SUFFIX=_x  write results to cache/results/<config>_x/ instead,
 #                   so a control pass cannot shadow the config's real results
 #   TAG=<suffix>    extra log-name suffix. Rarely needed: EXTRA is already
@@ -90,6 +91,15 @@ for CFG in "$@"; do
             ZS_ARGS=(--test-domains "$ZS")
         else
             echo "SKIP (ZERO_SHOT_ONLY, but $CFG holds out no domain)"
+            continue
+        fi
+    fi
+    # IN_DOMAIN_ONLY=1: only the training domains' test splits (Table 2).
+    if [ "${IN_DOMAIN_ONLY:-0}" = "1" ]; then
+        if ID=$(python tools/zeroshot_domains.py "$CFG" --in-domain); then
+            ZS_ARGS=(--test-domains "$ID")
+        else
+            echo "SKIP (IN_DOMAIN_ONLY, but $CFG has no in-domain test split)"
             continue
         fi
     fi

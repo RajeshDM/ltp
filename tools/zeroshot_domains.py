@@ -33,6 +33,11 @@ def main():
     cells = [c.strip() for c in read_key(cfg, "test_domains").split(",") if c.strip()]
     held = [c for c in cells
             if re.split(r"[:@]", c, 1)[0].lower() not in train]
+    # --in-domain prints the complement: the training domains' test splits,
+    # i.e. an in-domain-only evaluation (Table 2) without the zero-shot cells.
+    if "--in-domain" in sys.argv[2:]:
+        held = [c for c in cells
+                if re.split(r"[:@]", c, 1)[0].lower() in train and "@" not in c]
     # --test-only drops the @train split. Its random floor is 63-99% on
     # several folds, so it cannot discriminate there, and it is the larger
     # split - dropping it more than halves an epoch sweep.

@@ -234,7 +234,9 @@ tools/indomain_table.py            Table 2: in-domain test coverage of the
                                    single-domain sd_joint_chain_*). Each cell
                                    from the newest dump that HAS it, since
                                    zero-shot-only dumps hold no in-domain
-                                   cells; pre---since dumps are ignored
+                                   cells; pre---since dumps are ignored. --missing
+                                   lists the trained loo8 union/joint_lite
+                                   configs with no in-domain cells yet
 tools/random_policy_baseline.py    zero-shot floor: uniform-random applicable
                                    action rollouts, config test-domains syntax
                                    (incl. @train), no model/training needed
@@ -338,6 +340,8 @@ train_test_scripts/eval_worker.sh  evaluation across ANY number of machines
                                    anything is claimed
 train_test_scripts/eval_queue.sh   ZERO_SHOT_ONLY=1 evaluates only each
                                    config's held-out domain (~1/5 the cost);
+                                   IN_DOMAIN_ONLY=1 the complement: only the
+                                   training domains' test splits (Table 2);
                                    EXPID_SUFFIX=_x writes to
                                    cache/results/<config>_x/ so a control or
                                    sweep pass cannot shadow the real results
