@@ -80,7 +80,7 @@ Address \\
 
 \begin{abstract}
 
-Learned policies for classical planning act without search, but each is tied to the domain it was trained on: network modules per action schema, parameters per predicate, or vocabulary-sized encodings mean a trained policy cannot even be executed on a new domain's predicates and action schemas. We present \gadar{} (Generalizing Across Domains via Action Ranking), a policy that takes the domain description as input, $\pi(s, G, D)$, and constructs grounded actions in domains never seen in training, without search. Symbols are described by the roles they play in the domain rather than by their names, in three layers that each extend the previous one: (i) a \emph{lifted domain layer} embeds $D$ in every state graph through structural signatures; (ii) a \emph{binding layer} ties each ground action's applicability to the lifted preconditions it instantiates; and (iii) a \emph{chain layer} states which schema produces what another needs and how far each schema stands from the goal. The same network therefore runs on every domain, seen or unseen. We evaluate leave-one-domain-out over eight benchmark domains, selecting every checkpoint without access to the held-out domain. A single \gadar{} policy trained on seven domains solves 58.3\% of their test instances, one point below the 59.3\% of dedicated single-domain \gadar{} models, so one policy serves many domains at no cost in coverage; a multi-task control that keeps symbol identity in its weights, while strong on some of the domains it trains on, transfers to none of the held-out ones. Zero-shot, \gadar{} executes on every held-out domain and solves \todonum{68}\% of the large test instances of held-out Visitall, where an identically-executed untrained network solves \todonum{0}\%. Transfer to the other seven held-out domains is limited (\todonum{0--5}\% on their test instances), and we analyze where it fails, including domains whose action schemas are structurally alike but play different roles.
+Learned policies for classical planning act without search, but each is tied to the domain it was trained on: network modules per action schema, parameters per predicate, or vocabulary-sized encodings mean a trained policy cannot even be executed on a new domain's predicates and action schemas. We present \gadar{} (Generalizing Across Domains via Action Ranking), a policy that takes the domain description as input, $\pi(s, G, D)$, and constructs grounded actions in domains never seen in training, without search. Symbols are described by the roles they play in the domain rather than by their names, in three layers that each extend the previous one: (i) a \emph{lifted domain layer} embeds $D$ in every state graph through structural signatures; (ii) a \emph{binding layer} ties each ground action's applicability to the lifted preconditions it instantiates; and (iii) a \emph{chain layer} states which schema produces what another needs and how far each schema stands from the goal. The same network therefore runs on every domain, seen or unseen. We evaluate zero-shot generalization leave-one-domain-out over eight benchmark domains. A single \gadar{} policy trained on seven domains solves 58.3\% of their test instances, one point below the 59.3\% of dedicated single-domain \gadar{} models, so one policy serves many domains at no cost in coverage; a multi-task control that keeps symbol identity in its weights, while strong on some of the domains it trains on, transfers to none of the held-out ones. Zero-shot, \gadar{} executes on every held-out domain and solves \todonum{68}\% of the large test instances of held-out Visitall, where an identically-executed untrained network solves \todonum{0}\%. Zero-shot generalization to the other seven held-out domains is limited (\todonum{0--5}\% on their test instances), and we analyze where it fails, including domains whose action schemas are structurally alike but play different roles.
 
 \end{abstract}
 
@@ -155,9 +155,8 @@ stands from the goal. All three share one encoder, one ranking decoder, and the
 same search-free execution, so every comparison varies the representation
 and not the architecture.
 
-Our experiments follow a leave-one-domain-out protocol over all eight
-benchmark domains, with every checkpoint selected without access to the
-held-out domain. One \gadar{} policy serves every domain it is trained on:
+We evaluate zero-shot generalization leave-one-domain-out over all eight
+benchmark domains. One \gadar{} policy serves every domain it is trained on:
 trained on seven domains, it matches the in-domain coverage of dedicated
 single-domain models (58.3\% against 59.3\%). It also executes on every
 held-out domain. On held-out
@@ -165,7 +164,7 @@ Visitall it solves \todonum{68}\% of the large test instances zero-shot at
 plan quality \todonum{0.97}, against \todonum{0}\% for an
 identically-executed untrained network, \todonum{0}\% for the
 union-vocabulary control, and \todonum{4}\% without the chain layer. On the
-other seven held-out domains transfer is limited, and the per-domain
+other seven held-out domains zero-shot generalization is limited, and the per-domain
 results suggest where it breaks: when a held-out domain's schemas are
 structurally alike but play different roles, as Logistics' truck and
 airplane actions do, features that ignore symbol names may not tell them
@@ -504,16 +503,6 @@ training-scale instances, unseen because the domain was held out, which
 separates failing on the unseen domain from failing to scale within it.
 Training domains are evaluated on the hard split only.
 
-\textbf{Checkpoint selection.} No choice uses the held-out domain.
-In-domain results use the checkpoint with the lowest combined training and
-validation loss. For zero-shot results the training epoch is a
-hyperparameter selected across folds: for held-out domain $d$, we use the
-epoch $e^*(d)$ that maximizes mean zero-shot coverage on the hard splits of
-the \emph{other} seven held-out domains, each measured with its own fold's
-model; $d$'s own instances never enter the choice. The same rule is applied
-to every rung. Each configuration is trained with a single seed, so we do
-not report variance across seeds.
-
 \textbf{Baselines and references.} Our primary comparison is the \union{}
 control described above: identical data, architecture, and training
 procedure, with only the representation different. Any zero-shot
@@ -547,7 +536,11 @@ policy's on jointly solved problems, so values above 1 mean plans shorter
 than the reference; coverage is the primary metric
 (Appendix~\ref{app:metrics}). Hyperparameters are carried over from
 \citet{gabar} unchanged (Appendix~\ref{app:hyper}), and renaming invariance
-is verified by a unit test (Appendix~\ref{app:invariance}).
+is verified by a unit test (Appendix~\ref{app:invariance}). In-domain
+results use the checkpoint with the lowest combined training and validation
+loss; zero-shot results use the training epoch that maximizes mean
+zero-shot coverage on the other held-out domains. Each configuration is
+trained with a single seed.
 
 \section{Results and Discussion}
 
@@ -560,8 +553,8 @@ comparison: a rung of the ladder, a control, or a diagnostic.
 \centering
 \small
 \setlength{\tabcolsep}{4pt}
-\caption{Coverage (\%) per domain. \emph{Zero-shot}: the domain is held out
-of training (leave-one-domain-out) and evaluated on its test instances,
+\caption{Coverage (\%) per domain. \emph{Zero-shot generalization}: the domain
+is held out of training (leave-one-domain-out) and evaluated on its test instances,
 with its training-scale instances in parentheses where measured; Rand is
 uniform choice among applicable actions under the same executor.
 \emph{In-domain}: test instances; ladder columns average the seven
@@ -571,7 +564,7 @@ own test instances. --: not measured.}
 \label{table:main_table}\label{table:indomain}
 \resizebox{\linewidth}{!}{\begin{tabular}{@{}l|c|ccc||c|ccc|c@{}}
 \toprule
-& \multicolumn{4}{c||}{Zero-shot (held-out domain)} & \multicolumn{5}{c}{In-domain} \\
+& \multicolumn{4}{c||}{Zero-shot generalization} & \multicolumn{5}{c}{In-domain} \\
 Domain & Rand & \union{} & \gadarbind{} & \textbf{\gadar{}} & GABAR$^\dagger$ & \union{} & \gadarbind{} & \gadar{} & \gadar{}$_1$ \\
 \midrule
 Blocks & 0.2\,{\scriptsize(1.7)} & 0.0 & 1.0 & \textbf{3.0} & 100.0 & 57.2 & 46.8 & 74.6 & 95.5 \\
@@ -652,7 +645,7 @@ from each other, and the difference matters: an untrained network is not a
 neutral policy but a consistently biased one, and it falls below random
 wherever random exploration is enough (\todonum{2.6}\% against 88.3\% on
 easy Miconic). A policy should therefore be credited against the higher of
-the two floors. Against that standard, \gadar{} transfers on hard Visitall
+the two floors. Against that standard, \gadar{} generalizes zero-shot on hard Visitall
 and on Blocks (\todonum{4.5}\% against 0.2\%), and nowhere else.
 
 \textbf{Are the plans goal-directed? (Plan quality.)} Where random choice
@@ -672,7 +665,7 @@ policy otherwise. On hard Visitall it solves \todonum{--}\% against
 steps from achieving anything, which is what the bucketed goal distance
 over the enables relation was designed to support.
 
-\textbf{Where does transfer fail? (The other seven domains.)} On
+\textbf{Where does zero-shot generalization fail? (The other seven domains.)} On
 \todonum{six} of the seven remaining held-out domains \gadar{} does not
 exceed the higher floor on the hard split, and on \todonum{Spanner and
 Rovers} it falls below random choice, which solves 43.8\% and 30.9\%. We
@@ -688,8 +681,9 @@ domain can still play different roles in it. The in-domain results point
 the same way: with Logistics among its training domains, \gadar{} still
 reaches only 2.7\% on it, and 3.1\% when trained on Logistics alone,
 against 94.6\% on Grid. Whether
-structural similarity between schemas predicts transfer across all eight
-domains we leave to a systematic analysis; Blocks, which transfers despite
+structural similarity between schemas predicts zero-shot generalization
+across all eight domains we leave to a systematic analysis; Blocks, which
+generalizes despite
 paired schemas, shows it is not the only factor.
 
 \section{Conclusion}
@@ -705,10 +699,9 @@ the in-domain coverage of dedicated single-domain models (58.3\% against
 59.3\%), and on held-out Visitall the chain layer moves zero-shot coverage of the large
 test instances from \todonum{4}\% to \todonum{68}\% at plan quality
 \todonum{0.97}, against \todonum{6.0}\% for random choice under the same
-executor. Transfer to the other held-out domains is limited, and our
-evaluation, with every checkpoint selected without the held-out domain and
-every result set against both a random and an untrained floor, is designed
-to show where it fails as clearly as where it succeeds. Schemas that are
+executor. Zero-shot generalization to the other held-out domains is
+limited, and our evaluation sets every result against a random floor to
+show where it fails as clearly as where it succeeds. Schemas that are
 structurally alike but play different roles, as in Logistics, may mark a
 limit that renaming-invariant features cannot cross without data from the
 new domain. Few-shot adaptation, lifted successor generation, richer PDDL
