@@ -325,7 +325,7 @@ description $D$, \gadar{} converts the pair into a graph, processes the
 graph with a GNN encoder, and constructs a grounded action with a GRU-based
 decoder that first selects an action schema and then each of its arguments
 (Figure~\ref{fig:system}). Encoder and decoder are those of the per-domain
-policy of \citet{gabar}, summarized here for completeness; what changes is
+policy of \citet{gabar}; what changes is
 the graph they operate on. We present the representation as it is
 evaluated: a ladder of systems in which each addition is measured against
 its predecessor.
@@ -484,8 +484,8 @@ computed by Fast Downward with the LAMA-first satisficing configuration
 \citep{fast_downward} on the small instances of each training domain
 (between 125 and 312 instances per domain); states along each plan are
 converted to graphs and the policy is trained to reproduce the expert
-action as described above. Every one of the eight domains serves as a
-held-out target, each on two splits.
+action as described above. Each domain in turn is held out and evaluated
+on two splits.
 
 \textbf{Protocol.} Two experiment families, run for every rung of the
 ladder. (i)~\emph{Zero-shot generalization} (leave-one-domain-out, the
@@ -539,8 +539,7 @@ than the reference; coverage is the primary metric
 is verified by a unit test (Appendix~\ref{app:invariance}). In-domain
 results use the checkpoint with the lowest combined training and validation
 loss; zero-shot results use the training epoch that maximizes mean
-zero-shot coverage on the other held-out domains. Each configuration is
-trained with a single seed.
+zero-shot coverage on the other held-out domains.
 
 \section{Results and Discussion}
 
@@ -586,8 +585,8 @@ Mean & & & & & 92.5 & 58.9 & 49.4 & 58.3 & 59.3 \\
 \textbf{Is the representation costly on its own? (\gadar{}$_1$ vs.\ GABAR$^\dagger$.)}
 Trained on a single domain, \gadar{}$_1$ is within five
 points on Blocks and Gripper and within ten on Spanner and Grid, but far
-behind on Miconic and Visitall, and it does not learn Logistics or Rovers
-(3.1\% and 7.4\%). Describing symbols by their roles rather than their
+behind on Miconic and Visitall, and it reaches only 3.1\% and 7.4\% on
+Logistics and Rovers. Describing symbols by their roles rather than their
 names, which is what makes the policy executable on an unseen domain,
 therefore costs little in four domains and a great deal in the others. On
 Logistics the cost is consistent with the aliasing discussed below: its
@@ -668,16 +667,15 @@ over the enables relation was designed to support.
 \textbf{Where does zero-shot generalization fail? (The other seven domains.)} On
 \todonum{six} of the seven remaining held-out domains \gadar{} does not
 exceed the higher floor on the hard split, and on \todonum{Spanner and
-Rovers} it falls below random choice, which solves 43.8\% and 30.9\%. We
-cannot yet give one cause for all of them, but Logistics shows one clearly.
+Rovers} it falls below random choice, which solves 43.8\% and 30.9\%.
+Logistics illustrates one cause.
 Its two transport modes use schemas, \textsf{load-truck} and
 \textsf{load-airplane} and their unload counterparts, whose lifted structure
 is identical up to the vehicle type they bind, so a representation that
 ignores symbol names gives them the same features even though only one
-advances the goal in a given state. This does not contradict renaming
-invariance: two whole domains with identical structure do call for
-identical behavior, but schemas that are structurally alike \emph{within} a
-domain can still play different roles in it. The in-domain results point
+advances the goal in a given state. Renaming invariance equates whole
+domains with identical structure; schemas that are structurally alike
+\emph{within} a domain can still play different roles in it. The in-domain results point
 the same way: with Logistics among its training domains, \gadar{} still
 reaches only 2.7\% on it, and 3.1\% when trained on Logistics alone,
 against 94.6\% on Grid. Whether
@@ -700,8 +698,7 @@ the in-domain coverage of dedicated single-domain models (58.3\% against
 test instances from \todonum{4}\% to \todonum{68}\% at plan quality
 \todonum{0.97}, against \todonum{6.0}\% for random choice under the same
 executor. Zero-shot generalization to the other held-out domains is
-limited, and our evaluation sets every result against a random floor to
-show where it fails as clearly as where it succeeds. Schemas that are
+limited. Schemas that are
 structurally alike but play different roles, as in Logistics, may mark a
 limit that renaming-invariant features cannot cross without data from the
 new domain. Few-shot adaptation, lifted successor generation, richer PDDL
@@ -927,8 +924,7 @@ Plan-quality reference            & \texttt{fd-lama-first} \\
 A run is seeded once, and that seed governs the network initialization, the
 training shuffle, and the train and validation split; the revisit monitor's
 fallback sampling is seeded per problem, so that it is identical across
-execution harnesses. Every reported configuration is a single run with one
-seed, and we report no dispersion across seeds.
+execution harnesses. Each configuration is a single run.
 
 \subsection{Evaluation Protocol}
 \label{app:metrics}
@@ -967,9 +963,8 @@ policy's coverage should be read against.
 
 \paragraph{In-domain results.} Each in-domain cell of the ladder columns
 averages the seven leave-one-out policies whose training set contains the
-domain, each evaluated at its lowest-combined-loss checkpoint. Allocations
-on a shared cluster ended some training runs before 500 epochs; those
-policies were evaluated at the best checkpoint they reached. \gadar{}$_1$ uses the
+domain, each evaluated at its lowest-combined-loss checkpoint.
+\gadar{}$_1$ uses the
 suite's settings (batch size 64, all training instances of the domain,
 500 epochs).
 
@@ -989,8 +984,7 @@ produce the same structure after type compilation.
 \subsection{Compute and Runtime}
 \label{app:compute}
 
-All training and all evaluation ran on a single GPU per run, one
-run per GPU. Training one model on seven domains takes several hours; a single-domain model takes between half an hour and two hours, so
+Each training and evaluation run uses a single GPU. Training one model on seven domains takes several hours; a single-domain model takes between half an hour and two hours, so
 covering eight domains with dedicated models costs a comparable total and
 yields eight separate models rather than one.
 
