@@ -161,6 +161,28 @@ def test_manifest_rejects_unknown_dependency_cycle_and_duplicate():
         raise AssertionError(f"manifest accepted {jobs}")
 
 
+def test_time_left_falls_back_to_the_submitted_limit_when_squeue_is_missing():
+    keep = {k: os.environ.get(k) for k in ("CAMPAIGN_HOURS_LEFT", "SLURM_JOB_ID",
+                                           "CAMPAIGN_TIME_LIMIT_H", "PATH")}
+    try:
+        os.environ.pop("CAMPAIGN_HOURS_LEFT", None)
+        os.environ["SLURM_JOB_ID"] = "999999999"
+        os.environ["PATH"] = "/nonexistent"          # no squeue
+        os.environ["CAMPAIGN_TIME_LIMIT_H"] = "24"
+        left = W.hours_left()
+        assert 23.9 < left <= 24, left
+        os.environ.pop("CAMPAIGN_TIME_LIMIT_H")
+        assert W.hours_left() == 2.0, "inside SLURM and blind: assume 2h, not infinity"
+        os.environ.pop("SLURM_JOB_ID")
+        assert W.hours_left() == float("inf"), "outside SLURM there is no limit"
+    finally:
+        for k, v in keep.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
 def test_slurm_time_parsing():
     assert W.parse_slurm_time("1-02:00:00") == 26
     assert abs(W.parse_slurm_time("00:30:00") - 0.5) < 1e-9

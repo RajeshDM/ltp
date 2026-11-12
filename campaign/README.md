@@ -73,6 +73,7 @@ prints a URL you open on your computer and paste a code back).
 
 ```bash
 di_ltp                                   # cd to the repo, conda activate di_ltp_1
+module load slurm                        # sbatch/squeue on PATH; the agent and its jobs inherit this
 git fetch origin && git checkout claude/wizardly-rubin-hqMug && git pull
 git checkout -b auto/campaign            # the agent commits ONLY here; you merge
 python -c "import torch, yaml; print('torch', torch.__version__)"

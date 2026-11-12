@@ -41,12 +41,20 @@ LINE=$(printf '%s\n' "$PRESETS" | awk -v p="$PRESET" '$1==p')
 read -r _ PART GRES CPUS MEM TIME KIND MAX EXTRA <<< "$LINE"
 
 if [ -e campaign/STOP ]; then echo "REFUSING: campaign/STOP exists"; exit 1; fi
-OPTS="-A $ACCOUNT -p $PART -c $CPUS --mem=$MEM -t $TIME -J camp-$PRESET -o $REPO/logs/campaign_slurm_%j.out"
+# The time limit in hours, handed to the worker so its "can this job finish
+# before the allocation ends" guard works even where squeue is not on PATH.
+LIMIT_H=$(printf '%s' "$TIME" | awk -F'[-:]' '{ if (NF==4) print $1*24+$2+$3/60; else if (NF==3) print $1+$2/60; else print 1 }')
+OPTS="-A $ACCOUNT -p $PART -c $CPUS --mem=$MEM -t $TIME -J camp-$PRESET -o $REPO/logs/campaign_slurm_%j.out --export=ALL,CAMPAIGN_TIME_LIMIT_H=$LIMIT_H"
 [ "$GRES" != "-" ] && OPTS="$OPTS --gres=$GRES"
 [ "$EXTRA" != "-" ] && OPTS="$OPTS $(printf '%s' "$EXTRA" | tr ',' ' ')"
 
 if [ "$DRY" = 0 ]; then
-    command -v sbatch >/dev/null || { echo "sbatch not found (module load slurm)"; exit 1; }
+    if ! command -v sbatch >/dev/null 2>&1; then
+        # a script is not a login shell: try the module system before giving up
+        [ -f /etc/profile.d/modules.sh ] && . /etc/profile.d/modules.sh
+        command -v module >/dev/null 2>&1 && module load slurm 2>/dev/null
+    fi
+    command -v sbatch >/dev/null 2>&1 || { echo "sbatch not found: run 'module load slurm' in this shell, then retry"; exit 1; }
     mine=$(squeue -u "$USER" -h -n "camp-$PRESET" 2>/dev/null | wc -l)
     all=$(squeue -u "$USER" -h -n "camp-gpu-dgxh,camp-gpu-dgx2,camp-gpu-gpu,camp-gpu-share,camp-big-share,camp-cpu-share,camp-preempt-a40" 2>/dev/null | wc -l)
     if [ $((mine + COUNT)) -gt "$MAX" ]; then

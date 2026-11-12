@@ -251,21 +251,42 @@ def next_job(ctx, caps, hours_left):
     return None
 
 
+_STARTED = time.time()
+
+
 def hours_left():
-    """Wall-clock left in this SLURM allocation (inf outside SLURM)."""
+    """Wall-clock left in this SLURM allocation (inf outside SLURM).
+
+    Order: CAMPAIGN_HOURS_LEFT (tests, manual override); squeue, the
+    authoritative answer; the time limit submit.sh passed in
+    CAMPAIGN_TIME_LIMIT_H minus this worker's age. The last exists because a
+    batch job inherits the SUBMITTING shell's PATH: without the slurm module
+    there, squeue is missing inside the job, and a guard that silently
+    returned 'infinite time left' would start jobs the limit then kills.
+    Inside SLURM with no way to know, assume 2 hours rather than unlimited.
+    """
     env = os.environ.get("CAMPAIGN_HOURS_LEFT")
     if env:
         return float(env)
     jid = os.environ.get("SLURM_JOB_ID")
-    if not jid:
-        return float("inf")
-    try:
-        out = subprocess.run(["squeue", "-h", "-j", jid, "-o", "%L"],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                             universal_newlines=True, timeout=30).stdout.strip()
-    except (OSError, subprocess.TimeoutExpired):
-        return float("inf")
-    return parse_slurm_time(out)
+    if jid:
+        try:
+            out = subprocess.run(["squeue", "-h", "-j", jid, "-o", "%L"],
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                 universal_newlines=True, timeout=30).stdout.strip()
+            left = parse_slurm_time(out)
+            if left != float("inf"):
+                return left
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    limit = os.environ.get("CAMPAIGN_TIME_LIMIT_H")
+    if limit:
+        return float(limit) - (time.time() - _STARTED) / 3600
+    if jid:
+        print("WARNING: inside SLURM but cannot read the time limit (no squeue, no "
+              "CAMPAIGN_TIME_LIMIT_H); assuming 2h left", flush=True)
+        return 2.0
+    return float("inf")
 
 
 def parse_slurm_time(text):

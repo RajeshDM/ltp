@@ -18,6 +18,14 @@ The aliases `ltp_3`, `ltp_5`, `ltp`, `ploi`, `eval` point at OLDER repos and
 environments; this repo is `di_ltp`. Always `--device cuda:0`: an allocation
 shows exactly one GPU, and `cuda:1` selects a device that is not there.
 
+**SLURM commands need `module load slurm`.** The cluster docs say it loads at
+login; in practice a shell can lack it (`sbatch: command not found`), which is
+why the `sq_r` alias starts with it. Run `module load slurm` in any shell
+before starting the monitoring agent: it inherits that PATH, and so does every
+batch job it submits. `campaign/submit.sh` also tries the module itself, and
+workers carry the time limit in `CAMPAIGN_TIME_LIMIT_H` so their
+finish-before-the-limit guard does not depend on `squeue`.
+
 A batch shell has not read `~/.bashrc`, so aliases and `conda activate` do not
 exist inside `sbatch` unless sourced; `campaign/worker_entry.sh` does it.
 
