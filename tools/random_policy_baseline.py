@@ -62,6 +62,13 @@ def parse_domains(spec):
     return entries
 
 
+def _literals(x):
+    """A conjunction's literals. pddlgym leaves a schema with ONE effect (and a
+    problem with one goal atom) as a bare Literal, which has no .literals."""
+    lits = getattr(x, "literals", None)
+    return list(lits) if lits is not None else [x]
+
+
 def _atom(literal, binding=None):
     """(positive predicate name, argument tuple) of a ground or lifted literal."""
     from ploi.lifted_layer import _positive_predicate
@@ -78,7 +85,7 @@ def make_scorer(policy, env, state):
     from ploi.lifted_layer import (build_lifted_spec, build_chain_spec,
                                    schema_goal_distances)
     ops = env.action_space._action_predicate_to_operators
-    goal = {_atom(g) for g in state.goal.literals}
+    goal = {_atom(g) for g in _literals(state.goal)}
     gdist = {}
     if policy == "features":
         spec = build_lifted_spec(ops)
@@ -91,7 +98,7 @@ def make_scorer(policy, env, state):
         true_now = {_atom(l) for l in state.literals}
         open_goal = goal - true_now
         achieves = deletes = 0
-        for lit in op.effects.literals:
+        for lit in _literals(op.effects):
             atom = _atom(lit, binding)
             if getattr(lit, "is_anti", False):
                 deletes += atom in goal and atom in true_now

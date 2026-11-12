@@ -81,6 +81,22 @@ def test_goal_distance_then_goal_relevant_arguments_break_ties():
     assert score(ground("stack", "ac"), state) > score(ground("stack", "cd"), state)
 
 
+def test_a_schema_with_a_single_effect_is_a_bare_literal_not_a_conjunction():
+    """pddlgym leaves one-effect schemas unwrapped (Miconic's board): the scorer
+    crashed on `op.effects.literals` on the first real run."""
+    env, state, ground = _setup([("holding", "a")], [("on", "cd")])
+    ops = env.action_space._action_predicate_to_operators
+    unstack = next(op for p, op in ops.items() if p.name == "unstack")
+    adds_holding = next(l for l in unstack.effects.literals if l.predicate.name == "holding")
+    unstack.effects = adds_holding                      # bare Literal: no .literals
+    assert not hasattr(unstack.effects, "literals")
+    score = make_scorer("achieve", env, state)
+    assert score(ground("unstack", "ab"), state) == (1,)
+    # a single-atom goal is bare too
+    state.goal = state.goal.literals[0]
+    assert make_scorer("achieve", env, state)(ground("unstack", "ab"), state) == (1,)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

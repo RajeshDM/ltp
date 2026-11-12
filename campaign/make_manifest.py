@@ -12,7 +12,8 @@ import os
 
 import yaml
 
-SINCE = "20261112"            # results older than this never satisfy a job
+SINCE = "20261101"            # results older than this never satisfy a job (the cluster clock is US-Pacific:
+                              # a date taken from elsewhere once rejected a result written minutes earlier)
 HERE = os.path.dirname(os.path.abspath(__file__))
 FOLDS = ["manyblocks", "visitall", "grid"]
 E2_MODES = ["jc_no_bind", "jc_no_goal", "jc_no_chain", "jc_no_eff", "joint"]
@@ -24,6 +25,8 @@ GABAR = {"logistics": 6, "rovers": 6, "visitall": 5, "spanner": 5,
 # Left behind by an interrupted September run: train_then_eval.sh would
 # EVALUATE the half-trained checkpoint and call it done.
 INTERRUPTED = {"blocks", "grid", "gripper"}
+HOLD_FEATURIZER = ("possible featurizer bug: single-effect schemas are dropped by lifted_layer "
+                   "(ICLR27/REVIEW_PLAN.md 2b); release after the decision")
 HOLD_INTERRUPTED = ("an interrupted September run left a half-trained model for this "
                     "key and train_then_eval.sh would evaluate it; archive "
                     "models/*bs16* for this domain first (REVIEW_PLAN E1)")
@@ -78,6 +81,8 @@ def main():
                         f"WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/{cfg}.yaml",
                         kind="gpu", priority=2, est_hours=5, needs=["gate_unit_tests"],
                         done=f"python tools/campaign_checks.py evaluated {expid} --since {SINCE} --metrics combined"))
+        if cfg.startswith("sd_joint_chain"):       # GADAR featurizer: affected
+            jobs[-1]["hold"] = HOLD_FEATURIZER
         e1.append(f"e1_{cfg}")
     jobs.append(job("report_e1", "campaign/jobs/report.sh e1", priority=2, est_hours=0.1,
                     needs=[j for j in e1 if "gabar_blocks" not in j and "gabar_grid" not in j
@@ -92,7 +97,7 @@ def main():
             prio = 3 if mode in E2_CORE else 4
             jobs.append(job(f"e2_train_{mode}_{fold}",
                             f"./train_test_scripts/train_queue.sh cuda:0 configs/{cfg}.yaml",
-                            kind="gpu", priority=prio, est_hours=16, needs=gates,
+                            kind="gpu", priority=prio, est_hours=16, needs=gates, hold=HOLD_FEATURIZER,
                             done=f"python tools/campaign_checks.py trained {cfg} --since {SINCE}"))
             jobs.append(job(f"e2_eval_{mode}_{fold}", f"campaign/jobs/eval_ablation.sh configs/{cfg}.yaml",
                             kind="cpu", priority=prio - 0.5, est_hours=6, min_cpus=16,

@@ -28,7 +28,7 @@ jobs:
   priority: 0
   est_hours: 1.0
   min_cpus: 4
-  done: python tools/campaign_checks.py file campaign/reports/gate_fingerprint.txt --since 20261112
+  done: python tools/campaign_checks.py file campaign/reports/gate_fingerprint.txt --since 20261101
 - id: e0_features
   cmd: campaign/jobs/e0.sh features
   priority: 1
@@ -36,7 +36,7 @@ jobs:
   min_cpus: 8
   needs:
   - gate_unit_tests
-  done: python tools/campaign_checks.py globcount 'cache/results/e0/features_*.json' 8 --min-keys 2 --since 20261112
+  done: python tools/campaign_checks.py globcount 'cache/results/e0/features_*.json' 8 --min-keys 2 --since 20261101
 - id: e0_achieve
   cmd: campaign/jobs/e0.sh achieve
   priority: 1
@@ -44,7 +44,7 @@ jobs:
   min_cpus: 8
   needs:
   - gate_unit_tests
-  done: python tools/campaign_checks.py globcount 'cache/results/e0/achieve_*.json' 8 --min-keys 2 --since 20261112
+  done: python tools/campaign_checks.py globcount 'cache/results/e0/achieve_*.json' 8 --min-keys 2 --since 20261101
 - id: report_e0
   cmd: campaign/jobs/report.sh e0
   priority: 1
@@ -52,7 +52,7 @@ jobs:
   needs:
   - e0_features
   - e0_achieve
-  done: python tools/campaign_checks.py file campaign/reports/e0.txt --since 20261112
+  done: python tools/campaign_checks.py file campaign/reports/e0.txt --since 20261101
 - id: e1_gabar_logistics
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/baseline_logistics.yaml
   kind: gpu
@@ -60,7 +60,7 @@ jobs:
   est_hours: 6
   needs:
   - gate_unit_tests
-  done: python tools/campaign_checks.py evaluated baseline_logistics --since 20261112 --metrics combined
+  done: python tools/campaign_checks.py evaluated baseline_logistics --since 20261101 --metrics combined
 - id: e1_gabar_rovers
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/baseline_rovers.yaml
   kind: gpu
@@ -68,7 +68,7 @@ jobs:
   est_hours: 6
   needs:
   - gate_unit_tests
-  done: python tools/campaign_checks.py evaluated baseline_rovers --since 20261112 --metrics combined
+  done: python tools/campaign_checks.py evaluated baseline_rovers --since 20261101 --metrics combined
 - id: e1_gabar_visitall
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/baseline_visitall.yaml
   kind: gpu
@@ -76,7 +76,7 @@ jobs:
   est_hours: 5
   needs:
   - gate_unit_tests
-  done: python tools/campaign_checks.py evaluated baseline_visitall --since 20261112 --metrics combined
+  done: python tools/campaign_checks.py evaluated baseline_visitall --since 20261101 --metrics combined
 - id: e1_gabar_spanner
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/baseline_spanner.yaml
   kind: gpu
@@ -84,7 +84,7 @@ jobs:
   est_hours: 5
   needs:
   - gate_unit_tests
-  done: python tools/campaign_checks.py evaluated baseline_spanner --since 20261112 --metrics combined
+  done: python tools/campaign_checks.py evaluated baseline_spanner --since 20261101 --metrics combined
 - id: e1_gabar_blocks
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/baseline_blocks.yaml
   kind: gpu
@@ -92,7 +92,7 @@ jobs:
   est_hours: 6
   needs:
   - gate_unit_tests
-  done: python tools/campaign_checks.py evaluated baseline_blocks --since 20261112 --metrics combined
+  done: python tools/campaign_checks.py evaluated baseline_blocks --since 20261101 --metrics combined
   hold: an interrupted September run left a half-trained model for this key and train_then_eval.sh would evaluate it; archive models/*bs16* for this domain first (REVIEW_PLAN E1)
 - id: e1_gabar_gripper
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/baseline_gripper.yaml
@@ -101,7 +101,7 @@ jobs:
   est_hours: 5
   needs:
   - gate_unit_tests
-  done: python tools/campaign_checks.py evaluated baseline_gripper --since 20261112 --metrics combined
+  done: python tools/campaign_checks.py evaluated baseline_gripper --since 20261101 --metrics combined
   hold: an interrupted September run left a half-trained model for this key and train_then_eval.sh would evaluate it; archive models/*bs16* for this domain first (REVIEW_PLAN E1)
 - id: e1_gabar_grid
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/baseline_grid.yaml
@@ -110,7 +110,7 @@ jobs:
   est_hours: 5
   needs:
   - gate_unit_tests
-  done: python tools/campaign_checks.py evaluated baseline_grid --since 20261112 --metrics combined
+  done: python tools/campaign_checks.py evaluated baseline_grid --since 20261101 --metrics combined
   hold: an interrupted September run left a half-trained model for this key and train_then_eval.sh would evaluate it; archive models/*bs16* for this domain first (REVIEW_PLAN E1)
 - id: e1_baseline_logistics_opt
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/baseline_logistics_opt.yaml
@@ -119,7 +119,7 @@ jobs:
   est_hours: 5
   needs:
   - gate_unit_tests
-  done: python tools/campaign_checks.py evaluated baseline_logistics_opt --since 20261112 --metrics combined
+  done: python tools/campaign_checks.py evaluated baseline_logistics_opt --since 20261101 --metrics combined
 - id: e1_baseline_rovers_opt
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/baseline_rovers_opt.yaml
   kind: gpu
@@ -127,7 +127,7 @@ jobs:
   est_hours: 5
   needs:
   - gate_unit_tests
-  done: python tools/campaign_checks.py evaluated baseline_rovers_opt --since 20261112 --metrics combined
+  done: python tools/campaign_checks.py evaluated baseline_rovers_opt --since 20261101 --metrics combined
 - id: e1_sd_joint_chain_logistics_opt
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_logistics_opt.yaml
   kind: gpu
@@ -135,7 +135,8 @@ jobs:
   est_hours: 5
   needs:
   - gate_unit_tests
-  done: python tools/campaign_checks.py evaluated sd_joint_chain_logistics_opt --since 20261112 --metrics combined
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_logistics_opt --since 20261101 --metrics combined
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
 - id: e1_sd_joint_chain_rovers_opt
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_rovers_opt.yaml
   kind: gpu
@@ -143,7 +144,8 @@ jobs:
   est_hours: 5
   needs:
   - gate_unit_tests
-  done: python tools/campaign_checks.py evaluated sd_joint_chain_rovers_opt --since 20261112 --metrics combined
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_rovers_opt --since 20261101 --metrics combined
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
 - id: report_e1
   cmd: campaign/jobs/report.sh e1
   priority: 2
@@ -157,7 +159,7 @@ jobs:
   - e1_baseline_rovers_opt
   - e1_sd_joint_chain_logistics_opt
   - e1_sd_joint_chain_rovers_opt
-  done: python tools/campaign_checks.py file campaign/reports/e1.txt --since 20261112
+  done: python tools/campaign_checks.py file campaign/reports/e1.txt --since 20261101
 - id: e2_train_jc_no_bind_manyblocks
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/loo8_jc_no_bind_no_manyblocks.yaml
   kind: gpu
@@ -168,7 +170,8 @@ jobs:
   - gate_ablation_blocks
   - gate_ablation_logistics
   - gate_fingerprint
-  done: python tools/campaign_checks.py trained loo8_jc_no_bind_no_manyblocks --since 20261112
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
+  done: python tools/campaign_checks.py trained loo8_jc_no_bind_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_bind_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_bind_no_manyblocks.yaml
   kind: cpu
@@ -177,7 +180,7 @@ jobs:
   min_cpus: 16
   needs:
   - e2_train_jc_no_bind_manyblocks
-  done: python tools/campaign_checks.py evaluated loo8_jc_no_bind_no_manyblocks --since 20261112 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_bind_no_manyblocks --since 20261112
+  done: python tools/campaign_checks.py evaluated loo8_jc_no_bind_no_manyblocks --since 20261101 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_bind_no_manyblocks --since 20261101
     --metrics periodic --suffix _epochs
 - id: e2_train_jc_no_bind_visitall
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/loo8_jc_no_bind_no_visitall.yaml
@@ -185,7 +188,8 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
-  done: python tools/campaign_checks.py trained loo8_jc_no_bind_no_visitall --since 20261112
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
+  done: python tools/campaign_checks.py trained loo8_jc_no_bind_no_visitall --since 20261101
 - id: e2_eval_jc_no_bind_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_bind_no_visitall.yaml
   kind: cpu
@@ -194,7 +198,7 @@ jobs:
   min_cpus: 16
   needs:
   - e2_train_jc_no_bind_visitall
-  done: python tools/campaign_checks.py evaluated loo8_jc_no_bind_no_visitall --since 20261112 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_bind_no_visitall --since 20261112
+  done: python tools/campaign_checks.py evaluated loo8_jc_no_bind_no_visitall --since 20261101 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_bind_no_visitall --since 20261101
     --metrics periodic --suffix _epochs
 - id: e2_train_jc_no_bind_grid
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/loo8_jc_no_bind_no_grid.yaml
@@ -202,7 +206,8 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
-  done: python tools/campaign_checks.py trained loo8_jc_no_bind_no_grid --since 20261112
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
+  done: python tools/campaign_checks.py trained loo8_jc_no_bind_no_grid --since 20261101
 - id: e2_eval_jc_no_bind_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_bind_no_grid.yaml
   kind: cpu
@@ -211,7 +216,7 @@ jobs:
   min_cpus: 16
   needs:
   - e2_train_jc_no_bind_grid
-  done: python tools/campaign_checks.py evaluated loo8_jc_no_bind_no_grid --since 20261112 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_bind_no_grid --since 20261112 --metrics
+  done: python tools/campaign_checks.py evaluated loo8_jc_no_bind_no_grid --since 20261101 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_bind_no_grid --since 20261101 --metrics
     periodic --suffix _epochs
 - id: e2_train_jc_no_goal_manyblocks
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/loo8_jc_no_goal_no_manyblocks.yaml
@@ -219,7 +224,8 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
-  done: python tools/campaign_checks.py trained loo8_jc_no_goal_no_manyblocks --since 20261112
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
+  done: python tools/campaign_checks.py trained loo8_jc_no_goal_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_goal_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_goal_no_manyblocks.yaml
   kind: cpu
@@ -228,7 +234,7 @@ jobs:
   min_cpus: 16
   needs:
   - e2_train_jc_no_goal_manyblocks
-  done: python tools/campaign_checks.py evaluated loo8_jc_no_goal_no_manyblocks --since 20261112 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_goal_no_manyblocks --since 20261112
+  done: python tools/campaign_checks.py evaluated loo8_jc_no_goal_no_manyblocks --since 20261101 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_goal_no_manyblocks --since 20261101
     --metrics periodic --suffix _epochs
 - id: e2_train_jc_no_goal_visitall
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/loo8_jc_no_goal_no_visitall.yaml
@@ -236,7 +242,8 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
-  done: python tools/campaign_checks.py trained loo8_jc_no_goal_no_visitall --since 20261112
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
+  done: python tools/campaign_checks.py trained loo8_jc_no_goal_no_visitall --since 20261101
 - id: e2_eval_jc_no_goal_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_goal_no_visitall.yaml
   kind: cpu
@@ -245,7 +252,7 @@ jobs:
   min_cpus: 16
   needs:
   - e2_train_jc_no_goal_visitall
-  done: python tools/campaign_checks.py evaluated loo8_jc_no_goal_no_visitall --since 20261112 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_goal_no_visitall --since 20261112
+  done: python tools/campaign_checks.py evaluated loo8_jc_no_goal_no_visitall --since 20261101 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_goal_no_visitall --since 20261101
     --metrics periodic --suffix _epochs
 - id: e2_train_jc_no_goal_grid
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/loo8_jc_no_goal_no_grid.yaml
@@ -253,7 +260,8 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
-  done: python tools/campaign_checks.py trained loo8_jc_no_goal_no_grid --since 20261112
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
+  done: python tools/campaign_checks.py trained loo8_jc_no_goal_no_grid --since 20261101
 - id: e2_eval_jc_no_goal_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_goal_no_grid.yaml
   kind: cpu
@@ -262,7 +270,7 @@ jobs:
   min_cpus: 16
   needs:
   - e2_train_jc_no_goal_grid
-  done: python tools/campaign_checks.py evaluated loo8_jc_no_goal_no_grid --since 20261112 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_goal_no_grid --since 20261112 --metrics
+  done: python tools/campaign_checks.py evaluated loo8_jc_no_goal_no_grid --since 20261101 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_goal_no_grid --since 20261101 --metrics
     periodic --suffix _epochs
 - id: e2_train_jc_no_chain_manyblocks
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/loo8_jc_no_chain_no_manyblocks.yaml
@@ -270,7 +278,8 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  done: python tools/campaign_checks.py trained loo8_jc_no_chain_no_manyblocks --since 20261112
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
+  done: python tools/campaign_checks.py trained loo8_jc_no_chain_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_chain_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_chain_no_manyblocks.yaml
   kind: cpu
@@ -279,7 +288,7 @@ jobs:
   min_cpus: 16
   needs:
   - e2_train_jc_no_chain_manyblocks
-  done: python tools/campaign_checks.py evaluated loo8_jc_no_chain_no_manyblocks --since 20261112 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_chain_no_manyblocks --since 20261112
+  done: python tools/campaign_checks.py evaluated loo8_jc_no_chain_no_manyblocks --since 20261101 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_chain_no_manyblocks --since 20261101
     --metrics periodic --suffix _epochs
 - id: e2_train_jc_no_chain_visitall
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/loo8_jc_no_chain_no_visitall.yaml
@@ -287,7 +296,8 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  done: python tools/campaign_checks.py trained loo8_jc_no_chain_no_visitall --since 20261112
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
+  done: python tools/campaign_checks.py trained loo8_jc_no_chain_no_visitall --since 20261101
 - id: e2_eval_jc_no_chain_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_chain_no_visitall.yaml
   kind: cpu
@@ -296,7 +306,7 @@ jobs:
   min_cpus: 16
   needs:
   - e2_train_jc_no_chain_visitall
-  done: python tools/campaign_checks.py evaluated loo8_jc_no_chain_no_visitall --since 20261112 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_chain_no_visitall --since 20261112
+  done: python tools/campaign_checks.py evaluated loo8_jc_no_chain_no_visitall --since 20261101 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_chain_no_visitall --since 20261101
     --metrics periodic --suffix _epochs
 - id: e2_train_jc_no_chain_grid
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/loo8_jc_no_chain_no_grid.yaml
@@ -304,7 +314,8 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  done: python tools/campaign_checks.py trained loo8_jc_no_chain_no_grid --since 20261112
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
+  done: python tools/campaign_checks.py trained loo8_jc_no_chain_no_grid --since 20261101
 - id: e2_eval_jc_no_chain_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_chain_no_grid.yaml
   kind: cpu
@@ -313,7 +324,7 @@ jobs:
   min_cpus: 16
   needs:
   - e2_train_jc_no_chain_grid
-  done: python tools/campaign_checks.py evaluated loo8_jc_no_chain_no_grid --since 20261112 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_chain_no_grid --since 20261112 --metrics
+  done: python tools/campaign_checks.py evaluated loo8_jc_no_chain_no_grid --since 20261101 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_chain_no_grid --since 20261101 --metrics
     periodic --suffix _epochs
 - id: e2_train_jc_no_eff_manyblocks
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/loo8_jc_no_eff_no_manyblocks.yaml
@@ -321,7 +332,8 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  done: python tools/campaign_checks.py trained loo8_jc_no_eff_no_manyblocks --since 20261112
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
+  done: python tools/campaign_checks.py trained loo8_jc_no_eff_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_eff_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_eff_no_manyblocks.yaml
   kind: cpu
@@ -330,7 +342,7 @@ jobs:
   min_cpus: 16
   needs:
   - e2_train_jc_no_eff_manyblocks
-  done: python tools/campaign_checks.py evaluated loo8_jc_no_eff_no_manyblocks --since 20261112 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_eff_no_manyblocks --since 20261112
+  done: python tools/campaign_checks.py evaluated loo8_jc_no_eff_no_manyblocks --since 20261101 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_eff_no_manyblocks --since 20261101
     --metrics periodic --suffix _epochs
 - id: e2_train_jc_no_eff_visitall
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/loo8_jc_no_eff_no_visitall.yaml
@@ -338,7 +350,8 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  done: python tools/campaign_checks.py trained loo8_jc_no_eff_no_visitall --since 20261112
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
+  done: python tools/campaign_checks.py trained loo8_jc_no_eff_no_visitall --since 20261101
 - id: e2_eval_jc_no_eff_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_eff_no_visitall.yaml
   kind: cpu
@@ -347,7 +360,7 @@ jobs:
   min_cpus: 16
   needs:
   - e2_train_jc_no_eff_visitall
-  done: python tools/campaign_checks.py evaluated loo8_jc_no_eff_no_visitall --since 20261112 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_eff_no_visitall --since 20261112
+  done: python tools/campaign_checks.py evaluated loo8_jc_no_eff_no_visitall --since 20261101 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_eff_no_visitall --since 20261101
     --metrics periodic --suffix _epochs
 - id: e2_train_jc_no_eff_grid
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/loo8_jc_no_eff_no_grid.yaml
@@ -355,7 +368,8 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  done: python tools/campaign_checks.py trained loo8_jc_no_eff_no_grid --since 20261112
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
+  done: python tools/campaign_checks.py trained loo8_jc_no_eff_no_grid --since 20261101
 - id: e2_eval_jc_no_eff_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_eff_no_grid.yaml
   kind: cpu
@@ -364,7 +378,7 @@ jobs:
   min_cpus: 16
   needs:
   - e2_train_jc_no_eff_grid
-  done: python tools/campaign_checks.py evaluated loo8_jc_no_eff_no_grid --since 20261112 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_eff_no_grid --since 20261112 --metrics
+  done: python tools/campaign_checks.py evaluated loo8_jc_no_eff_no_grid --since 20261101 --metrics combined && python tools/campaign_checks.py evaluated loo8_jc_no_eff_no_grid --since 20261101 --metrics
     periodic --suffix _epochs
 - id: e2_train_joint_manyblocks
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/loo8_joint_no_manyblocks.yaml
@@ -372,7 +386,8 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  done: python tools/campaign_checks.py trained loo8_joint_no_manyblocks --since 20261112
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
+  done: python tools/campaign_checks.py trained loo8_joint_no_manyblocks --since 20261101
 - id: e2_eval_joint_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_no_manyblocks.yaml
   kind: cpu
@@ -381,7 +396,7 @@ jobs:
   min_cpus: 16
   needs:
   - e2_train_joint_manyblocks
-  done: python tools/campaign_checks.py evaluated loo8_joint_no_manyblocks --since 20261112 --metrics combined && python tools/campaign_checks.py evaluated loo8_joint_no_manyblocks --since 20261112 --metrics
+  done: python tools/campaign_checks.py evaluated loo8_joint_no_manyblocks --since 20261101 --metrics combined && python tools/campaign_checks.py evaluated loo8_joint_no_manyblocks --since 20261101 --metrics
     periodic --suffix _epochs
 - id: e2_train_joint_visitall
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/loo8_joint_no_visitall.yaml
@@ -389,7 +404,8 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  done: python tools/campaign_checks.py trained loo8_joint_no_visitall --since 20261112
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
+  done: python tools/campaign_checks.py trained loo8_joint_no_visitall --since 20261101
 - id: e2_eval_joint_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_no_visitall.yaml
   kind: cpu
@@ -398,7 +414,7 @@ jobs:
   min_cpus: 16
   needs:
   - e2_train_joint_visitall
-  done: python tools/campaign_checks.py evaluated loo8_joint_no_visitall --since 20261112 --metrics combined && python tools/campaign_checks.py evaluated loo8_joint_no_visitall --since 20261112 --metrics
+  done: python tools/campaign_checks.py evaluated loo8_joint_no_visitall --since 20261101 --metrics combined && python tools/campaign_checks.py evaluated loo8_joint_no_visitall --since 20261101 --metrics
     periodic --suffix _epochs
 - id: e2_train_joint_grid
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/loo8_joint_no_grid.yaml
@@ -406,7 +422,8 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  done: python tools/campaign_checks.py trained loo8_joint_no_grid --since 20261112
+  hold: 'possible featurizer bug: single-effect schemas are dropped by lifted_layer (ICLR27/REVIEW_PLAN.md 2b); release after the decision'
+  done: python tools/campaign_checks.py trained loo8_joint_no_grid --since 20261101
 - id: e2_eval_joint_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_no_grid.yaml
   kind: cpu
@@ -415,7 +432,7 @@ jobs:
   min_cpus: 16
   needs:
   - e2_train_joint_grid
-  done: python tools/campaign_checks.py evaluated loo8_joint_no_grid --since 20261112 --metrics combined && python tools/campaign_checks.py evaluated loo8_joint_no_grid --since 20261112 --metrics periodic
+  done: python tools/campaign_checks.py evaluated loo8_joint_no_grid --since 20261101 --metrics combined && python tools/campaign_checks.py evaluated loo8_joint_no_grid --since 20261101 --metrics periodic
     --suffix _epochs
 - id: report_e2
   cmd: campaign/jobs/report.sh e2
@@ -437,4 +454,4 @@ jobs:
   - e2_eval_joint_manyblocks
   - e2_eval_joint_visitall
   - e2_eval_joint_grid
-  done: python tools/campaign_checks.py file campaign/reports/e2.txt --since 20261112
+  done: python tools/campaign_checks.py file campaign/reports/e2.txt --since 20261101

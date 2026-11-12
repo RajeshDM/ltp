@@ -33,6 +33,31 @@ These are ours to fix regardless of any experiment.
 2. **UNION was not trained for 100 epochs.** Every `loo8_union_*` config
    inherits `epochs: 500` from `_common.yaml`. The appendix table line
    "Epochs, UNION: 100" was stale.
+2b. **SUSPECTED, NOT YET VERIFIED: single-effect schemas are dropped by the
+   featurizer.** pddlgym leaves a schema with exactly one effect literal as a
+   bare `Literal` (no `.literals`). `lifted_layer.build_lifted_spec`,
+   `lifted_layer.add_grounded_effect_edges` and `structural.py` read effects
+   with `getattr(op.effects, "literals", [])`, which turns that effect into
+   "no effects": no add/delete occurrence, no `enables` edge into or out of
+   the schema, no `achieves_goal`/`deletes_true` edges, and a predicate that
+   only that schema adds is classified STATIC. The first run of the E0 rule
+   baseline crashed on exactly this in Miconic (`board`, whose only effect is
+   `(boarded ?p)` - the paper's own board->depart example). Preconditions are
+   read as `op.preconds.literals` directly and have never crashed, so they
+   are conjunctions. Nothing else in the code base has run on a bare effect.
+   If confirmed, every GADAR/BIND number for a domain with such a schema was
+   produced without that schema's effects, and E2 must run on the fixed
+   featurizer. Until the diagnostic below is read, the E2 trainings and the
+   joint_chain optimal-plan runs are `hold`.
+   ```python
+   import pddlgym
+   for n in ["Miconic_ipcc","Gripper_ipcc","Logistics_ipcc","Spanner_ipcc","Visitall_ipcc",
+             "Grid_ipcc","Rovers_ipcc","Manyblocks_ipcc_big"]:
+       for p, op in pddlgym.make(f"PDDLEnv{n}-v0").action_space._action_predicate_to_operators.items():
+           e, c = type(op.effects).__name__, type(op.preconds).__name__
+           if e != "LiteralConjunction" or c != "LiteralConjunction":
+               print(n, p.name, "effects:", e, "preconds:", c)
+   ```
 3. **The zero-shot table mixed two model generations** (July models for
    Visitall/Miconic/Grid, September models elsewhere) selected by different
    rules. The redo reports one protocol for every cell (§4).
