@@ -113,7 +113,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--root", default=ROOT)
-    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub = ap.add_subparsers(dest="cmd")
+    sub.required = True          # the required= keyword needs Python 3.7
     t = sub.add_parser("trained")
     t.add_argument("config")
     t.add_argument("--since", default="")

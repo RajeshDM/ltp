@@ -33,6 +33,8 @@ releases the claim, and records `interrupted`, which does not count as an
 attempt. `touch campaign/STOP` makes every worker finish its current job and
 take no new one.
 """
+# Python 3.6 compatible on purpose: a login node's default python is 3.6, and
+# the monitoring agent may reach this tool from a shell with no env activated.
 import argparse
 import json
 import os
@@ -129,7 +131,8 @@ def is_done(ctx, job):
         if job.get("done"):
             try:
                 rc = subprocess.run(job["done"], shell=True, cwd=ctx["root"],
-                                    capture_output=True, timeout=180).returncode
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                    timeout=180).returncode
             except subprocess.TimeoutExpired:
                 rc = 1
             cache[job["id"]] = rc == 0
@@ -258,7 +261,8 @@ def hours_left():
         return float("inf")
     try:
         out = subprocess.run(["squeue", "-h", "-j", jid, "-o", "%L"],
-                             capture_output=True, text=True, timeout=30).stdout.strip()
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             universal_newlines=True, timeout=30).stdout.strip()
     except (OSError, subprocess.TimeoutExpired):
         return float("inf")
     return parse_slurm_time(out)
@@ -280,7 +284,8 @@ def detect_caps(kind=None):
     gpu = os.environ.get("CAMPAIGN_HAS_GPU")
     if gpu is None:
         try:
-            r = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True,
+            r = subprocess.run(["nvidia-smi", "-L"], stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, universal_newlines=True,
                                timeout=30)
             gpu = "1" if r.returncode == 0 and "GPU" in r.stdout else "0"
         except (OSError, subprocess.TimeoutExpired):
@@ -443,7 +448,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--manifest", default=None)
-    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub = ap.add_subparsers(dest="cmd")
+    sub.required = True          # the required= keyword needs Python 3.7
     r = sub.add_parser("run")
     r.add_argument("--kind", choices=["gpu", "cpu"], default=None,
                    help="which kind of job to prefer (default: gpu if a GPU is visible)")
