@@ -121,6 +121,15 @@ def test_gates_go_to_the_first_free_worker_whatever_its_kind():
     assert W.next_job(ctx, CAPS_GPU, 100)["id"] == "train"
 
 
+def test_only_gates_mode_runs_gates_and_nothing_else_then_exits():
+    tmp, ctx = _setup([
+        {"id": "gate", "priority": 0, "cmd": "touch g.out", "done": "test -f g.out"},
+        {"id": "work", "priority": 3, "cmd": "touch w.out", "done": "test -f w.out"}])
+    ran = W.run_worker(ctx, CAPS_CPU, idle_exit_min=0, poll_sec=0, only_gates=True)
+    assert ran == 1 and _states(ctx) == {"gate": "done", "work": "ready"}
+    assert not os.path.exists(os.path.join(tmp, "w.out"))
+
+
 def test_gpu_job_needs_a_gpu_and_the_budget():
     jobs = [{"id": "g", "kind": "gpu", "cmd": "touch g.out", "done": "test -f g.out",
              "est_hours": 1}]

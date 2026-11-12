@@ -226,7 +226,8 @@ def gpu_hours_used(ctx):
     return used
 
 
-def next_job(ctx, caps, hours_left):
+def next_job(ctx, caps, hours_left, max_priority=None):
+    """The next job this worker may run. max_priority=0 restricts it to gates."""
     ctx["done_cache"].clear()
     cap = ctx["m"]["budget"].get("gpu_hours")
     used = gpu_hours_used(ctx)
@@ -241,6 +242,8 @@ def next_job(ctx, caps, hours_left):
                                    0 if iv[1]["kind"] == caps["kind"] else 1,
                                    iv[1]["priority"], iv[0]))
     for _, job in order:
+        if max_priority is not None and job["priority"] > max_priority:
+            continue
         if classify(ctx, job)[0] != "ready":
             continue
         if job["kind"] == "gpu" and not caps["gpu"]:
@@ -377,7 +380,8 @@ def run_job(ctx, job, caps):
     return status
 
 
-def run_worker(ctx, caps, idle_exit_min=30, poll_sec=60, install_handlers=False):
+def run_worker(ctx, caps, idle_exit_min=30, poll_sec=60, install_handlers=False,
+               only_gates=False):
     if install_handlers:
         signal.signal(signal.SIGTERM, lambda *_: _TERM.set())
         signal.signal(signal.SIGINT, lambda *_: _TERM.set())
@@ -389,11 +393,12 @@ def run_worker(ctx, caps, idle_exit_min=30, poll_sec=60, install_handlers=False)
             print("campaign/STOP present - taking no new job")
             break
         left = hours_left()
-        job = next_job(ctx, caps, left)
+        job = next_job(ctx, caps, left, 0 if only_gates else None)
         if job is None:
             ctx["done_cache"].clear()
             pending = [j for j in ctx["m"]["jobs"]
-                       if classify(ctx, j)[0] in ("ready", "waiting", "running")]
+                       if (not only_gates or j["priority"] <= 0)
+                       and classify(ctx, j)[0] in ("ready", "waiting", "running")]
             if not pending:
                 print("nothing left to run")
                 break
@@ -480,6 +485,10 @@ def main():
                    help="which kind of job to prefer (default: gpu if a GPU is visible)")
     r.add_argument("--idle-exit-min", type=float, default=30)
     r.add_argument("--poll-sec", type=float, default=60)
+    r.add_argument("--only-gates", action="store_true",
+                   help="run only priority-0 jobs (the gates) and exit when none is "
+                        "left: for a one-off pass inside an allocation that is busy "
+                        "with something else, e.g. srun --jobid=<id> --overlap")
     s = sub.add_parser("status")
     s.add_argument("--all", action="store_true")
     s.add_argument("--json", action="store_true")
@@ -491,7 +500,8 @@ def main():
         caps = detect_caps(args.kind)
         print(f"worker on {socket.gethostname()}: gpu={caps['gpu']} cpus={caps['cpus']} "
               f"prefers {caps['kind']} jobs, {hours_left():.1f}h left")
-        run_worker(ctx, caps, args.idle_exit_min, args.poll_sec, install_handlers=True)
+        run_worker(ctx, caps, args.idle_exit_min, args.poll_sec, install_handlers=True,
+                   only_gates=args.only_gates)
     elif args.cmd == "status":
         cmd_status(ctx, args.all, args.json)
     else:
