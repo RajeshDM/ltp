@@ -22,6 +22,10 @@ from ploi.lifted_layer import (
     pred_node_key,
     occ_node_key,
     type_pred_name,
+    ABLATION_MODES,
+    mode_components,
+    spec_components,
+    has_occurrence_nodes,
 )
 
 
@@ -679,6 +683,99 @@ def test_type_compilation_does_not_disturb_chaining():
     for (sa, occ_a, sb, occ_b) in chain["enables"] + chain["threatens"]:
         assert "type_slot" not in typed["schemas"][sa][occ_a]
         assert "type_slot" not in typed["schemas"][sb][occ_b]
+
+
+# ─── component ablations (C2) ───────────────────────────────────────────────
+
+def test_ablation_modes_share_joint_chain_widths():
+    """Same network input for the whole study: only graph content differs."""
+    space = blocks_action_space()
+    full = build_lifted_metadata(space, KP, KA, "joint_chain")
+    for mode in ABLATION_MODES:
+        md = build_lifted_metadata(space, KP, KA, mode)
+        assert md["num_node_features"] == full["num_node_features"], mode
+        assert md["num_edge_features"] == full["num_edge_features"], mode
+        assert md["node_feature_to_index"] == full["node_feature_to_index"], mode
+        assert md["edge_feature_to_index"] == full["edge_feature_to_index"], mode
+        assert md["featurization"] == mode
+        assert md["lifted_spec"]["mode"] == mode
+
+
+def test_ablation_components_are_leave_one_out_and_add_one():
+    full = mode_components("joint_chain")
+    assert full == {"bind", "chain", "eff", "goal"}
+    for c in full:
+        assert mode_components(f"jc_no_{c}") == full - {c}
+    for c in ("chain", "eff", "goal"):
+        assert mode_components(f"jc_only_{c}") == {"bind", c}
+    assert mode_components("joint") == {"bind"}
+    assert mode_components("joint_lite") == set()
+
+
+def test_existing_modes_keep_their_components_and_legacy_specs_resolve():
+    space = blocks_action_space()
+    for mode in ("joint_lite", "joint", "joint_chain"):
+        spec = build_lifted_metadata(space, KP, KA, mode)["lifted_spec"]
+        assert spec_components(spec) == mode_components(mode)
+        # A spec pickled before 'components' existed carries only its mode.
+        legacy = {k: v for k, v in spec.items() if k != "components"}
+        assert spec_components(legacy) == mode_components(mode)
+    # joint/joint_lite keep the narrow widths: no chain classes appended.
+    joint = build_lifted_metadata(space, KP, KA, "joint")
+    assert "enables" not in joint["edge_feature_to_index"]
+    assert "chain" not in joint["lifted_spec"]
+
+
+def test_ablations_have_occurrence_nodes_lite_does_not():
+    space = blocks_action_space()
+    for mode in ("joint", "joint_chain") + ABLATION_MODES:
+        spec = build_lifted_metadata(space, KP, KA, mode)["lifted_spec"]
+        assert has_occurrence_nodes(spec), mode
+        assert any(k.startswith("LIFTED_OCC::") for k in lifted_node_keys(spec))
+    lite = build_lifted_metadata(space, KP, KA, "joint_lite")["lifted_spec"]
+    assert not has_occurrence_nodes(lite)
+
+
+def _lifted_edges(mode):
+    space = blocks_action_space()
+    md = build_lifted_metadata(space, KP, KA, mode)
+    spec = md["lifted_spec"]
+    keys = lifted_node_keys(spec)
+    all_actions = list(space.keys())
+    node_order = keys + all_actions
+    o2n = {v: i for i, v in enumerate(node_order)}
+    n = len(node_order)
+    edges = np.zeros((n, n, md["num_edge_features"]))
+    add_lifted_layer_edges(edges, [], all_actions, spec, o2n,
+                           md["edge_feature_to_index"], KP, KA)
+    return md, edges
+
+
+def test_chain_edges_follow_the_chain_component():
+    """enables/threatens are present exactly where 'chain' is on, and every
+    other lifted-layer edge is untouched by the ablation."""
+    full_md, full = _lifted_edges("joint_chain")
+    E = full_md["edge_feature_to_index"]
+    chain_cols = [E["enables"], E["threatens"]]
+    other = [i for i in range(full.shape[2]) if i not in chain_cols]
+    assert full[:, :, chain_cols].sum() > 0
+    for mode in ABLATION_MODES:
+        _, edges = _lifted_edges(mode)
+        if "chain" in mode_components(mode):
+            assert (edges[:, :, chain_cols] == full[:, :, chain_cols]).all(), mode
+        else:
+            assert edges[:, :, chain_cols].sum() == 0, mode
+        assert (edges[:, :, other] == full[:, :, other]).all(), mode
+
+
+def test_goal_distances_survive_removing_chain_edges():
+    """'goal' buckets are a BFS over the enables RELATION, which is kept in
+    the spec even when its EDGES are ablated."""
+    space = blocks_action_space()
+    spec = build_lifted_metadata(space, KP, KA, "jc_no_chain")["lifted_spec"]
+    assert spec["chain"]["enables"]
+    dist = schema_goal_distances(spec, spec["chain"], {"holding"})
+    assert dist["unstack"] == 0 and dist["stack"] == 1
 
 
 def _run_all():

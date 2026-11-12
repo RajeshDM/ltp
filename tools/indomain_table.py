@@ -83,6 +83,15 @@ def main():
     ap.add_argument("--dir", default="cache/results")
     ap.add_argument("--metric", default="combined")
     ap.add_argument("--since", default="20260905")
+    ap.add_argument("--rungs", default="",
+                    help="comma-separated featurizations to tabulate instead "
+                         "of the paper ladder, e.g. "
+                         "joint_chain,jc_no_bind,jc_no_goal,joint (C2 "
+                         "ablations). Shows only the LOO columns.")
+    ap.add_argument("--folds", default="",
+                    help="with --rungs: average only these held-out folds, "
+                         "e.g. manyblocks,visitall,grid, so every column is "
+                         "over the SAME folds (the ablations train three)")
     ap.add_argument("--missing", action="store_true",
                     help="print the loo8 union/joint_lite configs with no in-domain "
                          "cells yet, as config paths, and exit")
@@ -107,33 +116,44 @@ def main():
         print(f"No in-domain '{args.metric}' cells in dumps since {args.since}.")
         return
 
-    cols = [f"LOO-{n}" for _, n in RUNGS] + [f"ALL-{n}" for _, n in RUNGS] + ["SD"]
+    rungs, extra = RUNGS, True
+    folds = [f for f in args.folds.split(",") if f]
+    fold_pat = "(?:" + "|".join(folds) + ")" if folds else "[a-z]+"
+    if args.rungs:
+        rungs = [(r, r) for r in args.rungs.split(",") if r]
+        extra = False
+    cols = [f"LOO-{n}" for _, n in rungs]
+    if extra:
+        cols += [f"ALL-{n}" for _, n in RUNGS] + ["SD"]
+    if folds:
+        print(f"held-out folds: {', '.join(folds)}")
     print(f"in-domain test coverage %, checkpoint = {args.metric}, dumps >= {args.since}")
-    print(f"{'domain':<12}" + "".join(f"{c:>14}" for c in cols))
+    width = max(14, max(len(c) for c in cols) + 2)
+    print(f"{'domain':<12}" + "".join(f"{c:>{width}}" for c in cols))
     col_vals = defaultdict(list)
     for dom in domains:
         row = []
-        for rung, name in RUNGS:
+        for rung, name in rungs:
             vals = [c[dom][0] for exp, c in cells.items()
-                    if re.fullmatch(rf"loo8_{rung}_no_[a-z]+", exp) and dom in c]
+                    if re.fullmatch(rf"loo8_{rung}_no_{fold_pat}", exp) and dom in c]
             if vals:
                 m = 100 * sum(vals) / len(vals)
                 col_vals[f"LOO-{name}"].append(m)
                 row.append(f"{m:6.1f} (n={len(vals)})")
             else:
                 row.append("--")
-        for exp, name in [(f"all8_{r}", f"ALL-{n}") for r, n in RUNGS] + \
-                         [(f"sd_joint_chain_{short(dom)}", "SD")]:
+        for exp, name in ([(f"all8_{r}", f"ALL-{n}") for r, n in RUNGS] +
+                          [(f"sd_joint_chain_{short(dom)}", "SD")]) if extra else []:
             v = cells.get(exp, {}).get(dom)
             if v:
                 col_vals[name].append(100 * v[0])
                 row.append(f"{100 * v[0]:6.1f} E{v[1]}")
             else:
                 row.append("--")
-        print(f"{short(dom):<12}" + "".join(f"{x:>14}" for x in row))
+        print(f"{short(dom):<12}" + "".join(f"{x:>{width}}" for x in row))
     print(f"{'mean':<12}" + "".join(
-        f"{(sum(col_vals[c]) / len(col_vals[c])):>9.1f} ({len(col_vals[c])})" if col_vals[c]
-        else f"{'--':>14}" for c in cols))
+        f"{f'{sum(col_vals[c]) / len(col_vals[c]):.1f} ({len(col_vals[c])})':>{width}}"
+        if col_vals[c] else f"{'--':>{width}}" for c in cols))
     print("\n'--' = no post-fix dump with that cell; mean is over the rows present,"
           " so compare columns only where both have all rows.")
 

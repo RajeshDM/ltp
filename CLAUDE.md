@@ -85,7 +85,21 @@ main.py                            ← THE entry point (__main__): arg parsing,
  │                                   'pre' occurrence per typed slot
  │                                   (spec['type_preds'], spec['type_occ']);
  │                                   add_type_edges links objects to their type
- │                                   symbol ['has_type']
+ │                                   symbol ['has_type'].
+ │                                   COMPONENT ABLATIONS (C2): _MODE_COMPONENTS
+ │                                   maps every mode to the subset of
+ │                                   {bind, chain, eff, goal} it switches on;
+ │                                   'jc_no_<c>' = joint_chain minus one,
+ │                                   'jc_only_<c>' = joint plus one, all at
+ │                                   joint_chain WIDTHS (removed columns stay
+ │                                   zero). spec_components / has_occurrence_
+ │                                   nodes are the only mode tests; 'bind',
+ │                                   'eff', 'goal' are applied in
+ │                                   _state_to_graph_ltp, 'chain' in
+ │                                   add_lifted_layer_edges. NOTE joint_lite
+ │                                   has NO occurrence nodes and NO binding
+ │                                   edges; the rung with binding and without
+ │                                   chain is 'joint' (§1.5 hazard 10)
  ├─ ploi/modelutils_ltp.py         HeteroGNN_global encoder; GNN_GRU decoder
  │                                   (compute_action_scores / compute_object_scores)
  │    └─ ploi/attention_layer.py   attention via torch-scatter scatter_softmax
@@ -224,9 +238,16 @@ tools/crossfold_select.py          the paper's test-blind zero-shot rule:
                                    other folds of the same rung (ties ->
                                    earliest; only epochs every other fold
                                    has). Reads the EXPID_SUFFIX=_epochs
-                                   periodic sweep. Prints the oracle
-                                   (best-on-test) beside it, labelled NOT
-                                   reportable. Pinned by
+                                   periodic sweep. Also prints the MEAN over
+                                   all swept epochs - selection-free, and the
+                                   statistic to compare ablations on, since
+                                   single-checkpoint zero-shot coverage swings
+                                   0<->74 within 50 epochs. --split train for
+                                   the training-scale instances. Any
+                                   loo<N>_<rung>_no_<fold> expid is picked up
+                                   (ablation rungs included). Prints the
+                                   oracle (best-on-test) beside it, labelled
+                                   NOT reportable. Pinned by
                                    tests/test_crossfold_select.py
 tools/indomain_table.py            Table 2: in-domain test coverage of the
                                    multi-domain models (LOO mean over the 7
@@ -236,10 +257,25 @@ tools/indomain_table.py            Table 2: in-domain test coverage of the
                                    zero-shot-only dumps hold no in-domain
                                    cells; pre---since dumps are ignored. --missing
                                    lists the trained loo8 union/joint_lite
-                                   configs with no in-domain cells yet
-tools/random_policy_baseline.py    zero-shot floor: uniform-random applicable
-                                   action rollouts, config test-domains syntax
-                                   (incl. @train), no model/training needed
+                                   configs with no in-domain cells yet.
+                                   --rungs a,b,c tabulates arbitrary
+                                   featurizations (the ablations); --folds
+                                   restricts every column to the same folds
+tools/random_policy_baseline.py    non-learned baselines under the learned
+                                   policy's executor, config test-domains
+                                   syntax (incl. @train), no model/training:
+                                   --policy random (the zero-shot floor),
+                                   achieve (prefer actions adding an open goal
+                                   atom), features (rank by the hand-coded
+                                   goal information of the chain layer alone:
+                                   achieves > no goal deletion > schema goal
+                                   distance > goal-relevant arguments; the C2
+                                   control for "is anything learned"). Scorers
+                                   pinned by tests/test_rule_baselines.py
+tools/check_ablation_modes.py      on real pddlgym states: every C2 ablation
+                                   mode zeroes exactly its own component's
+                                   feature columns and matches joint_chain on
+                                   all others. Run before ablation training
 train_test_scripts/run_config.sh   nohup-launch one config on one GPU. The
                                    log name is DERIVED from the config plus
                                    the extra flags (`--seed 12` ->
@@ -369,6 +405,10 @@ tests/test_multidomain_metadata.py dependency-free unit tests: union merge,
 tests/test_sparse_edges.py         dependency-free unit tests: sparse edge
                                    accumulation is byte-identical to the dense
                                    array it replaced (edges, order, values)
+tests/test_rule_baselines.py       dependency-free unit tests: the achieve /
+                                   features scorers rank by goal achievement,
+                                   goal deletion, schema goal distance and
+                                   goal-relevant arguments, in that order
 tests/test_checkpoint_key.py       dependency-free unit tests: every VARIED
                                    setting separates the model directory AND
                                    the config hash, and no EXISTING directory
@@ -393,7 +433,14 @@ tests/test_lifted_layer.py         dependency-free unit tests: lifted spec
                                    type compilation (typed vs predicate-typed
                                    domains agree structurally; type renaming
                                    invariance), renaming invariance of lifted
-                                   tensors
+                                   tensors, C2 ablation modes (widths equal
+                                   joint_chain, leave-one-out/add-one
+                                   component sets, chain edges follow the
+                                   'chain' switch, legacy specs resolve)
+ICLR27/REVIEW_PLAN.md              the ICLR-27 reviews turned into experiments
+                                   E0-E3 with commands, pre-registered
+                                   readings and a cut order; also the errors
+                                   found in the submitted paper
 ```
 
 ### 1.2 What to ignore (legacy — do not read, never edit)
@@ -474,7 +521,11 @@ same `run_tests` machinery.
    OOM'd on rewrite). `process_pddl_to_graphs` returns the sidecar directly
    if present; on load it strips any legacy in-pickle `all_graphs*`/
    `batch_graphs` blobs (migration). Loaders reject per-problem tuples
-   shorter than 5.
+   shorter than 5. **Both names end in the training planner's tag**
+   (`_planner_tag`, datautils_ltp.py): empty for the suite's
+   `fd-lama-first`, so existing files are untouched, `_fdoptlmcut` for
+   optimal plans. Before 2026-11 the planner was in neither name and
+   `--train-planner-name fd-opt-lmcut` silently reused the LAMA plans.
 6. **Graph tensors are indicator matrices, stored as `uint8`.** Every node
    and edge feature is a flag or a one-hot (§5.3), so `nodes` and `edges`
    are built as `uint8`: lossless, and 8x smaller on disk than numpy's
@@ -521,8 +572,10 @@ same `run_tests` machinery.
    pipe, because torch's ForkingPickler puts every tensor in its own
    shared-memory segment (graph build 65s -> 631s when tried). Reverted;
    the conversion stays in the parent.
-8. **Checkpoint identity includes the featurization and the input widths**
-   (`feat`, `nf`, `ef` in `training_hyperparameters`, main.py). Without them
+8. **Checkpoint identity includes the featurization, the input widths and
+   the training planner** (`feat`, `nf`, `ef`, `tp` in
+   `training_hyperparameters`, main.py; `tp` is defaulted away at
+   `fd-lama-first`). Without the first three
    runs differing only in featurization shared one `ModelManager` directory
    and competed for the same loss-ranked slots.
 
@@ -584,6 +637,13 @@ same `run_tests` machinery.
    already-scored proposals without a model call, so score traces show
    "same actions" and miss it entirely - `tools/parity_matrix.sh` compares
    outcomes as well for exactly this reason.
+10. **"GADAR-BIND" has meant two different systems.** In this repo's
+   configs and tools (grid_status, eval_status, indomain_table label "BIND")
+   it is `joint_lite`: lifted layer only, no occurrence nodes, no binding
+   edges - "GADAR minus binding". In the paper text it is described as
+   having occurrence nodes and binding edges, which is `joint`. The ICLR-27
+   submission reported `joint_lite` numbers under the paper's description.
+   Name rungs by content (lifted layer / + binding / full) in anything new.
 9. **Expert-planner failures on hard instances are normal**
    (`Planning failed for problem N`): satisficing `fd-lama-first` vs optimal
    `fd-opt-lmcut` differ in reach; failed problems are skipped — watch the

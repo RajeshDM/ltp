@@ -24,7 +24,16 @@ Two featurization modes build on the structural substrate (Method 0):
   'deletes_true' from applicable groundings (add_grounded_effect_edges).
   Wider metadata than 'joint' -> its own cache sidecar tag.
 
-All three modes TYPE-COMPILE the domain first (build_lifted_spec): each
+- 'jc_no_*' / 'jc_only_*' (component ablations, C2): 'joint_chain' with one
+  component removed, or 'joint' with one added. The four components are
+  'bind' (object <-> precondition-occurrence edges), 'chain' (enables /
+  threatens), 'eff' (achieves_goal / deletes_true) and 'goal' (gdist
+  buckets, adds_goal_pred, goal_relevant_obj); see _MODE_COMPONENTS. Every
+  ablation keeps the 'joint_chain' feature WIDTHS and leaves the removed
+  component's columns at zero, so the network is identical across the
+  study and only graph content differs.
+
+All modes TYPE-COMPILE the domain first (build_lifted_spec): each
 declared PDDL type becomes a synthetic unary static predicate with one
 'pre' occurrence per typed schema slot, and each object gets a 'has_type'
 edge to its type's symbol node (add_type_edges). Without this, half the
@@ -57,6 +66,49 @@ _TYPE_PRED = "__type_{}"
 # pddlgym gives untyped entities this pseudo-type; it carries no information
 # (every object has it) so compiling it would add a constant node.
 _UNTYPED = {None, "default", ""}
+
+# The four removable components of the full representation, and which of
+# them each featurization mode switches on. 'joint_lite' additionally has no
+# occurrence nodes at all (has_occurrence_nodes). The 'jc_*' modes are the
+# ablation study: leave-one-out from 'joint_chain' and add-one to 'joint'.
+ALL_COMPONENTS = ("bind", "chain", "eff", "goal")
+_MODE_COMPONENTS = {
+    "joint_lite": (),
+    "joint": ("bind",),
+    "joint_chain": ALL_COMPONENTS,
+    "jc_no_bind": ("chain", "eff", "goal"),
+    "jc_no_chain": ("bind", "eff", "goal"),
+    "jc_no_eff": ("bind", "chain", "goal"),
+    "jc_no_goal": ("bind", "chain", "eff"),
+    "jc_only_chain": ("bind", "chain"),
+    "jc_only_eff": ("bind", "eff"),
+    "jc_only_goal": ("bind", "goal"),
+}
+LIFTED_MODES = tuple(_MODE_COMPONENTS)
+ABLATION_MODES = tuple(m for m in _MODE_COMPONENTS if m.startswith("jc_"))
+# Modes featurized at the 'joint_chain' widths (chain classes appended).
+_WIDE_MODES = ("joint_chain",) + ABLATION_MODES
+
+
+def mode_components(mode):
+    return frozenset(_MODE_COMPONENTS[mode])
+
+
+def spec_components(spec):
+    """Components switched on for this lifted spec.
+
+    Specs pickled before the ablation modes existed carry no 'components'
+    key; their mode determines it.
+    """
+    comps = spec.get("components")
+    if comps is None:
+        comps = _MODE_COMPONENTS.get(spec.get("mode"), ())
+    return frozenset(comps)
+
+
+def has_occurrence_nodes(spec):
+    mode = spec.get("mode")
+    return mode in _MODE_COMPONENTS and mode != "joint_lite"
 
 
 def pred_node_key(pred_name):
@@ -244,7 +296,7 @@ def build_lifted_metadata(action_space, max_pred_arity, max_action_arity, mode,
     'joint_chain' appends its extra classes after them and is strictly wider
     (it gets its own cache sidecar tag).
     """
-    assert mode in ("joint", "joint_lite", "joint_chain"), mode
+    assert mode in LIFTED_MODES, mode
     kp, ka = max_pred_arity, max_action_arity
     md = build_structural_metadata(action_space, kp, ka, goal_prefix=goal_prefix,
                                    cheating=cheating)
@@ -257,9 +309,11 @@ def build_lifted_metadata(action_space, max_pred_arity, max_action_arity, mode,
                   + [f"parg_{i}" for i in range(kp)]
                   + [f"pair_p{i}_s{j}" for i in range(kp) for j in range(ka)]
                   + [f"bind_slot_{j}" for j in range(ka)])
-    if mode == "joint_chain":
+    if mode in _WIDE_MODES:
         # Appended AFTER the joint classes: joint/joint_lite indices and
-        # widths stay byte-identical; joint_chain is strictly wider.
+        # widths stay byte-identical; joint_chain is strictly wider. The
+        # ablation modes take the same classes so their widths match
+        # joint_chain exactly.
         node_extra = node_extra + ["adds_goal_pred", "goal_relevant_obj",
                                    "gdist_0", "gdist_1", "gdist_2",
                                    "gdist_3plus"]
@@ -283,9 +337,12 @@ def build_lifted_metadata(action_space, max_pred_arity, max_action_arity, mode,
     md["num_edge_features"] = next_edge
 
     md["lifted_spec"] = build_lifted_spec(action_space)
-    if mode == "joint_chain":
+    if mode in _WIDE_MODES:
+        # Built even when the 'chain' EDGES are ablated: the goal-distance
+        # buckets ('goal') are a BFS over the same enables relation.
         md["lifted_spec"]["chain"] = build_chain_spec(md["lifted_spec"])
     md["lifted_spec"]["mode"] = mode
+    md["lifted_spec"]["components"] = sorted(_MODE_COMPONENTS[mode])
     md["featurization"] = mode
     n_types = len(md["lifted_spec"]["type_preds"])
     logger.info(
@@ -298,12 +355,12 @@ def build_lifted_metadata(action_space, max_pred_arity, max_action_arity, mode,
 def lifted_node_keys(spec):
     """Deterministic node keys for the lifted layer of one state graph.
 
-    Predicate symbol nodes first (pred_order), then -- 'joint'/'joint_chain'
-    only -- occurrence nodes per schema in schema_order, occurrence index
-    order.
+    Predicate symbol nodes first (pred_order), then -- every mode except
+    'joint_lite' -- occurrence nodes per schema in schema_order, occurrence
+    index order.
     """
     keys = [pred_node_key(name) for name in spec["pred_order"]]
-    if spec.get("mode") in ("joint", "joint_chain"):
+    if has_occurrence_nodes(spec):
         for schema_name in spec["schema_order"]:
             for k in range(len(spec["schemas"][schema_name])):
                 keys.append(occ_node_key(schema_name, k))
@@ -361,7 +418,7 @@ def add_lifted_layer_edges(all_edge_features, all_literals, all_actions,
         _set_edge(all_edge_features, objects_to_node[lit],
                   objects_to_node[key], E["instance_of"])
 
-    joint = spec.get("mode") in ("joint", "joint_chain")
+    joint = has_occurrence_nodes(spec)
     for action in all_actions:
         schema_name = _schema_name(action)
         if schema_name not in spec["schemas"]:
@@ -384,14 +441,13 @@ def add_lifted_layer_edges(all_edge_features, all_literals, all_actions,
                     _set_edge(all_edge_features, occ_idx, schema_idx,
                               E[f"pair_p{ci}_s{cj}"])
 
-    # Chain edges ('joint_chain'): occurrence pairs from build_chain_spec.
-    if spec.get("mode") == "joint_chain":
+    # Chain edges ('chain' component): occurrence pairs from build_chain_spec.
+    if "chain" in spec_components(spec):
         chain = spec.get("chain")
         if chain is None:
             raise RuntimeError(
-                "lifted_spec has mode 'joint_chain' but no 'chain' key -- "
-                "metadata must come from build_lifted_metadata(..., "
-                "'joint_chain')")
+                f"lifted_spec has mode {spec.get('mode')!r} but no 'chain' "
+                "key -- metadata must come from build_lifted_metadata")
         for kind in ("enables", "threatens"):
             feat = E[kind]
             for (sa, occ_a, sb, occ_b) in chain[kind]:

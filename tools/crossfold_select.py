@@ -17,9 +17,15 @@ i.e. cache/results/loo8_<rung>_no_<fold>_epochs/results_*.json. Every dump
 of an experiment is read (a relaunch can split the sweep across dumps); for
 a repeated epoch the latest dump wins.
 
-Prints, per rung and fold: e*(d), coverage at e*(d) (REPORTABLE), and for
+Prints, per rung and fold: e*(d), coverage at e*(d) (REPORTABLE), the MEAN
+over all swept epochs (also reportable: it selects nothing, so it is the
+statistic to compare ablations on - single-checkpoint zero-shot coverage
+swings by tens of points between snapshots 50 epochs apart), and for
 reference the latest epoch and the best-on-test epoch (ORACLE - not
 reportable, it selects on the number it reports).
+
+Any experiment named loo<N>_<rung>_no_<fold> is picked up, so the C2
+ablation rungs (jc_no_bind, jc_only_chain, ...) appear beside the ladder.
 """
 import argparse
 import csv
@@ -33,11 +39,12 @@ from collections import defaultdict
 EXP_RE = re.compile(r"^loo\d+_(?P<rung>.+)_no_(?P<fold>[a-z]+)$")
 
 
-def zero_shot_test_coverage(dump):
-    """{epoch: success_rate_with_monitor} on the held-out TEST split."""
+def zero_shot_test_coverage(dump, split="test"):
+    """{epoch: success_rate_with_monitor} on the held-out domain's `split`
+    ('test' = its test instances, 'train' = its training-scale instances)."""
     zs = [e for e in dump.get("eval_plan", []) if e.get("zero_shot")]
     labels = sorted((e["domain"] for e in zs), key=len, reverse=True)
-    test_labels = {e["domain"] for e in zs if e.get("split") == "test"}
+    test_labels = {e["domain"] for e in zs if e.get("split") == split}
     out = {}
     for key, entries in dump.get("results", {}).items():
         # Longest label first so 'X' never shadows 'X@train'
@@ -52,7 +59,7 @@ def zero_shot_test_coverage(dump):
     return out
 
 
-def load_sweeps(results_dir, suffix):
+def load_sweeps(results_dir, suffix, split="test"):
     """{rung: {fold: {epoch: coverage}}} from every matching dump."""
     paths = sorted(glob.glob(os.path.join(results_dir, f"*{suffix}", "results_*.json")))
     dumps = []
@@ -71,7 +78,7 @@ def load_sweeps(results_dir, suffix):
         m = EXP_RE.match(exp)
         if not m:
             continue
-        sweeps[m["rung"]][m["fold"]].update(zero_shot_test_coverage(d))
+        sweeps[m["rung"]][m["fold"]].update(zero_shot_test_coverage(d, split))
     return sweeps
 
 
@@ -105,10 +112,14 @@ def main():
     ap.add_argument("--dir", default="cache/results")
     ap.add_argument("--suffix", default="_epochs",
                     help="EXPID_SUFFIX of the sweep pass (default _epochs)")
+    ap.add_argument("--split", default="test", choices=["test", "train"],
+                    help="held-out domain's test instances (default; the "
+                         "split the epoch rule is defined on) or its "
+                         "training-scale instances")
     ap.add_argument("--csv", help="also write the table here")
     args = ap.parse_args()
 
-    sweeps = load_sweeps(args.dir, args.suffix)
+    sweeps = load_sweeps(args.dir, args.suffix, args.split)
     if not sweeps:
         print(f"No loo*_<rung>_no_<fold>{args.suffix} dumps under {args.dir}/")
         sys.exit(1)
@@ -117,8 +128,8 @@ def main():
     for rung in sorted(sweeps):
         folds = sweeps[rung]
         chosen = select(folds)
-        print(f"\n== {rung}: {len(folds)} folds swept ==")
-        print(f"{'fold':<11} {'e*':>5} {'cov@e*':>7} {'n':>2}   "
+        print(f"\n== {rung}: {len(folds)} folds swept ({args.split} split) ==")
+        print(f"{'fold':<11} {'e*':>5} {'cov@e*':>7} {'n':>2} {'mean':>7}   "
               f"{'latest':>11}   {'oracle(NOT reportable)':>22}  epochs")
         for d in sorted(folds):
             own = folds[d]
@@ -126,6 +137,7 @@ def main():
                 continue
             e_last = max(own)
             e_or = min(e for e in own if own[e] == max(own.values()))
+            mean = sum(own.values()) / len(own)
             if d in chosen:
                 e_star, cov, n, common = chosen[d]
                 sel = f"{e_star:>5} {100 * cov:>6.1f}% {n:>2}"
@@ -133,14 +145,19 @@ def main():
                 e_star = cov = n = None
                 common = []
                 sel = f"{'--':>5} {'--':>7} {'':>2}"
-            print(f"{d:<11} {sel}   E{e_last:<4}{100 * own[e_last]:>5.1f}%   "
+            print(f"{d:<11} {sel} {100 * mean:>6.1f}%   E{e_last:<4}{100 * own[e_last]:>5.1f}%   "
                   f"E{e_or:<4}{100 * own[e_or]:>16.1f}%  "
                   f"{len(own)} ({len(common)} common)")
             rows.append({"rung": rung, "fold": d, "e_star": e_star,
                          "cov_at_e_star": cov, "other_folds": n,
+                         "cov_mean_over_epochs": mean,
                          "latest_epoch": e_last, "cov_latest": own[e_last],
                          "oracle_epoch": e_or, "cov_oracle": own[e_or],
                          "epochs_swept": len(own)})
+        means = [sum(f.values()) / len(f) for f in folds.values() if f]
+        if means:
+            print(f"   mean over folds of the mean over epochs: "
+                  f"{100 * sum(means) / len(means):.1f}%  ({len(means)} folds)")
         missing = 8 - len(folds)
         if missing > 0:
             print(f"   NOTE: {missing} fold(s) not swept yet - every e* above "

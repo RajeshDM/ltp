@@ -337,3 +337,23 @@ untrained; BIND and GADAR 7/7), combined-loss checkpoint, hard split.
 Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
+
+## 2026-11-11: ICLR-27 reviews (1/1/2) -> experiment plan
+
+Plan, commands, pre-registered readings and cut order: `ICLR27/REVIEW_PLAN.md`.
+Nothing below has been run yet.
+
+| id | experiment | answers | cost |
+|---|---|---|---|
+| E0a | rule baselines (`random_policy_baseline.py --policy features|achieve`) | is anything learned beyond the hand-coded goal features | CPU, hours |
+| E0b | LAMA coverage + wall-clock from existing dumps | heuristic-search comparison | free |
+| E1 | GABAR through our pipeline on all 8; Logistics/Rovers on optimal plans | is the in-domain gap pipeline, training data or representation | ~1 GPU-day |
+| E2 | component ablations `jc_no_{bind,chain,eff,goal}` + `joint`, 3 folds | which component matters | ~8 GPU-days |
+| E3 | GOOSE DI-LLG + GBFS | learned-heuristic baseline | stretch |
+
+Found while planning (see the plan, section 2): the rung reported as
+"GADAR-BIND" in September was `joint_lite`, which has no occurrence nodes
+and no binding edges; binding has never been isolated in the type-compiled
+models. And the training planner was in neither the plan-cache name nor the
+checkpoint key until now, so optimal-vs-satisficing training data could not
+be varied without silently reusing LAMA plans.

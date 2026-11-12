@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any,Set
 from torch_geometric.data import Data
 from ploi.argparsers import get_ploi_argument_parser
+from ploi.lifted_layer import LIFTED_MODES as _LIFTED_MODES
 from ploi.datautils import (
     collect_training_data,
     create_graph_dataset,
@@ -634,8 +635,8 @@ if __name__ == "__main__":
                     graph_metadata = union_md
                     action_space = merge_action_spaces(
                         [a for (_, a) in per_domain_meta.values()])
-                elif args.featurization in ('structural', 'joint', 'joint_lite',
-                                            'joint_chain'):
+                elif (args.featurization == 'structural'
+                      or args.featurization in _LIFTED_MODES):
                     from ploi.structural import build_structural_metadata
                     from ploi.lifted_layer import build_lifted_metadata
                     kp = max(p.arity for (md, _) in per_domain_meta.values()
@@ -1182,6 +1183,10 @@ if __name__ == "__main__":
             # that honest when a new knob starts being varied.
             'bs' : args.batch_size,
             'ka' : args.max_action_arity,
+            # The planner that produced the training plans (optimal vs
+            # satisficing) changes every label. Defaulted away at the
+            # suite's fd-lama-first, so existing directories keep their name.
+            'tp' : args.train_planner_name,
         }
 
         # Escape hatch for checkpoints saved before those three keys existed:
@@ -1191,7 +1196,8 @@ if __name__ == "__main__":
         # use it, or the clash it fixes comes back.
         if os.environ.get("GABAR_LEGACY_CKPT_KEY", "") == "1":
             for _legacy_drop in ('feat', 'nf', 'ef', 'l2', 'rs', 'gru', 'bs',
-                                 'pw', 'gam', 'aug', 'amp', 'all', 'kp', 'ka'):
+                                 'pw', 'gam', 'aug', 'amp', 'all', 'kp', 'ka',
+                                 'tp'):
                 training_hyperparameters.pop(_legacy_drop, None)
             print("GABAR_LEGACY_CKPT_KEY=1: using the pre-featurization "
                   "checkpoint key (old model directories)")
@@ -1213,6 +1219,7 @@ if __name__ == "__main__":
             'l2' : 0.0,
             'bs' : 64,          # _common.yaml, NOT constants.BATCH_SIZE (16)
             'ka' : 0,
+            'tp' : 'fd-lama-first',
         }
         _assert_key_covers_variation(args, training_hyperparameters)
 
@@ -1462,7 +1469,7 @@ if __name__ == "__main__":
                     graph_metadata['max_pred_arity'],
                     graph_metadata['max_action_arity'],
                     cheating=_cheat_cols)
-            elif _feat in ('joint', 'joint_lite', 'joint_chain'):
+            elif _feat in _LIFTED_MODES:
                 from ploi.lifted_layer import build_lifted_metadata
                 test_md = build_lifted_metadata(
                     test_action_space,

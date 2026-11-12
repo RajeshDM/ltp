@@ -1,10 +1,26 @@
-"""Random-applicable-action baseline (the zero-shot floor).
+"""Non-learned baselines under the learned policy's executor.
 
-At each step, sample uniformly among the applicable ground actions and
-execute, under the same execution bound as the learned policy. No training,
-no model: any coverage this achieves is attributable to blind applicability
-alone, so it is the floor every ladder rung is read against (the per-domain
-GABAR reference is the ceiling).
+--policy random (default, the zero-shot floor): at each step, sample
+uniformly among the applicable ground actions and execute, under the same
+execution bound as the learned policy. No training, no model: any coverage
+this achieves is attributable to blind applicability alone, so it is the
+floor every ladder rung is read against (the per-domain GABAR reference is
+the ceiling).
+
+--policy achieve (the achievement oracle as a policy): prefer an applicable
+action that adds an unsatisfied goal atom; otherwise random. What a
+hand-coded terminal trigger gets with nothing behind it.
+
+--policy features (C2 control): rank applicable actions by the hand-coded
+goal information GADAR's chain layer puts in the graph, and nothing learned.
+Lexicographic, best first:
+  1. adds more unsatisfied goal atoms            (achieves_goal edges)
+  2. deletes fewer currently-satisfied goal atoms (deletes_true, on goals)
+  3. schema closer to the goal                   (gdist bucket, BFS over enables)
+  4. more goal-relevant objects among its arguments (goal_relevant_obj)
+ties broken at random. If this matches GADAR's zero-shot coverage, the
+network adds nothing to the features; the gap between them is what was
+learned from the training domains.
 
 Usage (same domain/split syntax as --test-domains in configs):
   python tools/random_policy_baseline.py \
@@ -12,7 +28,7 @@ Usage (same domain/split syntax as --test-domains in configs):
       --max-plan-length 500 --rollouts 3
 
 Sequential over problems; run several domains in parallel shells if needed.
-Results land in cache/results/results_random_policy.json (merged across
+Results land in cache/results/results_<policy>_policy.json (merged across
 invocations, keyed by domain@split).
 """
 
@@ -24,9 +40,6 @@ import sys
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-import pddlgym
-from tqdm import tqdm
 
 
 def parse_domains(spec):
@@ -49,8 +62,53 @@ def parse_domains(spec):
     return entries
 
 
-def run_problem(env, idx, max_len, rollouts, seed, proposals=8, monitor=True):
-    """Random rollouts on problem idx. Returns (success_rate, lengths, secs).
+def _atom(literal, binding=None):
+    """(positive predicate name, argument tuple) of a ground or lifted literal."""
+    from ploi.lifted_layer import _positive_predicate
+    args = tuple((binding or {}).get(v, v) for v in literal.variables)
+    return (_positive_predicate(literal).name, args)
+
+
+def make_scorer(policy, env, state):
+    """-> score(grounding, state) for one problem, higher = better; None for
+    the random policy. Everything goal-dependent but state-independent (the
+    goal atoms, the per-schema goal distance) is computed once here."""
+    if policy == "random":
+        return None
+    from ploi.lifted_layer import (build_lifted_spec, build_chain_spec,
+                                   schema_goal_distances)
+    ops = env.action_space._action_predicate_to_operators
+    goal = {_atom(g) for g in state.goal.literals}
+    gdist = {}
+    if policy == "features":
+        spec = build_lifted_spec(ops)
+        gdist = schema_goal_distances(spec, build_chain_spec(spec),
+                                      {name for name, _ in goal})
+
+    def score(grounding, state):
+        op = ops[grounding.predicate]
+        binding = dict(zip(op.params, grounding.variables))
+        true_now = {_atom(l) for l in state.literals}
+        open_goal = goal - true_now
+        achieves = deletes = 0
+        for lit in op.effects.literals:
+            atom = _atom(lit, binding)
+            if getattr(lit, "is_anti", False):
+                deletes += atom in goal and atom in true_now
+            else:
+                achieves += atom in open_goal
+        if policy == "achieve":
+            return (achieves,)
+        relevant = {o for _, args in open_goal for o in args}
+        return (achieves, -deletes,
+                -gdist.get(grounding.predicate.name, 99),
+                sum(o in relevant for o in grounding.variables))
+    return score
+
+
+def run_problem(env, idx, max_len, rollouts, seed, proposals=8, monitor=True,
+                policy="random"):
+    """Rollouts on problem idx. Returns (success_rate, lengths, secs).
 
     Protocol parity with the learned tester (_run_greedy_search): the only
     difference is WHERE the ranked proposal list comes from - a random sample
@@ -69,6 +127,7 @@ def run_problem(env, idx, max_len, rollouts, seed, proposals=8, monitor=True):
         # learned tester's greedy loop. Regrounding every step is O(|O|^arity)
         # work per step and dominated everything (~0.4s/step on hard Visitall).
         env.action_space.all_ground_literals(state, reground=True)
+        score = make_scorer(policy, env, state)
         visited = {frozenset(state.literals)} if monitor else None
         for step in range(max_len):
             groundings = sorted(env.action_space.all_ground_literals(state))
@@ -76,6 +135,9 @@ def run_problem(env, idx, max_len, rollouts, seed, proposals=8, monitor=True):
                 break  # dead end
             ranked = groundings[:]
             rng.shuffle(ranked)
+            if score is not None:
+                # Stable sort over the shuffle: ties stay in random order.
+                ranked.sort(key=lambda g: score(g, state), reverse=True)
             if proposals > 0:
                 ranked = ranked[:proposals]
 
@@ -118,13 +180,27 @@ def main():
     parser.add_argument("--no-monitor", dest="monitor", action="store_false",
                         help="Disable the revisited-state monitor. Default ON "
                              "for parity with the learned tester.")
-    parser.add_argument("--output", type=str,
-                        default="cache/results/results_random_policy.json")
-    parser.add_argument("--summary", type=str,
-                        default="cache/results/random_floor_summary.txt",
+    parser.add_argument("--policy", default="random",
+                        choices=["random", "achieve", "features"],
+                        help="random = uniform over applicable actions (the "
+                             "floor); achieve = prefer actions adding an open "
+                             "goal atom; features = rank by GADAR's hand-coded "
+                             "goal features alone (see module docstring).")
+    parser.add_argument("--output", type=str, default=None,
+                        help="default cache/results/results_<policy>_policy.json")
+    parser.add_argument("--summary", type=str, default=None,
                         help="Fixed-width table of all results so far; "
-                             "rewritten after each domain.")
+                             "rewritten after each domain. Default "
+                             "cache/results/<policy>_floor_summary.txt")
     args = parser.parse_args()
+    # Imported here so the scorers above stay importable (and unit-testable)
+    # without pddlgym.
+    import pddlgym
+    from tqdm import tqdm
+    if args.output is None:
+        args.output = f"cache/results/results_{args.policy}_policy.json"
+    if args.summary is None:
+        args.summary = f"cache/results/{args.policy}_floor_summary.txt"
 
     results = {}
     if os.path.exists(args.output):
@@ -136,7 +212,7 @@ def main():
         env = pddlgym.make(f"PDDLEnv{name}{suffix}-v0")
         n = len(env.problems) if count <= 0 else min(count, len(env.problems))
         key = f"{name}@{split}"
-        print(f"=== {key}: {n} problems, {args.rollouts} rollout(s), "
+        print(f"=== {key} [{args.policy}]: {n} problems, {args.rollouts} rollout(s), "
               f"cap {args.max_plan_length} steps, proposals="
               f"{args.proposals or 'all'}, monitor={args.monitor} ===")
 
@@ -145,7 +221,8 @@ def main():
         for idx in bar:
             rate, lengths, secs = run_problem(
                 env, idx, args.max_plan_length, args.rollouts, args.seed,
-                proposals=args.proposals, monitor=args.monitor)
+                proposals=args.proposals, monitor=args.monitor,
+                policy=args.policy)
             per_problem.append({"idx": idx, "success_rate": rate,
                                 "plan_lengths": lengths,
                                 "time": round(secs, 2)})
@@ -157,7 +234,8 @@ def main():
         all_lengths = [l for p in per_problem for l in p["plan_lengths"]]
         avg_len = sum(all_lengths) / len(all_lengths) if all_lengths else None
         results[key] = {
-            "policy": "random_applicable",
+            "policy": ("random_applicable" if args.policy == "random"
+                       else args.policy),
             "proposals": args.proposals, "monitor": args.monitor,
             "split": split, "problems": n, "rollouts": args.rollouts,
             "max_plan_length": args.max_plan_length, "seed": args.seed,
@@ -181,8 +259,9 @@ def main():
 
 def write_summary(results, path):
     """Paper-ready fixed-width table (cat this straight into the draft)."""
-    lines = ["# Random-policy floor (uniform choice among applicable ground",
-             "# actions, same executor/monitor/step-bound as the learned policy)",
+    policies = sorted({r.get("policy", "?") for r in results.values()})
+    lines = [f"# Non-learned baseline: {', '.join(policies)} (same executor,",
+             "# monitor and step bound as the learned policy)",
              "#",
              f"# {'domain':28s} {'split':6s} {'probs':>5s} {'roll':>4s} "
              f"{'cov%':>7s} {'avg_len':>8s}"]

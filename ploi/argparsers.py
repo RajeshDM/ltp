@@ -1,6 +1,7 @@
 import argparse
 import sys
 import ploi.constants as constants
+from ploi.lifted_layer import LIFTED_MODES
 
 
 def apply_config_defaults(parser):
@@ -511,8 +512,7 @@ def get_ploi_argument_parser():
     parser.add_argument(
         "--featurization",
         type=str,
-        choices=["per_domain", "union", "structural", "joint_lite", "joint",
-                 "joint_chain"],
+        choices=["per_domain", "union", "structural", *LIFTED_MODES],
         default="per_domain",
         help="Feature dictionary mode: 'per_domain' = published GABAR "
              "(Phase 0 parity), 'union' = shared union vocabulary across "
@@ -522,7 +522,9 @@ def get_ploi_argument_parser():
              "graph (GADAR-BIND ablation), 'joint' = joint_lite + occurrence "
              "nodes + binding layer (full GADAR, Method B), 'joint_chain' = "
              "full GADAR + schema chaining + goal-relevance features + "
-             "grounded effect edges.")
+             "grounded effect edges. 'jc_no_{bind,chain,eff,goal}' = "
+             "joint_chain minus one component, 'jc_only_{chain,eff,goal}' = "
+             "joint plus one (C2 ablations, lifted_layer._MODE_COMPONENTS).")
 
     parser.add_argument(
         "--run-mode",

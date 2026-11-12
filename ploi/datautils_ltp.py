@@ -415,12 +415,16 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
             goal_index = _node_feature_to_index['goal_pred']
             input_node_features[pred_index, goal_index] = 1
 
+    # Which removable components this featurization switches on (C2
+    # ablations; lifted_layer._MODE_COMPONENTS). Empty without a lifted layer.
+    _lifted_components = frozenset()
     if _lifted_spec:
-        from ploi.lifted_layer import add_lifted_node_features
+        from ploi.lifted_layer import add_lifted_node_features, spec_components
+        _lifted_components = spec_components(_lifted_spec)
         add_lifted_node_features(input_node_features, lifted_keys, _lifted_spec,
                                  objects_to_node, _node_feature_to_index,
                                  graph_metadata['max_pred_arity'])
-        if _lifted_spec.get('mode') == 'joint_chain':
+        if 'goal' in _lifted_components:
             # Goal-conditioned features (#5): schema goal-distance buckets +
             # adds_goal_pred, goal_relevant_obj on unsatisfied-goal objects.
             # Goal atoms are passed UNWRAPPED (no WANT prefix) so they compare
@@ -488,11 +492,11 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
             _slice[action_index, obj_index, position_index] = 1
             _slice[obj_index, action_index, position_index] = 1
 
-    # Binding layer (CLAUDE.md 5.5, 'joint'/'joint_chain' modes): grounded
+    # Binding layer (CLAUDE.md 5.5, 'bind' component): grounded
     # applicability edges also link the object to the precondition
     # OCCURRENCE node it instantiates.
     _binding_ctx = None
-    if _lifted_spec and _lifted_spec.get('mode') in ('joint', 'joint_chain'):
+    if 'bind' in _lifted_components:
         _binding_ctx = {
             'objects_to_node': objects_to_node,
             'ka': graph_metadata['max_action_arity'],
@@ -521,11 +525,11 @@ def _state_to_graph_ltp(state,action_space=None,all_groundings=None,
                                                             allow_unknown=_allow_unknown,
                                                             binding_ctx=_binding_ctx)
 
-    # Grounded effect edges ('joint_chain' only, #6): each applicable
+    # Grounded effect edges ('eff' component, #6): each applicable
     # grounding's add effects hitting an unsatisfied goal atom / delete
     # effects hitting a true state atom link the participating objects to
     # that existing literal node. Atoms without a node are skipped inside.
-    if _lifted_spec and _lifted_spec.get('mode') == 'joint_chain':
+    if 'eff' in _lifted_components:
         from ploi.lifted_layer import add_grounded_effect_edges
         _true_literal_nodes = {
             (l.predicate.name, tuple(l.variables)): objects_to_node[l]
@@ -1716,6 +1720,25 @@ def collect_training_data(train_env_name, planner, num_train_problems, args=None
     return training_data, None, domain_name, cache_modified, processed_problems
 
 
+_DEFAULT_TRAIN_PLANNER = "fd-lama-first"
+
+
+def _planner_tag(args):
+    """Filename suffix naming the planner that produced the training plans.
+
+    Plans, and therefore every graph and label derived from them, depend on
+    the training planner, but the cache files were keyed by domain and count
+    only: `--train-planner-name fd-opt-lmcut` silently reused the cached
+    LAMA plans. The suite's planner (fd-lama-first) maps to '' so every
+    existing cache file keeps its name; any other planner gets its own
+    plan cache AND its own graph sidecars.
+    """
+    name = getattr(args, "train_planner_name", None) or _DEFAULT_TRAIN_PLANNER
+    if name == _DEFAULT_TRAIN_PLANNER:
+        return ""
+    return "_" + name.replace("-", "")
+
+
 def load_domain_metadata(train_env_name, planner, num_train_problems, args,
                          create_graph_dataset_func):
     """Load per-domain graph_metadata + action_space without building full graphs.
@@ -1729,7 +1752,8 @@ def load_domain_metadata(train_env_name, planner, num_train_problems, args,
     num_train_problems = _effective_problem_count(train_env_name, num_train_problems)
     unified_cache_file = os.path.join(
         cache_dir,
-        f"{train_env_name}_unified_cache_{0}_{num_train_problems}.pkl")
+        f"{train_env_name}_unified_cache_{0}_{num_train_problems}"
+        f"{_planner_tag(args)}.pkl")
 
     env = pddlgym.make(f"PDDLEnv{train_env_name}-v0")
     action_space = env.action_space._action_predicate_to_operators
@@ -1903,14 +1927,17 @@ def process_pddl_to_graphs(train_env_name, planner, num_train_problems, args, cr
     # Path to the unified cache file. The file is shared across featurization
     # modes (plan collection is mode-independent and expensive); featurized
     # graph entries inside it are namespaced by cache_tag (C1 union mode).
-    unified_cache_file = os.path.join(cache_dir, f"{train_env_name}_unified_cache_{0}_{num_train_problems}.pkl")
+    # The training planner is part of both names (_planner_tag): '' for the
+    # suite's fd-lama-first, so existing files are found unchanged.
+    _ptag = _planner_tag(args)
+    unified_cache_file = os.path.join(cache_dir, f"{train_env_name}_unified_cache_{0}_{num_train_problems}{_ptag}.pkl")
     all_graphs_key = 'all_graphs' + cache_tag
     # Featurized graphs for THIS (domain, tag) live in their own sidecar file,
     # NOT inside the shared unified pickle. Accumulating every config's graphs
     # in one per-domain pickle made it grow to 10+ GB and OOM on rewrite; a
     # sidecar per tag keeps each read/write small.
     graphs_file = os.path.join(
-        cache_dir, f"{train_env_name}_graphs_{0}_{num_train_problems}{cache_tag}.pkl")
+        cache_dir, f"{train_env_name}_graphs_{0}_{num_train_problems}{cache_tag}{_ptag}.pkl")
 
     # Fast path: this tag's graphs are already featurized and cached.
     if os.path.exists(graphs_file):

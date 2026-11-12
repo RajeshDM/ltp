@@ -19,8 +19,15 @@ Method-to-featurization mapping:
 |---|---|---|
 | UNION (control) | `union` | symbol one-hots, D in the weights |
 | GADAR-DOM (Method 0) | `structural` | symbol-free structural classes only |
-| GADAR-BIND (B-lite) | `joint_lite` | + lifted domain layer in every state graph |
-| GADAR (full, Method B) | `joint` | + occurrence nodes + binding layer |
+| lifted layer only | `joint_lite` | + lifted domain layer in every state graph; NO occurrence nodes, NO binding edges |
+| + binding | `joint` | + occurrence nodes + binding layer |
+| GADAR (full) | `joint_chain` | + chain edges, effect edges, goal features |
+| C2 ablations | `jc_no_{bind,chain,eff,goal}`, `jc_only_{chain,eff,goal}` | `joint_chain` minus one component / `joint` plus one, at `joint_chain` widths |
+
+NAMING HAZARD: the September 2026 campaign and the ICLR-27 submission
+reported `joint_lite` under the paper name "GADAR-BIND", whose text
+description (occurrence nodes + binding edges) is `joint`. Name rungs by
+what they contain. See ICLR27/REVIEW_PLAN.md §2.
 
 Configs: `all8_<feat>.yaml` (train all 8, in-domain eval on all 8) and
 `loo8_<feat>_no_<domain>.yaml` (train 7, test all 8 - the held-out domain
