@@ -33,31 +33,38 @@ These are ours to fix regardless of any experiment.
 2. **UNION was not trained for 100 epochs.** Every `loo8_union_*` config
    inherits `epochs: 500` from `_common.yaml`. The appendix table line
    "Epochs, UNION: 100" was stale.
-2b. **SUSPECTED, NOT YET VERIFIED: single-effect schemas are dropped by the
+2b. **CONFIRMED 2026-11-12: single-effect schemas were dropped by the
    featurizer.** pddlgym leaves a schema with exactly one effect literal as a
-   bare `Literal` (no `.literals`). `lifted_layer.build_lifted_spec`,
-   `lifted_layer.add_grounded_effect_edges` and `structural.py` read effects
-   with `getattr(op.effects, "literals", [])`, which turns that effect into
-   "no effects": no add/delete occurrence, no `enables` edge into or out of
-   the schema, no `achieves_goal`/`deletes_true` edges, and a predicate that
-   only that schema adds is classified STATIC. The first run of the E0 rule
-   baseline crashed on exactly this in Miconic (`board`, whose only effect is
-   `(boarded ?p)` - the paper's own board->depart example). Preconditions are
-   read as `op.preconds.literals` directly and have never crashed, so they
-   are conjunctions. Nothing else in the code base has run on a bare effect.
-   If confirmed, every GADAR/BIND number for a domain with such a schema was
-   produced without that schema's effects, and E2 must run on the fixed
-   featurizer. Until the diagnostic below is read, the E2 trainings and the
-   joint_chain optimal-plan runs are `hold`.
-   ```python
-   import pddlgym
-   for n in ["Miconic_ipcc","Gripper_ipcc","Logistics_ipcc","Spanner_ipcc","Visitall_ipcc",
-             "Grid_ipcc","Rovers_ipcc","Manyblocks_ipcc_big"]:
-       for p, op in pddlgym.make(f"PDDLEnv{n}-v0").action_space._action_predicate_to_operators.items():
-           e, c = type(op.effects).__name__, type(op.preconds).__name__
-           if e != "LiteralConjunction" or c != "LiteralConjunction":
-               print(n, p.name, "effects:", e, "preconds:", c)
-   ```
+   bare `Literal` (no `.literals`), and `lifted_layer` and `structural.py` read
+   effects with `getattr(op.effects, "literals", [])`, which turned that
+   effect into "no effects": no add/delete occurrence, no `enables` edge into
+   or out of the schema, no `achieves_goal`/`deletes_true` edges. A diagnostic
+   on the cluster found exactly two such schemas in the eight domains:
+   **Miconic `board`** (the paper's own board -> depart example) and **Rovers
+   `calibrate`** (it produces what `take_image` needs). Those are two of the
+   weakest in-domain results (GADAR Miconic 61.9, Rovers 9.0; single-domain
+   41.2 and 7.4, against GABAR 99.2 and 82). Logistics (3%) is NOT explained
+   by this. UNION and GABAR do not use the lifted layer and are unaffected.
+   Preconditions are read directly and have never crashed: they are
+   conjunctions.
+
+   The fix (`structural.op_literals`) changes the graphs of Miconic and Rovers
+   only; the other six domains are byte-identical (`gate_fingerprint` still
+   passes on Grid/Gripper/Logistics/Visitall). Because the same config name now
+   yields different graphs, two things are keyed so old and new can never mix:
+   the checkpoint key gains `fx` (1 when the training set contains such a
+   domain and the featurization is lifted/structural; defaulted away at 0, so
+   existing directories keep their names), and the Miconic/Rovers graph
+   sidecars get a `_fx1` tag. **Every September GADAR/BIND model whose
+   training set contains Miconic or Rovers (all 16 leave-one-out models, plus
+   the single-domain Miconic and Rovers ones) was trained on the old graphs
+   and must be retrained for any number that goes in a paper.** The old
+   models remain evaluable only with the old code (commit `4ee1b6d`).
+   E1 now includes the two single-domain runs that test the fix directly
+   (`e1_sd_miconic_fixed`, `e1_sd_rovers_fixed`); E2 includes the full
+   model and `joint_lite` retrained on the fixed featurizer as the reference
+   for its ablations. The full 8-fold, 2-rung retrain of the paper ladder is
+   not in the manifest: it is a decision (about 16 trainings x 14 h).
 3. **The zero-shot table mixed two model generations** (July models for
    Visitall/Miconic/Grid, September models elsewhere) selected by different
    rules. The redo reports one protocol for every cell (§4).

@@ -16,8 +16,13 @@ SINCE = "20261101"            # results older than this never satisfy a job (the
                               # a date taken from elsewhere once rejected a result written minutes earlier)
 HERE = os.path.dirname(os.path.abspath(__file__))
 FOLDS = ["manyblocks", "visitall", "grid"]
-E2_MODES = ["jc_no_bind", "jc_no_goal", "jc_no_chain", "jc_no_eff", "joint"]
-E2_CORE = {"jc_no_bind", "jc_no_goal"}          # never cut (plan, section 6)
+# The four ablations + `joint`, AND the full model and the lifted-layer-only
+# model retrained as the reference: the featurizer changed (single-effect
+# schemas are kept now), so the September joint_chain/joint_lite models are not
+# comparable to anything trained from now on.
+E2_MODES = ["joint_chain", "jc_no_bind", "jc_no_goal", "jc_no_chain", "jc_no_eff",
+            "joint", "joint_lite"]
+E2_CORE = {"joint_chain", "jc_no_bind", "jc_no_goal"}    # never cut (plan, section 6)
 
 # E1: GABAR through our pipeline. Miconic already reproduced (99.2%).
 GABAR = {"logistics": 6, "rovers": 6, "visitall": 5, "spanner": 5,
@@ -25,8 +30,6 @@ GABAR = {"logistics": 6, "rovers": 6, "visitall": 5, "spanner": 5,
 # Left behind by an interrupted September run: train_then_eval.sh would
 # EVALUATE the half-trained checkpoint and call it done.
 INTERRUPTED = {"blocks", "grid", "gripper"}
-HOLD_FEATURIZER = ("possible featurizer bug: single-effect schemas are dropped by lifted_layer "
-                   "(ICLR27/REVIEW_PLAN.md 2b); release after the decision")
 HOLD_INTERRUPTED = ("an interrupted September run left a half-trained model for this "
                     "key and train_then_eval.sh would evaluate it; archive "
                     "models/*bs16* for this domain first (REVIEW_PLAN E1)")
@@ -45,6 +48,9 @@ def main():
         job("gate_unit_tests", "campaign/jobs/gate_unit_tests.sh", priority=0, est_hours=0.3),
         job("gate_ablation_blocks",
             "python tools/check_ablation_modes.py --domain Manyblocks_ipcc_big --steps 25",
+            needs=["gate_unit_tests"], priority=0, est_hours=0.5),
+        job("gate_ablation_miconic",
+            "python tools/check_ablation_modes.py --domain Miconic_ipcc --steps 25",
             needs=["gate_unit_tests"], priority=0, est_hours=0.5),
         job("gate_ablation_logistics",
             "python tools/check_ablation_modes.py --domain Logistics_ipcc --steps 25",
@@ -81,15 +87,23 @@ def main():
                         f"WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/{cfg}.yaml",
                         kind="gpu", priority=2, est_hours=5, needs=["gate_unit_tests"],
                         done=f"python tools/campaign_checks.py evaluated {expid} --since {SINCE} --metrics combined"))
-        if cfg.startswith("sd_joint_chain"):       # GADAR featurizer: affected
-            jobs[-1]["hold"] = HOLD_FEATURIZER
         e1.append(f"e1_{cfg}")
+    # The cleanest test of the featurizer fix: single-domain GADAR on exactly the
+    # two domains whose schemas were affected, LAMA plans, compared with the
+    # September numbers (Miconic 41.2, Rovers 7.4) and with GABAR (99.2 / 82).
+    for dom in ("miconic", "rovers"):
+        jobs.append(job(f"e1_sd_{dom}_fixed",
+                        f"WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_{dom}.yaml",
+                        kind="gpu", priority=2, est_hours=4, needs=["gate_unit_tests", "gate_ablation_miconic"],
+                        done=f"python tools/campaign_checks.py evaluated sd_joint_chain_{dom} --since {SINCE} --metrics combined"))
+        e1.append(f"e1_sd_{dom}_fixed")
     jobs.append(job("report_e1", "campaign/jobs/report.sh e1", priority=2, est_hours=0.1,
                     needs=[j for j in e1 if "gabar_blocks" not in j and "gabar_grid" not in j
                            and "gabar_gripper" not in j],
                     done=f"python tools/campaign_checks.py file campaign/reports/e1.txt --since {SINCE}"))
     # E2: component ablations ------------------------------------------------
-    gates = ["gate_unit_tests", "gate_ablation_blocks", "gate_ablation_logistics", "gate_fingerprint"]
+    gates = ["gate_unit_tests", "gate_ablation_blocks", "gate_ablation_miconic",
+             "gate_ablation_logistics", "gate_fingerprint"]
     evals = []
     for mode in E2_MODES:
         for fold in FOLDS:
@@ -97,7 +111,7 @@ def main():
             prio = 3 if mode in E2_CORE else 4
             jobs.append(job(f"e2_train_{mode}_{fold}",
                             f"./train_test_scripts/train_queue.sh cuda:0 configs/{cfg}.yaml",
-                            kind="gpu", priority=prio, est_hours=16, needs=gates, hold=HOLD_FEATURIZER,
+                            kind="gpu", priority=prio, est_hours=16, needs=gates,
                             done=f"python tools/campaign_checks.py trained {cfg} --since {SINCE}"))
             jobs.append(job(f"e2_eval_{mode}_{fold}", f"campaign/jobs/eval_ablation.sh configs/{cfg}.yaml",
                             kind="cpu", priority=prio - 0.5, est_hours=6, min_cpus=16,
@@ -112,8 +126,9 @@ def main():
     manifest = {
         "defaults": {"max_attempts": 2},
         # Stops new GPU jobs once this many GPU-hours have been spent (running
-        # jobs count). The plan needs ~230; the rest is headroom for retries.
-        "budget": {"gpu_hours": 400},
+        # jobs count). The plan needs ~400 (21 ablation/reference
+        # trainings x 16 h + E1); the rest is headroom for retries.
+        "budget": {"gpu_hours": 520},
         "jobs": jobs,
     }
     path = os.path.join(HERE, "manifest.yaml")

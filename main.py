@@ -24,6 +24,7 @@ from typing import Dict, List, Optional, Any,Set
 from torch_geometric.data import Data
 from ploi.argparsers import get_ploi_argument_parser
 from ploi.lifted_layer import LIFTED_MODES as _LIFTED_MODES
+from ploi.structural import has_bare_effects as _has_bare_effects
 from ploi.datautils import (
     collect_training_data,
     create_graph_dataset,
@@ -684,10 +685,15 @@ if __name__ == "__main__":
                                 cheating=args.cheating_input)
                         if _test_only:
                             continue
+                        # Per DOMAIN: only a domain with a bare-Literal effect
+                        # was featurized differently, so only its sidecar is
+                        # renamed (the others are reused as they are).
+                        _dom_tag = tag + ('_fx1' if _has_bare_effects(
+                            per_domain_meta[name][1]) else '')
                         graphs, _, _ = process_pddl_to_graphs(
                             name, train_planner, num_problems, args,
                             _create_graph_dataset_ltp,
-                            metadata_override=struct_md, cache_tag=tag)
+                            metadata_override=struct_md, cache_tag=_dom_tag)
                         per_domain_graphs[name] = graphs
                     graph_metadata = struct_md
                     action_space = merge_action_spaces(
@@ -1187,6 +1193,15 @@ if __name__ == "__main__":
             # satisficing) changes every label. Defaulted away at the
             # suite's fd-lama-first, so existing directories keep their name.
             'tp' : args.train_planner_name,
+            # Featurizer version: 1 when the lifted/structural featurization
+            # ran on a training set with a bare-Literal effect (Miconic board,
+            # Rovers calibrate), which it dropped before 2026-11. Those graphs
+            # now differ, so a model trained on them must not share a
+            # directory with one trained before. Defaulted away at 0: every
+            # existing directory keeps its name.
+            'fx' : int((args.featurization == 'structural'
+                        or args.featurization in _LIFTED_MODES)
+                       and _has_bare_effects(action_space)),
         }
 
         # Escape hatch for checkpoints saved before those three keys existed:
@@ -1197,7 +1212,7 @@ if __name__ == "__main__":
         if os.environ.get("GABAR_LEGACY_CKPT_KEY", "") == "1":
             for _legacy_drop in ('feat', 'nf', 'ef', 'l2', 'rs', 'gru', 'bs',
                                  'pw', 'gam', 'aug', 'amp', 'all', 'kp', 'ka',
-                                 'tp'):
+                                 'tp', 'fx'):
                 training_hyperparameters.pop(_legacy_drop, None)
             print("GABAR_LEGACY_CKPT_KEY=1: using the pre-featurization "
                   "checkpoint key (old model directories)")
@@ -1220,6 +1235,7 @@ if __name__ == "__main__":
             'bs' : 64,          # _common.yaml, NOT constants.BATCH_SIZE (16)
             'ka' : 0,
             'tp' : 'fd-lama-first',
+            'fx' : 0,
         }
         _assert_key_covers_variation(args, training_hyperparameters)
 

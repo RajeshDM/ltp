@@ -59,7 +59,7 @@ def zero_shot_test_coverage(dump, split="test"):
     return out
 
 
-def load_sweeps(results_dir, suffix, split="test"):
+def load_sweeps(results_dir, suffix, split="test", since=""):
     """{rung: {fold: {epoch: coverage}}} from every matching dump."""
     paths = sorted(glob.glob(os.path.join(results_dir, f"*{suffix}", "results_*.json")))
     dumps = []
@@ -69,6 +69,10 @@ def load_sweeps(results_dir, suffix, split="test"):
                 dumps.append(json.load(f))
         except Exception as e:
             print(f"WARN: skipping unreadable {p}: {e}")
+    # Dumps older than `since` are ignored: a retrained model keeps its expid,
+    # and an old sweep's epochs would otherwise survive wherever the new sweep
+    # has no snapshot at the same epoch.
+    dumps = [d for d in dumps if str(d.get("timestamp", ""))[:8] >= since]
     dumps.sort(key=lambda d: d.get("timestamp", ""))  # later dumps overwrite
     sweeps = defaultdict(lambda: defaultdict(dict))
     for d in dumps:
@@ -116,10 +120,13 @@ def main():
                     help="held-out domain's test instances (default; the "
                          "split the epoch rule is defined on) or its "
                          "training-scale instances")
+    ap.add_argument("--since", default="",
+                    help="ignore dumps older than YYYYMMDD (use after retraining "
+                         "under an unchanged expid)")
     ap.add_argument("--csv", help="also write the table here")
     args = ap.parse_args()
 
-    sweeps = load_sweeps(args.dir, args.suffix, args.split)
+    sweeps = load_sweeps(args.dir, args.suffix, args.split, args.since)
     if not sweeps:
         print(f"No loo*_<rung>_no_<fold>{args.suffix} dumps under {args.dir}/")
         sys.exit(1)

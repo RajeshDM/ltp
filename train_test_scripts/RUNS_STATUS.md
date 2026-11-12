@@ -338,6 +338,18 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-12: featurizer bug found by the first campaign run
+
+The E0 rule baseline crashed in Miconic on `op.effects.literals`; a cluster
+diagnostic confirmed pddlgym leaves one-effect schemas as bare Literals and
+that exactly two schemas in the eight domains are such: Miconic `board`,
+Rovers `calibrate`. The lifted layer dropped them. Fixed (`op_literals`),
+keyed (`fx`, `_fx1`), and every lifted-layer model trained before is on
+different graphs for those two domains. Details and consequences:
+ICLR27/REVIEW_PLAN.md 2b. Also: gate_fingerprint passes (0 mismatches on
+320 states x 2 featurizations), so the ablation-mode refactor itself is
+byte-identical.
+
 ## 2026-11-11: ICLR-27 reviews (1/1/2) -> experiment plan
 
 Plan, commands, pre-registered readings and cut order: `ICLR27/REVIEW_PLAN.md`.

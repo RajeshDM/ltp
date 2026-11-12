@@ -26,7 +26,9 @@ from ploi.lifted_layer import (
     mode_components,
     spec_components,
     has_occurrence_nodes,
+    add_grounded_effect_edges,
 )
+from ploi.structural import has_bare_effects, op_literals
 
 
 # ─── pddlgym-shaped mocks ───────────────────────────────────────────────────
@@ -776,6 +778,58 @@ def test_goal_distances_survive_removing_chain_edges():
     assert spec["chain"]["enables"]
     dist = schema_goal_distances(spec, spec["chain"], {"holding"})
     assert dist["unstack"] == 0 and dist["stack"] == 1
+
+
+# ─── single-effect schemas (pddlgym leaves the effect a bare Literal) ───────
+
+def _bare_effect_space():
+    """pick(?x): pre clear(?x), ONE effect holding(?x) -> a bare Literal, as in
+    Miconic board / Rovers calibrate. drop(?x): pre holding(?x)."""
+    clear, holding = MockPred("clear", 1), MockPred("holding", 1)
+    pick = MockOp(["?x"], [MockLiteral(clear, ["?x"])], [])
+    pick.effects = MockLiteral(holding, ["?x"])         # bare: no .literals
+    drop = MockOp(["?x"], [MockLiteral(holding, ["?x"])],
+                  [MockLiteral(clear, ["?x"])])
+    return {MockPred("pick", 1): pick, MockPred("drop", 1): drop}, holding
+
+
+def test_op_literals_handles_conjunction_bare_literal_and_none():
+    lit = MockLiteral(MockPred("p", 1), ["?x"])
+    assert op_literals(None) == []
+    assert op_literals(MockConj([lit, lit])) == [lit, lit]
+    assert op_literals(lit) == [lit]
+    assert not hasattr(lit, "literals")
+
+
+def test_has_bare_effects_detects_only_unwrapped_effects():
+    space, _ = _bare_effect_space()
+    assert has_bare_effects(space)
+    assert not has_bare_effects(blocks_action_space())
+
+
+def test_single_effect_schema_keeps_its_add_occurrence_and_chain_edge():
+    """Before the fix pick had NO effect occurrence, so no add(holding) and no
+    enables edge pick -> drop: the board -> depart structure of the paper."""
+    space, _ = _bare_effect_space()
+    spec = build_lifted_spec(space)
+    assert [o["role"] for o in spec["schemas"]["pick"]] == ["pre", "add"]
+    assert spec["schemas"]["pick"][1]["pred"] == "holding"
+    chain = build_chain_spec(spec)
+    assert ("pick", 1, "drop", 0) in chain["enables"]
+    assert schema_goal_distances(spec, chain, {"holding"})["pick"] == 0
+
+
+def test_single_effect_schema_gets_its_achieves_goal_edge():
+    space, holding = _bare_effect_space()
+    md = build_lifted_metadata(space, KP, KA, "joint_chain")
+    E = md["edge_feature_to_index"]
+    pick_pred = next(p for p in space if p.name == "pick")
+    grounding = MockLiteral(pick_pred, ["a"])
+    o2n = {"a": 0, "GOAL": 1}
+    edges = np.zeros((2, 2, md["num_edge_features"]))
+    add_grounded_effect_edges(edges, [grounding], space, {("holding", ("a",)): 1},
+                              {}, o2n, E)
+    assert edges[0, 1, E["achieves_goal"]] == 1 and edges[1, 0, E["achieves_goal"]] == 1
 
 
 def _run_all():

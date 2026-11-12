@@ -10,6 +10,31 @@ and a held-out domain featurizes with its own metadata at the same widths.
 
 import logging
 
+
+def op_literals(x):
+    """The literals of an operator's preconditions or effects.
+
+    pddlgym leaves a schema with exactly ONE effect as a bare Literal, which
+    has no `.literals`. `getattr(x, "literals", [])` read that as "no
+    effects" and silently dropped it (Miconic `board`, Rovers `calibrate`)
+    from every lifted-layer feature until 2026-11. A conjunction gives its
+    literals, a bare Literal is its own single literal, None gives none.
+    """
+    if x is None:
+        return []
+    lits = getattr(x, "literals", None)
+    return list(lits) if lits is not None else [x]
+
+
+def has_bare_effects(action_space):
+    """True if any schema's effect is an unwrapped Literal (see op_literals).
+    Such a domain is featurized differently since the fix, so its cached
+    graphs and the models trained on them must not be reused (main.py keys
+    both on this)."""
+    return any(getattr(op, "effects", None) is not None
+               and getattr(op.effects, "literals", None) is None
+               for op in action_space.values())
+
 logger = logging.getLogger(__name__)
 
 
@@ -78,9 +103,9 @@ def build_structural_metadata(action_space, max_pred_arity, max_action_arity,
     # Domain inventory from the schemas: predicates, static-ness, types.
     predicates, effect_preds, types = {}, set(), set()
     for schema, op in action_space.items():
-        for lit in getattr(op.preconds, "literals", []):
+        for lit in op_literals(op.preconds):
             predicates[lit.predicate.name] = lit.predicate
-        for lit in getattr(getattr(op, "effects", None), "literals", []):
+        for lit in op_literals(getattr(op, "effects", None)):
             predicates[lit.predicate.name] = lit.predicate
             effect_preds.add(lit.predicate.name)
         for param in getattr(op, "params", []):

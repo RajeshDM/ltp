@@ -52,7 +52,8 @@ last, preserving every decoder invariant.
 
 import logging
 
-from ploi.structural import build_structural_metadata, _pred_arity
+from ploi.structural import (build_structural_metadata, _pred_arity, op_literals,
+                             has_bare_effects)
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +177,7 @@ def build_lifted_spec(action_space):
     type_occ = {}
 
     for schema, op in action_space.items():
-        for lit in getattr(getattr(op, "effects", None), "literals", []) or []:
+        for lit in op_literals(getattr(op, "effects", None)):
             pred = _positive_predicate(lit)
             effect_names.add(pred.name)
 
@@ -196,7 +197,7 @@ def build_lifted_spec(action_space):
         params = list(getattr(op, "params", []))
         name = _schema_name(schema)
         occurrences = []
-        for lit in getattr(op.preconds, "literals", []):
+        for lit in op_literals(op.preconds):
             occurrences.append(record_occurrence("pre", lit, params))
         # Type-compiled preconditions: after the real ones (preserving the
         # k-th-precondition-is-occurrence-k contract), before the effects.
@@ -212,7 +213,7 @@ def build_lifted_spec(action_space):
                                 "bindings": [(0, j)], "type_slot": j})
         if slots:
             type_occ[name] = slots
-        for lit in getattr(getattr(op, "effects", None), "literals", []) or []:
+        for lit in op_literals(getattr(op, "effects", None)):
             role = "del" if getattr(lit, "is_anti", False) else "add"
             occurrences.append(record_occurrence(role, lit, params))
         schemas[name] = occurrences
@@ -591,7 +592,7 @@ def add_grounded_effect_edges(all_edge_features, all_groundings, action_space,
             continue
         binding = dict(zip(list(getattr(op, "params", [])),
                            grounding.variables))
-        for lit in getattr(getattr(op, "effects", None), "literals", []) or []:
+        for lit in op_literals(getattr(op, "effects", None)):
             # binding.get(v, v): schema params ground via the binding,
             # anything else (a constant) already is an object.
             args = tuple(binding.get(v, v)
