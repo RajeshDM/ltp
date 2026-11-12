@@ -44,9 +44,19 @@ if [ -e campaign/STOP ]; then echo "REFUSING: campaign/STOP exists"; exit 1; fi
 # The time limit in hours, handed to the worker so its "can this job finish
 # before the allocation ends" guard works even where squeue is not on PATH.
 LIMIT_H=$(printf '%s' "$TIME" | awk -F'[-:]' '{ if (NF==4) print $1*24+$2+$3/60; else if (NF==3) print $1+$2/60; else print 1 }')
-OPTS="-A $ACCOUNT -p $PART -c $CPUS --mem=$MEM -t $TIME -J camp-$PRESET -o $REPO/logs/campaign_slurm_%j.out --export=ALL,CAMPAIGN_TIME_LIMIT_H=$LIMIT_H"
-[ "$GRES" != "-" ] && OPTS="$OPTS --gres=$GRES"
-[ "$EXTRA" != "-" ] && OPTS="$OPTS $(printf '%s' "$EXTRA" | tr ',' ' ')"
+# One bash array, no eval, and a --wrap string with NO spaces: this cluster's
+# sbatch refused `--wrap "bash script.sh cpu"` with "Script arguments not
+# permitted with --wrap option", i.e. it re-splits the wrapped command. The
+# worker kind therefore travels in the environment, not as an argument.
+ARGS=(--parsable -A "$ACCOUNT" -p "$PART" -c "$CPUS" --mem="$MEM" -t "$TIME"
+      -J "camp-$PRESET" -o "$REPO/logs/campaign_slurm_%j.out"
+      --export="ALL,CAMPAIGN_TIME_LIMIT_H=$LIMIT_H,CAMPAIGN_KIND=$KIND")
+[ "$GRES" != "-" ] && ARGS+=(--gres="$GRES")
+if [ "$EXTRA" != "-" ]; then
+    IFS=, read -r -a EXTRA_ARGS <<< "$EXTRA"
+    ARGS+=("${EXTRA_ARGS[@]}")
+fi
+ARGS+=(--wrap "$REPO/campaign/worker_entry.sh")
 
 if [ "$DRY" = 0 ]; then
     if ! command -v sbatch >/dev/null 2>&1; then
@@ -55,8 +65,9 @@ if [ "$DRY" = 0 ]; then
         command -v module >/dev/null 2>&1 && module load slurm 2>/dev/null
     fi
     command -v sbatch >/dev/null 2>&1 || { echo "sbatch not found: run 'module load slurm' in this shell, then retry"; exit 1; }
-    mine=$(squeue -u "$USER" -h -n "camp-$PRESET" 2>/dev/null | wc -l)
-    all=$(squeue -u "$USER" -h -n "camp-gpu-dgxh,camp-gpu-dgx2,camp-gpu-gpu,camp-gpu-share,camp-big-share,camp-cpu-share,camp-preempt-a40" 2>/dev/null | wc -l)
+    ME=${USER:-$(id -un)}
+    mine=$(squeue -u "$ME" -h -n "camp-$PRESET" 2>/dev/null | wc -l)
+    all=$(squeue -u "$ME" -h -n "camp-gpu-dgxh,camp-gpu-dgx2,camp-gpu-gpu,camp-gpu-share,camp-big-share,camp-cpu-share,camp-preempt-a40" 2>/dev/null | wc -l)
     if [ $((mine + COUNT)) -gt "$MAX" ]; then
         echo "REFUSING: $mine already queued/running + $COUNT > $MAX, what $PRESET's quota allows"; exit 1
     fi
@@ -66,8 +77,7 @@ if [ "$DRY" = 0 ]; then
 fi
 mkdir -p logs
 for _ in $(seq "$COUNT"); do
-    CMD="sbatch --parsable $OPTS --wrap \"bash $REPO/campaign/worker_entry.sh $KIND\""
-    if [ "$DRY" = 1 ]; then echo "$CMD"; else
-        id=$(eval "$CMD"); echo "submitted $PRESET -> job $id"
+    if [ "$DRY" = 1 ]; then echo "sbatch ${ARGS[*]}"; else
+        id=$(sbatch "${ARGS[@]}"); echo "submitted $PRESET -> job $id"
     fi
 done
