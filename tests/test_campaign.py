@@ -111,6 +111,16 @@ def test_a_gpu_worker_takes_gpu_jobs_before_better_priority_cpu_jobs():
     assert W.next_job(ctx, CAPS_CPU, 100)["id"] == "cpu_first"
 
 
+def test_gates_go_to_the_first_free_worker_whatever_its_kind():
+    tmp, ctx = _setup([
+        {"id": "train", "kind": "gpu", "priority": 3, "cmd": "true"},
+        {"id": "gate", "kind": "cpu", "priority": 0, "cmd": "true"}])
+    assert W.next_job(ctx, CAPS_GPU, 100)["id"] == "gate"
+    assert W.next_job(ctx, CAPS_CPU, 100)["id"] == "gate"
+    W.write_state(ctx, "gate", status="ok")
+    assert W.next_job(ctx, CAPS_GPU, 100)["id"] == "train"
+
+
 def test_gpu_job_needs_a_gpu_and_the_budget():
     jobs = [{"id": "g", "kind": "gpu", "cmd": "touch g.out", "done": "test -f g.out",
              "est_hours": 1}]

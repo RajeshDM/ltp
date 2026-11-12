@@ -230,11 +230,15 @@ def next_job(ctx, caps, hours_left):
     ctx["done_cache"].clear()
     cap = ctx["m"]["budget"].get("gpu_hours")
     used = gpu_hours_used(ctx)
-    # The worker's own kind comes first, THEN priority: a GPU allocation
-    # trains before it does CPU work even when the CPU job has a better
-    # priority, so a scarce GPU is never spent on a job that needs none.
+    # Gates (priority <= 0) go to whichever worker is free first: they are
+    # minutes long, block everything behind them, and waiting a day for a CPU
+    # allocation while GPU workers sit idle costs more than the minutes.
+    # Otherwise the worker's own kind comes first, THEN priority: a GPU
+    # allocation trains before it does CPU work even when the CPU job has a
+    # better priority, so a scarce GPU is not spent on a job that needs none.
     order = sorted(enumerate(ctx["m"]["jobs"]),
-                   key=lambda iv: (0 if iv[1]["kind"] == caps["kind"] else 1,
+                   key=lambda iv: (0 if iv[1]["priority"] <= 0 else 1,
+                                   0 if iv[1]["kind"] == caps["kind"] else 1,
                                    iv[1]["priority"], iv[0]))
     for _, job in order:
         if classify(ctx, job)[0] != "ready":
