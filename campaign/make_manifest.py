@@ -55,6 +55,10 @@ def main():
         job("gate_ablation_logistics",
             "python tools/check_ablation_modes.py --domain Logistics_ipcc --steps 25",
             needs=["gate_unit_tests"], priority=0, est_hours=0.5),
+        # The featurizer against an independent reading of the PDDL text, on all
+        # eight domains. The gate that would have caught the dropped effects.
+        job("gate_audit_featurizer", "python tools/audit_featurizer.py --problems 2 --steps 20",
+            needs=["gate_unit_tests"], priority=0, est_hours=0.5),
         job("gate_fingerprint", "campaign/jobs/gate_fingerprint.sh",
             needs=["gate_unit_tests"], priority=0, est_hours=1.0, min_cpus=4,
             done=f"python tools/campaign_checks.py file campaign/reports/gate_fingerprint.txt --since {SINCE}"),
@@ -94,7 +98,8 @@ def main():
     for dom in ("miconic", "rovers"):
         jobs.append(job(f"e1_sd_{dom}_fixed",
                         f"WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_{dom}.yaml",
-                        kind="gpu", priority=2, est_hours=4, needs=["gate_unit_tests", "gate_ablation_miconic"],
+                        kind="gpu", priority=2, est_hours=4,
+                        needs=["gate_unit_tests", "gate_ablation_miconic", "gate_audit_featurizer"],
                         done=f"python tools/campaign_checks.py evaluated sd_joint_chain_{dom} --since {SINCE} --metrics combined"))
         e1.append(f"e1_sd_{dom}_fixed")
     jobs.append(job("report_e1", "campaign/jobs/report.sh e1", priority=2, est_hours=0.1,
@@ -103,7 +108,7 @@ def main():
                     done=f"python tools/campaign_checks.py file campaign/reports/e1.txt --since {SINCE}"))
     # E2: component ablations ------------------------------------------------
     gates = ["gate_unit_tests", "gate_ablation_blocks", "gate_ablation_miconic",
-             "gate_ablation_logistics", "gate_fingerprint"]
+             "gate_ablation_logistics", "gate_audit_featurizer", "gate_fingerprint"]
     evals = []
     for mode in E2_MODES:
         for fold in FOLDS:

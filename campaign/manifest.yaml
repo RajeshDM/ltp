@@ -27,6 +27,12 @@ jobs:
   - gate_unit_tests
   priority: 0
   est_hours: 0.5
+- id: gate_audit_featurizer
+  cmd: python tools/audit_featurizer.py --problems 2 --steps 20
+  needs:
+  - gate_unit_tests
+  priority: 0
+  est_hours: 0.5
 - id: gate_fingerprint
   cmd: campaign/jobs/gate_fingerprint.sh
   needs:
@@ -158,6 +164,7 @@ jobs:
   needs:
   - gate_unit_tests
   - gate_ablation_miconic
+  - gate_audit_featurizer
   done: python tools/campaign_checks.py evaluated sd_joint_chain_miconic --since 20261101 --metrics combined
 - id: e1_sd_rovers_fixed
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_rovers.yaml
@@ -167,6 +174,7 @@ jobs:
   needs:
   - gate_unit_tests
   - gate_ablation_miconic
+  - gate_audit_featurizer
   done: python tools/campaign_checks.py evaluated sd_joint_chain_rovers --since 20261101 --metrics combined
 - id: report_e1
   cmd: campaign/jobs/report.sh e1
@@ -194,6 +202,7 @@ jobs:
   - gate_ablation_blocks
   - gate_ablation_miconic
   - gate_ablation_logistics
+  - gate_audit_featurizer
   - gate_fingerprint
   done: python tools/campaign_checks.py trained loo8_joint_chain_no_manyblocks --since 20261101
 - id: e2_eval_joint_chain_manyblocks
