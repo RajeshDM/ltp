@@ -11,10 +11,17 @@ BASE=${BASE:-82b901f}
 TAGS=${TAGS:-"joint_chain_kp3_ka6_ty2 joint_lite_kp3_ka6_ty2"}
 DOMAINS=${DOMAINS:-visitall_ipcc,grid_ipcc,gripper_ipcc,logistics_ipcc}
 TMP=$(mktemp -d); WT="$TMP/base"; REPO=$PWD
-cleanup() { git worktree remove --force "$WT" 2>/dev/null || true; rm -rf "$TMP"; }
+# unlink the cache symlink FIRST so no cleanup step can ever reach the real cache
+cleanup() { [ -L "$WT/cache" ] && rm -f "$WT/cache"; git worktree remove --force "$WT" 2>/dev/null || true; rm -rf "$TMP"; }
 trap cleanup EXIT
 git worktree add --detach "$WT" "$BASE" >/dev/null
+# cache/results/.gitkeep is TRACKED, so the old commit's worktree already has a
+# real cache/ directory; `ln -s` into it would create cache/cache and the tool
+# would see an empty cache/results ("tags available: none"). Replace it - this
+# is the throwaway worktree under $TMP, never the real cache.
+if [ -d "$WT/cache" ] && [ ! -L "$WT/cache" ]; then rm -rf "$WT/cache"; fi
 ln -s "$REPO/cache" "$WT/cache"
+[ -d "$WT/cache/results" ] || { echo "worktree cache link is wrong: $WT/cache/results missing"; exit 1; }
 mkdir -p campaign/reports; OUT=campaign/reports/gate_fingerprint.txt; : > "$OUT.tmp"
 for T in $TAGS; do
     # the tool against ITSELF first: a drifting instrument reports avalanche
