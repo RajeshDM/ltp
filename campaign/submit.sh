@@ -78,6 +78,8 @@ fi
 mkdir -p logs
 for _ in $(seq "$COUNT"); do
     if [ "$DRY" = 1 ]; then echo "sbatch ${ARGS[*]}"; else
-        id=$(sbatch "${ARGS[@]}"); echo "submitted $PRESET -> job $id"
+        # --export=ALL would hand the agent's login secret to every batch job
+        id=$(env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN sbatch "${ARGS[@]}")
+        echo "submitted $PRESET -> job $id"
     fi
 done

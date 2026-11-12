@@ -66,8 +66,23 @@ a passwordless ssh key from flip1 to submit-a (your home is shared, so
 `ssh-keygen` + `cat id_ed25519.pub >> ~/.ssh/authorized_keys`). Tell me which
 case you are in and I will adapt `RULES.md`.
 
-Log in once, interactively (`claude`, then follow the prompt; a headless login
-prints a URL you open on your computer and paste a code back).
+Log in once, interactively (`claude`; a headless login prints a long URL you
+open on your computer and then paste a code back). **That URL is about 500
+characters and breaks when copied out of a wrapped terminal or tmux pane**
+("Unknown scope", "Missing state parameter" in the browser). If it does, skip
+the copy: on your OWN computer (which has a browser) install Claude Code and run
+`claude setup-token`, which prints a long-lived token; then on the cluster
+
+```bash
+( umask 077; cat > ~/.claude_oauth_token )      # paste the token, Enter, Ctrl-D
+CLAUDE_CODE_OAUTH_TOKEN=$(cat ~/.claude_oauth_token) claude -p "say ok"   # tests it
+```
+
+Start the agent with `CLAUDE_CODE_OAUTH_TOKEN=$(cat ~/.claude_oauth_token)
+claude` and do NOT put the token in `~/.bashrc`: every batch job inherits the
+submitting shell's environment (`submit.sh` strips it anyway). The token is a
+secret: never paste it into chat or commit it. (An API key in
+`ANTHROPIC_API_KEY` also works, billed separately.)
 
 ### 1.3 The repo, a branch of its own, the environment
 
