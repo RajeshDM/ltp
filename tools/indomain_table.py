@@ -36,27 +36,57 @@ def learned_cov(entry):
 
 
 def in_domain_cells(dump, metric):
-    """{domain_label: (coverage, epoch)} for in-domain TEST cells at `metric`."""
+    """({domain_label: (coverage, epoch, how)}, [ambiguous labels]) for the
+    in-domain TEST cells at `metric`.
+
+    Dumps written before 2026-11-13 leave a metric's cell EMPTY when its best
+    checkpoint had already been tested under an earlier metric of the same run
+    (run_tests skipped it as "already tested"). That checkpoint's result is in
+    the dump under the earlier metric, so it is recovered here: `how` names
+    the metric it was read from. If the earlier metrics tested different
+    epochs the cell cannot be attributed and the label is returned as
+    ambiguous instead of guessed.
+    """
     plan = dump.get("eval_plan") or []
     labels = sorted((e["domain"] for e in plan), key=len, reverse=True)
     wanted = {e["domain"] for e in plan
               if not e.get("zero_shot") and e.get("split", "test") == "test"}
-    out = {}
+    order = list(dump.get("test_model_metrics") or [])
+    names = order if metric in order else order + [metric]
+    by_label = defaultdict(dict)          # label -> {metric: entries}
     for key, entries in (dump.get("results") or {}).items():
-        if key.startswith("zeroshot_") or not key.endswith(metric) or not entries:
+        if key.startswith("zeroshot_"):
             continue
         label = next((l for l in labels if l in key), None)
-        if label not in wanted:
-            continue
-        cov = learned_cov(entries[0])
-        if cov is not None:
-            out[label.lower()] = (cov, entries[0].get("epoch"))
-    return out
+        m = next((m for m in names if key.endswith(m)), None)
+        if label in wanted and m is not None:
+            by_label[label][m] = entries
+    out, ambiguous = {}, []
+    for label, cells in by_label.items():
+        entries, how = cells.get(metric), metric
+        if not entries and metric in order and metric in cells:
+            earlier = [(m, cells[m]) for m in order[:order.index(metric)] if cells.get(m)]
+            if len({e[0].get("epoch") for _, e in earlier}) == 1:
+                how, entries = earlier[0]
+            elif earlier:
+                ambiguous.append(label.lower())
+        if entries:
+            cov = learned_cov(entries[0])
+            if cov is not None:
+                out[label.lower()] = (cov, entries[0].get("epoch"), how)
+    return out, ambiguous
 
 
-def collect(results_dir, metric, since):
-    """{experiment: {domain: (cov, epoch, timestamp)}}, newest dump per cell."""
+def collect(results_dir, metric, since, notes=None):
+    """{experiment: {domain: (cov, epoch, timestamp)}}, newest dump per cell.
+
+    `notes` (a list) receives what a reader of the table must know: cells
+    recovered from another metric of the same dump, and cells that had to
+    come from an OLDER dump although a newer one evaluated that domain.
+    """
     cells = defaultdict(dict)
+    newest_unresolved = defaultdict(dict)      # exp -> {domain: timestamp}
+    recovered = 0
     for p in glob.glob(os.path.join(results_dir, "*", "results_*.json")):
         try:
             with open(p) as f:
@@ -67,10 +97,28 @@ def collect(results_dir, metric, since):
         if ts[:8] < since:
             continue
         exp = d.get("experiment", "")
-        for dom, (cov, ep) in in_domain_cells(d, metric).items():
+        found, ambiguous = in_domain_cells(d, metric)
+        for dom in ambiguous:
+            if ts > newest_unresolved[exp].get(dom, ""):
+                newest_unresolved[exp][dom] = ts
+        for dom, (cov, ep, how) in found.items():
             if dom not in cells[exp] or ts > cells[exp][dom][2]:
-                cells[exp][dom] = (cov, ep, ts)
-    return cells
+                cells[exp][dom] = (cov, ep, ts, how)
+    if notes is not None:
+        for exp, doms in cells.items():
+            for dom, (_, ep, ts, how) in doms.items():
+                if how != metric:
+                    recovered += 1
+                newer = newest_unresolved[exp].get(dom, "")
+                if newer > ts:
+                    notes.append(
+                        f"STALE {exp} / {short(dom)}: '{metric}' shown from {ts} (E{ep}), but the "
+                        f"run of {newer} tested this domain and left the cell empty with "
+                        f"no single earlier metric to read it from - re-evaluate this config")
+        if recovered:
+            notes.append(f"{recovered} cell(s) read from another metric of the same dump: that "
+                         f"checkpoint was also the best '{metric}' one and was tested once")
+    return {exp: {dom: v[:3] for dom, v in doms.items()} for exp, doms in cells.items()}
 
 
 def short(dom):
@@ -97,7 +145,8 @@ def main():
                          "cells yet, as config paths, and exit")
     args = ap.parse_args()
 
-    cells = collect(args.dir, args.metric, args.since)
+    notes = []
+    cells = collect(args.dir, args.metric, args.since, notes)
     if args.missing:
         # Untrained cells (e.g. loo8_union_no_gripper) have nothing to evaluate.
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -156,6 +205,8 @@ def main():
         if col_vals[c] else f"{'--':>{width}}" for c in cols))
     print("\n'--' = no post-fix dump with that cell; mean is over the rows present,"
           " so compare columns only where both have all rows.")
+    for note in notes:
+        print("NOTE " + note)
 
 
 if __name__ == "__main__":

@@ -65,6 +65,41 @@ These are ours to fix regardless of any experiment.
    model and `joint_lite` retrained on the fixed featurizer as the reference
    for its ablations. The full 8-fold, 2-rung retrain of the paper ladder is
    not in the manifest: it is a decision (about 16 trainings x 14 h).
+2c. **FOUND 2026-11-13: a checkpoint best under two metrics left an empty
+   cell, and the in-domain table filled it from an older dump.** `run_tests`
+   skipped a checkpoint "already tested" under an earlier metric of the same
+   run, so with `METRICS=training,combined,validation` the `combined` cell of a
+   domain was empty whenever the best-combined epoch was also the
+   best-training one. `eval_status.py` still called the config done, and
+   `indomain_table.py` ("newest dump that HAS the cell") then read `combined`
+   from any older dump - during the September crunch, possibly an evaluation
+   of a half-trained model. Whether a reported Table 2 cell was affected is
+   NOT known: it depends on which dumps exist on the cluster. Fixed in two
+   places: `run_tests` records the result under every metric that selected the
+   checkpoint, and `indomain_table.py` recovers the cell from the same dump
+   (and prints `NOTE STALE ...` where it cannot). Re-run
+   `python tools/indomain_table.py` on the cluster and compare with the
+   submitted Table 2 before reusing any of its numbers. Zero-shot cells are
+   not affected (one metric per domain).
+
+2d. **Audit of the post-July code, 2026-11-13 (what was checked, and how).**
+   Verified against real pddlgym operators with `tools/audit_featurizer.py`
+   (independent PDDL reader; IPC-style Miconic, typed Gripper, predicate-typed
+   Logistics, Blocks with a zero-arity predicate, a Spanner type hierarchy):
+   after the 2b fix the lifted graph matches the text in every checked edge
+   and node class; the pre-fix code fails with 101 mismatches. Read and found
+   correct: delete effects (`is_anti` is a real Literal attribute), success
+   accounting (goal reached in the real env; denominator = all problems),
+   best-checkpoint ordering, seed separation of model directories, the
+   object-count bookkeeping with lifted nodes present. Limits of the
+   representation, reported by the audit as WARN and NOT in the eight
+   domains as far as the text of the fork is known: a negative precondition
+   is encoded as a positive one (so `enables` is wrong for it); a parameter
+   that appears in no precondition gets no candidate edge (typed Gripper
+   `move ?to`). Not audited to the same standard: the model and training
+   loops on mixed-domain batches (read, not executed - no torch in the audit
+   environment); the September mixed-arity fix and its unit test are the
+   evidence there.
 3. **The zero-shot table mixed two model generations** (July models for
    Visitall/Miconic/Grid, September models elsewhere) selected by different
    rules. The redo reports one protocol for every cell (§4).

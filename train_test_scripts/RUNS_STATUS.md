@@ -338,6 +338,19 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-13: audit of the post-July code
+
+Asked for after the single-effect bug. Result: one more silent
+wrong-number path, in reporting, not in the model - a checkpoint that is the
+best under two metrics left an empty `combined` cell and
+`tools/indomain_table.py` filled it from an older dump (REVIEW_PLAN 2c;
+fixed in `run_tests` and in the tool, which now prints NOTE lines). The
+featurizer is now checked against the PDDL text by
+`tools/audit_featurizer.py` (campaign gate `gate_audit_featurizer`). What was
+and was not verified: REVIEW_PLAN 2d. TODO on the cluster: run the audit on
+the eight real domains, and re-run `tools/indomain_table.py` to see whether
+any submitted Table 2 cell moves.
+
 ## 2026-11-12: featurizer bug found by the first campaign run
 
 The E0 rule baseline crashed in Miconic on `op.effects.literals`; a cluster

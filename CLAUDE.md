@@ -257,7 +257,13 @@ tools/indomain_table.py            Table 2: in-domain test coverage of the
                                    single-domain sd_joint_chain_*). Each cell
                                    from the newest dump that HAS it, since
                                    zero-shot-only dumps hold no in-domain
-                                   cells; pre---since dumps are ignored. --missing
+                                   cells; pre---since dumps are ignored. A
+                                   metric's cell left EMPTY because its
+                                   checkpoint was already tested under an
+                                   earlier metric (dumps before 2026-11-13) is
+                                   recovered from that metric of the SAME dump;
+                                   `NOTE STALE` lines name cells that still
+                                   come from an older dump. --missing
                                    lists the trained loo8 union/joint_lite
                                    configs with no in-domain cells yet.
                                    --rungs a,b,c tabulates arbitrary
@@ -425,6 +431,12 @@ tests/test_rule_baselines.py       dependency-free unit tests: the achieve /
                                    features scorers rank by goal achievement,
                                    goal deletion, schema goal distance and
                                    goal-relevant arguments, in that order
+tests/test_indomain_table.py       dependency-free unit tests: a cell skipped
+                                   as "already tested" is read from the same
+                                   dump's earlier metric, a newer dump beats
+                                   an older one with another checkpoint, and
+                                   an unattributable cell is reported, not
+                                   guessed
 tests/test_checkpoint_key.py       dependency-free unit tests: every VARIED
                                    setting separates the model directory AND
                                    the config hash, and no EXISTING directory

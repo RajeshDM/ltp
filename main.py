@@ -258,7 +258,7 @@ def run_tests(
              device: str = "cuda:0",
              args = None,
              action_space = None,
-             tested_epoch_numbers: Set[int] = None,
+             tested_epoch_numbers: Dict[int, Any] = None,
              num_models_to_test: int = 2,
              starting_model_num: int = 0,
              planner_types = [PlannerType.LEARNED_MODEL],
@@ -354,11 +354,21 @@ def run_tests(
                     i: min(len(op.params), _cap)
                     for i, op in enumerate(decode_action_space.values())}
 
+            # One checkpoint is often the best under two metrics (lowest
+            # training loss AND lowest combined loss). It is tested once, and
+            # its result is recorded under EVERY metric that selected it.
+            # Skipping it left that metric's cell empty in the results dump,
+            # and the table tools then took the cell from an older dump - a
+            # number from a different checkpoint, shown as this one's.
             if model_info['epoch'] in tested_epoch_numbers:
-                print ("Already tested model from epoch ",model_info['epoch'])
-                continue 
+                _cached = tested_epoch_numbers[model_info['epoch']]
+                print ("Already tested model from epoch ",model_info['epoch'],
+                       "- reusing its result for metric", metric)
+                if _cached is not None:
+                    results.append(_cached)
+                continue
             else :
-                tested_epoch_numbers.add(model_info['epoch'])
+                tested_epoch_numbers[model_info['epoch']] = None
 
             if args.epoch_number != -1 : 
                 if model_info['epoch'] != args.epoch_number :
@@ -378,6 +388,7 @@ def run_tests(
                 'test_results': run_metrics, 
                 'all_plan_results': test_results
             })
+            tested_epoch_numbers[model_info['epoch']] = results[-1]
             #metrics = results[-1]['test_results'][PlannerType.LEARNED_MODEL]
             metrics = results[-1]['test_results'][planner_type]
             _fails = metrics.failures
@@ -1528,7 +1539,7 @@ if __name__ == "__main__":
                                              graph_metadata=_md)
 
             curr_test_function = test_function_v2
-            tested_epoch_numbers = set()
+            tested_epoch_numbers = {}    # epoch -> its result (run_tests)
 
             # Zero-shot domains test one metric only (validation if selected)
             if is_zero_shot:
