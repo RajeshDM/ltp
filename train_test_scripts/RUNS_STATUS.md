@@ -338,6 +338,13 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-14: negative preconditions keep their sign (lifted layer)
+
+REVIEW_PLAN 2e. No width change; graphs of domains without a negative
+precondition are byte-identical (50/50 fingerprints locally), so nothing
+trained on the single-effect-fixed featurizer is invalidated - provided the
+audit shows no version bit 2 on the eight real domains (not yet run there).
+
 ## 2026-11-13: audit of the post-July code
 
 Asked for after the single-effect bug. Result: one more silent

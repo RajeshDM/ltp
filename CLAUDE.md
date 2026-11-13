@@ -95,7 +95,10 @@ main.py                            ← THE entry point (__main__): arg parsing,
  │                                   zero). spec_components / has_occurrence_
  │                                   nodes are the only mode tests (effects are
  │                                   read through structural.op_literals: a
- │                                   one-effect schema is a bare Literal); 'bind',
+ │                                   one-effect schema is a bare Literal, and a
+ │                                   negative precondition is role 'npre':
+ │                                   pre+del columns on its occurrence, chain
+ │                                   edges through it swapped); 'bind',
  │                                   'eff', 'goal' are applied in
  │                                   _state_to_graph_ltp, 'chain' in
  │                                   add_lifted_layer_edges. NOTE joint_lite
@@ -287,8 +290,9 @@ tools/audit_featurizer.py          the lifted featurization against the PDDL
                                    goal / type edges, and compares them with
                                    the graph. Exit 1 on a mismatch; WARNs name
                                    constructs the representation cannot express
-                                   (negative preconditions, quantifiers, a
-                                   parameter in no precondition, supertypes).
+                                   (quantifiers, disjunction, a parameter in no
+                                   precondition, supertypes) and each domain's
+                                   featurizer version is printed.
                                    Exists because mocks and the byte-identity
                                    gate both missed the dropped single-effect
                                    schemas: neither compares with the domain.
@@ -594,9 +598,11 @@ same `run_tests` machinery.
    `fd-lama-first`, so existing files are untouched, `_fdoptlmcut` for
    optimal plans. Before 2026-11 the planner was in neither name and
    `--train-planner-name fd-opt-lmcut` silently reused the LAMA plans. The
-   lifted/structural sidecar of a domain with a bare-Literal effect (Miconic,
-   Rovers) also carries `_fx1` (per DOMAIN, in main.py): its graphs changed
-   when single-effect schemas stopped being dropped.
+   lifted/structural sidecar of a domain whose graphs a featurizer fix
+   changed also carries `_fx<v>` (per DOMAIN, in main.py; `v` =
+   `structural.featurizer_version`: 1 a bare-Literal effect - Miconic,
+   Rovers -, 2 a negative precondition, 3 both). A domain no fix touches has
+   no such tag and keeps its files.
 6. **Graph tensors are indicator matrices, stored as `uint8`.** Every node
    and edge feature is a flag or a one-hot (§5.3), so `nodes` and `edges`
    are built as `uint8`: lossless, and 8x smaller on disk than numpy's
@@ -646,8 +652,9 @@ same `run_tests` machinery.
 8. **Checkpoint identity includes the featurization, the input widths and
    the training planner and the featurizer version** (`feat`, `nf`, `ef`,
    `tp`, `fx` in `training_hyperparameters`, main.py; `tp` is defaulted away
-   at `fd-lama-first`, `fx` at 0 - it is 1 for lifted/structural runs whose
-   training set has a bare-Literal effect). Without the first three
+   at `fd-lama-first`, `fx` at 0 - it is `structural.featurizer_version` of
+   the training action space for lifted/structural runs: bit 1 a bare-Literal
+   effect, bit 2 a negative precondition). Without the first three
    runs differing only in featurization shared one `ModelManager` directory
    and competed for the same loss-ranked slots.
 
@@ -723,6 +730,18 @@ same `run_tests` machinery.
    `board`, Rovers `calibrate`), so every lifted/structural model trained
    before then is on different graphs from one trained now (`fx` key, `_fx1`
    sidecar tag; ICLR27/REVIEW_PLAN.md 2b).
+12. **A negative precondition is its own occurrence role, `npre`.**
+   `_positive_predicate` strips the sign to find the predicate; until
+   2026-11-14 nothing put it back, so `(not (p ?x))` was recorded as
+   "requires p" and every chain edge through it was inverted (GABAR never
+   had this problem: its feature for it is named `Notp<pos>`). It is encoded
+   with the EXISTING columns - `pre`+`del` on the occurrence node and its
+   edge to the schema, nothing on the predicate<->schema edge (a union over
+   occurrences, where pre+del already means "requires and deletes") - so
+   widths, models and caches of domains without one are untouched
+   (`lifted_layer._ROLE_COLUMNS`). Adding p threatens an `npre` on p,
+   deleting p enables it. Any new code that switches on an occurrence's role
+   must handle four roles, not three.
 9. **Expert-planner failures on hard instances are normal**
    (`Planning failed for problem N`): satisficing `fd-lama-first` vs optimal
    `fd-opt-lmcut` differ in reach; failed problems are skipped — watch the

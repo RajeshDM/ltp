@@ -53,7 +53,7 @@ last, preserving every decoder invariant.
 import logging
 
 from ploi.structural import (build_structural_metadata, _pred_arity, op_literals,
-                             has_bare_effects)
+                             has_bare_effects, featurizer_version)
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +89,15 @@ LIFTED_MODES = tuple(_MODE_COMPONENTS)
 ABLATION_MODES = tuple(m for m in _MODE_COMPONENTS if m.startswith("jc_"))
 # Modes featurized at the 'joint_chain' widths (chain classes appended).
 _WIDE_MODES = ("joint_chain",) + ABLATION_MODES
+
+
+# Feature columns of each occurrence role (node class occ_node_<r>, edge class
+# role_<r>). A negative precondition is a precondition of negative polarity:
+# 'pre' + 'del', a combination no single occurrence had before. Composing it
+# from the existing columns keeps every feature width, so no model or cached
+# graph of a domain WITHOUT negative preconditions changes.
+_ROLE_COLUMNS = {"pre": ("pre",), "add": ("add",), "del": ("del",),
+                 "npre": ("pre", "del")}
 
 
 def mode_components(mode):
@@ -149,8 +158,13 @@ def build_lifted_spec(action_space):
       pred_order: [name, ...] sorted (deterministic node order)
       schema_order: [schema_name, ...] sorted
       schemas: {schema_name: [occurrence, ...]} where occurrence =
-        {'role': 'pre'|'add'|'del', 'pred': name,
+        {'role': 'pre'|'npre'|'add'|'del', 'pred': name,
          'bindings': [(pred_arg_i, schema_slot_j), ...]}
+        'npre' is a NEGATIVE precondition `(not (p ...))`: the schema needs p
+        to be absent. It keeps its place among the preconditions (the k-th
+        precondition is still occurrence k). Until 2026-11-14 the sign was
+        dropped and it was recorded as 'pre', which also inverted every chain
+        edge through it. No column is added for it (_ROLE_COLUMNS).
       type_preds: {pddl_type_name: synthetic_predicate_name}
       type_occ:   {schema_name: {slot_j: occurrence_index}}
 
@@ -198,7 +212,8 @@ def build_lifted_spec(action_space):
         name = _schema_name(schema)
         occurrences = []
         for lit in op_literals(op.preconds):
-            occurrences.append(record_occurrence("pre", lit, params))
+            role = "npre" if getattr(lit, "is_negative", False) else "pre"
+            occurrences.append(record_occurrence(role, lit, params))
         # Type-compiled preconditions: after the real ones (preserving the
         # k-th-precondition-is-occurrence-k contract), before the effects.
         slots = {}
@@ -237,24 +252,28 @@ def build_chain_spec(spec):
                drop.pre:carry; miconic board.add:boarded -> depart.pre:boarded.
     threatens: (A, i, B, j) - same with role 'del' at A: "A destroys what
                B needs" (lifted delete reasoning).
+    A NEGATIVE precondition at B ('npre': B needs p absent) swaps the two:
+    A deleting p enables B, A adding p threatens it.
 
     Pure function of the domain description; computed once, stored in
     metadata, zero per-state cost.
     """
-    adds, pres, dels = {}, {}, {}
+    adds, pres, dels, npres = {}, {}, {}, {}
     for schema, occs in spec["schemas"].items():
         for k, occ in enumerate(occs):
-            bucket = {"add": adds, "pre": pres, "del": dels}[occ["role"]]
+            bucket = {"add": adds, "pre": pres, "del": dels,
+                      "npre": npres}[occ["role"]]
             bucket.setdefault(occ["pred"], []).append((schema, k))
-    enables = [(sa, ka_, sb, kb)
-               for pred, producers in adds.items()
-               for (sa, ka_) in producers
-               for (sb, kb) in pres.get(pred, [])]
-    threatens = [(sa, ka_, sb, kb)
-                 for pred, deleters in dels.items()
-                 for (sa, ka_) in deleters
-                 for (sb, kb) in pres.get(pred, [])]
-    return {"enables": enables, "threatens": threatens}
+
+    def pairs(effects, needs):
+        return [(sa, ka_, sb, kb)
+                for pred, sources in effects.items()
+                for (sa, ka_) in sources
+                for (sb, kb) in needs.get(pred, [])]
+    # Positive preconditions first: with no negative precondition in the
+    # domain both lists are exactly what they were before 'npre' existed.
+    return {"enables": pairs(adds, pres) + pairs(dels, npres),
+            "threatens": pairs(dels, pres) + pairs(adds, npres)}
 
 
 def schema_goal_distances(spec, chain, goal_pred_names, max_dist=3):
@@ -384,8 +403,8 @@ def add_lifted_node_features(input_node_features, lifted_keys, spec,
         else:
             _, schema_name, occ_k = key.split("::")
             occ = spec["schemas"][schema_name][int(occ_k)]
-            role_cls = f"occ_node_{occ['role']}"
-            input_node_features[idx, node_feature_to_index[role_cls]] = 1
+            for role in _ROLE_COLUMNS[occ["role"]]:
+                input_node_features[idx, node_feature_to_index[f"occ_node_{role}"]] = 1
 
 
 def _set_edge(all_edge_features, a, b, feature_index):
@@ -400,6 +419,7 @@ def add_lifted_layer_edges(all_edge_features, all_literals, all_actions,
 
     - ground literal <-> its predicate's symbol node        [instance_of]
     - predicate symbol <-> schema node                      [role_* + parg_i + slot_j]
+      (a negative precondition adds positions only, no role - see below)
     - 'joint'/'joint_chain':
                occurrence <-> predicate symbol              [occ_of]
                occurrence <-> schema node                   [role_* + pair_pi_sj]
@@ -427,8 +447,15 @@ def add_lifted_layer_edges(all_edge_features, all_literals, all_actions,
         schema_idx = objects_to_node[action]
         for k, occ in enumerate(spec["schemas"][schema_name]):
             pred_idx = objects_to_node[pred_node_key(occ["pred"])]
-            role_feature = E[f"role_{occ['role']}"]
-            _set_edge(all_edge_features, pred_idx, schema_idx, role_feature)
+            role_features = [E[f"role_{r}"] for r in _ROLE_COLUMNS[occ["role"]]]
+            # The predicate<->schema edge is the UNION over the schema's
+            # occurrences of that predicate, so on it pre+del already means
+            # "requires p and deletes p". A negative precondition therefore
+            # contributes its argument positions to this edge but no role;
+            # its sign lives on its own occurrence node and edge below.
+            if occ["role"] != "npre":
+                for role_feature in role_features:
+                    _set_edge(all_edge_features, pred_idx, schema_idx, role_feature)
             for (i, j) in occ["bindings"]:
                 ci, cj = min(i, kp - 1), min(j, ka - 1)
                 _set_edge(all_edge_features, pred_idx, schema_idx, E[f"parg_{ci}"])
@@ -436,7 +463,8 @@ def add_lifted_layer_edges(all_edge_features, all_literals, all_actions,
             if joint:
                 occ_idx = objects_to_node[occ_node_key(schema_name, k)]
                 _set_edge(all_edge_features, occ_idx, pred_idx, E["occ_of"])
-                _set_edge(all_edge_features, occ_idx, schema_idx, role_feature)
+                for role_feature in role_features:
+                    _set_edge(all_edge_features, occ_idx, schema_idx, role_feature)
                 for (i, j) in occ["bindings"]:
                     ci, cj = min(i, kp - 1), min(j, ka - 1)
                     _set_edge(all_edge_features, occ_idx, schema_idx,

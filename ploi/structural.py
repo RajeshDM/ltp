@@ -35,6 +35,31 @@ def has_bare_effects(action_space):
                and getattr(op.effects, "literals", None) is None
                for op in action_space.values())
 
+def has_negative_preconditions(action_space):
+    """True if any schema has a precondition `(not (p ...))`."""
+    return any(getattr(lit, "is_negative", False)
+               for op in action_space.values()
+               for lit in op_literals(getattr(op, "preconds", None)))
+
+
+def featurizer_version(action_space, lifted=True):
+    """Which featurizer fixes change THIS domain's graphs (a bitmask).
+
+    A fix that changes a domain's graphs must also rename its cached graphs
+    and the models trained on them, or old and new are silently mixed. A
+    domain none of the fixes touches stays at 0 and keeps every existing name.
+
+      1  a bare-Literal effect (kept since 2026-11; see op_literals)
+      2  a negative precondition, lifted layer only (encoded with its sign
+         since 2026-11-14; lifted_layer.build_lifted_spec). `structural` only
+         records "applicable at this slot" and was never wrong about it.
+    """
+    version = 1 if has_bare_effects(action_space) else 0
+    if lifted and has_negative_preconditions(action_space):
+        version |= 2
+    return version
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -139,7 +164,7 @@ def build_structural_metadata(action_space, max_pred_arity, max_action_arity,
     # Alias this domain's known symbols to their classes.
     for schema, op in action_space.items():
         node_map[schema] = node_map[node_class(schema)]
-        for pos, precond in enumerate(getattr(op.preconds, "literals", [])):
+        for pos, precond in enumerate(op_literals(op.preconds)):
             for curr_pos in range(ka + 2):
                 key = str(precond.predicate) + str(curr_pos)
                 edge_map[key] = edge_map[f"precond_pos_{min(curr_pos, ka)}"]

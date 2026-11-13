@@ -93,13 +93,27 @@ These are ours to fix regardless of any experiment.
    best-checkpoint ordering, seed separation of model directories, the
    object-count bookkeeping with lifted nodes present. Limits of the
    representation, reported by the audit as WARN and NOT in the eight
-   domains as far as the text of the fork is known: a negative precondition
-   is encoded as a positive one (so `enables` is wrong for it); a parameter
-   that appears in no precondition gets no candidate edge (typed Gripper
-   `move ?to`). Not audited to the same standard: the model and training
+   domains as far as the text of the fork is known: a parameter that
+   appears in no precondition gets no candidate edge (typed Gripper
+   `move ?to`). A negative precondition was encoded as a positive one, which
+   inverted the chain edges through it: fixed 2026-11-14 (2e). Not audited to the same standard: the model and training
    loops on mixed-domain batches (read, not executed - no torch in the audit
    environment); the September mixed-arity fix and its unit test are the
    evidence there.
+2e. **FIXED 2026-11-14: negative preconditions lost their sign in the lifted
+   layer.** `(not (p ?x))` was recorded as a precondition on p, so "A adds p"
+   was drawn as ENABLING a schema it disables, "A deletes p" as threatening
+   one it enables, and the goal-distance buckets followed the wrong relation.
+   GABAR and UNION were never affected (their feature is named `Notp<pos>`);
+   `structural` only records applicability. Now role `npre`, encoded with the
+   existing columns, so no feature width changes. Verified with real pddlgym:
+   50 graph fingerprints (5 domains x 10 lifted modes) byte-identical before
+   and after, only the negative-precondition domain changed; the audit passes
+   on it and reports 281 mismatches for the previous code. Consequence for
+   the campaign: NONE unless `tools/audit_featurizer.py` prints a featurizer
+   version with bit 2 for one of the eight domains - then that domain's
+   sidecar and every model trained on it are renamed automatically (`fx`) and
+   retrain.
 3. **The zero-shot table mixed two model generations** (July models for
    Visitall/Miconic/Grid, September models elsewhere) selected by different
    rules. The redo reports one protocol for every cell (§4).

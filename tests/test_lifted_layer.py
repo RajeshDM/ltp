@@ -28,7 +28,8 @@ from ploi.lifted_layer import (
     has_occurrence_nodes,
     add_grounded_effect_edges,
 )
-from ploi.structural import has_bare_effects, op_literals
+from ploi.structural import (has_bare_effects, op_literals, featurizer_version,
+                             has_negative_preconditions)
 
 
 # ─── pddlgym-shaped mocks ───────────────────────────────────────────────────
@@ -46,10 +47,11 @@ class MockPred:
 
 
 class MockLiteral:
-    def __init__(self, pred, variables, is_anti=False):
+    def __init__(self, pred, variables, is_anti=False, is_negative=False):
         self.predicate = pred
         self.variables = list(variables)
         self.is_anti = is_anti
+        self.is_negative = is_negative
 
 
 class MockConj:
@@ -830,6 +832,117 @@ def test_single_effect_schema_gets_its_achieves_goal_edge():
     add_grounded_effect_edges(edges, [grounding], space, {("holding", ("a",)): 1},
                               {}, o2n, E)
     assert edges[0, 1, E["achieves_goal"]] == 1 and edges[1, 0, E["achieves_goal"]] == 1
+
+
+# ─── negative preconditions ─────────────────────────────────────────────────
+
+def _negative_precondition_space():
+    """light(?x):  pre at(?x), NOT lit(?x);  add lit(?x)
+    douse(?x):  pre lit(?x);                 del lit(?x)
+    go(?x ?y):  pre at(?x);                  add at(?y), del at(?x)
+    Lighting x makes light(x) inapplicable; dousing x makes it applicable."""
+    lit, at = MockPred("lit", 1), MockPred("at", 1)
+    light = MockOp(["?x"], [MockLiteral(at, ["?x"]),
+                            MockLiteral(lit, ["?x"], is_negative=True)],
+                   [MockLiteral(lit, ["?x"])])
+    douse = MockOp(["?x"], [MockLiteral(lit, ["?x"])],
+                   [MockLiteral(lit, ["?x"], is_anti=True)])
+    go = MockOp(["?x", "?y"], [MockLiteral(at, ["?x"])],
+                [MockLiteral(at, ["?y"]), MockLiteral(at, ["?x"], is_anti=True)])
+    return {MockPred("light", 1): light, MockPred("douse", 1): douse,
+            MockPred("go", 2): go}
+
+
+def test_negative_precondition_keeps_its_sign_and_its_position():
+    spec = build_lifted_spec(_negative_precondition_space())
+    assert [(o["role"], o["pred"]) for o in spec["schemas"]["light"]] == [
+        ("pre", "at"), ("npre", "lit"), ("add", "lit")]
+    assert spec["schemas"]["light"][1]["bindings"] == [(0, 0)]
+
+
+def test_chain_edges_through_a_negative_precondition_are_swapped():
+    """Before the fix: light.add:lit ENABLED light (it disables it) and
+    douse.del:lit THREATENED light (it enables it)."""
+    spec = build_lifted_spec(_negative_precondition_space())
+    chain = build_chain_spec(spec)
+    assert ("light", 2, "light", 1) in chain["threatens"]
+    assert ("light", 2, "light", 1) not in chain["enables"]
+    assert ("douse", 1, "light", 1) in chain["enables"]
+    assert ("douse", 1, "light", 1) not in chain["threatens"]
+    # positive preconditions are unchanged
+    assert ("light", 2, "douse", 0) in chain["enables"]
+    assert ("douse", 1, "douse", 0) in chain["threatens"]
+
+
+def test_goal_distance_follows_the_corrected_enables_relation():
+    """Goal: at. go adds it (0). Nothing enables go through `lit`, so light
+    and douse stay unconnected (3) - light was distance... still 3, but douse
+    reaches a goal on `lit` only THROUGH enabling light when the goal is lit."""
+    spec = build_lifted_spec(_negative_precondition_space())
+    chain = build_chain_spec(spec)
+    dist = schema_goal_distances(spec, chain, {"lit"})
+    assert dist["light"] == 0
+    assert dist["douse"] == 1          # douse deletes lit -> light applicable
+    assert dist["go"] == 1             # go adds at -> light applicable
+
+
+def test_negative_precondition_occurrence_is_pre_plus_del_at_unchanged_widths():
+    space = _negative_precondition_space()
+    md = build_lifted_metadata(space, KP, KA, "joint_chain")
+    plain = build_lifted_metadata(blocks_action_space(), KP, KA, "joint_chain")
+    assert md["num_node_features"] == plain["num_node_features"]
+    assert md["num_edge_features"] == plain["num_edge_features"]
+    spec, N, E = md["lifted_spec"], md["node_feature_to_index"], md["edge_feature_to_index"]
+    keys = lifted_node_keys(spec)
+    actions = list(space)
+    o2n = {v: i for i, v in enumerate(keys + actions)}
+    n = len(o2n)
+    feats = np.zeros((n, md["num_node_features"]))
+    edges = np.zeros((n, n, md["num_edge_features"]))
+    add_lifted_node_features(feats, keys, spec, o2n, N, KP)
+    add_lifted_layer_edges(edges, [], actions, spec, o2n, E, KP, KA)
+    light = o2n[next(a for a in actions if a.name == "light")]
+    occ_neg, occ_pos = o2n[occ_node_key("light", 1)], o2n[occ_node_key("light", 0)]
+    roles = lambda i: [int(feats[i, N[f"occ_node_{r}"]]) for r in ("pre", "add", "del")]
+    assert roles(occ_neg) == [1, 0, 1] and roles(occ_pos) == [1, 0, 0]
+    eroles = lambda a, b: [int(edges[a, b, E[f"role_{r}"]]) for r in ("pre", "add", "del")]
+    assert eroles(occ_neg, light) == [1, 0, 1] and eroles(occ_pos, light) == [1, 0, 0]
+    # predicate<->schema is the union over occurrences: the negative
+    # precondition gives it positions but no role, so `lit`<->light says only
+    # what is true of it there - light ADDS lit.
+    lit_sym = o2n[pred_node_key("lit")]
+    assert eroles(lit_sym, light) == [0, 1, 0]
+    assert edges[lit_sym, light, E["slot_0"]] == 1 and edges[lit_sym, light, E["parg_0"]] == 1
+    # chain edges land on the right occurrence nodes
+    assert edges[o2n[occ_node_key("light", 2)], occ_neg, E["threatens"]] == 1
+    assert edges[o2n[occ_node_key("douse", 1)], occ_neg, E["enables"]] == 1
+    assert edges[o2n[occ_node_key("light", 2)], occ_neg, E["enables"]] == 0
+
+
+def test_a_domain_without_negative_preconditions_has_the_same_spec_as_before():
+    """The chain lists are ordered, and the order is part of byte-identity."""
+    spec = build_lifted_spec(blocks_action_space())
+    assert all(o["role"] != "npre" for occs in spec["schemas"].values() for o in occs)
+    chain = build_chain_spec(spec)
+    adds, pres, dels = {}, {}, {}
+    for schema, occs in spec["schemas"].items():
+        for k, occ in enumerate(occs):
+            {"add": adds, "pre": pres, "del": dels}[occ["role"]].setdefault(
+                occ["pred"], []).append((schema, k))
+    legacy = lambda eff: [(a, i, b, j) for p, src in eff.items() for a, i in src
+                          for b, j in pres.get(p, [])]
+    assert chain["enables"] == legacy(adds) and chain["threatens"] == legacy(dels)
+
+
+def test_featurizer_version_marks_only_the_domains_a_fix_changed():
+    bare, _ = _bare_effect_space()
+    neg = _negative_precondition_space()
+    assert featurizer_version(blocks_action_space()) == 0
+    assert featurizer_version(bare) == 1
+    assert has_negative_preconditions(neg) and featurizer_version(neg) == 2
+    assert featurizer_version(neg, lifted=False) == 0   # structural: unchanged
+    both = dict(bare); both.update(neg)
+    assert featurizer_version(both) == 3
 
 
 def _run_all():

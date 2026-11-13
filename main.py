@@ -24,7 +24,7 @@ from typing import Dict, List, Optional, Any,Set
 from torch_geometric.data import Data
 from ploi.argparsers import get_ploi_argument_parser
 from ploi.lifted_layer import LIFTED_MODES as _LIFTED_MODES
-from ploi.structural import has_bare_effects as _has_bare_effects
+from ploi.structural import featurizer_version as _featurizer_version
 from ploi.datautils import (
     collect_training_data,
     create_graph_dataset,
@@ -699,8 +699,10 @@ if __name__ == "__main__":
                         # Per DOMAIN: only a domain with a bare-Literal effect
                         # was featurized differently, so only its sidecar is
                         # renamed (the others are reused as they are).
-                        _dom_tag = tag + ('_fx1' if _has_bare_effects(
-                            per_domain_meta[name][1]) else '')
+                        _fx = _featurizer_version(
+                            per_domain_meta[name][1],
+                            lifted=args.featurization in _LIFTED_MODES)
+                        _dom_tag = tag + (f'_fx{_fx}' if _fx else '')
                         graphs, _, _ = process_pddl_to_graphs(
                             name, train_planner, num_problems, args,
                             _create_graph_dataset_ltp,
@@ -1204,15 +1206,17 @@ if __name__ == "__main__":
             # satisficing) changes every label. Defaulted away at the
             # suite's fd-lama-first, so existing directories keep their name.
             'tp' : args.train_planner_name,
-            # Featurizer version: 1 when the lifted/structural featurization
-            # ran on a training set with a bare-Literal effect (Miconic board,
-            # Rovers calibrate), which it dropped before 2026-11. Those graphs
-            # now differ, so a model trained on them must not share a
-            # directory with one trained before. Defaulted away at 0: every
-            # existing directory keeps its name.
-            'fx' : int((args.featurization == 'structural'
-                        or args.featurization in _LIFTED_MODES)
-                       and _has_bare_effects(action_space)),
+            # Featurizer version (structural.featurizer_version): nonzero
+            # when a featurizer fix changed the graphs of this training set -
+            # 1 a bare-Literal effect (Miconic board, Rovers calibrate; dropped
+            # before 2026-11), 2 a negative precondition (lifted layer only;
+            # its sign was dropped before 2026-11-14). A model trained on the
+            # changed graphs must not share a directory with one trained
+            # before. Defaulted away at 0: every other directory keeps its name.
+            'fx' : (_featurizer_version(
+                        action_space, lifted=args.featurization in _LIFTED_MODES)
+                    if (args.featurization == 'structural'
+                        or args.featurization in _LIFTED_MODES) else 0),
         }
 
         # Escape hatch for checkpoints saved before those three keys existed:

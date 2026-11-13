@@ -17,9 +17,12 @@ recomputes, from that and from the pddlgym state, what the graph must contain.
     - every schema's occurrence list = its preconditions in order, one type
       occurrence per typed parameter, its effects in order with add/del roles
     - a predicate is static iff no schema's effect mentions it
-    - constructs the representation cannot express are REPORTED (negative
-      preconditions, quantifiers, disjunction, conditional effects, constants,
-      a parameter no precondition mentions, a type hierarchy)
+    - a negative precondition `(not (p ?x))` is an 'npre' occurrence, and
+      the chain edges through it are swapped (adding p threatens it,
+      deleting p enables it)
+    - constructs the representation cannot express are REPORTED (quantifiers,
+      disjunction, conditional effects, constants, a parameter no
+      precondition mentions, a type hierarchy)
   per state (seeded random rollouts, 'joint_chain' = every component on)
     - instance_of, has_type, role_*, occ_of, enables, threatens
     - bind_slot_j from the applicable groundings and the parsed preconditions
@@ -112,8 +115,6 @@ def read_domain(path):
             names = [p for p, _ in params]
             if any(a not in names for _, _, args in pre + eff for a in args):
                 odd.add("constant-or-free-variable")
-            if any(neg for neg, _, _ in pre):
-                odd.add("negative-precondition")
             actions[sec[1]] = {"params": params, "pre": pre, "eff": eff, "odd": odd}
     return types, actions
 
@@ -128,7 +129,7 @@ def expected_spec(actions):
         def occ(role, pred, args):
             return (role, pred, tuple((i, names.index(v)) for i, v in enumerate(args)
                                       if v in names))
-        occs = [occ("pre", p, args) for _, p, args in a["pre"]]
+        occs = [occ("npre" if neg else "pre", p, args) for neg, p, args in a["pre"]]
         occs += [("pre", f"__type_{t}", ((0, j),))
                  for j, (_, t) in enumerate(a["params"]) if t is not None]
         occs += [occ("del" if neg else "add", p, args) for neg, p, args in a["eff"]]
@@ -213,15 +214,18 @@ def audit_domain(env, label, n_problems, n_steps, seed, kp, ka):
                     f"report their own type, so that slot's has_type path is dead")
 
     # the independent chain + goal distance ------------------------------------
+    # A makes B's precondition true: A adds what B needs present, or deletes
+    # what B needs absent. The other two combinations threaten it.
     enables, threatens = set(), set()
     for a, occs_a in want_schemas.items():
         for i, (role_a, pred, _) in enumerate(occs_a):
-            if role_a == "pre":
+            if role_a not in ("add", "del"):
                 continue
             for b, occs_b in want_schemas.items():
                 for j, (role_b, pred_b, _) in enumerate(occs_b):
-                    if role_b == "pre" and pred_b == pred:
-                        (enables if role_a == "add" else threatens).add(
+                    if role_b in ("pre", "npre") and pred_b == pred:
+                        helps = (role_a == "add") == (role_b == "pre")
+                        (enables if helps else threatens).add(
                             (f"OCC:{a}::{i}", f"OCC:{b}::{j}"))
 
     def goal_distances(goal_preds):
@@ -229,7 +233,8 @@ def audit_domain(env, label, n_problems, n_steps, seed, kp, ka):
                 if any(r == "add" and p in goal_preds for r, p, _ in occs)}
         for d in (1, 2):
             layer = {s for s in want_schemas if s not in dist and any(
-                r == "add" and any(rb == "pre" and pb == p for rb, pb, _ in want_schemas[t])
+                any(pb == p and (r, rb) in (("add", "pre"), ("del", "npre"))
+                    for rb, pb, _ in want_schemas[t])
                 for r, p, _ in want_schemas[s] for t, dt in dist.items() if dt == d - 1)}
             dist.update({s: d for s in layer})
         return {s: dist.get(s, 3) for s in want_schemas}
@@ -284,9 +289,21 @@ def audit_domain(env, label, n_problems, n_steps, seed, kp, ka):
                    if len(a[1]) == 1 and a[0] in spec["predicates"] and a[0] not in effect_preds])
             for a, occs in want_schemas.items():
                 for k, (role, pred, _) in enumerate(occs):
-                    want[f"role_{role}"] |= both([("P:" + pred, "S:" + a),
-                                                  (f"OCC:{a}::{k}", "S:" + a)])
+                    # A negative precondition is pre+del on ITS occurrence and
+                    # nothing on the predicate<->schema edge (which is a union
+                    # over occurrences, where pre+del means something else).
+                    for r in (("pre", "del") if role == "npre" else (role,)):
+                        want[f"role_{r}"] |= both([(f"OCC:{a}::{k}", "S:" + a)])
+                        if role != "npre":
+                            want[f"role_{r}"] |= both([("P:" + pred, "S:" + a)])
                     want["occ_of"] |= both([(f"OCC:{a}::{k}", "P:" + pred)])
+                    row = graph["nodes"][index[f"OCC:{a}::{k}"]]
+                    flags = tuple(int(row[N[f"occ_node_{r}"]]) for r in ("pre", "add", "del"))
+                    exp = {"pre": (1, 0, 0), "add": (0, 1, 0), "del": (0, 0, 1),
+                           "npre": (1, 0, 1)}[role]
+                    if flags != exp:
+                        bad.append(f"state {n_states}: OCC:{a}::{k} ({role} {pred}) has role "
+                                   f"flags pre/add/del {flags}, expected {exp}")
             want["enables"], want["threatens"] = both(enables), both(threatens)
 
             for g in groundings:
@@ -294,9 +311,10 @@ def audit_domain(env, label, n_problems, n_steps, seed, kp, ka):
                 objs = [str(v).split(":")[0] for v in g.variables]
                 sub = dict(zip([p for p, _ in a["params"]], objs))
                 for neg, pred, args in a["pre"]:
-                    if not neg and (pred, tuple(sub[v] for v in args)) not in truth:
+                    if ((pred, tuple(sub[v] for v in args)) in truth) == neg:
                         bad.append(f"state {n_states}: pddlgym calls {g} applicable but "
-                                   f"{pred}{args} does not hold")
+                                   f"{'(not ' if neg else ''}{pred}{args}{')' if neg else ''} "
+                                   f"does not hold")
                 for j, (p, t) in enumerate(a["params"]):
                     slot = min(j, ka - 1)
                     hit = False
@@ -358,7 +376,16 @@ def audit_domain(env, label, n_problems, n_steps, seed, kp, ka):
             if done:
                 break
 
+    from ploi.structural import featurizer_version
+    version = featurizer_version(action_space)
+    n_neg = sum(1 for a in actions.values() for neg, _, _ in a["pre"] if neg)
     print(f"\n== {label}: {len(actions)} schemas, {n_states} states")
+    print(f"   featurizer version {version}"
+          + ("  (0: no featurizer fix changes this domain's graphs)" if not version else
+             "  (" + ", ".join(t for bit, t in ((1, "1 = has a single-effect schema"),
+                                               (2, f"2 = has {n_neg} negative precondition(s)"))
+                               if version & bit)
+             + ": lifted graphs differ from those built before the fix)"))
     print("   checked edges: " + ", ".join(f"{f}={n}" for f, n in sorted(counts.items()) if n))
     empty = [f for f in ("achieves_goal", "deletes_true", "enables", "bind_slot_0")
              if not counts[f]]
