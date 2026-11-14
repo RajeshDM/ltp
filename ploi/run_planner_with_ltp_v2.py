@@ -13,10 +13,14 @@ from icecream import ic
 import tempfile
 import ploi.constants as constants
 from ploi.datautils_ltp import state_to_graph_wrapper
+from ploi.parallel_rollout import (RolloutWorkerPool,
+                                   compact_beam,
+                                   configured_workers)
 from ploi.datautils_ltp import (
     graph_dataset_to_pyg_dataset,
 )
 from torch_geometric.loader import DataLoader as pyg_dataloader
+from torch_geometric.data import Batch
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Any
 import numpy as np
@@ -54,9 +58,13 @@ import pymimir as mm
 class StateMonitor:
     def __init__(self):
         self.visited_states = set()
-        
-    def _state_to_hashable(self, state) -> tuple:
-        return tuple(sorted(str(lit) for lit in state.literals))
+
+    def _state_to_hashable(self, state):
+        # Old version (str-converts and sorts every literal, every state):
+        #return tuple(sorted(str(lit) for lit in state.literals))
+        # state.literals is already a frozenset of hashable Literals
+        # (frozenset() on a frozenset returns the same object - no copy)
+        return frozenset(state.literals)
         
     def has_visited(self, state) -> bool:
         return self._state_to_hashable(state) in self.visited_states
@@ -174,29 +182,84 @@ def _create_planner(planner_name):
         return FD(alias_flag="--alias seq-opt-lmcut")
     raise ValueError(f"Uncrecognized planner name {planner_name}")
 
-def convert_state_and_run_model(model, state, action_space , device, groundings, 
-                                graph_metadata,cheating_input=None):
-    g_inp , _, node_to_objects = state_to_graph_wrapper(state,action_space,groundings,
-                                                    prev_actions=None,prev_state=None,
-                                                    graph_metadata=graph_metadata,
-                                                    curr_action=None,objects=None,goal_state=state.goal,
-                                                    cheating_input=cheating_input)
+# State for GABAR_CHECK_PARALLEL_BEAM=1: caches the previous state's graph and
+# v2 results so consecutive rollout states can be batched together through
+# beam_search_parallel and compared per-graph against their v2 outputs.
+# Exercises real mixed-size (and mixed-arity) batches, not just duplicates.
+_beam_check = {"n": 0, "mismatches": 0, "g": None, "res": None, "model_id": None}
 
+def _compare_beam_results(v2_results, par_results, tag):
+    """Compare beam_search_v2 output against one batch entry of beam_search_parallel."""
+    if len(v2_results) != len(par_results):
+        print(f"[parallel-beam-check] {tag}: beam count differs "
+              f"(v2={len(v2_results)}, parallel={len(par_results)})")
+        return False
+    ok = True
+    for rank, ((s2, b2), (sp, bp)) in enumerate(zip(v2_results, par_results)):
+        seq2 = [int(t) for t in b2]
+        seqp = [int(t) for t in bp]
+        score_close = abs(float(s2) - float(sp)) <= 1e-4
+        if seq2 != seqp or not score_close:
+            note = " (equal scores - tie reorder, likely benign)" \
+                if score_close and seq2 != seqp else ""
+            print(f"[parallel-beam-check] {tag}: rank {rank} differs: "
+                  f"v2=({float(s2):.6f}, {seq2}) "
+                  f"parallel=({float(sp):.6f}, {seqp}){note}")
+            ok = False
+            break
+    return ok
+
+def _check_parallel_beam(model, g_inp, v2_results, device):
+    if _beam_check["model_id"] != id(model):
+        _beam_check.update(g=None, res=None, model_id=id(model))
+    if _beam_check["g"] is not None:
+        _beam_check["n"] += 1
+        tag = f"pair {_beam_check['n']}"
+        try:
+            model_input = convert_graph_to_model_input_v2(
+                [_beam_check["g"], g_inp], device)
+            with torch.inference_mode():
+                par_results = model.forward_with_parallel_beam_search(model_input)
+            ok = _compare_beam_results(_beam_check["res"], par_results[0], f"{tag} prev-state") \
+                 and _compare_beam_results(v2_results, par_results[1], f"{tag} curr-state")
+        except Exception as e:
+            print(f"[parallel-beam-check] {tag}: parallel decode raised: {type(e).__name__}: {e}")
+            ok = False
+        if not ok:
+            _beam_check["mismatches"] += 1
+        if _beam_check["n"] % 100 == 0:
+            print(f"[parallel-beam-check] {_beam_check['n']} pairs checked, "
+                  f"{_beam_check['mismatches']} mismatches")
+    _beam_check["g"] = g_inp
+    _beam_check["res"] = v2_results
+
+# Score tracing (GABAR_TRACE_SCORES=<path>): writes one JSON line per model
+# call with every candidate's (score, token sequence), keyed by
+# (epoch, problem, step). Compare two runs with compare_score_traces.py.
+# Temporary verification apparatus for the batched-eval migration.
+_score_trace = {"file": None, "epoch": None, "problem": None, "step": 0}
+
+def _trace_scores(epoch, problem_idx, step_idx, results):
+    path = os.environ.get("GABAR_TRACE_SCORES", "")
+    if not path:
+        return
+    if _score_trace["file"] is None:
+        _score_trace["file"] = open(path, "w")
+    entry = {"epoch": epoch, "problem": int(problem_idx), "step": int(step_idx),
+             "candidates": [[round(float(s), 6), [int(t) for t in seq]]
+                            for s, seq in results]}
+    _score_trace["file"].write(json.dumps(entry) + "\n")
+    _score_trace["file"].flush()
+
+def decode_beam_results(results, node_to_objects, action_space):
+    """Turn one graph's sorted beam results into ranked pddlgym Literals.
+    Shared by the sequential path and the batched harness."""
     all_actions = [k for k, v in action_space.items()]
-    num_actions =len(all_actions)
-    num_non_action_nodes = len(node_to_objects) - (num_actions) 
-                                    
-    model_input = convert_graph_to_model_input_v2([g_inp],device)
-    with torch.no_grad() :
-        #results = model(model_input, beam_search=True)
-        results = model.forward_beam_decode(model_input)
-        #results = model.forward_with_parallel_beam_search(model_input, beam_search=True)
-        #results = results[0]
+    num_actions = len(all_actions)
+    num_non_action_nodes = len(node_to_objects) - (num_actions)
 
-    #print (results)
     action_param_list = []
-
-    for action_data in results : 
+    for action_data in results:
         action_idx = int(action_data[1][0])
         number_parameters = len(action_data[1]) - 1
         decoded_action = node_to_objects[action_idx+num_non_action_nodes]
@@ -209,7 +272,90 @@ def convert_state_and_run_model(model, state, action_space , device, groundings,
         new_action = pddlgym.structs.Literal(decoded_action,decoded_action_parameters)
         action_param_list.append(new_action)
 
-    return action_param_list 
+    return action_param_list
+
+def build_grounding_prefix_map(groundings, all_actions, node_to_objects):
+    """(schema, objects so far) -> object nodes legal in the NEXT slot.
+
+    Built from the applicable groundings the graph already carries, so it
+    encodes exactly "this action exists in this state" -- no type reasoning,
+    no domain knowledge, nothing that would not transfer. Token conventions
+    match decode_beam_results: a schema is its index into all_actions, an
+    object is its graph node index.
+    """
+    schema_index = {a: i for i, a in enumerate(all_actions)}
+    node_of = {v: k for k, v in node_to_objects.items()}
+
+    allowed = {}
+    for grounding in groundings:
+        schema = schema_index.get(grounding.predicate)
+        if schema is None:
+            continue
+        nodes = [node_of.get(o) for o in grounding.variables]
+        if any(n is None for n in nodes):
+            continue  # object missing from the graph: cannot constrain on it
+        for slot in range(len(nodes)):
+            allowed.setdefault((schema, tuple(nodes[:slot])), set()).add(nodes[slot])
+    return allowed
+
+
+def convert_state_and_run_model(model, state, action_space , device, groundings,
+                                graph_metadata,cheating_input=None):
+    g_inp , _, node_to_objects = state_to_graph_wrapper(state,action_space,groundings,
+                                                    prev_actions=None,prev_state=None,
+                                                    graph_metadata=graph_metadata,
+                                                    curr_action=None,objects=None,goal_state=state.goal,
+                                                    cheating_input=cheating_input)
+
+    all_actions = [k for k, v in action_space.items()]
+    num_actions =len(all_actions)
+    num_non_action_nodes = len(node_to_objects) - (num_actions) 
+                                    
+    # GABAR_CONSTRAINED_DECODE=1: restrict each parameter slot to objects some
+    # applicable grounding puts there (see build_grounding_prefix_map). Every
+    # proposal is then applicable by construction, so the model's task reduces
+    # from constructing actions to ranking legal ones. Test-time only.
+    if os.environ.get("GABAR_CONSTRAINED_DECODE", "") == "1":
+        if os.environ.get("GABAR_USE_PARALLEL_DECODER", "") == "1":
+            raise RuntimeError(
+                "GABAR_CONSTRAINED_DECODE is implemented for beam_search_v2 "
+                "only; unset GABAR_USE_PARALLEL_DECODER")
+        model._decode_allowed = build_grounding_prefix_map(
+            groundings, all_actions, node_to_objects)
+    else:
+        model._decode_allowed = None
+
+    model_input = convert_graph_to_model_input_v2([g_inp],device)
+    # Old version:
+    #with torch.no_grad() :
+    with torch.inference_mode() :
+        #results = model(model_input, beam_search=True)
+        #results = model.forward_with_parallel_beam_search(model_input, beam_search=True)
+        #results = results[0]
+        # Old (single-graph) decoder call:
+        #results = model.forward_beam_decode(model_input)
+        # GABAR_USE_PARALLEL_DECODER=1 routes even single-state calls through
+        # the batched decoder (A/B test of beam_search_parallel; don't combine
+        # with GABAR_CHECK_PARALLEL_BEAM, which assumes v2 results here)
+        if os.environ.get("GABAR_USE_PARALLEL_DECODER", "") == "1":
+            results = model.forward_with_parallel_beam_search(model_input)[0]
+        else:
+            results = model.forward_beam_decode(model_input)
+
+    # Set GABAR_CHECK_PARALLEL_BEAM=1 to validate beam_search_parallel against
+    # beam_search_v2 on real rollout state pairs (Tier 3 groundwork)
+    if os.environ.get("GABAR_CHECK_PARALLEL_BEAM", "") == "1":
+        _check_parallel_beam(model, g_inp, results, device)
+
+    if os.environ.get("GABAR_TRACE_SCORES", ""):
+        _trace_scores(_score_trace["epoch"], _score_trace["problem"],
+                      _score_trace["step"], results)
+        _score_trace["step"] += 1
+
+    #print (results)
+    # Old inline decode loop moved verbatim into decode_beam_results (shared
+    # with the batched harness)
+    return decode_beam_results(results, node_to_objects, action_space)
 
 def convert_graph_to_model_input_v1(g_inp, device):
     nfeat = torch.from_numpy(g_inp["nodes"]).float().to(device)
@@ -222,10 +368,26 @@ def convert_graph_to_model_input_v1(g_inp, device):
     ao_scores = torch.from_numpy(g_inp["action_object_scores"]).long().to(device)
     return nfeat, edge_indices, efeat, u, a_scores, ao_scores
 
+def _pad_variable_width_attrs(graphs):
+    """Pad action_object_scores to uniform width across graphs so
+    Batch.from_data_list can stack them. Training does this via
+    _expand_graph_to_max_size_features; this is the test-time equivalent."""
+    if not graphs:
+        return graphs
+    max_width = max(g['action_object_scores'].shape[1] for g in graphs)
+    for g in graphs:
+        ao = g['action_object_scores']
+        if ao.shape[1] < max_width:
+            padded = np.zeros((ao.shape[0], max_width), dtype=ao.dtype)
+            padded[:, :ao.shape[1]] = ao
+            g['action_object_scores'] = padded
+    return graphs
+
+
 def convert_graph_to_model_input_v2(g_inp, device):
+    _pad_variable_width_attrs(g_inp)
     hetero_graphs = graph_dataset_to_pyg_dataset(g_inp, batch_wise=False)
-    hetero_dataset = pyg_dataloader(hetero_graphs, batch_size=len(g_inp))
-    return next(iter(hetero_dataset)).to(device) 
+    return Batch.from_data_list(hetero_graphs).to(device)
 
 def convert_state_and_run_model_val(model, states, action_space ,
                                      device, groundings, 
@@ -240,7 +402,9 @@ def convert_state_and_run_model_val(model, states, action_space ,
         graph_inputs.append(g_inp)
 
     model_input = convert_graph_to_model_input_v2(graph_inputs,device)
-    with torch.no_grad() :
+    # Old version:
+    #with torch.no_grad() :
+    with torch.inference_mode() :
         results = model(model_input).squeeze(1)
     return results
 
@@ -248,7 +412,8 @@ def convert_state_and_run_model_val(model, states, action_space ,
 class PlannerTester:
     def __init__(self, config: PlannerConfig):
         self.config = config
-        self.env = pddlgym.make(f"PDDLEnv{config.domain_name}Test-v0")
+        _suffix = "Test" if getattr(config, "test_split", "test") == "test" else ""
+        self.env = pddlgym.make(f"PDDLEnv{config.domain_name}{_suffix}-v0")
         #self.non_optimal_planner_data = {}
         #self.optimal_planner_data = {}
         # Initialize dictionary to store data for all planner types
@@ -256,6 +421,15 @@ class PlannerTester:
         self.learned_search_strat = config.learned_search_strat
 
         self.load_planner_data()
+        # Revisit-trap fallback sampling. One generator PER PROBLEM, derived
+        # from the problem index, not one shared across the run: the
+        # sequential path consumes a shared generator problem-by-problem while
+        # the batched path consumes it interleaved across active problems, so
+        # a shared generator makes the two harnesses take different fallback
+        # actions and report different coverage. The fallback picks among
+        # already-scored proposals without a model call, so that divergence is
+        # invisible to score traces (see tools/parity_matrix.sh).
+        self._fallback_seed = 42
         self.opt_planner = _create_planner(config.train_planner_name)
         self.non_opt_planner = _create_planner(config.eval_planner_name)
         self.metrics = {}
@@ -433,10 +607,19 @@ class PlannerTester:
 
     def _is_valid_action(self, action, groundings) -> bool:
         for grounded_action in groundings:
-            if (action.predicate == grounded_action.predicate and 
+            if (action.predicate == grounded_action.predicate and
                 all(v1 == v2 for v1, v2 in zip(action.variables, grounded_action.variables))):
                 return True
         return False
+
+    @staticmethod
+    def _make_grounding_set(groundings):
+        """Precompute a hashable set of groundings for O(1) validity checks."""
+        return {(g.predicate, tuple(g.variables)) for g in groundings}
+
+    @staticmethod
+    def _is_valid_action_fast(action, grounding_set) -> bool:
+        return (action.predicate, tuple(action.variables)) in grounding_set
 
     def _run_learned_model(self, problem_idx: int, action_space: Any, model_epoch: Any, 
                         graph_metadata: Any, use_monitor: bool = False):
@@ -460,10 +643,15 @@ class PlannerTester:
         if fname in planner_data and False:
             result.success = True
             result.plan_length, result.time_taken = planner_data[fname]
-            return result 
-        
+            return result
+
         if monitor:
             monitor.add_state(state)
+
+        # Context for GABAR_TRACE_SCORES (score-level verification)
+        _score_trace["epoch"] = epoch
+        _score_trace["problem"] = problem_idx
+        _score_trace["step"] = 0
 
         # CURRENLY SINGLE SEARCH TYPE ALLOWED - CAN EXTEND TO ALL LATER IF NEEDED
         strategy = self.config.learned_search_strat[0]
@@ -489,17 +677,82 @@ class PlannerTester:
         else:
             raise ValueError(f"Unknown search strategy: {strategy}")
 
+    def _find_goal_achieving_action(self, state, groundings):
+        """DIAGNOSTIC (GABAR_ORACLE_ACHIEVE=1): an applicable grounding whose
+        execution directly satisfies an unsatisfied goal literal, else None.
+        Upper-bounds what any terminal-achievement trigger (e.g. goal-binding
+        edges) could recover with the current model doing everything else."""
+        goal = state.goal
+        goal_lits = set(getattr(goal, 'literals', [goal]))
+        unsat = [g for g in goal_lits if g not in state.literals]
+        if not unsat:
+            return None
+        for g in groundings:
+            next_state = self.env.step(g)[0]
+            self.env.set_state(state)
+            if any(l in next_state.literals for l in unsat):
+                return g
+        return None
+
+    def _fallback_rng_for(self, problem_idx):
+        """Fallback sampler for one problem's rollout, independent of the
+        order in which problems are interleaved."""
+        return random.Random(self._fallback_seed + int(problem_idx))
+
     def _run_greedy_search(self, state, model, action_space, graph_metadata,monitor,
                             result,start_time, fname, planner_data):
+        _oracle = os.environ.get("GABAR_ORACLE_ACHIEVE", "")
+        fallback_rng = self._fallback_rng_for(result.problem_idx)
         while True:
             groundings = list(self.env.action_space.all_ground_literals(state))
             action_param_list = convert_state_and_run_model(
                 model, state, action_space, self.config.device, groundings, graph_metadata
             )
-            
-            valid_actions = [action for action in action_param_list 
-                        if self._is_valid_action(action, groundings)]
-            
+
+            # Oracle terminal trigger: prepend the goal-achieving action so
+            # the normal executor (validity, monitor, goal check) takes it.
+            # Diagnostic only - never a reported method. V1 is not meaningful
+            # under this flag.
+            if _oracle:
+                achieving = self._find_goal_achieving_action(state, groundings)
+                if achieving is not None:
+                    action_param_list = [achieving] + list(action_param_list)
+
+            # GABAR_DEBUG_PROPOSALS=1: print the model's ranked proposals on
+            # the first step of each problem - distinguishes "no applicable
+            # proposal" failures (instant) from wandering failures.
+            # GABAR_DEBUG_PROPOSALS=N (N>1): ALSO print every N steps, to see
+            # whether a needed schema (e.g. the deliver-analog) is ever
+            # proposed mid-rollout, valid or not.
+            _dbg_props = os.environ.get("GABAR_DEBUG_PROPOSALS", "")
+            if _dbg_props and (not result.plan or (
+                    _dbg_props.isdigit() and int(_dbg_props) > 1
+                    and len(result.plan) % int(_dbg_props) == 0)):
+                print(f"\n[p{result.problem_idx}] model proposed: "
+                      + " | ".join(str(a) for a in action_param_list[:8]))
+                print(f"[p{result.problem_idx}] applicable ({len(groundings)}): "
+                      + " | ".join(str(g) for g in list(groundings)[:5]))
+
+            # Old version (linear scan over all groundings per candidate):
+            #valid_actions = [action for action in action_param_list
+            #            if self._is_valid_action(action, groundings)]
+            grounding_set = self._make_grounding_set(groundings)
+            valid_actions = [action for action in action_param_list
+                        if self._is_valid_action_fast(action, grounding_set)]
+
+            # Track top-1 proposal validity: measures zero-shot
+            # action-construction independently of plan completion.
+            result.steps += 1
+            if action_param_list and self._is_valid_action_fast(
+                    action_param_list[0], grounding_set):
+                result.top1_valid += 1
+
+            # GABAR_DEBUG_TRACE=1: print the goal once and every executed
+            # action - distinguishes wandering from looping after step 1.
+            _trace = os.environ.get("GABAR_DEBUG_TRACE", "")
+            if _trace and not result.plan:
+                print(f"\n[p{result.problem_idx}] goal: {state.goal}")
+
             # If no valid actions at all, exit
             if not valid_actions:
                 result.time_taken = time.time() - start_time
@@ -525,7 +778,10 @@ class PlannerTester:
                 state = next_state
                 result.plan.append(new_action)
                 action_taken = True
-                
+                if _trace:
+                    print(f"[p{result.problem_idx}] step {len(result.plan)}: "
+                          f"{new_action}")
+
                 if self._check_goal_reached(state):
                     result.success = True
                     result.time_taken = time.time() - start_time
@@ -535,20 +791,298 @@ class PlannerTester:
                     
                 break  # Break to get new action predictions for new state
             
-            # If all actions led to repeated states, just take the first valid action and continue
+            # If all actions led to repeated states, take a RANDOM valid
+            # action. Deterministic valid_actions[0] created permanent
+            # 2-cycles (observed zero-shot: room3<->room4 for 495 steps once
+            # both successors were visited) because the model re-ranks the
+            # same candidates in the toggling state. Sampling makes the
+            # trapped executor a random walk over the model's valid
+            # proposals instead - same protocol for every system.
             if not action_taken and valid_actions:
-                new_action = valid_actions[0]
+                new_action = fallback_rng.choice(valid_actions)
                 state = self.env.step(new_action)[0]
                 if monitor:
                     monitor.add_state(state)
                 result.plan.append(new_action)
-            
+                if _trace:
+                    print(f"[p{result.problem_idx}] step {len(result.plan)}: "
+                          f"{new_action} (all-candidates-revisit fallback)")
+
             # Check if plan is too long
             if len(result.plan) > self.config.max_plan_length:
                 result.time_taken = time.time() - start_time
                 return result
 
         return result
+
+    def _greedy_step_single(self, st, action_param_list, groundings, planner_data, start_time):
+        """One greedy-search round for one problem. Mirrors the body of the
+        while-loop in _run_greedy_search exactly (same candidate order, same
+        monitor/fallback/goal/plan-length logic). Returns True when the
+        problem is finished (success or failure)."""
+        env, state, monitor, result = st["env"], st["state"], st["monitor"], st["result"]
+
+        grounding_set = self._make_grounding_set(groundings)
+        valid_actions = [action for action in action_param_list
+                    if self._is_valid_action_fast(action, grounding_set)]
+
+        result.steps += 1
+        if action_param_list and self._is_valid_action_fast(
+                action_param_list[0], grounding_set):
+            result.top1_valid += 1
+
+        if not valid_actions:
+            result.time_taken = time.time() - start_time
+            return True
+
+        action_taken = False
+        for new_action in valid_actions:
+            next_state = env.step(new_action)[0]
+
+            if monitor and monitor.has_visited(next_state):
+                result.repeated_states += 1
+                env.set_state(state)
+                continue
+
+            if monitor:
+                monitor.add_state(next_state)
+            st["state"] = next_state
+            result.plan.append(new_action)
+            action_taken = True
+
+            if self._check_goal_reached(next_state):
+                result.success = True
+                result.time_taken = time.time() - start_time
+                result.plan_length = len(result.plan)
+                planner_data[st["fname"]] = (result.plan_length, result.time_taken)
+                return True
+
+            break
+
+        if not action_taken and valid_actions:
+            new_action = st["fallback_rng"].choice(valid_actions)
+            st["state"] = env.step(new_action)[0]
+            if monitor:
+                monitor.add_state(st["state"])
+            result.plan.append(new_action)
+
+        if len(result.plan) > self.config.max_plan_length:
+            result.time_taken = time.time() - start_time
+            return True
+
+        return False
+
+    def _run_learned_model_batch(self, problem_idxs, action_space, model_epoch,
+                                 graph_metadata, use_monitor=False):
+        """Greedy search over many problems in lockstep: one batched
+        encoder+decoder call per round via forward_with_parallel_beam_search.
+        Per problem, trajectories match _run_greedy_search exactly when the
+        parallel decoder's scores match beam_search_v2 (verify with
+        GABAR_TRACE_SCORES + compare_score_traces.py).
+
+        Note: result.time_taken is wall-clock from batch start to that
+        problem's finish - not comparable with sequential per-problem times.
+        """
+        model, epoch = model_epoch[0], model_epoch[1]
+        strategy = self.config.learned_search_strat[0]
+        if strategy != LearnedSearchStrat.GREEDY:
+            raise NotImplementedError("GABAR_BATCH_EVAL currently supports greedy search only")
+
+        planner_data = self.planner_data[PlannerType.LEARNED_MODEL]
+        profile_batch = os.environ.get("GABAR_PROFILE_BATCH", "")
+        use_cuda = self.config.device and 'cuda' in str(self.config.device)
+        start_time = time.time()
+
+        # Each problem needs its own env instance (env.step mutates internal
+        # state). Deepcopy from a single template so the PDDL domain file is
+        # parsed once (pddlgym.make is the expensive part).
+        _suffix = "Test" if getattr(self.config, "test_split", "test") == "test" else ""
+        template_env = pddlgym.make(f"PDDLEnv{self.config.domain_name}{_suffix}-v0")
+
+        def _fname_for(p):
+            fname = template_env.problems[p].problem_fname
+            return "/".join(fname.split("/")[-2:]) + "_" + str(epoch)
+
+        def _build_state(p):
+            env = copy.deepcopy(template_env)
+            env.fix_problem_index(p)
+            state, _ = env.reset()
+            list(env.action_space.all_ground_literals(state, reground=True))
+            result = PlanningResult()
+            result.problem_idx = p
+            monitor = StateMonitor() if use_monitor else None
+            if monitor:
+                monitor.add_state(state)
+            return {"env": env, "state": state, "monitor": monitor,
+                    "result": result, "fname": _fname_for(p), "step": 0,
+                    "fallback_rng": self._fallback_rng_for(p)}
+
+        n_total = len(problem_idxs)
+        n_solved = 0
+        n_failed = 0
+        max_plan = self.config.max_plan_length
+        pbar = tqdm(total=max_plan, desc=f"[batch] 0/{n_total} solved",
+                    bar_format="{desc} | step {n}/{total} | {elapsed}<{remaining}")
+
+        t_ground, t_graph, t_convert, t_forward, t_decode = 0., 0., 0., 0., 0.
+
+        # The two per-problem units of work. Defined once and used by BOTH
+        # the serial loop and the worker pool, so the parallel path cannot
+        # drift from the reference implementation.
+        def _featurize_one(st):
+            groundings = list(
+                st["env"].action_space.all_ground_literals(st["state"]))
+            g_inp, _, node_to_objects = state_to_graph_wrapper(
+                st["state"], action_space, groundings,
+                prev_actions=None, prev_state=None,
+                graph_metadata=graph_metadata,
+                curr_action=None, objects=None,
+                goal_state=st["state"].goal, cheating_input=None)
+            st["node_to_objects"] = node_to_objects
+            return g_inp, groundings
+
+        def _step_one(st, beam, groundings):
+            st["step"] += 1
+            action_param_list = decode_beam_results(
+                beam, st["node_to_objects"], action_space)
+            return self._greedy_step_single(st, action_param_list, groundings,
+                                            planner_data, start_time)
+
+        # GABAR_FEATURIZE_WORKERS=N: featurize and step in N forked workers
+        # that own disjoint problems (ploi/parallel_rollout.py). Refused
+        # while tracing, because traces are the parity reference and the
+        # worker-side step counter is not the parent's.
+        pool = None
+        _n_workers = configured_workers()
+        if _n_workers > 0 and os.environ.get("GABAR_TRACE_SCORES", ""):
+            print("[batch] GABAR_FEATURIZE_WORKERS ignored while "
+                  "GABAR_TRACE_SCORES is set (traces come from the "
+                  "serial path)", flush=True)
+            _n_workers = 0
+
+        active, results_by_problem = {}, {}
+        if _n_workers > 0:
+            # Workers build their own envs; the parent keeps only what it
+            # reports on (the problem's filename) and placeholder results,
+            # replaced by the authoritative ones at collect_results().
+            pool = RolloutWorkerPool(_n_workers, problem_idxs, _build_state,
+                                     _featurize_one, _step_one)
+            print(f"[batch] {pool.n_workers} rollout workers", flush=True)
+            for p in problem_idxs:
+                active[p] = {"fname": _fname_for(p)}
+                placeholder = PlanningResult()
+                placeholder.problem_idx = p
+                results_by_problem[p] = placeholder
+        else:
+            for p in problem_idxs:
+                active[p] = _build_state(p)
+                results_by_problem[p] = active[p]["result"]
+        del template_env
+
+        t_setup = time.time() - start_time
+
+        round_num = 0
+        while active:
+            round_num += 1
+            batch_order = sorted(active.keys())
+
+            t0 = time.time()
+            groundings_by_problem = {}
+            t1 = time.time()
+            t_ground += t1 - t0
+
+            if pool is not None:
+                # Grounding happens inside the workers, alongside the build;
+                # it lands in the graph-build bucket rather than its own.
+                graphs_by_problem = pool.featurize(batch_order)
+                graphs = [graphs_by_problem[p] for p in batch_order]
+            else:
+                graphs = []
+                for p in batch_order:
+                    g_inp, groundings = _featurize_one(active[p])
+                    groundings_by_problem[p] = groundings
+                    graphs.append(g_inp)
+            t2 = time.time()
+            t_graph += t2 - t1
+
+            model_input = convert_graph_to_model_input_v2(graphs, self.config.device)
+            t3 = time.time()
+            t_convert += t3 - t2
+
+            with torch.inference_mode():
+                batch_results = model.forward_with_parallel_beam_search(model_input)
+            if use_cuda:
+                torch.cuda.synchronize()
+            t4 = time.time()
+            t_forward += t4 - t3
+
+            finished = []
+            if pool is not None:
+                statuses = pool.step(
+                    {p: compact_beam(batch_results[i])
+                     for i, p in enumerate(batch_order)})
+                for p in batch_order:
+                    is_finished, success, plan_length, time_taken = statuses[p]
+                    if not is_finished:
+                        continue
+                    finished.append(p)
+                    # The authoritative PlanningResult lives in the worker
+                    # until collect_results(); mirror just what the parent
+                    # reports on as it goes.
+                    r = results_by_problem[p]
+                    r.success, r.plan_length, r.time_taken = (
+                        success, plan_length, time_taken)
+                    if success:
+                        planner_data[active[p]["fname"]] = (plan_length,
+                                                            time_taken)
+            else:
+                for i, p in enumerate(batch_order):
+                    st = active[p]
+                    if os.environ.get("GABAR_TRACE_SCORES", ""):
+                        _trace_scores(epoch, p, st["step"], batch_results[i])
+                    if _step_one(st, batch_results[i],
+                                 groundings_by_problem[p]):
+                        finished.append(p)
+            t5 = time.time()
+            t_decode += t5 - t4
+
+            for p in finished:
+                if results_by_problem[p].success:
+                    n_solved += 1
+                else:
+                    n_failed += 1
+                del active[p]
+
+            pbar.n = round_num
+            pbar.set_description(
+                f"[batch] {n_solved}/{n_total} solved, "
+                f"{len(active)} active, {n_failed} failed")
+            pbar.refresh()
+
+        pbar.close()
+        if pool is not None:
+            # Plans, step counts and monitor statistics only exist in the
+            # workers; take them before the pool goes away.
+            for p, result in pool.collect_results().items():
+                results_by_problem[p] = result
+            pool.close()
+        total_time = time.time() - start_time
+        print(f"[batch-eval] done: {n_total} problems, {n_solved} solved, "
+              f"{n_failed} failed, {round_num} rounds, {total_time:.1f}s", flush=True)
+        if profile_batch:
+            t_accounted = t_setup + t_ground + t_graph + t_convert + t_forward + t_decode
+            t_overhead = total_time - t_accounted
+            print(f"[batch-profile] Time breakdown ({round_num} rounds, {n_total} problems):")
+            print(f"  env setup:    {t_setup:7.2f}s ({100*t_setup/total_time:.1f}%)  <- env create + reset + initial grounding")
+            print(f"  grounding:    {t_ground:7.2f}s ({100*t_ground/total_time:.1f}%)  <- all_ground_literals per active problem")
+            print(f"  graph build:  {t_graph:7.2f}s ({100*t_graph/total_time:.1f}%)  <- state_to_graph_wrapper (numpy loops)")
+            print(f"  pyg convert:  {t_convert:7.2f}s ({100*t_convert/total_time:.1f}%)  <- pad + graph_to_pyg_data + Batch.from_data_list")
+            print(f"  forward pass: {t_forward:7.2f}s ({100*t_forward/total_time:.1f}%)  <- GNN encoder + parallel decoder" +
+                  (" (cuda.synchronize)" if use_cuda else ""))
+            print(f"  decode+step:  {t_decode:7.2f}s ({100*t_decode/total_time:.1f}%)  <- decode_beam_results + env.step + goal check")
+            print(f"  overhead:     {t_overhead:7.2f}s ({100*t_overhead/total_time:.1f}%)  <- tqdm, bookkeeping, Python loop")
+            print(f"  TOTAL:        {total_time:7.2f}s")
+        return [results_by_problem[p] for p in problem_idxs]
 
     def _run_iterative_deepening_search(self, state, model, action_space, graph_metadata, monitor,
                                         result, start_time, fname, planner_data, max_depth, prune_factor=3,
@@ -617,10 +1151,14 @@ class PlannerTester:
         action_param_list = convert_state_and_run_model(
             model, state, action_space, self.config.device, groundings, graph_metadata
         )
-        
+
         # Filter valid actions
-        valid_actions = [action for action in action_param_list 
-                        if self._is_valid_action(action, groundings)]
+        # Old version (linear scan over all groundings per candidate):
+        #valid_actions = [action for action in action_param_list
+        #                if self._is_valid_action(action, groundings)]
+        grounding_set = self._make_grounding_set(groundings)
+        valid_actions = [action for action in action_param_list
+                        if self._is_valid_action_fast(action, grounding_set)]
         
         # If no valid actions, return failure
         if not valid_actions:
@@ -763,7 +1301,11 @@ class PlannerTester:
 
 
     def _check_goal_reached(self, state) -> bool:
-        return all(goal in list(state.literals) for goal in state.goal.literals)
+        # Old version (rebuilds a list of all state literals per goal literal,
+        # then does O(n) membership on it):
+        #return all(goal in list(state.literals) for goal in state.goal.literals)
+        # state.literals is a frozenset - O(1) membership, no copy
+        return all(goal in state.literals for goal in state.goal.literals)
 
     def _run_external_planner(self, env, problem_idx, action_space, timeout, optimal=False):
         result = PlanningResult()
@@ -881,15 +1423,49 @@ class PlannerTester:
         number_divisions = max(int((max(problems_to_solve)) / self.config.problems_per_division), 1) + 1
         self.failure_dict = {i:[] for i in range(int(number_divisions) )}
         success_until_now_for_learned = 0
-        progress_bar = tqdm(problems_to_solve)
-        
+
+        # Set GABAR_PROFILE_EVAL=1 to cProfile the first learned-model problem
+        profile_eval = os.environ.get("GABAR_PROFILE_EVAL", "") == "1"
+        profile_done = False
+
+        # Set GABAR_BATCH_EVAL=1 to run all learned-model problems in lockstep
+        # with one batched model call per round (greedy search only)
+        batch_learned_results = None
+        if (os.environ.get("GABAR_BATCH_EVAL", "") == "1"
+                and models is not None
+                and PlannerType.LEARNED_MODEL in self.config.planner_types
+                and PlannerType.LEARNED_MODEL in models):
+            batch_results_list = self._run_learned_model_batch(
+                list(problems_to_solve),
+                self.env.action_space._action_predicate_to_operators,
+                models[PlannerType.LEARNED_MODEL],
+                graph_metadata,
+                use_monitor=self.config.enable_state_monitor)
+            batch_learned_results = {r.problem_idx: r for r in batch_results_list}
+
+        progress_bar = tqdm(problems_to_solve, disable=(batch_learned_results is not None))
+
         for problem_idx in progress_bar:
             action_space = self.env.action_space._action_predicate_to_operators
             result = None
-            
+
             for planner_type in self.config.planner_types:
                 if planner_type == PlannerType.LEARNED_MODEL and PlannerType.LEARNED_MODEL in models:
-                    result = self._run_learned_model(problem_idx, action_space, models[planner_type], graph_metadata, use_monitor=self.config.enable_state_monitor)
+                    if batch_learned_results is not None:
+                        result = batch_learned_results[problem_idx]
+                    elif profile_eval and not profile_done:
+                        import cProfile, pstats
+                        profiler = cProfile.Profile()
+                        profiler.enable()
+                        result = self._run_learned_model(problem_idx, action_space, models[planner_type], graph_metadata, use_monitor=self.config.enable_state_monitor)
+                        profiler.disable()
+                        profile_done = True
+                        print(f"\n=== cProfile: problem {problem_idx} (learned model) ===")
+                        stats = pstats.Stats(profiler, stream=sys.stdout)
+                        stats.sort_stats('cumulative').print_stats(30)
+                        print("=== end cProfile ===\n")
+                    else:
+                        result = self._run_learned_model(problem_idx, action_space, models[planner_type], graph_metadata, use_monitor=self.config.enable_state_monitor)
                     if result.success :
                         success_until_now_for_learned  += 1
                     #tqdm.set_postfix(success=f"{success_until_now_for_learned}")

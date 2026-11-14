@@ -10,6 +10,14 @@ import pddlgym
 import torch
 import torch.nn as nn
 
+# GradScaler moved from torch.cuda.amp (<=2.2) to torch.amp (>=2.4). Import
+# defensively so the same code runs on both the 2.6 and 2.2 environments
+# (autocast lives at torch.amp.autocast in both, so it needs no shim).
+try:
+    from torch.amp import GradScaler as _GradScaler
+except (ImportError, AttributeError):
+    from torch.cuda.amp import GradScaler as _GradScaler
+
 import ploi.constants as constants
 import matplotlib.pyplot as plt
 from icecream import ic
@@ -56,14 +64,19 @@ def save_model_graphnetwork(model, save_folder, epoch, optimizer,train_env_name,
 
 def train_model_graphnetwork_ltp_batch_val(model, datasets,
                                  #dataloaders,
-                                   criterion, optimizer, use_gpu, print_iter=10, 
+                                   criterion, optimizer, use_gpu, print_iter=10,
                 save_iter=100, save_folder='/tmp',starting_epoch=0, final_epoch=1000, global_criterion=None,
                 return_last_model_weights=True,dagger_train=False,train_env_name=None,seed=None,
                 message_string='',
                 log_wandb=False,
                 ablation="val",
                 chpkt_manager=None,
-                enable_profiling=False):
+                enable_profiling=False,
+                use_amp=False,
+                amp_dtype='bf16',
+                spot_checkpoint_path=None,
+                patience=0,
+                domain_names=None):
 
     since = time.time()
     min_save_epoch = 0
@@ -77,10 +90,21 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
     else:
         device = "cpu"
 
+    device_type = 'cuda' if use_gpu else 'cpu'
+    # bf16 by default: it carries fp32's exponent range, so gradients cannot
+    # overflow the way fp16's can, and on an H100 it runs at the same speed.
+    # fp16 needs the loss scaler to avoid underflow and can still produce
+    # skipped steps; keep it available but do not make it the default.
+    _amp_dtype = torch.bfloat16 if str(amp_dtype).lower() in ('bf16', 'bfloat16') else torch.float16
+    # The scaler is only meaningful for fp16; with bf16 it is a no-op.
+    scaler = _GradScaler(enabled=use_amp and use_gpu and _amp_dtype is torch.float16)
+
     epochs = []
     train_loss_values = []
     val_loss_values = []
     time_taken_for_save_iter = time.time()
+    _best_val_for_patience = float('inf')
+    _patience_counter = 0
     for epoch in range(starting_epoch,final_epoch+1):
         if epoch % print_iter == 0:
             print(f"Epoch {epoch}/{final_epoch}", end=" ", flush=True)
@@ -96,7 +120,7 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
         for phase in phases:
             if phase == 'train':
                 # Set model to training mode
-                model.train()  
+                model.train()
             else:
                 # Set model to evaluate mode
                 model.eval()
@@ -105,17 +129,16 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
                 loss = 0.
                 optimizer.zero_grad()
                 batch_data = batch_data.to(device)
-                state_val =  model(batch_data).squeeze(1)
-                loss += compute_val_loss(state_val, batch_data)
+                with torch.amp.autocast(device_type, dtype=_amp_dtype, enabled=use_amp):
+                    state_val =  model(batch_data).squeeze(1)
+                    loss += compute_val_loss(state_val, batch_data)
 
                 if phase == 'train':
                     backward_time = time.time()
-                    loss.backward()
-                    #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                    optimizer.step()
-                    #ic ("backprop time",time.time()-backward_time)
+                    scaler.scale(loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
 
-                #print (state_val)
                 # statistics
                 running_loss[phase] += loss.item()
                 running_num_samples += 1
@@ -123,13 +146,22 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
                 wandb.log({f"loss_{phase}": running_loss[phase]})
 
         if epoch % print_iter == 0:
-            #print("running_loss:", running_loss, flush=True)
-            #print ("Time taken for {} epochs : {}".format(save_iter, time.time() - time_taken_for_save_iter))
             print(f"loss: {running_loss} | time({save_iter}): {time.time() - time_taken_for_save_iter:.2f}s", flush=True)
             epochs.append(epoch)
             train_loss_values.append(running_loss['train'])
             val_loss_values.append(running_loss['val'])
-    
+
+            if patience > 0:
+                if running_loss['val'] < _best_val_for_patience:
+                    _best_val_for_patience = running_loss['val']
+                    _patience_counter = 0
+                else:
+                    _patience_counter += 1
+                    if _patience_counter >= patience:
+                        print(f"Early stopping at epoch {epoch} "
+                              f"(no val improvement for {patience} checks)", flush=True)
+                        break
+
         if epoch % save_iter == 0 and epoch >= min_save_epoch:
             chpkt_manager.save_checkpoint(
                 model=model,
@@ -141,20 +173,27 @@ def train_model_graphnetwork_ltp_batch_val(model, datasets,
             )
             time_taken_for_save_iter = time.time()
 
+        if spot_checkpoint_path is not None:
+            from ploi.run_modes import save_spot_checkpoint
+            save_spot_checkpoint(spot_checkpoint_path, model, optimizer, epoch)
+
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
         time_elapsed // 60, time_elapsed % 60), flush=True)
 
 def train_model_graphnetwork_ltp_batch_val_profiling(model, datasets,
-                                 criterion, optimizer, use_gpu, print_iter=10, 
-                                 save_iter=100, save_folder='/tmp', starting_epoch=0, final_epoch=1000, 
+                                 criterion, optimizer, use_gpu, print_iter=10,
+                                 save_iter=100, save_folder='/tmp', starting_epoch=0, final_epoch=1000,
                                  global_criterion=None, return_last_model_weights=True, dagger_train=False,
                                  train_env_name=None, seed=None, message_string='',
-                                 log_wandb=False, 
+                                 log_wandb=False,
                                  ablation="val",
                                  chpkt_manager=None,
-                                 # New profiler parameters
                                  enable_profiling=True,
+                                 use_amp=False,
+                                 spot_checkpoint_path=None,
+                                 patience=0,
+                                 domain_names=None,
                                  profile_log_dir='./profile_logs'):
 
     since = time.time()
@@ -300,14 +339,19 @@ def train_model_graphnetwork_ltp_batch_val_profiling(model, datasets,
 
 def train_model_graphnetwork_ltp_batch(model, datasets,
                                  #dataloaders,
-                                   criterion, optimizer, use_gpu, print_iter=10, 
+                                   criterion, optimizer, use_gpu, print_iter=10,
                 save_iter=100, save_folder='/tmp',starting_epoch=0, final_epoch=1000, global_criterion=None,
                 return_last_model_weights=True,dagger_train=False,train_env_name=None,seed=None,
                 message_string='',
                 log_wandb=False,
                 ablation="main",
                 chpkt_manager=None,
-                enable_profiling=False):
+                enable_profiling=False,
+                use_amp=False,
+                amp_dtype='bf16',
+                spot_checkpoint_path=None,
+                patience=0,
+                domain_names=None):
 
     since = time.time()
     min_save_epoch = 0
@@ -424,14 +468,19 @@ def train_model_graphnetwork_ltp_batch(model, datasets,
 
 def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
                                  #dataloaders,
-                                   criterion, optimizer, use_gpu, print_iter=10, 
+                                   criterion, optimizer, use_gpu, print_iter=10,
                 save_iter=100, save_folder='/tmp',starting_epoch=0, final_epoch=1000, global_criterion=None,
                 return_last_model_weights=True,dagger_train=False,train_env_name=None,seed=None,
                 message_string='',
                 log_wandb=False,
                 ablation="main",
                 chpkt_manager=None,
-                enable_profiling=False):
+                enable_profiling=False,
+                use_amp=False,
+                amp_dtype='bf16',
+                spot_checkpoint_path=None,
+                patience=0,
+                domain_names=None):
 
     since = time.time()
     min_save_epoch = 0
@@ -445,11 +494,24 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
     else:
         device = "cpu"
 
+    device_type = 'cuda' if use_gpu else 'cpu'
+    # bf16 by default: it carries fp32's exponent range, so gradients cannot
+    # overflow the way fp16's can, and on an H100 it runs at the same speed.
+    # fp16 needs the loss scaler to avoid underflow and can still produce
+    # skipped steps; keep it available but do not make it the default.
+    _amp_dtype = torch.bfloat16 if str(amp_dtype).lower() in ('bf16', 'bfloat16') else torch.float16
+    # The scaler is only meaningful for fp16; with bf16 it is a no-op.
+    scaler = _GradScaler(enabled=use_amp and use_gpu and _amp_dtype is torch.float16)
+
+    n_domains = len(domain_names) if domain_names else 0
+
     epochs = []
     train_loss_values = []
     val_loss_values = []
     time_taken_for_save_iter = time.time()
     avg_ranking_loss = None
+    _best_val_for_patience = float('inf')
+    _patience_counter = 0
     for epoch in range(starting_epoch,final_epoch+1):
         if epoch % print_iter == 0:
             print(f"Epoch {epoch}/{final_epoch}", end=" ", flush=True)
@@ -461,11 +523,14 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
             phases = ['train']
 
         running_loss = {'train':0.0,'val':0.0}
+        if n_domains > 0:
+            domain_loss = {p: [0.0] * n_domains for p in phases}
+            domain_count = {p: [0] * n_domains for p in phases}
 
         for phase in phases:
             if phase == 'train':
                 # Set model to training mode
-                model.train()  
+                model.train()
             else:
                 # Set model to evaluate mode
                 model.eval()
@@ -474,77 +539,133 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
                 optimizer.zero_grad()
                 batch_data = batch_data.to(device)
 
-                if ablation == "main_val" :
-                    (action_scores, action_object_scores), state_val = model.forward_with_value(batch_data)
-                
-                elif ablation == "main" :
-                    action_scores, action_object_scores = model(batch_data, beam_search=False)
-                    #action_scores, action_object_scores = model.forward_with_parallel_beam_search(batch_data, beam_search=False)
-                tgt_action_scores = batch_data['target_action_scores'].x
-                tgt_action_object_scores = batch_data['target_action_object_scores'].x
-                tgt_params = batch_data['target_n_parameters'].x
-                curr_param_counter = 0
-                required_action_object_scores = []
-                total_number_params = 0
+                with torch.amp.autocast(device_type, dtype=_amp_dtype, enabled=use_amp):
+                    if ablation == "main_val" :
+                        (action_scores, action_object_scores), state_val = model.forward_with_value(batch_data)
 
-                for idx,n_params in enumerate(tgt_params):
-                    n_params = int(n_params)
-                    for correct_index in range(curr_param_counter,curr_param_counter+n_params):
-                        required_action_object_scores.append(correct_index)
-                    curr_param_counter += model.max_number_action_parameters
-                    total_number_params += n_params
+                    elif ablation == "main" :
+                        action_scores, action_object_scores = model(batch_data, beam_search=False)
+                        #action_scores, action_object_scores = model.forward_with_parallel_beam_search(batch_data, beam_search=False)
+                    tgt_action_scores = batch_data['target_action_scores'].x
+                    tgt_action_object_scores = batch_data['target_action_object_scores'].x
+                    tgt_params = batch_data['target_n_parameters'].x
+                    # Old version (Python double loop per batch, with a CPU
+                    # transfer per element of tgt_params):
+                    #curr_param_counter = 0
+                    #required_action_object_scores = []
+                    #total_number_params = 0
+                    #for idx,n_params in enumerate(tgt_params):
+                    #    n_params = int(n_params)
+                    #    for correct_index in range(curr_param_counter,curr_param_counter+n_params):
+                    #        required_action_object_scores.append(correct_index)
+                    #    curr_param_counter += model.max_number_action_parameters
+                    #    total_number_params += n_params
+                    #required_action_object_scores = torch.tensor(required_action_object_scores)
+                    # Vectorized: identical indices, computed on-device
+                    counts = tgt_params.long().flatten()
+                    starts = torch.arange(counts.numel(), device=counts.device) * model.max_number_action_parameters
+                    within = torch.arange(int(counts.sum()), device=counts.device) - \
+                             torch.repeat_interleave(torch.cumsum(counts, 0) - counts, counts)
+                    required_action_object_scores = torch.repeat_interleave(starts, counts) + within
+                    target_indices = tgt_action_scores.argmax(dim=1)
+                    target_indices_2 = tgt_action_object_scores[required_action_object_scores].argmax(dim=1)
+                    tgt_action_scores = tgt_action_scores.squeeze(0)
 
-                required_action_object_scores = torch.tensor(required_action_object_scores)
-                target_indices = tgt_action_scores.argmax(dim=1)
-                target_indices_2 = tgt_action_object_scores[required_action_object_scores].argmax(dim=1)
-                tgt_action_scores = tgt_action_scores.squeeze(0)
+                    m = torch.nn.ConstantPad2d((0,tgt_action_object_scores.shape[1]-action_object_scores.shape[1]\
+                                                ,0,0),0)
 
-                m = torch.nn.ConstantPad2d((0,tgt_action_object_scores.shape[1]-action_object_scores.shape[1]\
-                                            ,0,0),0)
-                
-                action_object_scores = m(action_object_scores)
-                ranking_loss = 0.
-                ranking_loss += criterion(action_scores,target_indices)
-                ranking_loss += criterion(action_object_scores[required_action_object_scores],target_indices_2)
+                    action_object_scores = m(action_object_scores)
+                    ranking_loss = 0.
+                    ranking_loss += criterion(action_scores,target_indices)
+                    ranking_loss += criterion(action_object_scores[required_action_object_scores],target_indices_2)
 
-                if ablation == "main_val" :
-                    value_loss = compute_val_loss(state_val, batch_data)
-                    alpha = 0.8
-                    if avg_ranking_loss is None:
-                        avg_ranking_loss = ranking_loss.item()
-                        avg_value_loss = value_loss.item()
-                    else:
-                        avg_ranking_loss = 0.9 * avg_ranking_loss + 0.1 * ranking_loss.item()
-                        avg_value_loss = 0.9 * avg_value_loss + 0.1 * value_loss.item()
+                    if ablation == "main_val" :
+                        value_loss = compute_val_loss(state_val, batch_data)
+                        alpha = 0.8
+                        if avg_ranking_loss is None:
+                            avg_ranking_loss = ranking_loss.item()
+                            avg_value_loss = value_loss.item()
+                        else:
+                            avg_ranking_loss = 0.9 * avg_ranking_loss + 0.1 * ranking_loss.item()
+                            avg_value_loss = 0.9 * avg_value_loss + 0.1 * value_loss.item()
 
-                    # Use loss ratio to keep them in comparable ranges
-                    loss_ratio = avg_ranking_loss / (avg_value_loss + 1e-8)
+                        # Use loss ratio to keep them in comparable ranges
+                        loss_ratio = avg_ranking_loss / (avg_value_loss + 1e-8)
 
-                    total_loss = alpha * ranking_loss + (1 - alpha) * (value_loss * loss_ratio)
+                        total_loss = alpha * ranking_loss + (1 - alpha) * (value_loss * loss_ratio)
 
-                else :
-                    total_loss = ranking_loss
+                    else :
+                        total_loss = ranking_loss
 
                 if phase == 'train':
                     backward_time = time.time()
-                    total_loss.backward()
-                    #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                    optimizer.step()
+                    scaler.scale(total_loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
                     #ic ("backprop time",time.time()-backward_time)
 
                 # statistics
                 running_loss[phase] += total_loss.item()
                 running_num_samples += 1
+
+                if n_domains > 0 and hasattr(batch_data, 'domain_id'):
+                    with torch.no_grad():
+                        dids = batch_data.domain_id
+                        if not isinstance(dids, torch.Tensor):
+                            dids = torch.tensor(dids, dtype=torch.long)
+                        dids = dids.long()
+                        _as = action_scores.detach().float()
+                        _ti = target_indices.detach()
+                        # Object-selection rows are ordered graph-by-graph
+                        # (counts = true arity per graph), so expanding the
+                        # per-graph domain ids by counts aligns rows->domain.
+                        _ao = action_object_scores[required_action_object_scores].detach().float()
+                        _ti2 = target_indices_2.detach()
+                        _row_dids = torch.repeat_interleave(dids, counts)
+                        for d in dids.unique().tolist():
+                            mask = (dids == d)
+                            n = mask.sum().item()
+                            domain_count[phase][d] += n
+                            # action CE + object CE: the full ranking loss
+                            # for this domain (a single-schema domain like
+                            # Visitall has action CE == 0 by construction;
+                            # its learning signal is entirely in objects).
+                            _dl = torch.nn.functional.cross_entropy(
+                                _as[mask], _ti[mask]).item()
+                            rmask = (_row_dids == d)
+                            if rmask.any():
+                                _dl += torch.nn.functional.cross_entropy(
+                                    _ao[rmask], _ti2[rmask]).item()
+                            domain_loss[phase][d] += _dl * n
+
             if log_wandb:
                 wandb.log({f"loss_{phase}": running_loss[phase]})
 
         if epoch % print_iter == 0:
             #print("running_loss:", running_loss, flush=True)
             print(f"loss: {running_loss} | time({save_iter}): {time.time() - time_taken_for_save_iter:.2f}s", flush=True)
+            if n_domains > 0:
+                parts = []
+                for d in range(n_domains):
+                    t_avg = domain_loss['train'][d] / max(1, domain_count['train'][d])
+                    v_avg = domain_loss['val'][d] / max(1, domain_count['val'][d])
+                    parts.append(f"{domain_names[d]}:t{t_avg:.3f}/v{v_avg:.3f}")
+                print(f"  domain: {' | '.join(parts)}", flush=True)
             epochs.append(epoch)
             train_loss_values.append(running_loss['train'])
             val_loss_values.append(running_loss['val'])
-    
+
+            if patience > 0:
+                if running_loss['val'] < _best_val_for_patience:
+                    _best_val_for_patience = running_loss['val']
+                    _patience_counter = 0
+                else:
+                    _patience_counter += 1
+                    if _patience_counter >= patience:
+                        print(f"Early stopping at epoch {epoch} "
+                              f"(no val improvement for {patience} checks)", flush=True)
+                        break
+
         if epoch % save_iter == 0 and epoch >= min_save_epoch:
             chpkt_manager.save_checkpoint(
                 model=model,
@@ -557,21 +678,28 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
             #print ("Time taken for {} epochs : {}".format(save_iter, time.time() - time_taken_for_save_iter))
             time_taken_for_save_iter = time.time()
 
+        if spot_checkpoint_path is not None:
+            from ploi.run_modes import save_spot_checkpoint
+            save_spot_checkpoint(spot_checkpoint_path, model, optimizer, epoch)
+
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
         time_elapsed // 60, time_elapsed % 60), flush=True)
 
 # Modified training function with minimal code duplication
 def train_model_graphnetwork_ltp_batch_profiling(model, datasets,
-                                criterion, optimizer, use_gpu, print_iter=10, 
-                                save_iter=100, save_folder='/tmp', starting_epoch=0, final_epoch=1000, 
+                                criterion, optimizer, use_gpu, print_iter=10,
+                                save_iter=100, save_folder='/tmp', starting_epoch=0, final_epoch=1000,
                                 global_criterion=None, return_last_model_weights=True, dagger_train=False,
                                 train_env_name=None, seed=None, message_string='',
-                                log_wandb=False, 
+                                log_wandb=False,
                                 ablation="main",
-                                chpkt_manager=None, 
-                                # New profiler parameters
-                                enable_profiling=True, 
+                                chpkt_manager=None,
+                                enable_profiling=True,
+                                use_amp=False,
+                                spot_checkpoint_path=None,
+                                patience=0,
+                                domain_names=None,
                                 profile_log_dir='./profile_logs'):
 
     since = time.time()

@@ -45,30 +45,49 @@ class ModelCheckpoint:
         """Create checkpoint from dictionary"""
         return cls(**data)
 
+# 'periodic' is not loss-ranked: see save_checkpoint.
+METRICS = ['validation', 'training', 'combined', 'periodic']
+
+
 class ModelManager:
     """Model manager for saving and loading best models with persistent tracking"""
-    
-    def __init__(self, 
+
+    def __init__(self,
                  base_dir: str,
                  max_checkpoints_per_metric: int = 2,
                  hyperparameters: Dict = None,
                  train_env_name: str = None,
                  seed: int = None,
-                 ignore_defaults: Dict[str, Any] = None):
+                 ignore_defaults: Dict[str, Any] = None,
+                 periodic_every: int = 0,
+                 max_periodic: int = 12):
         """
         Initialize the model manager
-        
+
         Args:
             base_dir: Base directory for model storage
             max_checkpoints_per_metric: Number of best models to keep per metric
+            periodic_every: If > 0, also snapshot every N epochs regardless of
+                loss, into the 'periodic' metric (0 disables).
+            max_periodic: Cap on retained periodic snapshots; the LATEST are
+                dropped first, because the loss-ranked metrics already keep
+                those and the early epochs are what zero-shot transfer needs.
         """
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.max_checkpoints = max_checkpoints_per_metric
+        self.periodic_every = periodic_every
+        self.max_periodic = max_periodic
         self.best_models: Dict[str, Dict] = {}  # config_hash -> metric_type -> checkpoints
         self.hyperparameters = hyperparameters
         self.ignore_defaults = ignore_defaults
         #self.tracking_file = self.base_dir / "model_tracking.json"
+        # Kept for diagnostics: these two pick the DIRECTORY, while the `seed`
+        # passed to save_checkpoint/get_best_model_info (hardcoded 42 on both
+        # sides) only picks the config hash inside it. Comparing the wrong one
+        # against a directory's config_info.json reports a phantom mismatch.
+        self._dir_train_env_name = train_env_name
+        self._dir_seed = seed
         self.model_dir = self._get_model_dir(train_env_name, seed )
         self.tracking_file = self.model_dir / "model_tracking.json"
         
@@ -218,13 +237,11 @@ class ModelManager:
                 
                 # Reconstruct best_models dictionary
                 for config_hash, metrics in tracking_data.items():
-                    self.best_models[config_hash] = {
-                        'validation': [],
-                        'training': [],
-                        'combined': []
-                    }
-                    
+                    self.best_models[config_hash] = {m: [] for m in METRICS}
+
                     for metric, checkpoints in metrics.items():
+                        if metric not in self.best_models[config_hash]:
+                            continue
                         for ckpt_data in checkpoints:
                             checkpoint = ModelCheckpoint.from_dict(ckpt_data['checkpoint'])
                             loss = ckpt_data['loss']
@@ -242,12 +259,10 @@ class ModelManager:
             tracking_data = {}
             for config_hash, metrics in self.best_models.items():
                 tracking_data[config_hash] = {
-                    'validation': [{'loss': loss, 'checkpoint': ckpt.to_dict()} 
-                                 for loss, ckpt in sorted(metrics['validation'])],
-                    'training': [{'loss': loss, 'checkpoint': ckpt.to_dict()} 
-                               for loss, ckpt in sorted(metrics['training'])],
-                    'combined': [{'loss': loss, 'checkpoint': ckpt.to_dict()} 
-                               for loss, ckpt in sorted(metrics['combined'])]
+                    metric: [{'loss': loss, 'checkpoint': ckpt.to_dict()}
+                             for loss, ckpt in sorted(metrics.get(metric, []),
+                                                      key=lambda item: item[0])]
+                    for metric in METRICS
                 }
             
             with open(self.tracking_file, 'w') as f:
@@ -260,11 +275,9 @@ class ModelManager:
     def _initialize_best_models(self, config_hash: str):
         """Initialize tracking for a new configuration"""
         if config_hash not in self.best_models:
-            self.best_models[config_hash] = {
-                'validation': [],
-                'training': [],
-                'combined': []
-            }
+            self.best_models[config_hash] = {m: [] for m in METRICS}
+        for metric in METRICS:
+            self.best_models[config_hash].setdefault(metric, [])
     
     def _update_best_models(self, checkpoint: ModelCheckpoint, 
                           config_hash: str) -> List[str]:
@@ -291,7 +304,24 @@ class ModelManager:
         
         return metrics_updated
     
-    def _update_metric_models(self, checkpoint: ModelCheckpoint, 
+    def _update_periodic(self, checkpoint: ModelCheckpoint,
+                         config_hash: str) -> bool:
+        """Retain an every-N-epochs snapshot, EARLIEST first.
+
+        Loss-ranked slots cannot hold an early epoch: the loss keeps falling,
+        so the survivors are always from the tail of the run. Zero-shot
+        transfer peaks long before that (measured: E190 100% -> E500 3.3% on
+        held-out Visitall), so the epochs worth testing are exactly the ones
+        loss ranking discards. Keyed by epoch, capped by dropping the LATEST,
+        which the loss-ranked metrics already cover.
+        """
+        bucket = self.best_models[config_hash]['periodic']
+        bucket.append((float(checkpoint.epoch), checkpoint))
+        bucket.sort(key=lambda item: item[0])
+        del bucket[self.max_periodic:]
+        return any(c is checkpoint for _, c in bucket)
+
+    def _update_metric_models(self, checkpoint: ModelCheckpoint,
                             model_list: List, 
                             key_func) -> bool:
         """Update models for a specific metric"""
@@ -343,7 +373,13 @@ class ModelManager:
         
         # Update best models tracking
         metrics_updated = self._update_best_models(checkpoint, config_hash)
-        
+
+        # epoch > 0: an untrained snapshot is never worth a test slot, and
+        # periodic is ordered earliest-first so epoch 0 would always be taken.
+        if self.periodic_every > 0 and epoch > 0 and epoch % self.periodic_every == 0:
+            if self._update_periodic(checkpoint, config_hash):
+                metrics_updated.append('periodic')
+
         if metrics_updated:
             # Save model state
             state_save = {
@@ -363,6 +399,59 @@ class ModelManager:
         
         return save_path
     
+    def _explain_missing_tracking(self):
+        """Say WHICH directory was looked in, and which trained one is closest.
+
+        The checkpoint key is a dozen values wide (§1.4 contract 8), and a
+        single one moving - a featurization change shifting `nf`/`ef`, a
+        different `d`, a stale `--ablation` - silently sends a `--mode test`
+        run to a fresh empty directory. The old message ("No tracking file
+        found") named neither the directory nor the mismatch, so the answer
+        cost a manual diff of two config_info.json files every time.
+
+        Every directory that has ever trained carries a config_info.json with
+        the exact hyperparameter dict it was keyed by, so the differing keys
+        can be read off directly.
+        """
+        logger.warning("No tracking file found: %s", self.tracking_file)
+
+        want = dict(self.hyperparameters or {})
+        want['(train_env_name)'] = self._dir_train_env_name
+        want['(seed)'] = self._dir_seed
+
+        candidates = []
+        try:
+            for d in sorted(self.base_dir.iterdir()):
+                if not (d / "model_tracking.json").exists():
+                    continue           # never trained; often one of these stubs
+                try:
+                    with open(d / "config_info.json") as f:
+                        info = json.load(f)
+                except (OSError, ValueError):
+                    continue
+                have = dict(info.get('hyperparameters') or {})
+                have['(train_env_name)'] = info.get('train_env_name')
+                have['(seed)'] = info.get('seed')
+                diff = {k: (want.get(k), have.get(k))
+                        for k in set(want) | set(have)
+                        if want.get(k) != have.get(k)}
+                candidates.append((len(diff), d.name, diff))
+        except OSError:
+            return
+
+        if not candidates:
+            logger.warning("  no trained model directory exists under %s",
+                           self.base_dir)
+            return
+
+        candidates.sort(key=lambda c: c[0])
+        logger.warning("  closest trained directories (differing keys, "
+                       "wanted -> found):")
+        for n_diff, name, diff in candidates[:3]:
+            logger.warning("    [%d] %s", n_diff, name)
+            for k, (w, h) in sorted(diff.items()):
+                logger.warning("         %-18s %r -> %r", k, w, h)
+
     def get_best_model_info(self,
                            train_env_name: str,
                            seed: int,
@@ -371,7 +460,7 @@ class ModelManager:
                            ) -> Dict[str, List[Dict]]:
         """Get information about best models for a configuration"""
         if not self.tracking_file.exists():
-            logger.warning("No tracking file found")
+            self._explain_missing_tracking()
             return {}
         
         try:
@@ -385,7 +474,9 @@ class ModelManager:
                 return {}
             
             info = {}
-            for metric in ['validation', 'training', 'combined']:
+            for metric in METRICS:
+                # 'periodic' is keyed by epoch, so sorting by 'loss' already
+                # yields earliest-first -- the order worth testing.
                 info[metric] = [
                     {
                         'epoch': ckpt['checkpoint']['epoch'],
@@ -394,7 +485,7 @@ class ModelManager:
                         'combined_loss': ckpt['checkpoint']['combined_loss'],
                         'save_path': ckpt['checkpoint']['save_path']
                     }
-                    for ckpt in sorted(tracking_data[config_hash][metric],
+                    for ckpt in sorted(tracking_data[config_hash].get(metric, []),
                                      key=lambda x: x['loss'])
                 ]
             

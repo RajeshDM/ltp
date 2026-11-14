@@ -1,0 +1,22 @@
+description: Single-domain skyline on blocks (published GABAR path)
+expid: baseline_blocks
+domain: manyblocks_ipcc_big
+test_domains: manyblocks_ipcc_big:200
+mode: train_test
+epochs: 500
+lr: 0.0005
+batch_size: 16
+gnn_rounds: 9
+n_heads: 1
+dropout: 0.0
+attention_dropout: 0.0
+weight_decay: 0.0
+max_plan_length: 500
+ablation: main
+search_strat: greedy
+num_train_problems: 200
+num_test_problems: 200
+all_problems: true
+num_models_to_test: 1
+test_model_metrics: validation,training,combined
+wandb: false

@@ -21,41 +21,69 @@ class ModelLogParser:
     def extract_hyperparameters(self, filename: str) -> Dict[str, float]:
         """
         Extract hyperparameters from filename.
-        
-        Args:
-            filename (str): Name of the log file
-            
-        Returns:
-            Dict[str, float]: Dictionary of hyperparameters
+
+        Handles both old format:
+            lr_0.0005_n_heads_1_attn_drop_0.1_drop_0_decay_0.000_g_node_True.txt
+        and new format (domain + timestamp prefix):
+            Manyblocks_ipcc_big_20260714_143022_lr_0.0005_n_heads_1_...txt
         """
-        # Example filename: lr_0.0005_n_heads_1_attn_drop_0.1_drop_0_decay_0.000_g_node_True.txt
         params = {}
-        
+
+        # Extract timestamp (new format)
+        ts_match = re.search(r'(\d{8}_\d{6})', filename)
+        if ts_match:
+            params['timestamp'] = ts_match.group(1)
+
+        # Extract domain from filename prefix (new format: domain before timestamp)
+        domain_match = re.match(r'^(.+?)_\d{8}_\d{6}_', filename)
+        if domain_match:
+            params['domain_from_filename'] = domain_match.group(1)
+
+        # Extract run mode (new format)
+        mode_match = re.search(r'_(default|toy|sweep|spot)\.txt$', filename)
+        if mode_match:
+            params['run_mode'] = mode_match.group(1)
+
         # Extract learning rate
-        lr_match = re.search(r'lr_(\d+\.\d+)', filename)
+        lr_match = re.search(r'lr_([\d.]+(?:e[+-]?\d+)?)', filename)
         if lr_match:
             params['learning_rate'] = float(lr_match.group(1))
-            
+
         # Extract number of attention heads
         heads_match = re.search(r'n_heads_(\d+)', filename)
         if heads_match:
             params['attention_heads'] = int(heads_match.group(1))
-            
+
         # Extract attention dropout
-        attn_drop_match = re.search(r'attn_drop_(\d+\.\d+)', filename)
+        attn_drop_match = re.search(r'attn_drop_([\d.]+)', filename)
         if attn_drop_match:
             params['attention_dropout'] = float(attn_drop_match.group(1))
-            
-        # Extract dropout
-        drop_match = re.search(r'drop_(\d+(?:\.\d+)?)', filename)
+
+        # Extract dropout (non-greedy: stop before _decay or _g_node)
+        drop_match = re.search(r'(?:^|_)drop_([\d.]+?)(?:_decay|_g_node|$)', filename)
         if drop_match:
             params['dropout'] = float(drop_match.group(1))
-            
+
         # Extract weight decay
         decay_match = re.search(r'decay_(\d+\.\d+)', filename)
         if decay_match:
             params['weight_decay'] = float(decay_match.group(1))
-            
+
+        # Extract g_node
+        gnode_match = re.search(r'g_node_(True|False)', filename)
+        if gnode_match:
+            params['g_node'] = gnode_match.group(1) == 'True'
+
+        # Extract ablation
+        abl_match = re.search(r'ablation_(\w+?)(?:_search|_default|_toy|_sweep|_spot|\.txt)', filename)
+        if abl_match:
+            params['ablation'] = abl_match.group(1)
+
+        # Extract search strategy
+        search_match = re.search(r'search_strat_(\w+?)(?:_default|_toy|_sweep|_spot|\.txt)', filename)
+        if search_match:
+            params['search_strat'] = search_match.group(1)
+
         return params
 
     def extract_metrics(self, content: str) -> Dict[str, float]:
@@ -166,11 +194,17 @@ class ModelLogParser:
         column_order = [
             'filename',
             'domain',
+            'domain_from_filename',
+            'timestamp',
+            'run_mode',
             'learning_rate',
             'attention_heads',
             'attention_dropout',
             'dropout',
             'weight_decay',
+            'g_node',
+            'ablation',
+            'search_strat',
             'success_rate_with_monitor',
             'success_rate_without_monitor',
             'avg_plan_length',

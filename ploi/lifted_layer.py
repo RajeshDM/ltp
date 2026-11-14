@@ -1,0 +1,639 @@
+"""Lifted domain layer + binding layer (CLAUDE.md 5.4/5.5; C1/C2).
+
+Two featurization modes build on the structural substrate (Method 0):
+
+- 'joint_lite' (paper: GADAR-BIND ablation): adds the lifted domain
+  description to every state graph -- one symbol node per predicate,
+  instantiation edges from each ground literal to its predicate's symbol
+  node, and role edges between predicate symbols and schema nodes labeled
+  with HOW the predicate appears (precondition / add / delete) and at
+  which argument/slot positions (multi-hot).
+
+- 'joint' (paper: GADAR, full Method B): additionally one occurrence node
+  per (schema, role, k-th literal) -- so two occurrences of the SAME
+  predicate in one schema are distinct -- with exact (pred-arg, slot)
+  pair features, plus the BINDING layer: each grounded applicability fact
+  (object o at slot j satisfies a precondition) becomes an edge from the
+  object to the precondition-occurrence node it instantiates.
+
+- 'joint_chain': everything 'joint' has, plus schema chaining and goal
+  relevance. Chain edges between occurrence nodes ('enables'/'threatens',
+  build_chain_spec); per-schema goal-distance buckets + 'adds_goal_pred'
+  and 'goal_relevant_obj' node features (add_chain_node_features,
+  schema_goal_distances); grounded effect edges 'achieves_goal'/
+  'deletes_true' from applicable groundings (add_grounded_effect_edges).
+  Wider metadata than 'joint' -> its own cache sidecar tag.
+
+- 'jc_no_*' / 'jc_only_*' (component ablations, C2): 'joint_chain' with one
+  component removed, or 'joint' with one added. The four components are
+  'bind' (object <-> precondition-occurrence edges), 'chain' (enables /
+  threatens), 'eff' (achieves_goal / deletes_true) and 'goal' (gdist
+  buckets, adds_goal_pred, goal_relevant_obj); see _MODE_COMPONENTS. Every
+  ablation keeps the 'joint_chain' feature WIDTHS and leaves the removed
+  component's columns at zero, so the network is identical across the
+  study and only graph content differs.
+
+All modes TYPE-COMPILE the domain first (build_lifted_spec): each
+declared PDDL type becomes a synthetic unary static predicate with one
+'pre' occurrence per typed schema slot, and each object gets a 'has_type'
+edge to its type's symbol node (add_type_edges). Without this, half the
+suite is typed (gripper, miconic, spanner, rovers, blocksworld) and half
+spells types as ordinary predicates (grid, logistics) -- and only the
+second half's type constraints survive the symbol-free featurization,
+because structural.py collapses every declared type to one class. After
+compilation both families produce the same lifted structure.
+
+Everything is symbol-free (roles + positions only), so renaming
+invariance and fixed cross-domain feature widths carry over from the
+structural substrate. Node ordering in the state graph stays
+[objects][literals][lifted nodes][schemas]: objects first and schemas
+last, preserving every decoder invariant.
+"""
+
+import logging
+
+from ploi.structural import (build_structural_metadata, _pred_arity, op_literals,
+                             has_bare_effects, featurizer_version)
+
+logger = logging.getLogger(__name__)
+
+_PRED_KEY = "LIFTED_PRED::{}"
+_OCC_KEY = "LIFTED_OCC::{}::{}"
+
+# Type compilation (below): a declared PDDL type becomes a synthetic unary
+# static predicate, so a typed domain and a predicate-typed one present the
+# same structure to the lifted + binding layers.
+_TYPE_PRED = "__type_{}"
+# pddlgym gives untyped entities this pseudo-type; it carries no information
+# (every object has it) so compiling it would add a constant node.
+_UNTYPED = {None, "default", ""}
+
+# The four removable components of the full representation, and which of
+# them each featurization mode switches on. 'joint_lite' additionally has no
+# occurrence nodes at all (has_occurrence_nodes). The 'jc_*' modes are the
+# ablation study: leave-one-out from 'joint_chain' and add-one to 'joint'.
+ALL_COMPONENTS = ("bind", "chain", "eff", "goal")
+_MODE_COMPONENTS = {
+    "joint_lite": (),
+    "joint": ("bind",),
+    "joint_chain": ALL_COMPONENTS,
+    "jc_no_bind": ("chain", "eff", "goal"),
+    "jc_no_chain": ("bind", "eff", "goal"),
+    "jc_no_eff": ("bind", "chain", "goal"),
+    "jc_no_goal": ("bind", "chain", "eff"),
+    "jc_only_chain": ("bind", "chain"),
+    "jc_only_eff": ("bind", "eff"),
+    "jc_only_goal": ("bind", "goal"),
+}
+LIFTED_MODES = tuple(_MODE_COMPONENTS)
+ABLATION_MODES = tuple(m for m in _MODE_COMPONENTS if m.startswith("jc_"))
+# Modes featurized at the 'joint_chain' widths (chain classes appended).
+_WIDE_MODES = ("joint_chain",) + ABLATION_MODES
+
+
+# Feature columns of each occurrence role (node class occ_node_<r>, edge class
+# role_<r>). A negative precondition is a precondition of negative polarity:
+# 'pre' + 'del', a combination no single occurrence had before. Composing it
+# from the existing columns keeps every feature width, so no model or cached
+# graph of a domain WITHOUT negative preconditions changes.
+_ROLE_COLUMNS = {"pre": ("pre",), "add": ("add",), "del": ("del",),
+                 "npre": ("pre", "del")}
+
+
+def mode_components(mode):
+    return frozenset(_MODE_COMPONENTS[mode])
+
+
+def spec_components(spec):
+    """Components switched on for this lifted spec.
+
+    Specs pickled before the ablation modes existed carry no 'components'
+    key; their mode determines it.
+    """
+    comps = spec.get("components")
+    if comps is None:
+        comps = _MODE_COMPONENTS.get(spec.get("mode"), ())
+    return frozenset(comps)
+
+
+def has_occurrence_nodes(spec):
+    mode = spec.get("mode")
+    return mode in _MODE_COMPONENTS and mode != "joint_lite"
+
+
+def pred_node_key(pred_name):
+    return _PRED_KEY.format(pred_name)
+
+
+def occ_node_key(schema_name, occ_index):
+    return _OCC_KEY.format(schema_name, occ_index)
+
+
+def type_pred_name(type_name):
+    return _TYPE_PRED.format(type_name)
+
+
+def declared_type(entity):
+    """The entity's PDDL type, or None if the domain is untyped there."""
+    t = getattr(entity, "var_type", None)
+    t = None if t is None else str(t)
+    return None if t in _UNTYPED else t
+
+
+def _positive_predicate(literal):
+    """The non-negated predicate of a (possibly Anti/delete-effect) literal."""
+    pred = literal.predicate
+    return getattr(pred, "positive", pred) or pred
+
+
+def _schema_name(schema):
+    return getattr(schema, "name", str(schema))
+
+
+def build_lifted_spec(action_space):
+    """Extract the lifted domain description from a pddlgym action space.
+
+    Returns a plain (picklable) dict:
+      predicates: {name: {'arity': int, 'static': bool}}
+      pred_order: [name, ...] sorted (deterministic node order)
+      schema_order: [schema_name, ...] sorted
+      schemas: {schema_name: [occurrence, ...]} where occurrence =
+        {'role': 'pre'|'npre'|'add'|'del', 'pred': name,
+         'bindings': [(pred_arg_i, schema_slot_j), ...]}
+        'npre' is a NEGATIVE precondition `(not (p ...))`: the schema needs p
+        to be absent. It keeps its place among the preconditions (the k-th
+        precondition is still occurrence k). Until 2026-11-14 the sign was
+        dropped and it was recorded as 'pre', which also inverted every chain
+        edge through it. No column is added for it (_ROLE_COLUMNS).
+      type_preds: {pddl_type_name: synthetic_predicate_name}
+      type_occ:   {schema_name: {slot_j: occurrence_index}}
+
+      Precondition occurrences come FIRST and keep preconds.literals
+      order, so the k-th precondition of a schema is occurrence k -- the
+      contract the binding layer relies on. TYPE-COMPILED preconditions
+      (below) are appended directly after them, before any effect
+      occurrence, so that contract is untouched.
+
+    Type compilation: a schema parameter declared `?x - block` carries a
+    constraint that a predicate-typed domain would spell as a precondition
+    `(block ?x)`. Without compiling it, the constraint is invisible to the
+    symbol-free featurizations -- structural.py collapses every declared
+    type to one `typed_object` class -- so a typed domain's slots have no
+    representable type at all while a predicate-typed domain's do. We
+    synthesize the missing precondition: one unary static predicate per
+    declared type, one 'pre' occurrence per typed slot. Both families then
+    reach the binding layer through the same path.
+    """
+    predicates = {}
+    schemas = {}
+    effect_names = set()
+    type_preds = {}
+    type_occ = {}
+
+    for schema, op in action_space.items():
+        for lit in op_literals(getattr(op, "effects", None)):
+            pred = _positive_predicate(lit)
+            effect_names.add(pred.name)
+
+    def record_occurrence(role, lit, params):
+        pred = _positive_predicate(lit)
+        name = pred.name
+        predicates.setdefault(
+            name, {"arity": _pred_arity(pred), "static": name not in effect_names})
+        bindings = []
+        for i, var in enumerate(getattr(lit, "variables", [])):
+            if var in params:
+                bindings.append((i, params.index(var)))
+        return {"role": role, "pred": name, "bindings": bindings}
+
+    for schema, op in sorted(action_space.items(),
+                             key=lambda kv: _schema_name(kv[0])):
+        params = list(getattr(op, "params", []))
+        name = _schema_name(schema)
+        occurrences = []
+        for lit in op_literals(op.preconds):
+            role = "npre" if getattr(lit, "is_negative", False) else "pre"
+            occurrences.append(record_occurrence(role, lit, params))
+        # Type-compiled preconditions: after the real ones (preserving the
+        # k-th-precondition-is-occurrence-k contract), before the effects.
+        slots = {}
+        for j, param in enumerate(params):
+            t = declared_type(param)
+            if t is None:
+                continue
+            pred_name = type_preds.setdefault(t, type_pred_name(t))
+            predicates.setdefault(pred_name, {"arity": 1, "static": True})
+            slots[j] = len(occurrences)
+            occurrences.append({"role": "pre", "pred": pred_name,
+                                "bindings": [(0, j)], "type_slot": j})
+        if slots:
+            type_occ[name] = slots
+        for lit in op_literals(getattr(op, "effects", None)):
+            role = "del" if getattr(lit, "is_anti", False) else "add"
+            occurrences.append(record_occurrence(role, lit, params))
+        schemas[name] = occurrences
+
+    return {
+        "predicates": predicates,
+        "pred_order": sorted(predicates),
+        "schema_order": sorted(schemas),
+        "schemas": schemas,
+        "type_preds": type_preds,
+        "type_occ": type_occ,
+    }
+
+
+def build_chain_spec(spec):
+    """Schema-chaining pairs over an existing lifted spec (#4, class-1 fix).
+
+    enables:   (A, i, B, j) - occurrence i of schema A has role 'add' for
+               predicate p, occurrence j of schema B has role 'pre' for p.
+               "A produces what B needs": gripper pick.add:carry ->
+               drop.pre:carry; miconic board.add:boarded -> depart.pre:boarded.
+    threatens: (A, i, B, j) - same with role 'del' at A: "A destroys what
+               B needs" (lifted delete reasoning).
+    A NEGATIVE precondition at B ('npre': B needs p absent) swaps the two:
+    A deleting p enables B, A adding p threatens it.
+
+    Pure function of the domain description; computed once, stored in
+    metadata, zero per-state cost.
+    """
+    adds, pres, dels, npres = {}, {}, {}, {}
+    for schema, occs in spec["schemas"].items():
+        for k, occ in enumerate(occs):
+            bucket = {"add": adds, "pre": pres, "del": dels,
+                      "npre": npres}[occ["role"]]
+            bucket.setdefault(occ["pred"], []).append((schema, k))
+
+    def pairs(effects, needs):
+        return [(sa, ka_, sb, kb)
+                for pred, sources in effects.items()
+                for (sa, ka_) in sources
+                for (sb, kb) in needs.get(pred, [])]
+    # Positive preconditions first: with no negative precondition in the
+    # domain both lists are exactly what they were before 'npre' existed.
+    return {"enables": pairs(adds, pres) + pairs(dels, npres),
+            "threatens": pairs(dels, pres) + pairs(adds, npres)}
+
+
+def schema_goal_distances(spec, chain, goal_pred_names, max_dist=3):
+    """Per-schema hop count to a goal-achieving schema (#4's number, #5a at 0).
+
+    Distance 0: schema has an add occurrence of a goal predicate. Distance
+    d+1: schema enables (via any occurrence pair) a distance-d schema.
+    Clamped to max_dist; schemas with no path get max_dist (a real bucket:
+    'not goal-connected'). Depends only on WHICH predicates are goals - one
+    computation per (domain, goal signature), not per state.
+    """
+    dist = {}
+    for schema, occs in spec["schemas"].items():
+        if any(o["role"] == "add" and o["pred"] in goal_pred_names
+               for o in occs):
+            dist[schema] = 0
+    frontier = set(dist)
+    d = 0
+    while frontier and d < max_dist:
+        d += 1
+        nxt = set()
+        for (sa, _ka, sb, _kb) in chain["enables"]:
+            if sb in frontier and sa not in dist:
+                dist[sa] = d
+                nxt.add(sa)
+        frontier = nxt
+    for schema in spec["schemas"]:
+        dist.setdefault(schema, max_dist)
+    return dist
+
+
+def build_lifted_metadata(action_space, max_pred_arity, max_action_arity, mode,
+                          goal_prefix="WANT", cheating=False):
+    """Structural metadata (Method 0) extended with the lifted-layer classes.
+
+    Widths depend only on (max_pred_arity, max_action_arity, mode-independent
+    class list), so graphs from different domains batch together and a
+    held-out domain featurizes at the same widths. 'joint' and 'joint_lite'
+    share ONE width so joint vs joint_lite is a pure graph-content ablation;
+    'joint_chain' appends its extra classes after them and is strictly wider
+    (it gets its own cache sidecar tag).
+    """
+    assert mode in LIFTED_MODES, mode
+    kp, ka = max_pred_arity, max_action_arity
+    md = build_structural_metadata(action_space, kp, ka, goal_prefix=goal_prefix,
+                                   cheating=cheating)
+
+    node_extra = ["lifted_pred_node", "occ_node_pre", "occ_node_add",
+                  "occ_node_del"]
+    edge_extra = (["instance_of", "occ_of", "role_pre", "role_add", "role_del",
+                   "has_type"]
+                  + [f"slot_{j}" for j in range(ka)]
+                  + [f"parg_{i}" for i in range(kp)]
+                  + [f"pair_p{i}_s{j}" for i in range(kp) for j in range(ka)]
+                  + [f"bind_slot_{j}" for j in range(ka)])
+    if mode in _WIDE_MODES:
+        # Appended AFTER the joint classes: joint/joint_lite indices and
+        # widths stay byte-identical; joint_chain is strictly wider. The
+        # ablation modes take the same classes so their widths match
+        # joint_chain exactly.
+        node_extra = node_extra + ["adds_goal_pred", "goal_relevant_obj",
+                                   "gdist_0", "gdist_1", "gdist_2",
+                                   "gdist_3plus"]
+        edge_extra = edge_extra + ["enables", "threatens", "achieves_goal",
+                                   "deletes_true"]
+
+    node_map = md["node_feature_to_index"]
+    next_node = md["num_node_features"]
+    for cls in node_extra:
+        if cls not in node_map:
+            node_map[cls] = next_node
+            next_node += 1
+    md["num_node_features"] = next_node
+
+    edge_map = md["edge_feature_to_index"]
+    next_edge = md["num_edge_features"]
+    for cls in edge_extra:
+        if cls not in edge_map:
+            edge_map[cls] = next_edge
+            next_edge += 1
+    md["num_edge_features"] = next_edge
+
+    md["lifted_spec"] = build_lifted_spec(action_space)
+    if mode in _WIDE_MODES:
+        # Built even when the 'chain' EDGES are ablated: the goal-distance
+        # buckets ('goal') are a BFS over the same enables relation.
+        md["lifted_spec"]["chain"] = build_chain_spec(md["lifted_spec"])
+    md["lifted_spec"]["mode"] = mode
+    md["lifted_spec"]["components"] = sorted(_MODE_COMPONENTS[mode])
+    md["featurization"] = mode
+    n_types = len(md["lifted_spec"]["type_preds"])
+    logger.info(
+        "lifted layer (%s): %d predicates (%d type-compiled from declared "
+        "PDDL types), %d schemas", mode, len(md["lifted_spec"]["predicates"]),
+        n_types, len(md["lifted_spec"]["schemas"]))
+    return md
+
+
+def lifted_node_keys(spec):
+    """Deterministic node keys for the lifted layer of one state graph.
+
+    Predicate symbol nodes first (pred_order), then -- every mode except
+    'joint_lite' -- occurrence nodes per schema in schema_order, occurrence
+    index order.
+    """
+    keys = [pred_node_key(name) for name in spec["pred_order"]]
+    if has_occurrence_nodes(spec):
+        for schema_name in spec["schema_order"]:
+            for k in range(len(spec["schemas"][schema_name])):
+                keys.append(occ_node_key(schema_name, k))
+    return keys
+
+
+def add_lifted_node_features(input_node_features, lifted_keys, spec,
+                             objects_to_node, node_feature_to_index, kp):
+    """Features for lifted nodes: a type bit + the predicate's structural
+    class (symbol nodes) or the occurrence's role bit (occurrence nodes)."""
+    for key in lifted_keys:
+        idx = objects_to_node[key]
+        if key.startswith("LIFTED_PRED::"):
+            name = key.split("::", 1)[1]
+            info = spec["predicates"][name]
+            input_node_features[idx, node_feature_to_index["lifted_pred_node"]] = 1
+            cls = f"pred_a{min(info['arity'], kp)}_s{int(info['static'])}"
+            if cls in node_feature_to_index:
+                input_node_features[idx, node_feature_to_index[cls]] = 1
+        else:
+            _, schema_name, occ_k = key.split("::")
+            occ = spec["schemas"][schema_name][int(occ_k)]
+            for role in _ROLE_COLUMNS[occ["role"]]:
+                input_node_features[idx, node_feature_to_index[f"occ_node_{role}"]] = 1
+
+
+def _set_edge(all_edge_features, a, b, feature_index):
+    all_edge_features[a, b, feature_index] = 1
+    all_edge_features[b, a, feature_index] = 1
+
+
+def add_lifted_layer_edges(all_edge_features, all_literals, all_actions,
+                           spec, objects_to_node, edge_feature_to_index,
+                           kp, ka, goal_prefix="WANT"):
+    """Instantiation + role (+ occurrence, in 'joint'/'joint_chain') edges.
+
+    - ground literal <-> its predicate's symbol node        [instance_of]
+    - predicate symbol <-> schema node                      [role_* + parg_i + slot_j]
+      (a negative precondition adds positions only, no role - see below)
+    - 'joint'/'joint_chain':
+               occurrence <-> predicate symbol              [occ_of]
+               occurrence <-> schema node                   [role_* + pair_pi_sj]
+    - 'joint_chain': occurrence <-> occurrence              [enables / threatens]
+    Binding edges (object <-> occurrence) are added where grounded
+    applicability is computed; see _get_precondition_satisfaction_position.
+    """
+    E = edge_feature_to_index
+
+    for lit in all_literals:
+        name = lit.predicate.name
+        if name.startswith(goal_prefix):
+            name = name[len(goal_prefix):]
+        key = pred_node_key(name)
+        if key not in objects_to_node:
+            continue
+        _set_edge(all_edge_features, objects_to_node[lit],
+                  objects_to_node[key], E["instance_of"])
+
+    joint = has_occurrence_nodes(spec)
+    for action in all_actions:
+        schema_name = _schema_name(action)
+        if schema_name not in spec["schemas"]:
+            continue
+        schema_idx = objects_to_node[action]
+        for k, occ in enumerate(spec["schemas"][schema_name]):
+            pred_idx = objects_to_node[pred_node_key(occ["pred"])]
+            role_features = [E[f"role_{r}"] for r in _ROLE_COLUMNS[occ["role"]]]
+            # The predicate<->schema edge is the UNION over the schema's
+            # occurrences of that predicate, so on it pre+del already means
+            # "requires p and deletes p". A negative precondition therefore
+            # contributes its argument positions to this edge but no role;
+            # its sign lives on its own occurrence node and edge below.
+            if occ["role"] != "npre":
+                for role_feature in role_features:
+                    _set_edge(all_edge_features, pred_idx, schema_idx, role_feature)
+            for (i, j) in occ["bindings"]:
+                ci, cj = min(i, kp - 1), min(j, ka - 1)
+                _set_edge(all_edge_features, pred_idx, schema_idx, E[f"parg_{ci}"])
+                _set_edge(all_edge_features, pred_idx, schema_idx, E[f"slot_{cj}"])
+            if joint:
+                occ_idx = objects_to_node[occ_node_key(schema_name, k)]
+                _set_edge(all_edge_features, occ_idx, pred_idx, E["occ_of"])
+                for role_feature in role_features:
+                    _set_edge(all_edge_features, occ_idx, schema_idx, role_feature)
+                for (i, j) in occ["bindings"]:
+                    ci, cj = min(i, kp - 1), min(j, ka - 1)
+                    _set_edge(all_edge_features, occ_idx, schema_idx,
+                              E[f"pair_p{ci}_s{cj}"])
+
+    # Chain edges ('chain' component): occurrence pairs from build_chain_spec.
+    if "chain" in spec_components(spec):
+        chain = spec.get("chain")
+        if chain is None:
+            raise RuntimeError(
+                f"lifted_spec has mode {spec.get('mode')!r} but no 'chain' "
+                "key -- metadata must come from build_lifted_metadata")
+        for kind in ("enables", "threatens"):
+            feat = E[kind]
+            for (sa, occ_a, sb, occ_b) in chain[kind]:
+                _set_edge(all_edge_features,
+                          objects_to_node[occ_node_key(sa, occ_a)],
+                          objects_to_node[occ_node_key(sb, occ_b)], feat)
+
+
+_WARNED_TYPES = set()
+
+
+def _warn_unmatched_types(all_objects, type_preds):
+    """Once per type: a schema declares it but no object reports it.
+
+    The signature of a TYPE HIERARCHY. pddlgym reports an object's immediate
+    type, so a slot declared `?x - object` over objects declared `ball` finds
+    no match and its has_type path goes dead. Binding edges stay correct
+    (they come from actual applicability, not from type matching), so nothing
+    is falsified -- but the slot loses the type signal, which is the whole
+    point of compiling it.
+    """
+    if not type_preds:
+        return
+    seen = {declared_type(o) for o in all_objects}
+    for t in type_preds:
+        if t not in seen and t not in _WARNED_TYPES:
+            _WARNED_TYPES.add(t)
+            print(f"  WARNING: declared type '{t}' is used by a schema "
+                  f"parameter but no object reports it -- probable type "
+                  f"hierarchy; that slot's has_type path is dead "
+                  f"(binding edges unaffected)")
+
+
+def add_type_edges(all_edge_features, all_objects, spec, objects_to_node,
+                   edge_feature_to_index, state_literals=()):
+    """object <-> the symbol node of the type it belongs to  [has_type].
+
+    Both directions of the compilation, so the edge means the same thing in
+    either family of domain:
+
+    - declared types: the compiled counterpart of the ground literal
+      `(block b1)` a predicate-typed domain would carry, linking the object
+      to the same symbol node the schema's type-precondition occurrence
+      hangs off.
+    - predicate-typed domains: a TRUE unary STATIC literal is a type
+      declaration written by hand -- `(room r1)`, `(truck t1)`. Nothing in
+      the domain can add or delete it, so it partitions the objects exactly
+      as a declared type does. Emitting the edge here too means a model
+      trained mostly on one family does not meet an unfamiliar edge class on
+      the other.
+
+    Objects whose type no schema parameter declares have no symbol node and
+    are skipped -- the type constrains nothing.
+    """
+    feat = edge_feature_to_index["has_type"]
+    predicates = spec.get("predicates", {})
+
+    def link(obj, pred_name):
+        pred_idx = objects_to_node.get(pred_node_key(pred_name))
+        obj_idx = objects_to_node.get(obj)
+        if pred_idx is not None and obj_idx is not None:
+            _set_edge(all_edge_features, obj_idx, pred_idx, feat)
+
+    type_preds = spec.get("type_preds") or {}
+    for obj in all_objects:
+        pred_name = type_preds.get(declared_type(obj))
+        if pred_name is not None:
+            link(obj, pred_name)
+    _warn_unmatched_types(all_objects, type_preds)
+
+    for lit in state_literals:
+        info = predicates.get(lit.predicate.name)
+        if info is None or info["arity"] != 1 or not info["static"]:
+            continue
+        variables = getattr(lit, "variables", [])
+        if variables:
+            link(variables[0], lit.predicate.name)
+
+
+_GDIST_MAX = 3  # buckets gdist_0..gdist_2 + gdist_3plus; fixed by metadata
+
+
+def add_chain_node_features(input_node_features, spec, all_actions,
+                            state_literals, goal_literals, objects_to_node,
+                            node_feature_to_index):
+    """Goal-conditioned node features, 'joint_chain' only (#5).
+
+    Schema nodes get their schema_goal_distances bucket (gdist_0..gdist_3plus)
+    plus 'adds_goal_pred' at distance 0. Objects appearing in an UNSATISFIED
+    goal atom get 'goal_relevant_obj'. goal_literals are the UNWRAPPED goal
+    atoms (no goal prefix), comparable against state_literals.
+    """
+    chain = spec.get("chain")
+    if chain is None:
+        raise RuntimeError(
+            "add_chain_node_features needs spec['chain'] -- metadata must "
+            "come from build_lifted_metadata(..., 'joint_chain')")
+    N = node_feature_to_index
+    goal_pred_names = {g.predicate.name for g in goal_literals}
+    dist = schema_goal_distances(spec, chain, goal_pred_names,
+                                 max_dist=_GDIST_MAX)
+    for action in all_actions:
+        name = _schema_name(action)
+        if name not in dist:
+            continue
+        idx = objects_to_node[action]
+        d = dist[name]
+        cls = "gdist_3plus" if d >= _GDIST_MAX else f"gdist_{d}"
+        input_node_features[idx, N[cls]] = 1
+        if d == 0:
+            input_node_features[idx, N["adds_goal_pred"]] = 1
+
+    true_now = set(state_literals)
+    for goal_lit in goal_literals:
+        if goal_lit in true_now:
+            continue
+        for var in getattr(goal_lit, "variables", []):
+            input_node_features[objects_to_node[var],
+                                N["goal_relevant_obj"]] = 1
+
+
+def add_grounded_effect_edges(all_edge_features, all_groundings, action_space,
+                              unsat_goal_nodes, true_literal_nodes,
+                              objects_to_node, edge_feature_to_index):
+    """Grounded effect edges, 'joint_chain' only (#6).
+
+    For each applicable grounding, substitute its parameter bindings into the
+    schema's effects. An add effect that equals an UNSATISFIED goal atom links
+    every participating object to that goal-literal node [achieves_goal]; a
+    delete effect that equals a TRUE state atom links objects to that literal
+    node [deletes_true]. The lookups map (pred_name, arg_tuple) -> node index;
+    a computed atom without a node is expected (most effects touch neither
+    goal nor a tracked literal) and skipped silently.
+    """
+    E = edge_feature_to_index
+    achieves, deletes = E["achieves_goal"], E["deletes_true"]
+    for grounding in all_groundings:
+        try:
+            op = action_space[grounding.predicate]
+        except KeyError:
+            continue
+        binding = dict(zip(list(getattr(op, "params", [])),
+                           grounding.variables))
+        for lit in op_literals(getattr(op, "effects", None)):
+            # binding.get(v, v): schema params ground via the binding,
+            # anything else (a constant) already is an object.
+            args = tuple(binding.get(v, v)
+                         for v in getattr(lit, "variables", []))
+            key = (_positive_predicate(lit).name, args)
+            if getattr(lit, "is_anti", False):
+                lit_idx = true_literal_nodes.get(key)
+                feat = deletes
+            else:
+                lit_idx = unsat_goal_nodes.get(key)
+                feat = achieves
+            if lit_idx is None:
+                continue
+            for obj in args:
+                _set_edge(all_edge_features, objects_to_node[obj], lit_idx,
+                          feat)
