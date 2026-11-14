@@ -222,8 +222,25 @@ def gpu_hours_used(ctx):
         except (OSError, ValueError):
             continue
         if st.get("kind") == "gpu" and st.get("started"):
-            used += ((st.get("ended") or now) - st["started"]) / 3600
+            end = st.get("ended")
+            if not end:
+                # No end time: either it is running now (a live claim), or its
+                # worker was KILLED outright (scancel, node failure) and never
+                # wrote one. A killed job must stop at its last heartbeat:
+                # counting it to `now` charged two dead jobs ~48 GPU-hours a
+                # day and would have closed the budget on work nobody ran.
+                jid = name[:-len(".json")] if name.endswith(".json") else name
+                end = now if claim_fresh(ctx, jid) else _last_heartbeat(ctx, jid, st["started"])
+            used += max(0.0, end - st["started"]) / 3600
     return used
+
+
+def _last_heartbeat(ctx, jid, default):
+    """When a claim was last refreshed (its `owner` file), else `default`."""
+    try:
+        return os.path.getmtime(os.path.join(_claim_dir(ctx, jid), "owner"))
+    except OSError:
+        return default
 
 
 def next_job(ctx, caps, hours_left, max_priority=None):

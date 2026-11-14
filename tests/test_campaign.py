@@ -143,6 +143,29 @@ def test_gpu_job_needs_a_gpu_and_the_budget():
     assert _run(ctx, CAPS_GPU) == 0, "budget exhausted: no new GPU job"
 
 
+def test_a_killed_gpu_job_stops_charging_the_budget_at_its_last_heartbeat():
+    """scancel / node failure kills the worker before it can write an end
+    time. Counting such a job to `now` charged two dead jobs 48 GPU-hours a
+    day (seen: 91.6 'used' after ~10 real ones)."""
+    tmp, ctx = _setup([{"id": "g", "kind": "gpu", "cmd": "true"}])
+    now = time.time()
+    W.write_state(ctx, "killed", kind="gpu", started=now - 40 * 3600, ended=None)
+    claim = os.path.join(ctx["camp"], "claims", "killed")
+    os.makedirs(claim)
+    owner = os.path.join(claim, "owner")
+    open(owner, "w").close()
+    os.utime(owner, (now - 39 * 3600, now - 39 * 3600))     # last heartbeat
+    assert 0.9 < W.gpu_hours_used(ctx) < 1.1
+    # no claim left at all (cleaned up by hand): nothing is charged
+    os.remove(owner); os.rmdir(claim)
+    assert W.gpu_hours_used(ctx) == 0
+    # a job that IS running (fresh claim) is charged up to now
+    W.write_state(ctx, "live", kind="gpu", started=now - 2 * 3600, ended=None)
+    os.makedirs(os.path.join(ctx["camp"], "claims", "live"))
+    open(os.path.join(ctx["camp"], "claims", "live", "owner"), "w").close()
+    assert 1.9 < W.gpu_hours_used(ctx) < 2.1
+
+
 def test_job_that_cannot_finish_before_the_time_limit_is_not_started():
     tmp, ctx = _setup([{"id": "long", "cmd": "touch l.out", "done": "test -f l.out",
                         "est_hours": 10}])
