@@ -1,6 +1,7 @@
 #!/bin/bash
 # Submit campaign workers as SLURM batch jobs (they survive a lost ssh session).
 #   campaign/submit.sh <preset> [count] [--dry-run]
+#   CAMPAIGN_EXCLUDE=<node,node> campaign/submit.sh ...   # avoid broken nodes
 #   campaign/submit.sh --list
 #
 # Every preset is sized so it fits the cluster's per-user resource-time caps
@@ -56,6 +57,11 @@ if [ "$EXTRA" != "-" ]; then
     IFS=, read -r -a EXTRA_ARGS <<< "$EXTRA"
     ARGS+=("${EXTRA_ARGS[@]}")
 fi
+# CAMPAIGN_EXCLUDE=cn-e41,cn-e42: nodes to keep off. For a node that kills
+# jobs at launch ("CANCELLED by 0" one second after start, no output file):
+# that is the node's own prolog failing, and the scheduler will keep handing
+# the same idle node to the next job.
+[ -n "${CAMPAIGN_EXCLUDE:-}" ] && ARGS+=(--exclude="$CAMPAIGN_EXCLUDE")
 ARGS+=(--wrap "$REPO/campaign/worker_entry.sh")
 
 if [ "$DRY" = 0 ]; then
