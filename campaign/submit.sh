@@ -33,9 +33,17 @@ if [ "${1:-}" = "--list" ] || [ -z "${1:-}" ]; then
     exit 0
 fi
 
-PRESET=$1; COUNT=1; DRY=0; shift
-for a in "$@"; do
-    case "$a" in --dry-run) DRY=1 ;; ''|*[!0-9]*) echo "bad argument: $a"; exit 1 ;; *) COUNT=$a ;; esac
+PRESET=$1; COUNT=1; DRY=0; AFTER=; shift
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --dry-run) DRY=1 ;;
+        # --after <jobid>: a successor, queued by a running worker for itself
+        # (campaign/worker_entry.sh); starts when that allocation ends.
+        --after) AFTER=${2:?--after needs a job id}; shift ;;
+        ''|*[!0-9]*) echo "bad argument: $1"; exit 1 ;;
+        *) COUNT=$1 ;;
+    esac
+    shift
 done
 LINE=$(printf '%s\n' "$PRESETS" | awk -v p="$PRESET" '$1==p')
 [ -n "$LINE" ] || { echo "unknown preset '$PRESET'; campaign/submit.sh --list"; exit 1; }
@@ -51,7 +59,8 @@ LIMIT_H=$(printf '%s' "$TIME" | awk -F'[-:]' '{ if (NF==4) print $1*24+$2+$3/60;
 # worker kind therefore travels in the environment, not as an argument.
 ARGS=(--parsable -A "$ACCOUNT" -p "$PART" -c "$CPUS" --mem="$MEM" -t "$TIME"
       -J "camp-$PRESET" -o "$REPO/logs/campaign_slurm_%j.out"
-      --export="ALL,CAMPAIGN_TIME_LIMIT_H=$LIMIT_H,CAMPAIGN_KIND=$KIND")
+      --export="ALL,CAMPAIGN_TIME_LIMIT_H=$LIMIT_H,CAMPAIGN_KIND=$KIND,CAMPAIGN_PRESET=$PRESET")
+[ -n "$AFTER" ] && ARGS+=(--dependency="afterany:$AFTER")
 [ "$GRES" != "-" ] && ARGS+=(--gres="$GRES")
 if [ "$EXTRA" != "-" ]; then
     IFS=, read -r -a EXTRA_ARGS <<< "$EXTRA"
@@ -74,10 +83,12 @@ if [ "$DRY" = 0 ]; then
     ME=${USER:-$(id -un)}
     mine=$(squeue -u "$ME" -h -n "camp-$PRESET" 2>/dev/null | wc -l)
     all=$(squeue -u "$ME" -h -n "camp-gpu-dgxh,camp-gpu-dgx2,camp-gpu-gpu,camp-gpu-share,camp-big-share,camp-cpu-share,camp-preempt-a40" 2>/dev/null | wc -l)
-    if [ $((mine + COUNT)) -gt "$MAX" ]; then
+    # A successor replaces the allocation it follows (it cannot start before
+    # that one ends), so it does not count against the concurrency limits.
+    if [ -z "$AFTER" ] && [ $((mine + COUNT)) -gt "$MAX" ]; then
         echo "REFUSING: $mine already queued/running + $COUNT > $MAX, what $PRESET's quota allows"; exit 1
     fi
-    if [ $((all + COUNT)) -gt "${CAMPAIGN_MAX_WORKERS:-12}" ]; then
+    if [ -z "$AFTER" ] && [ $((all + COUNT)) -gt "${CAMPAIGN_MAX_WORKERS:-12}" ]; then
         echo "REFUSING: $((all + COUNT)) workers > CAMPAIGN_MAX_WORKERS=${CAMPAIGN_MAX_WORKERS:-12}"; exit 1
     fi
 fi
@@ -85,7 +96,11 @@ mkdir -p logs
 for _ in $(seq "$COUNT"); do
     if [ "$DRY" = 1 ]; then echo "sbatch ${ARGS[*]}"; else
         # --export=ALL would hand the agent's login secret to every batch job
-        id=$(env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN sbatch "${ARGS[@]}")
-        echo "submitted $PRESET -> job $id"
+        # Inside an allocation the environment carries this job's SLURM_*
+        # variables; they must not leak into the successor's request.
+        UNSET=(-u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN)
+        for v in $(env | sed -n 's/^\(SLURM_[A-Za-z0-9_]*\)=.*/\1/p'); do UNSET+=(-u "$v"); done
+        id=$(env "${UNSET[@]}" sbatch "${ARGS[@]}")
+        echo "submitted $PRESET -> job $id${AFTER:+ (successor of $AFTER)}"
     fi
 done

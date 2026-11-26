@@ -201,6 +201,24 @@ Readings (Logistics; Rovers likewise):
 
 Miconic already reproduced (99.2% through our pipeline, 2026-09-26).
 
+**Result, 2026-11-26: "low | low" on both domains** (test split, combined
+checkpoint, one seed; GABAR = `baseline_*`):
+
+| | GABAR, LAMA | GABAR, optimal | GADAR1, LAMA | GADAR1, optimal | published GABAR |
+|---|---|---|---|---|---|
+| Logistics | 0.0 (E380) | 0.0 (E370) | 3.1 | (held) | 79.0 |
+| Rovers | 7.4 (E280) | 5.6 (E320) | 20.4 | 9.3 | 82.0 |
+
+Also GABAR through our pipeline: Miconic 99.2 (pub. 100), Spanner 91.7
+(92.0), Visitall 70.0 (90.7). Optimal plans do not help anywhere, so reading
+row 2 (suboptimal data) is ruled out. Per the pre-registered row 3 the E2
+trainings are HELD. Debug step running: `campaign/jobs/gabar_prejuly.sh`
+trains and tests GABAR with the code before any GADAR change (536c352) on the
+same test instances. Near 79/82 -> a regression since July, bisect it; the
+same ~0 -> the setup differs from the published run (test instances,
+training-set size, hyperparameters, plan-length bound), and what the paper
+actually ran must be recovered from the GABAR-paper checkout or its logs.
+
 ### E2. Component ablations (5 GPUs x ~2 days; answers A)
 
 Modes (`ploi/lifted_layer.py::_MODE_COMPONENTS`), all at the `joint_chain`

@@ -180,12 +180,23 @@ append findings to `train_test_scripts/RUNS_STATUS.md`, commit to
 `auto/campaign`, and stop when every job is done or dead, leaving
 `campaign/FINAL_REPORT.md`.
 
+**Workers keep themselves going.** A worker started by `submit.sh` queues its
+own successor when it starts (same preset, `--dependency=afterany` on itself),
+but only if a fresh allocation could start a job right now. The successor
+starts when the worker ends however it ends - time limit, `scancel`, node
+failure - so nobody resubmits, and the chain stops by itself once nothing
+runnable is left (only held jobs, a spent budget). Successors do not count
+against the preset's concurrency limit: each replaces the allocation it
+follows. `CAMPAIGN_RESUBMIT=0 campaign/submit.sh ...` starts a worker without
+a chain. A running worker also re-reads `campaign/manifest.yaml` whenever it
+changes, so `git pull` alone applies a new hold or a new job.
+
 **Kill switches**, in order of gentleness:
 
 | Do | Effect |
 |---|---|
 | `touch campaign/STOP` | workers finish the job they are on and take no new one; `submit.sh` refuses; the agent stops |
-| `scancel -n camp-gpu-dgxh` (per preset name) | ends those workers now; their claims go stale and are retaken later |
+| `scancel -u $USER -n camp-gpu-dgxh` (per preset name) | ends those workers now AND their queued successors; claims go stale and are retaken later. After STOP, this is how a chain is ended |
 | Ctrl-C in the Claude session | stops the agent only; workers keep running |
 
 ## 5. Coming back to the results

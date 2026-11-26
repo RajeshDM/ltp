@@ -35,6 +35,21 @@ HOLD_INTERRUPTED = ("an interrupted September run left a half-trained model for 
                     "models/*bs16* for this domain first (REVIEW_PLAN E1)")
 
 
+# E1 came back "low | low" (2026-11-26): GABAR through our pipeline gets 0%
+# on Logistics (published 79) and 7.4% on Rovers (published 82), with LAMA
+# AND with optimal plans. The pre-registered reading is "stop and debug before
+# any other experiment is trusted", so the ablation trainings wait for the
+# pre-July reproduction below. Release them all at once with
+#   for j in $(python campaign/worker.py status --all | awk '/^HELD +e2_train/{print $2}'); do touch campaign/release/$j; done
+HOLD_E1 = ("E1 reading 'low | low': our pipeline does not reproduce published GABAR on "
+           "Logistics/Rovers; pre-registered: stop and debug first. Waits for "
+           "campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN E1)")
+# GABAR on optimal Logistics plans already got 0%, so GADAR's run answers
+# nothing new, and it spent 14 h collecting lmcut plans before timing out twice.
+HOLD_LOGI_OPT = ("GABAR on optimal Logistics plans got 0%, so this answers nothing new; it "
+                 "spends ~14 h on lmcut plans per attempt and was cut off twice")
+
+
 def job(id_, cmd, **kw):
     return {"id": id_, "cmd": cmd, **kw}
 
@@ -91,7 +106,20 @@ def main():
                         f"WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/{cfg}.yaml",
                         kind="gpu", priority=2, est_hours=5, needs=["gate_unit_tests"],
                         done=f"python tools/campaign_checks.py evaluated {expid} --since {SINCE} --metrics combined"))
-        e1.append(f"e1_{cfg}")
+        if cfg == "sd_joint_chain_logistics_opt":
+            jobs[-1]["hold"] = HOLD_LOGI_OPT
+        else:
+            e1.append(f"e1_{cfg}")
+    # The E1 debug step: published-GABAR code (before any GADAR change) on the
+    # two domains our pipeline fails. Decides regression vs. setup.
+    for dom, ntest in (("logistics_ipcc", 96), ("rovers_ipcc", 54)):
+        rep = f"campaign/reports/e1_gabar_{dom}_prejuly.txt"
+        jobs.append(job(f"e1_gabar_{dom.split('_')[0]}_prejuly",
+                        f"campaign/jobs/gabar_prejuly.sh {dom} {ntest}",
+                        kind="gpu", priority=1, est_hours=12,
+                        done=f"python tools/campaign_checks.py file {rep} --since {SINCE} && "
+                             f"grep -qi 'testing model from epoch' {rep}"))
+        e1.append(jobs[-1]["id"])
     # The cleanest test of the featurizer fix: single-domain GADAR on exactly the
     # two domains whose schemas were affected, LAMA plans, compared with the
     # September numbers (Miconic 41.2, Rovers 7.4) and with GABAR (99.2 / 82).
@@ -116,7 +144,7 @@ def main():
             prio = 3 if mode in E2_CORE else 4
             jobs.append(job(f"e2_train_{mode}_{fold}",
                             f"./train_test_scripts/train_queue.sh cuda:0 configs/{cfg}.yaml",
-                            kind="gpu", priority=prio, est_hours=16, needs=gates,
+                            kind="gpu", priority=prio, est_hours=16, needs=gates, hold=HOLD_E1,
                             done=f"python tools/campaign_checks.py trained {cfg} --since {SINCE}"))
             jobs.append(job(f"e2_eval_{mode}_{fold}", f"campaign/jobs/eval_ablation.sh configs/{cfg}.yaml",
                             kind="cpu", priority=prio - 0.5, est_hours=6, min_cpus=16,

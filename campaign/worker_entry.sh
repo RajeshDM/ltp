@@ -22,4 +22,15 @@ if ! python -c "import torch" 2>/dev/null; then
 fi
 echo "campaign worker: $(hostname) job=${SLURM_JOB_ID:-none} $(date '+%F %T')"
 nvidia-smi -L 2>/dev/null | head -2 || echo "(no GPU)"
+# Queue our own successor FIRST, with a dependency on this allocation: it
+# starts when this one ends - time limit, scancel or node failure alike - so
+# nobody has to resubmit. Only when there is work a fresh allocation could
+# start now, so the chain ends by itself. Stop a chain: touch campaign/STOP,
+# then `scancel -u $USER -n camp-<preset>` drops the queued successors.
+if [ -n "${CAMPAIGN_PRESET:-}" ] && [ -n "${SLURM_JOB_ID:-}" ] && [ "${CAMPAIGN_RESUBMIT:-1}" = 1 ]; then
+    if python campaign/worker.py wants-successor ${KIND:+--kind "$KIND"}; then
+        campaign/submit.sh "$CAMPAIGN_PRESET" 1 --after "$SLURM_JOB_ID" \
+            || echo "could not queue a successor (rc $?) - resubmit by hand"
+    fi
+fi
 exec python campaign/worker.py run ${KIND:+--kind "$KIND"}

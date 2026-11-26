@@ -338,6 +338,17 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-26: E1 says our pipeline does not reproduce GABAR (Logistics, Rovers)
+
+GABAR through our pipeline: Logistics 0.0% (LAMA) / 0.0% (optimal), Rovers
+7.4% / 5.6%, against published 79 / 82. Miconic 99.2, Spanner 91.7, Visitall
+70.0. Pre-registered reading "low | low": stop and debug. E2 trainings HELD;
+`e1_gabar_{logistics,rovers}_prejuly` (GABAR at 536c352) decide regression
+vs. setup. Single-domain GADAR after the single-effect fix: Miconic 41.2 ->
+44.5 (noise), Rovers 7.4 -> 20.4. The submitted Table 2 multi-domain columns
+are unchanged by the reporting fix (BIND Gripper 95.4 -> 95.5 only).
+Campaign: workers now queue their own successors and re-read the manifest.
+
 ## 2026-11-14: negative preconditions keep their sign (lifted layer)
 
 REVIEW_PLAN 2e. No width change; graphs of domains without a negative

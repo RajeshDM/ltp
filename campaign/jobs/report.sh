@@ -14,6 +14,9 @@ case "$1" in
     { echo "== GABAR through our pipeline, and optimal-plan runs (combined-loss checkpoint)"
       python tools/analyze_results.py 2>/dev/null \
           | grep -E "^(experiment|baseline_|sd_joint_chain_.*_opt)"
+      for f in campaign/reports/e1_gabar_*_prejuly.txt; do
+          [ -f "$f" ] && { echo; cat "$f"; }
+      done
       echo; echo "== single-domain GADAR and the seven-domain models, for comparison"
       python tools/indomain_table.py --since 20261101
     } > "$OUT" ;;

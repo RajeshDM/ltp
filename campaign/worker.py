@@ -92,12 +92,55 @@ def load_manifest(path):
     return m
 
 
+def _mtime(path):
+    try:
+        return os.path.getmtime(path)
+    except OSError:
+        return None
+
+
 def make_ctx(manifest=None, camp=None, logs=None, root=None):
     root = root or ROOT
     camp = camp or os.path.join(root, "campaign")
-    return {"m": load_manifest(manifest or os.path.join(camp, "manifest.yaml")),
+    path = manifest or os.path.join(camp, "manifest.yaml")
+    return {"m": load_manifest(path), "manifest_path": path,
+            "manifest_mtime": _mtime(path),
             "camp": camp, "logs": logs or os.path.join(root, "logs"),
             "root": root, "done_cache": {}}
+
+
+def refresh_manifest(ctx):
+    """Re-read the manifest when it changed on disk, so a `git pull` steers a
+    RUNNING campaign (a new hold, a new job) without restarting its workers.
+    A manifest that does not load (caught mid-write) keeps the previous one."""
+    path = ctx.get("manifest_path")
+    mtime = _mtime(path) if path else None
+    if mtime is None or mtime == ctx.get("manifest_mtime"):
+        return False
+    try:
+        ctx["m"] = load_manifest(path)
+    except Exception as e:  # noqa: BLE001 - keep running on the old one
+        print(f"manifest changed but does not load ({e}); keeping the previous one")
+        return False
+    ctx["manifest_mtime"] = mtime
+    ctx["done_cache"].clear()
+    print("manifest changed on disk - reloaded", flush=True)
+    return True
+
+
+def successor_wanted(ctx, caps, limit_h):
+    """Should a starting allocation queue its own successor (an identical
+    allocation that starts when this one ends, however it ends)?
+
+    Yes iff a fresh allocation of this kind could start a job right now. So a
+    chain lasts exactly as long as there is runnable work and ends by itself:
+    held jobs, jobs waiting on a held job, a spent GPU budget or a job longer
+    than any allocation stop it. campaign/STOP stops it too."""
+    if os.path.exists(os.path.join(ctx["camp"], "STOP")):
+        return False
+    if not limit_h:
+        return False
+    return next_job(ctx, caps, float(limit_h)) is not None
 
 
 def _state_path(ctx, jid):
@@ -406,6 +449,7 @@ def run_worker(ctx, caps, idle_exit_min=30, poll_sec=60, install_handlers=False,
     idle_since = None
     ran = 0
     while not _TERM.is_set():
+        refresh_manifest(ctx)
         if os.path.exists(os.path.join(ctx["camp"], "STOP")):
             print("campaign/STOP present - taking no new job")
             break
@@ -511,6 +555,10 @@ def main():
     s.add_argument("--json", action="store_true")
     z = sub.add_parser("reset")
     z.add_argument("job")
+    w = sub.add_parser("wants-successor",
+                       help="exit 0 if a fresh allocation of this kind could start a job "
+                            "now (campaign/worker_entry.sh uses it to queue a successor)")
+    w.add_argument("--kind", choices=["gpu", "cpu"], default=None)
     args = ap.parse_args()
     ctx = make_ctx(manifest=args.manifest)
     if args.cmd == "run":
@@ -519,6 +567,11 @@ def main():
               f"prefers {caps['kind']} jobs, {hours_left():.1f}h left")
         run_worker(ctx, caps, args.idle_exit_min, args.poll_sec, install_handlers=True,
                    only_gates=args.only_gates)
+    elif args.cmd == "wants-successor":
+        caps = detect_caps(args.kind)
+        yes = successor_wanted(ctx, caps, os.environ.get("CAMPAIGN_TIME_LIMIT_H"))
+        print(f"successor {'wanted' if yes else 'not wanted'} for a {caps['kind']} worker")
+        sys.exit(0 if yes else 1)
     elif args.cmd == "status":
         cmd_status(ctx, args.all, args.json)
     else:

@@ -166,6 +166,60 @@ def test_a_killed_gpu_job_stops_charging_the_budget_at_its_last_heartbeat():
     assert 1.9 < W.gpu_hours_used(ctx) < 2.1
 
 
+def test_a_changed_manifest_is_reloaded_by_a_running_worker():
+    """`git pull` must steer a live campaign: a hold added to the manifest
+    stops the next claim without restarting the worker."""
+    import yaml
+    tmp, ctx = _setup([{"id": "a", "cmd": "touch a.out", "done": "test -f a.out"},
+                       {"id": "b", "cmd": "touch b.out", "done": "test -f b.out"}])
+    assert not W.refresh_manifest(ctx), "unchanged file: no reload"
+    with open(ctx["manifest_path"], "w") as f:
+        yaml.safe_dump({"jobs": [{"id": "a", "cmd": "touch a.out", "done": "test -f a.out"},
+                                 {"id": "b", "cmd": "touch b.out", "done": "test -f b.out",
+                                  "hold": "wait"}]}, f)
+    os.utime(ctx["manifest_path"], (time.time() + 5, time.time() + 5))
+    assert _run(ctx, CAPS_CPU) == 1
+    assert _states(ctx) == {"a": "done", "b": "held"}
+    # a broken manifest (caught mid-write) keeps the last good one
+    with open(ctx["manifest_path"], "w") as f:
+        f.write("jobs: [ {id: a, needs: [nope]} ]")
+    os.utime(ctx["manifest_path"], (time.time() + 10, time.time() + 10))
+    assert not W.refresh_manifest(ctx) and "b" in ctx["m"]["by_id"]
+
+
+def test_a_successor_is_wanted_only_while_a_fresh_allocation_could_start_work():
+    tmp, ctx = _setup([
+        {"id": "long", "cmd": "true", "est_hours": 16},
+        {"id": "gpu", "kind": "gpu", "cmd": "true", "est_hours": 1},
+        {"id": "after", "needs": ["blocked"], "cmd": "true"},
+        {"id": "blocked", "cmd": "true", "hold": "decision"},
+    ])
+    assert W.successor_wanted(ctx, CAPS_CPU, 24), "16 h fits a fresh 24 h allocation"
+    assert not W.successor_wanted(ctx, CAPS_CPU, 12), "too long for any allocation"
+    assert not W.successor_wanted(ctx, CAPS_CPU, None), "no known limit: never chain"
+    open(os.path.join(ctx["camp"], "STOP"), "w").close()
+    assert not W.successor_wanted(ctx, CAPS_GPU, 24), "STOP ends every chain"
+    os.remove(os.path.join(ctx["camp"], "STOP"))
+    # only held work and work waiting on it: the chain ends by itself
+    tmp, ctx = _setup([{"id": "after", "needs": ["blocked"], "cmd": "true"},
+                       {"id": "blocked", "cmd": "true", "hold": "decision"}])
+    assert not W.successor_wanted(ctx, CAPS_GPU, 24)
+
+
+def test_submit_queues_a_successor_with_a_dependency_and_outside_the_limits():
+    env = dict(os.environ, SLURM_CPUS_PER_TASK="99")
+    out = subprocess.run(["bash", os.path.join(ROOT, "campaign", "submit.sh"), "gpu-dgxh", "1",
+                          "--after", "4242", "--dry-run"], cwd=ROOT, env=env,
+                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                         universal_newlines=True).stdout
+    assert "--dependency=afterany:4242" in out, out
+    assert "CAMPAIGN_PRESET=gpu-dgxh" in out, out
+    plain = subprocess.run(["bash", os.path.join(ROOT, "campaign", "submit.sh"), "gpu-dgxh", "1",
+                            "--dry-run"], cwd=ROOT, stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT, universal_newlines=True).stdout
+    assert "--dependency" not in plain, plain
+
+
 def test_job_that_cannot_finish_before_the_time_limit_is_not_started():
     tmp, ctx = _setup([{"id": "long", "cmd": "touch l.out", "done": "test -f l.out",
                         "est_hours": 10}])

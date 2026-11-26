@@ -187,3 +187,5 @@ campaign/STOP
 !campaign/reports/
 !campaign/reports/*.txt
 !campaign/settings.example.json
+
+campaign/worktrees/
