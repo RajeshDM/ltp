@@ -338,6 +338,37 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-26: E0a rule baselines (campaign/reports/e0.txt)
+
+Test split, coverage %, same executor/monitor/500-step bound as the policy,
+one rollout (random: 3). Against GADAR zero-shot / LOO in-domain / SD:
+
+| domain | random | achieve | features | GADAR ZS | GADAR LOO | GADAR SD | GABAR ours |
+|---|---|---|---|---|---|---|---|
+| Blocks | 0.2 | 2.5 | 8.5 | 3.0 | 74.6 | 95.5 | - |
+| Gripper | 0.0 | 0.0 | 5.2 | 0 | 94.5 | 100.0 | - |
+| Miconic | 1.1 | 2.5 | 60.5 | 0 | 61.9 | 44.5 | 99.2 |
+| Visitall | 6.0 | 52.0 | 52.0 | 0 | 81.1 | 54.0 | 70.0 |
+| Grid | 0.0 | 0.0 | 0.0 | 0 | 94.6 | 87.5 | - |
+| Logistics | 0.0 | 0.0 | 0.0 | 0 | 2.7 | 3.1 | 0.0 |
+| Spanner | 43.8 | 39.6 | 39.6 | 0 | 47.9 | 85.4 | 91.7 |
+| Rovers | 30.9 | 35.2 | 3.7 | 0 | 9.0 | 20.4 | 7.4 |
+
+Pre-registered readings (REVIEW_PLAN E0a) applied:
+- Blocks: `features` 8.5 >= GADAR zero-shot 3.0 -> the network adds nothing
+  over the hand-coded goal features zero-shot on the paper's one nonzero
+  zero-shot domain. Do not claim learned transfer there.
+- Miconic, Visitall, Spanner: `features` high (40-60) where GADAR zero-shot
+  is 0 -> the information is in the graph and the network fails to use it
+  zero-shot: a learning problem, not a representation problem.
+Not pre-registered, recorded as found: on Rovers a UNIFORM RANDOM policy
+(30.9) beats every learned policy, GABAR through our pipeline included
+(GADAR LOO 9.0, SD 20.4, GABAR 7.4); on Spanner random (43.8) is within 4
+points of GADAR LOO (47.9). A learned policy below random points at the
+executor or the learned ranking trapping itself (revisits, a 500-step bound
+spent looping), not at missing information - worth checking before any
+Rovers number is interpreted.
+
 ## 2026-11-27: E4 - why single-domain GADAR trails GABAR (Miconic 44.5 vs 99.2)
 
 Found: every sd_* and LOO run trains at batch 64, the GABAR baselines at 16
