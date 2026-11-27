@@ -81,8 +81,10 @@ if [ "$DRY" = 0 ]; then
     fi
     command -v sbatch >/dev/null 2>&1 || { echo "sbatch not found: run 'module load slurm' in this shell, then retry"; exit 1; }
     ME=${USER:-$(id -un)}
-    mine=$(squeue -u "$ME" -h -n "camp-$PRESET" 2>/dev/null | wc -l)
-    all=$(squeue -u "$ME" -h -n "camp-gpu-dgxh,camp-gpu-dgx2,camp-gpu-gpu,camp-gpu-share,camp-big-share,camp-cpu-share,camp-preempt-a40" 2>/dev/null | wc -l)
+    # Queued successors (pending on a Dependency) are not counted: each can
+    # start only when the worker it follows ends, so it never adds capacity.
+    mine=$(squeue -u "$ME" -h -n "camp-$PRESET" -o "%r" 2>/dev/null | grep -vc '^Dependency$' || true)
+    all=$(squeue -u "$ME" -h -n "camp-gpu-dgxh,camp-gpu-dgx2,camp-gpu-gpu,camp-gpu-share,camp-big-share,camp-cpu-share,camp-preempt-a40" -o "%r" 2>/dev/null | grep -vc '^Dependency$' || true)
     # A successor replaces the allocation it follows (it cannot start before
     # that one ends), so it does not count against the concurrency limits.
     if [ -z "$AFTER" ] && [ $((mine + COUNT)) -gt "$MAX" ]; then

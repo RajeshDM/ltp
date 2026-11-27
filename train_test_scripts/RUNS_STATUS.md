@@ -369,6 +369,9 @@ memory, and 2 schemas x 5 objects ran at ~19 h per Rovers evaluation (vs
 ~25 min constrained) - those two runs were cancelled at 1.6 h (partial:
 GABAR 9/54 solved, GADAR alone 11/54). The 9-schema x 3-object runs are
 left to finish. Status of "wider beam": cut-ranked on cost, not refuted.
+GABAR Rovers, all 9 schemas x 3 objects, unconstrained: 13.0 (7/54; 2 h
+batched) - vs 7.4 at 2 schemas and 46.3 constrained. Widening the schema
+choice barely helps; top1-valid 4.7.
 Note: constrained decoding runs on the SEQUENTIAL evaluator only; the
 batched one (eval_queue.sh's default) silently ignores the flag.
 
