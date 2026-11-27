@@ -350,6 +350,11 @@ results cache/results/<config>_cdecb/), against the sequential 46.3 / 57.4 /
 honoured on the batched path it uses.
 E5 (REVIEW_PLAN E5): batch 64 with lr 1e-3 / 2e-3 on Miconic and Visitall,
 and Visitall at batch 16, queued in the campaign on 4 dgx2 workers.
+Every single-domain model (GABAR x 8, GADAR alone x 8, the E4 ladder, E5) now
+gets a constrained evaluation as its own campaign job (`cdec_<config>`,
+results cache/results/<config>_cdec/), waiting for its training job where it
+has one; E2's evaluations run constrained too. Unconstrained evaluations by
+the training jobs are kept, so earlier numbers stay comparable.
 
 ## 2026-11-27: decision - constrained decoding is the evaluation protocol
 

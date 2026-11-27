@@ -9,6 +9,7 @@ regenerate rather than hand-editing the YAML. Priorities follow the plan's
 cut order: gates, E0, E1, the two ablations that must not be cut, the rest.
 """
 import os
+import re
 
 import yaml
 
@@ -174,7 +175,10 @@ def main():
                             f"./train_test_scripts/train_queue.sh cuda:0 configs/{cfg}.yaml",
                             kind="gpu", priority=prio, est_hours=16, needs=gates, hold=HOLD_AFTER_E4,
                             done=f"python tools/campaign_checks.py trained {cfg} --since {SINCE}"))
-            jobs.append(job(f"e2_eval_{mode}_{fold}", f"campaign/jobs/eval_ablation.sh configs/{cfg}.yaml",
+            # Constrained decoding is the evaluation protocol (RUNS_STATUS
+            # 2026-11-27); eval_queue.sh's batched path honours the flag.
+            jobs.append(job(f"e2_eval_{mode}_{fold}",
+                            f"GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/{cfg}.yaml",
                             kind="cpu", priority=prio - 0.5, est_hours=6, min_cpus=16,
                             needs=[f"e2_train_{mode}_{fold}"],
                             done=f"python tools/campaign_checks.py evaluated {cfg} --since {SINCE} --metrics combined && "
@@ -183,6 +187,36 @@ def main():
     jobs.append(job("report_e2", "campaign/jobs/report.sh e2", priority=4, est_hours=0.1,
                     needs=evals,
                     done=f"python tools/campaign_checks.py file campaign/reports/e2.txt --since {SINCE}"))
+
+    # Constrained evaluation of every single-domain model (decision
+    # 2026-11-27: constrained decoding is the protocol for every reported
+    # system). Separate jobs, results in cache/results/<config>_cdec/, so the
+    # unconstrained evaluations the training jobs write stay comparable with
+    # everything measured before. Each waits for the job that trains that
+    # config, if the manifest has one; a model trained earlier is ready now.
+    trainer = {}
+    for j in jobs:
+        for cfg_path in re.findall(r"configs/([A-Za-z0-9_]+)\.yaml", j["cmd"]):
+            if "train_then_eval" in j["cmd"] or "train_queue" in j["cmd"]:
+                trainer.setdefault(cfg_path, j["id"])
+    CDEC_CONFIGS = (
+        [f"baseline_{d}" for d in ("blocks", "gripper", "miconic", "visitall", "grid",
+                                    "logistics", "spanner", "rovers")]
+        + [f"sd_joint_chain_{d}" for d in ("manyblocks", "gripper", "miconic", "visitall",
+                                            "grid", "logistics", "spanner", "rovers")]
+        + ["sd_union_miconic_bs16", "sd_structural_miconic_bs16", "sd_joint_lite_miconic_bs16",
+           "sd_joint_chain_miconic_bs16",
+           "sd_joint_chain_miconic_lr1e3", "sd_joint_chain_miconic_lr2e3",
+           "sd_joint_chain_visitall_lr1e3", "sd_joint_chain_visitall_lr2e3",
+           "sd_joint_chain_visitall_bs16"])
+    for cfg in CDEC_CONFIGS:
+        jobs.append(job(f"cdec_{cfg}",
+                        "GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 "
+                        f"DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/{cfg}.yaml",
+                        kind="gpu", priority=1.5, est_hours=1,
+                        needs=[trainer[cfg]] if cfg in trainer else [],
+                        done=f"python tools/campaign_checks.py evaluated {cfg} --suffix _cdec "
+                             f"--since {SINCE} --metrics combined"))
 
     manifest = {
         "defaults": {"max_attempts": 2},

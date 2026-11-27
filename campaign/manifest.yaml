@@ -303,7 +303,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_chain_no_manyblocks --since 20261101
 - id: e2_eval_joint_chain_manyblocks
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_chain_no_manyblocks.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_joint_chain_no_manyblocks.yaml
   kind: cpu
   priority: 2.5
   est_hours: 6
@@ -321,7 +321,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_chain_no_visitall --since 20261101
 - id: e2_eval_joint_chain_visitall
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_chain_no_visitall.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_joint_chain_no_visitall.yaml
   kind: cpu
   priority: 2.5
   est_hours: 6
@@ -339,7 +339,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_chain_no_grid --since 20261101
 - id: e2_eval_joint_chain_grid
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_chain_no_grid.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_joint_chain_no_grid.yaml
   kind: cpu
   priority: 2.5
   est_hours: 6
@@ -357,7 +357,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_bind_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_bind_manyblocks
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_bind_no_manyblocks.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_jc_no_bind_no_manyblocks.yaml
   kind: cpu
   priority: 2.5
   est_hours: 6
@@ -375,7 +375,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_bind_no_visitall --since 20261101
 - id: e2_eval_jc_no_bind_visitall
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_bind_no_visitall.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_jc_no_bind_no_visitall.yaml
   kind: cpu
   priority: 2.5
   est_hours: 6
@@ -393,7 +393,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_bind_no_grid --since 20261101
 - id: e2_eval_jc_no_bind_grid
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_bind_no_grid.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_jc_no_bind_no_grid.yaml
   kind: cpu
   priority: 2.5
   est_hours: 6
@@ -411,7 +411,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_goal_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_goal_manyblocks
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_goal_no_manyblocks.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_jc_no_goal_no_manyblocks.yaml
   kind: cpu
   priority: 2.5
   est_hours: 6
@@ -429,7 +429,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_goal_no_visitall --since 20261101
 - id: e2_eval_jc_no_goal_visitall
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_goal_no_visitall.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_jc_no_goal_no_visitall.yaml
   kind: cpu
   priority: 2.5
   est_hours: 6
@@ -447,7 +447,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_goal_no_grid --since 20261101
 - id: e2_eval_jc_no_goal_grid
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_goal_no_grid.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_jc_no_goal_no_grid.yaml
   kind: cpu
   priority: 2.5
   est_hours: 6
@@ -465,7 +465,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_chain_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_chain_manyblocks
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_chain_no_manyblocks.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_jc_no_chain_no_manyblocks.yaml
   kind: cpu
   priority: 3.5
   est_hours: 6
@@ -483,7 +483,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_chain_no_visitall --since 20261101
 - id: e2_eval_jc_no_chain_visitall
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_chain_no_visitall.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_jc_no_chain_no_visitall.yaml
   kind: cpu
   priority: 3.5
   est_hours: 6
@@ -501,7 +501,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_chain_no_grid --since 20261101
 - id: e2_eval_jc_no_chain_grid
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_chain_no_grid.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_jc_no_chain_no_grid.yaml
   kind: cpu
   priority: 3.5
   est_hours: 6
@@ -519,7 +519,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_eff_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_eff_manyblocks
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_eff_no_manyblocks.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_jc_no_eff_no_manyblocks.yaml
   kind: cpu
   priority: 3.5
   est_hours: 6
@@ -537,7 +537,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_eff_no_visitall --since 20261101
 - id: e2_eval_jc_no_eff_visitall
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_eff_no_visitall.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_jc_no_eff_no_visitall.yaml
   kind: cpu
   priority: 3.5
   est_hours: 6
@@ -555,7 +555,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_eff_no_grid --since 20261101
 - id: e2_eval_jc_no_eff_grid
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_eff_no_grid.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_jc_no_eff_no_grid.yaml
   kind: cpu
   priority: 3.5
   est_hours: 6
@@ -573,7 +573,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_no_manyblocks --since 20261101
 - id: e2_eval_joint_manyblocks
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_no_manyblocks.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_joint_no_manyblocks.yaml
   kind: cpu
   priority: 3.5
   est_hours: 6
@@ -591,7 +591,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_no_visitall --since 20261101
 - id: e2_eval_joint_visitall
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_no_visitall.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_joint_no_visitall.yaml
   kind: cpu
   priority: 3.5
   est_hours: 6
@@ -609,7 +609,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_no_grid --since 20261101
 - id: e2_eval_joint_grid
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_no_grid.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_joint_no_grid.yaml
   kind: cpu
   priority: 3.5
   est_hours: 6
@@ -627,7 +627,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_lite_no_manyblocks --since 20261101
 - id: e2_eval_joint_lite_manyblocks
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_lite_no_manyblocks.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_joint_lite_no_manyblocks.yaml
   kind: cpu
   priority: 3.5
   est_hours: 6
@@ -645,7 +645,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_lite_no_visitall --since 20261101
 - id: e2_eval_joint_lite_visitall
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_lite_no_visitall.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_joint_lite_no_visitall.yaml
   kind: cpu
   priority: 3.5
   est_hours: 6
@@ -663,7 +663,7 @@ jobs:
   hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_lite_no_grid --since 20261101
 - id: e2_eval_joint_lite_grid
-  cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_lite_no_grid.yaml
+  cmd: GABAR_CONSTRAINED_DECODE=1 campaign/jobs/eval_ablation.sh configs/loo8_joint_lite_no_grid.yaml
   kind: cpu
   priority: 3.5
   est_hours: 6
@@ -699,3 +699,196 @@ jobs:
   - e2_eval_joint_lite_visitall
   - e2_eval_joint_lite_grid
   done: python tools/campaign_checks.py file campaign/reports/e2.txt --since 20261101
+- id: cdec_baseline_blocks
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/baseline_blocks.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e1_gabar_blocks
+  done: python tools/campaign_checks.py evaluated baseline_blocks --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_baseline_gripper
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/baseline_gripper.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e1_gabar_gripper
+  done: python tools/campaign_checks.py evaluated baseline_gripper --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_baseline_miconic
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/baseline_miconic.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs: []
+  done: python tools/campaign_checks.py evaluated baseline_miconic --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_baseline_visitall
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/baseline_visitall.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e1_gabar_visitall
+  done: python tools/campaign_checks.py evaluated baseline_visitall --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_baseline_grid
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/baseline_grid.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e1_gabar_grid
+  done: python tools/campaign_checks.py evaluated baseline_grid --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_baseline_logistics
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/baseline_logistics.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e1_gabar_logistics
+  done: python tools/campaign_checks.py evaluated baseline_logistics --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_baseline_spanner
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/baseline_spanner.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e1_gabar_spanner
+  done: python tools/campaign_checks.py evaluated baseline_spanner --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_baseline_rovers
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/baseline_rovers.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e1_gabar_rovers
+  done: python tools/campaign_checks.py evaluated baseline_rovers --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_manyblocks
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_manyblocks.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs: []
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_manyblocks --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_gripper
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_gripper.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs: []
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_gripper --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_miconic
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_miconic.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e1_sd_miconic_fixed
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_miconic --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_visitall
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_visitall.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs: []
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_visitall --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_grid
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_grid.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs: []
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_grid --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_logistics
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_logistics.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs: []
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_logistics --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_spanner
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_spanner.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs: []
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_spanner --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_rovers
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_rovers.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e1_sd_rovers_fixed
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_rovers --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_union_miconic_bs16
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_union_miconic_bs16.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e4_sd_union_miconic_bs16
+  done: python tools/campaign_checks.py evaluated sd_union_miconic_bs16 --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_structural_miconic_bs16
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_structural_miconic_bs16.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e4_sd_structural_miconic_bs16
+  done: python tools/campaign_checks.py evaluated sd_structural_miconic_bs16 --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_lite_miconic_bs16
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_lite_miconic_bs16.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e4_sd_joint_lite_miconic_bs16
+  done: python tools/campaign_checks.py evaluated sd_joint_lite_miconic_bs16 --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_miconic_bs16
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_miconic_bs16.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e4_sd_joint_chain_miconic_bs16
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_miconic_bs16 --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_miconic_lr1e3
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_miconic_lr1e3.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e5_sd_joint_chain_miconic_lr1e3
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_miconic_lr1e3 --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_miconic_lr2e3
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_miconic_lr2e3.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e5_sd_joint_chain_miconic_lr2e3
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_miconic_lr2e3 --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_visitall_lr1e3
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_visitall_lr1e3.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e5_sd_joint_chain_visitall_lr1e3
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_visitall_lr1e3 --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_visitall_lr2e3
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_visitall_lr2e3.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e5_sd_joint_chain_visitall_lr2e3
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_visitall_lr2e3 --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_visitall_bs16
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_visitall_bs16.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - e5_sd_joint_chain_visitall_bs16
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_visitall_bs16 --suffix _cdec --since 20261101 --metrics combined
