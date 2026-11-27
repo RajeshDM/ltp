@@ -140,6 +140,21 @@ def main():
                         kind="gpu", priority=1, est_hours=5,
                         done=f"python tools/campaign_checks.py evaluated {cfg} --since {SINCE} --metrics combined"))
         e4.append(jobs[-1]["id"])
+    # E5: keep batch 64 (4x faster) and scale the learning rate instead of
+    # dropping to batch 16. Visitall is the second check: its batch-64 model
+    # also peaked at the last epoch. Readings in REVIEW_PLAN E5.
+    e5 = []
+    for cfg, hours in (("sd_joint_chain_miconic_lr1e3", 1.5), ("sd_joint_chain_miconic_lr2e3", 1.5),
+                       ("sd_joint_chain_visitall_lr1e3", 1.5), ("sd_joint_chain_visitall_lr2e3", 1.5),
+                       ("sd_joint_chain_visitall_bs16", 5)):
+        jobs.append(job(f"e5_{cfg}",
+                        f"WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/{cfg}.yaml",
+                        kind="gpu", priority=1, est_hours=hours,
+                        done=f"python tools/campaign_checks.py evaluated {cfg} --since {SINCE} --metrics combined"))
+        e5.append(jobs[-1]["id"])
+    jobs.append(job("report_e5", "campaign/jobs/report.sh e5", priority=1, est_hours=0.1,
+                    needs=e5,
+                    done=f"python tools/campaign_checks.py file campaign/reports/e5.txt --since {SINCE}"))
     jobs.append(job("report_e4", "campaign/jobs/report.sh e4", priority=1, est_hours=0.1,
                     needs=e4,
                     done=f"python tools/campaign_checks.py file campaign/reports/e4.txt --since {SINCE}"))

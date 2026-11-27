@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import torch
 from torch import Tensor
 import torch.nn as nn
@@ -845,6 +846,15 @@ class GNN_GRU(EncodeDecode):
         #                            n_parameters,n_objects,object_idxs,n_actions,action_idxs)
     def forward_with_parallel_beam_search(self,data, beam_search = False):
         x, u, hidden_state, a_scores, ao_scores, n_node, n_parameters, n_objects,object_idxs,n_actions,action_idxs,number_graphs = self.extract_data_and_run_encoder(data)
+        # GABAR_CONSTRAINED_DECODE=1 on the batched path: the caller sets one
+        # allowed-object map per graph (build_grounding_prefix_map). Separate
+        # function so the unconstrained decoder below is untouched.
+        if getattr(self, "_decode_allowed_batch", None) is not None:
+            return self.beam_search_parallel_constrained(
+                x, hidden_state, number_graphs=number_graphs,
+                ao_scores=ao_scores, n_node=n_node, n_parameters=n_parameters,
+                n_objects=n_objects, object_idxs=object_idxs, n_actions=n_actions,
+                action_idxs=action_idxs, allowed=self._decode_allowed_batch)
         return self.beam_search_parallel(x,hidden_state,number_graphs=number_graphs,
                         ao_scores=ao_scores,n_node=n_node,n_parameters=n_parameters,
                         n_objects=n_objects,object_idxs=object_idxs,n_actions=n_actions,
@@ -1209,6 +1219,150 @@ class GNN_GRU(EncodeDecode):
         return results
         '''
         return self.sort_parallel_beam_results(finished_scores, finished_beams)
+
+    @torch.no_grad()
+    def beam_search_parallel_constrained(self, x, hidden_state, number_graphs, ao_scores,
+                                         n_node, n_parameters, n_objects, object_idxs,
+                                         n_actions, action_idxs, allowed):
+        """beam_search_parallel with grounding-constrained decoding.
+
+        `allowed[g]` is graph g's build_grounding_prefix_map: (schema index,
+        object nodes chosen so far) -> the object nodes some APPLICABLE
+        grounding puts in the next slot. Before each top-k, every other object
+        of that graph scores -inf, as beam_search_v2 does for one graph, so the
+        candidates it proposes are applicable by construction.
+
+        Differences from beam_search_v2, neither of which changes the ranking
+        of the applicable candidates:
+          - beams are shared by all graphs, so a graph with fewer legal objects
+            than object_options keeps the surplus options at score -inf
+            (v2 drops them); they sort last and the executor discards them;
+          - a beam option in which NO graph holds a legal prefix is dropped,
+            since it can only produce candidates the executor discards.
+        Token prefixes are mirrored on the host (one transfer per beam
+        expansion) because the allowed maps are Python dicts.
+        """
+        n_par_long = n_parameters.to(torch.long)
+        _par_starts = torch.cumsum(n_par_long, 0) - n_par_long
+        _par_last = (n_par_long - 1).clamp(min=0)
+
+        a_scores_new = self.compute_action_scores(x, n_actions, hidden_state, action_idxs)
+        self.max_num_actions = min(self.action_options, a_scores_new.shape[1])
+        self.max_num_objects = self.object_options
+        all_actions_batches, all_actions_scores = self.get_best_action_scores_locations(
+            a_scores_new, self.max_num_actions)
+
+        arity_lookup = torch.tensor(
+            [self.action_parameter_number_dict[i] for i in sorted(self.action_parameter_number_dict)],
+            device=self.device)
+        arity_of = self.action_parameter_number_dict
+        neg_inf = torch.tensor(float("-inf"), device=self.device)
+
+        # Beams: (token tensors, decoder input, score, hidden, depth,
+        #         host-side token prefix per graph)
+        active_beams = []
+        finished_beams = []
+        finished_scores = []
+        curr_depth = 0
+
+        for action_idx in range(self.max_num_actions):
+            decoder_input = self.get_best_action_embeddings(
+                x, all_actions_batches[:, action_idx], n_node,
+                domain_number_actions=self._decode_action_count(n_actions))
+            schemas = all_actions_batches[:, action_idx].tolist()
+            active_beams.append(([all_actions_batches[:, action_idx]], decoder_input,
+                                 all_actions_scores[:, action_idx], hidden_state, curr_depth,
+                                 [[int(s)] for s in schemas]))
+
+        for parameter_number in range(self.max_number_action_parameters):
+            if not active_beams:
+                break
+
+            current_decoder_input = torch.cat([beam[1] for beam in active_beams], dim=0)
+            current_scores = [beam[2] for beam in active_beams]
+            current_hidden = torch.cat([beam[3] for beam in active_beams], dim=1)
+            curr_depth = active_beams[0][4]
+            _, new_hidden = self.decoder(current_decoder_input, current_hidden)
+
+            new_active_beams = []
+            ao_scores_new = ao_scores
+            parameter_locations = _par_starts + torch.minimum(
+                torch.full_like(n_par_long, parameter_number), _par_last)
+
+            for beam_idx, beam in enumerate(active_beams):
+                ao_scores_new = self.compute_object_scores(
+                    x, n_parameters, n_objects, ao_scores_new,
+                    new_hidden[:, beam_idx * number_graphs:(beam_idx + 1) * number_graphs],
+                    object_idxs, parameter_number)
+
+                prefixes = beam[5]
+                width = ao_scores_new.shape[1]
+                keep = np.zeros((number_graphs, width), dtype=bool)
+                ok_sets, done_cpu = [], []
+                for g in range(number_graphs):
+                    pre = prefixes[g]
+                    done = arity_of[pre[0]] <= curr_depth
+                    done_cpu.append(done)
+                    if done:
+                        # Action already complete: its row is a clamped
+                        # placeholder whose score is frozen below.
+                        keep[g, :] = True
+                        ok_sets.append(None)
+                        continue
+                    ok = allowed[g].get((pre[0], tuple(pre[1:]))) or set()
+                    ok_sets.append(ok)
+                    if ok:
+                        keep[g, [n for n in ok if n < width]] = True
+                keep_dev = torch.from_numpy(keep).to(self.device)
+                rows = ao_scores_new[parameter_locations]
+                ao_scores_new[parameter_locations] = torch.where(keep_dev, rows, neg_inf)
+
+                all_objects_batches_all_params, all_objects_scores_all_params = \
+                    self.get_best_action_object_scores_locations(
+                        ao_scores=ao_scores_new, n_node=n_node, k=self.max_num_objects,
+                        n_objects=n_objects, n_parameters=n_parameters)
+                all_objects_batches = all_objects_batches_all_params[parameter_locations]
+                all_objects_scores = all_objects_scores_all_params[parameter_locations]
+                objects_cpu = all_objects_batches.tolist()
+
+                beam_actions = beam[0][0]
+                beam_arities = arity_lookup[beam_actions]
+                done_prev = beam_arities <= curr_depth
+                beam_finished = bool((beam_arities <= curr_depth + 1).all())
+
+                for object_option in range(self.max_num_objects):
+                    chosen = [row[object_option] for row in objects_cpu]
+                    if not any(done_cpu[g] or chosen[g] in ok_sets[g]
+                               for g in range(number_graphs)):
+                        continue
+                    all_objects = all_objects_batches[:, object_option]
+                    all_curr_obj_scores = all_objects_scores[:, object_option]
+                    new_decoder_input = self.get_best_object_embeddings_ltp(
+                        x, all_objects, n_node, number_graphs)
+
+                    curr_sequence = beam[0] + [all_objects]
+                    new_prefixes = [prefixes[g] if done_cpu[g] else prefixes[g] + [chosen[g]]
+                                    for g in range(number_graphs)]
+                    new_score_updated = (current_scores[beam_idx] * (curr_depth + 1)
+                                         + all_curr_obj_scores) / (curr_depth + 2)
+                    new_score = torch.where(done_prev, current_scores[beam_idx], new_score_updated)
+                    if beam_finished:
+                        finished_beams.append(curr_sequence)
+                        finished_scores.append(new_score)
+                        continue
+
+                    new_active_beams.append((curr_sequence, new_decoder_input, new_score,
+                                             new_hidden[:, beam_idx * number_graphs:(beam_idx + 1) * number_graphs],
+                                             curr_depth + 1, new_prefixes))
+
+            active_beams = new_active_beams[:]
+
+        if not finished_scores:          # no graph had a single legal candidate
+            return [[] for _ in range(number_graphs)]
+        results = self.sort_parallel_beam_results(finished_scores, finished_beams)
+        # Drop each graph's -inf (illegal) surplus candidates, so a graph's list
+        # is exactly what beam_search_v2 returns for it alone.
+        return [[(s, b) for s, b in res if s != float("-inf")] for res in results]
 
     def sort_parallel_beam_results(self, finished_scores_parallel, finished_beams_parallel):
         """

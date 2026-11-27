@@ -338,6 +338,19 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27: constrained decoding on the batched evaluator; E5 queued
+
+`beam_search_parallel_constrained` (new; the unconstrained decoders are
+untouched): same candidates and scores as beam_search_v2's constrained
+decode - GABAR_CHECK_PARALLEL_BEAM on Rovers, 0 mismatches over 500+ state
+pairs (GABAR) and 100+ (GADAR alone). Outcome/speed check on the full Rovers
+and Logistics test sets running as cdecb-* jobs (logs/cdec/*_batched_*.out,
+results cache/results/<config>_cdecb/), against the sequential 46.3 / 57.4 /
+2.1 / 36.5. eval_queue.sh needs no change: GABAR_CONSTRAINED_DECODE=1 is now
+honoured on the batched path it uses.
+E5 (REVIEW_PLAN E5): batch 64 with lr 1e-3 / 2e-3 on Miconic and Visitall,
+and Visitall at batch 16, queued in the campaign on 4 dgx2 workers.
+
 ## 2026-11-27: decision - constrained decoding is the evaluation protocol
 
 Author's decision: every system reported from now on is evaluated with

@@ -264,6 +264,20 @@ of training on 6 of 8 domains (E460-E500; Miconic E490), i.e. the loss was
 still falling at epoch 500; GABAR at batch 16 peaks earlier (Miconic E330,
 Rovers E280, Logistics E380).
 
+### E5. Keep batch 64, scale the learning rate (added 2026-11-27)
+
+E4 showed batch 16 fixes single-domain Miconic (44.5 -> 100.0) but costs 4x
+the training time, and pushes the seven-domain runs past the 2-day job
+limit. Plain Adam, constant lr 5e-4, no schedule. Runs (`e5_*`, one seed):
+Miconic and Visitall alone at batch 64 with lr 1e-3 and 2e-3, plus Visitall
+at batch 16 / lr 5e-4 as its control (Miconic's is E4's 100.0).
+
+| Outcome | Conclusion |
+|---|---|
+| a batch-64 lr reaches within 5 points of batch 16 on both domains | use it for every later training (E1 tables, E2, LOO, all8) |
+| neither does, batch 16 clearly better | next: a schedule (warm-up, then decay) at batch 64 - one code change in the training loop, keyed in the checkpoint key - before accepting 4x |
+| batch 16 no better than batch 64 on Visitall | the Miconic gain is domain-specific; decide per table |
+
 ### E2. Component ablations (5 GPUs x ~2 days; answers A)
 
 Modes (`ploi/lifted_layer.py::_MODE_COMPONENTS`), all at the `joint_chain`

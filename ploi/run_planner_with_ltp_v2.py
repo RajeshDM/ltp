@@ -186,7 +186,8 @@ def _create_planner(planner_name):
 # v2 results so consecutive rollout states can be batched together through
 # beam_search_parallel and compared per-graph against their v2 outputs.
 # Exercises real mixed-size (and mixed-arity) batches, not just duplicates.
-_beam_check = {"n": 0, "mismatches": 0, "g": None, "res": None, "model_id": None}
+_beam_check = {"n": 0, "mismatches": 0, "g": None, "res": None, "model_id": None,
+               "allowed": None}
 
 def _compare_beam_results(v2_results, par_results, tag):
     """Compare beam_search_v2 output against one batch entry of beam_search_parallel."""
@@ -211,10 +212,15 @@ def _compare_beam_results(v2_results, par_results, tag):
 
 def _check_parallel_beam(model, g_inp, v2_results, device):
     if _beam_check["model_id"] != id(model):
-        _beam_check.update(g=None, res=None, model_id=id(model))
+        _beam_check.update(g=None, res=None, model_id=id(model), allowed=None)
     if _beam_check["g"] is not None:
         _beam_check["n"] += 1
         tag = f"pair {_beam_check['n']}"
+        # Constrained decoding: the pair needs both states' allowed maps.
+        _saved = getattr(model, "_decode_allowed_batch", None)
+        if _saved is not None:
+            model._decode_allowed_batch = [_beam_check["allowed"],
+                                           getattr(model, "_decode_allowed", None)]
         try:
             model_input = convert_graph_to_model_input_v2(
                 [_beam_check["g"], g_inp], device)
@@ -225,6 +231,8 @@ def _check_parallel_beam(model, g_inp, v2_results, device):
         except Exception as e:
             print(f"[parallel-beam-check] {tag}: parallel decode raised: {type(e).__name__}: {e}")
             ok = False
+        finally:
+            model._decode_allowed_batch = _saved
         if not ok:
             _beam_check["mismatches"] += 1
         if _beam_check["n"] % 100 == 0:
@@ -232,6 +240,7 @@ def _check_parallel_beam(model, g_inp, v2_results, device):
                   f"{_beam_check['mismatches']} mismatches")
     _beam_check["g"] = g_inp
     _beam_check["res"] = v2_results
+    _beam_check["allowed"] = getattr(model, "_decode_allowed", None)
 
 # Score tracing (GABAR_TRACE_SCORES=<path>): writes one JSON line per model
 # call with every candidate's (score, token sequence), keyed by
@@ -316,14 +325,16 @@ def convert_state_and_run_model(model, state, action_space , device, groundings,
     # proposal is then applicable by construction, so the model's task reduces
     # from constructing actions to ranking legal ones. Test-time only.
     if os.environ.get("GABAR_CONSTRAINED_DECODE", "") == "1":
-        if os.environ.get("GABAR_USE_PARALLEL_DECODER", "") == "1":
-            raise RuntimeError(
-                "GABAR_CONSTRAINED_DECODE is implemented for beam_search_v2 "
-                "only; unset GABAR_USE_PARALLEL_DECODER")
+        # beam_search_v2 reads _decode_allowed; the batched decoder reads
+        # _decode_allowed_batch (one map per graph). Both are set, so
+        # GABAR_USE_PARALLEL_DECODER and GABAR_CHECK_PARALLEL_BEAM compare
+        # the two constrained decoders with each other.
         model._decode_allowed = build_grounding_prefix_map(
             groundings, all_actions, node_to_objects)
+        model._decode_allowed_batch = [model._decode_allowed]
     else:
         model._decode_allowed = None
+        model._decode_allowed_batch = None
 
     model_input = convert_graph_to_model_input_v2([g_inp],device)
     # Old version:
@@ -929,6 +940,9 @@ class PlannerTester:
         # The two per-problem units of work. Defined once and used by BOTH
         # the serial loop and the worker pool, so the parallel path cannot
         # drift from the reference implementation.
+        _constrained = os.environ.get("GABAR_CONSTRAINED_DECODE", "") == "1"
+        _all_actions = [k for k, v in action_space.items()]
+
         def _featurize_one(st):
             groundings = list(
                 st["env"].action_space.all_ground_literals(st["state"]))
@@ -939,6 +953,12 @@ class PlannerTester:
                 curr_action=None, objects=None,
                 goal_state=st["state"].goal, cheating_input=None)
             st["node_to_objects"] = node_to_objects
+            if _constrained:
+                # Built where node_to_objects exists, so it also works inside
+                # the rollout workers; it travels with the graph and is popped
+                # before PyG conversion (graph_to_pyg_data converts every key).
+                g_inp["_decode_allowed"] = build_grounding_prefix_map(
+                    groundings, _all_actions, node_to_objects)
             return g_inp, groundings
 
         def _step_one(st, beam, groundings):
@@ -1005,6 +1025,10 @@ class PlannerTester:
             t2 = time.time()
             t_graph += t2 - t1
 
+            # One allowed-object map per graph, in batch order; None when the
+            # constraint is off, which selects the unconstrained decoder.
+            _allowed = [g.pop("_decode_allowed", None) for g in graphs]
+            model._decode_allowed_batch = _allowed if _constrained else None
             model_input = convert_graph_to_model_input_v2(graphs, self.config.device)
             t3 = time.time()
             t_convert += t3 - t2
@@ -1060,6 +1084,7 @@ class PlannerTester:
             pbar.refresh()
 
         pbar.close()
+        model._decode_allowed_batch = None
         if pool is not None:
             # Plans, step counts and monitor statistics only exist in the
             # workers; take them before the pool goes away.

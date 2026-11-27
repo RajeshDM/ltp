@@ -221,6 +221,47 @@ jobs:
   priority: 1
   est_hours: 5
   done: python tools/campaign_checks.py evaluated sd_joint_chain_miconic_bs16_rs128 --since 20261101 --metrics combined
+- id: e5_sd_joint_chain_miconic_lr1e3
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_miconic_lr1e3.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 1.5
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_miconic_lr1e3 --since 20261101 --metrics combined
+- id: e5_sd_joint_chain_miconic_lr2e3
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_miconic_lr2e3.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 1.5
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_miconic_lr2e3 --since 20261101 --metrics combined
+- id: e5_sd_joint_chain_visitall_lr1e3
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_visitall_lr1e3.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 1.5
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_visitall_lr1e3 --since 20261101 --metrics combined
+- id: e5_sd_joint_chain_visitall_lr2e3
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_visitall_lr2e3.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 1.5
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_visitall_lr2e3 --since 20261101 --metrics combined
+- id: e5_sd_joint_chain_visitall_bs16
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_visitall_bs16.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 5
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_visitall_bs16 --since 20261101 --metrics combined
+- id: report_e5
+  cmd: campaign/jobs/report.sh e5
+  priority: 1
+  est_hours: 0.1
+  needs:
+  - e5_sd_joint_chain_miconic_lr1e3
+  - e5_sd_joint_chain_miconic_lr2e3
+  - e5_sd_joint_chain_visitall_lr1e3
+  - e5_sd_joint_chain_visitall_lr2e3
+  - e5_sd_joint_chain_visitall_bs16
+  done: python tools/campaign_checks.py file campaign/reports/e5.txt --since 20261101
 - id: report_e4
   cmd: campaign/jobs/report.sh e4
   priority: 1

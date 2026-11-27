@@ -25,6 +25,11 @@ case "$1" in
       python tools/analyze_results.py 2>/dev/null \
           | grep -E "^(experiment|baseline_miconic |sd_[a-z_]*miconic)"
     } > "$OUT" ;;
+  e5)
+    { echo "== E5 learning-rate scaling at batch 64 vs batch 16 (REVIEW_PLAN E5)"
+      python tools/analyze_results.py 2>/dev/null \
+          | grep -E "^(experiment|baseline_(miconic|visitall) |sd_joint_chain_(miconic|visitall))"
+    } > "$OUT" ;;
   e2)
     RUNGS=joint_chain,jc_no_bind,jc_no_chain,jc_no_eff,jc_no_goal,joint,joint_lite
     FOLDS=manyblocks,visitall,grid
