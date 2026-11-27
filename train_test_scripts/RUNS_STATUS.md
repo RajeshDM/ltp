@@ -338,6 +338,28 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27 08:10: best-validation checkpoints, first results (constrained)
+
+| run (batch 64) | combined ckpt | best-validation ckpt |
+|---|---|---|
+| Miconic | 34.5 (E490) | **100.0 (E470)** |
+| Visitall | 54.0 (E500) | **74.0 (E250)** |
+| Blocks | 98.5 (E370) | 97.5 (E100) |
+| Gripper | 100.0 (E500) | 100.0 (E300) |
+| Spanner | 90.6 (E470) | 90.6 (E460) |
+| Grid | 85.4 (E460) | 68.8 (E470) |
+
+Batch-64 Miconic reaches 100.0 at its best-validation checkpoint, E470 -
+twenty epochs from the combined pick (E490, 34.5). So E4's "the gap was
+training length" is NOT established: the same batch-64 run already holds a
+100% checkpoint. What the numbers show is that in-domain coverage swings
+widely between nearby checkpoints (as zero-shot did: 0 <-> 74 within 50
+epochs), and a single-checkpoint number - under either rule - is noisy.
+Validation selection is not uniformly better either (Grid 85.4 -> 68.8).
+Candidate fix to discuss: report the mean over several late checkpoints
+(the periodic snapshots), as the zero-shot statistic already does.
+Remaining cdecval_* jobs still running.
+
 ## 2026-11-27 08:00: batch 16 is not uniformly better; checkpoint rule suspected
 
 GADAR alone, test split, combined checkpoint, one seed (cd = constrained):
