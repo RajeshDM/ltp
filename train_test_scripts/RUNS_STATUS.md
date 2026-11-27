@@ -338,6 +338,46 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-26: E4 Miconic ladder at batch 16 (campaign/reports/e4.txt)
+
+Miconic alone, test split (119), combined checkpoint, one seed, unconstrained
+decoding. GABAR through our pipeline: 99.2.
+
+| run | features | cov | no monitor | epoch | combined loss |
+|---|---|---|---|---|---|
+| sd_union_miconic_bs16 | GABAR's, multi-domain harness | 100.0 | 100.0 | E470 | 10.8 |
+| sd_structural_miconic_bs16 | identity removed | 43.7 | 0.0 | E480 | 11.3 |
+| sd_joint_lite_miconic_bs16 | + lifted layer | 99.2 | 99.2 | E490 | 11.5 |
+| sd_joint_chain_miconic_bs16 | full GADAR | 100.0 | 21.0 | E490 | 5.7 |
+| sd_joint_chain_miconic (batch 64, before) | full GADAR | 44.5 | 0.0 | E490 | - |
+| sd_joint_chain_miconic_bs16_rs128 | full GADAR, width 128 | 43.7 | 0.0 | E200 | 107.8 |
+
+Pre-registered readings (REVIEW_PLAN E4):
+- union 100.0, not "far below 99": the multi-domain harness reproduces
+  GABAR on Miconic. Parity gate passes.
+- full GADAR 44.5 -> 100.0 at batch 16: MOST OF THE GAP WAS TRAINING LENGTH
+  (batch 64 = a quarter of the gradient steps). Per the plan: rerun every
+  sd_* at batch 16; the LOO models (also batch 64) likely gain too. E2 must
+  run at batch 16.
+- structural 43.7 vs union 100.0: removing symbol identity costs ~56
+  points (origin/destin/above indistinguishable by class) - and the lifted
+  layer alone (joint_lite) recovers it fully (99.2). That is the
+  expressiveness tax, measured, and its repair.
+- width 128: NOT a capacity reading. Its combined loss is ~108 against ~6
+  at width 64 and its best checkpoint is E200: training diverged (lr 5e-4
+  unchanged at twice the width is the likely cause). Unexamined, not refuted.
+Also found: full GADAR needs the revisit monitor on Miconic (21.0 without)
+where joint_lite does not (99.2) - the chain/goal components make the policy
+loop-prone here. Worth one line in the E2 analysis.
+
+GABAR through our pipeline, Blocks (baseline_blocks, E500): 52.5 (published
+100; GADAR alone at batch 64: 95.5). Another domain where the pipeline does
+not reproduce GABAR; recorded, not pursued (decision 2026-11-27).
+
+Beam-width test (logs/beam/): the A=9,K=5 runs ran out of GPU memory (4 GiB
+request on a 6 GiB share GPU) - the unpruned beam is 9 x 5^6 candidates on
+a 6-parameter schema. The A=9,K=3 and A=2,K=5 runs continue.
+
 ## 2026-11-26: constrained decoding on Rovers - the bottleneck was building legal actions
 
 Same checkpoints, re-evaluated with GABAR_CONSTRAINED_DECODE=1 (each

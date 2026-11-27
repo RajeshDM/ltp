@@ -1,0 +1,25 @@
+== GABAR through our pipeline, and optimal-plan runs (combined-loss checkpoint)
+experiment                 domain                 ZS  sel           ep    succ succ-noM  quality    plan   time  nonopt
+baseline_blocks            Manyblocks_ipcc_big        combined     500   52.5%     1.0%    0.000   182.8 215.95    100%
+baseline_logistics         Logistics_ipcc             combined     380    0.0%     0.0%    0.000     0.0   0.00    100%
+baseline_logistics_opt     Logistics_ipcc             combined     370    0.0%     0.0%    0.000     0.0   0.00    100%
+baseline_miconic           Miconic_ipcc               combined     330   99.2%    99.2%    0.000   181.3 214.56    100%
+baseline_rovers            Rovers_ipcc                combined     280    7.4%     3.7%    0.000    14.5  74.82    100%
+baseline_rovers_cdec       Rovers_ipcc                combined     280   46.3%     5.6%    0.000    91.4   9.25    100%
+baseline_rovers_opt        Rovers_ipcc                combined     320    5.6%     1.9%    0.000    18.0  69.46    100%
+baseline_spanner           Spanner_ipcc               combined     460   91.7%    91.7%    0.000    48.5  65.79     50%
+baseline_visitall          Visitall_ipcc              combined     470   70.0%    24.0%    0.000   242.7  76.71    100%
+sd_joint_chain_rovers_opt  Rovers_ipcc                combined     430    9.3%     3.7%    0.000    17.6  66.08    100%
+
+== single-domain GADAR and the seven-domain models, for comparison
+in-domain test coverage %, checkpoint = combined, dumps >= 20261101
+domain           LOO-UNION      LOO-BIND     LOO-GADAR     ALL-UNION      ALL-BIND     ALL-GADAR            SD
+logistics               --            --            --            --            --            --            --
+manyblocks              --            --            --            --            --            --            --
+miconic                 --            --            --            --            --            --     44.5 E490
+rovers                  --            --            --            --            --            --     20.4 E380
+spanner                 --            --            --            --            --            --            --
+visitall                --            --            --            --            --            --            --
+mean                    --            --            --            --            --            --      32.5 (2)
+
+'--' = no post-fix dump with that cell; mean is over the rows present, so compare columns only where both have all rows.
