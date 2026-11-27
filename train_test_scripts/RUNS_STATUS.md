@@ -338,6 +338,34 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27 02:55: Table-1 view - GABAR vs GADAR alone, both protocols (interim)
+
+Test split, combined checkpoint, one seed. "cd" = constrained decoding
+(cache/results/<cfg>_cdec). GADAR = the EXISTING batch-64, lr 5e-4
+single-domain models (sd_joint_chain_*), to be retrained at the E5 setting.
+
+| domain | GABAR published | GABAR ours | GABAR cd | GADAR alone | GADAR alone cd |
+|---|---|---|---|---|---|
+| Blocks | 100 | 52.5 | 47.0 | 95.5 | **98.5** |
+| Gripper | 100 | 100.0 | 100.0 | 100.0 | 100.0 |
+| Miconic | 100 | 99.2 | 100.0 | 44.5 | 34.5 |
+| Visitall | 90.7 | 70.0 | 74.0 | 54.0 | 54.0 |
+| Grid | 96.3 | 89.6 | 97.9 | 87.5 | 85.4 |
+| Logistics | 79.0 | 0.0 | 2.1 | 3.1 | **36.5** |
+| Spanner | 92.0 | 91.7 | 91.7 | 85.4 | 90.6 |
+| Rovers | 82.0 | 7.4 | 46.3 | 20.4 | **57.4** |
+
+Under the same (constrained) protocol GADAR alone already beats GABAR on
+Blocks, Logistics and Rovers, ties Gripper, and trails on Miconic, Visitall,
+Grid, Spanner - the domains where batch 64 undertrained it (Miconic at
+batch 16: 100.0 / 99.2 cd). Constraining changes GABAR little except on Rovers
+and Grid. Not concluded: one seed; the GADAR column is the old training setup.
+
+E5 so far (batch 64): Miconic lr 1e-3 97.5 (cd 98.3; batch 16: 100.0, cd
+99.2); Visitall lr 1e-3 42.0 (cd 34.0), lr 2e-3 76.0 at E70 (best combined
+loss that early - check its curve before trusting it); Miconic lr 2e-3 and
+the Visitall batch-16 control still running.
+
 ## 2026-11-27 01:50: batched constrained decoding reproduces the sequential runs
 
 Full test sets, same checkpoints, batched evaluator + 7 rollout workers
