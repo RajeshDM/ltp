@@ -338,6 +338,22 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27 12:30: test-set defects found while designing the splits
+
+- Rovers: 4 of the 54 test problems are byte-identical (up to the problem
+  name) to training problems: test #10 pfile_r-4_w-4_c-1_o-3, #11
+  pfile_r-4_w-4_c-3_o-3, #36 pfile_r-6_w-6_c-1_o-3, #37 pfile_r-6_w-6_c-3_o-3.
+  Every reported Rovers number includes them.
+- Blocks: the test env has 290 problems (6-70 blocks); configs test the first
+  200, which are sizes 6-25 - including 40 problems at TRAINING size (6-9) -
+  while the 90 hardest (30-70 blocks) are never tested.
+- No other domain has a test problem identical to a training problem.
+Test sets split by main size parameter (thirds; Blocks over the 200 used):
+Blocks 6-11 / 12-18 / 19-25; Gripper balls 15-27 / 29-41 / 43-120; Miconic
+passengers 22-42 / 47-72 / 77-102; Visitall cells 64-136 / 154-196 / 220-400;
+Grid cells 25-40 / 55-70 / 88-154; Logistics packages 9-12 / 15-18 / 21-24;
+Spanner nuts 5 / 8 / 11-14; Rovers waypoints 4-27 / 29-48 / 50-69.
+
 ## 2026-11-27 12:00: the validation set is the wrong instrument (both systems)
 
 1. It is 10% of the training STATES, split after pooling and shuffling all
