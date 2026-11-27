@@ -338,6 +338,32 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27 12:00: the validation set is the wrong instrument (both systems)
+
+1. It is 10% of the training STATES, split after pooling and shuffling all
+   problems' states (main.py, `dom_graphs` shuffle then first 10%): validation
+   states come from the same problems and plans as training states, often one
+   step apart, so validation loss is nearly a second measure of training fit.
+2. It is training-sized, while we report coverage on test problems 2-8x larger
+   (median objects train/test: Blocks 8/20, Gripper 29/56, Miconic 18/82,
+   Visitall 25/188, Grid 32/75, Logistics 38/110, Spanner 25/51, Rovers 27/62).
+Validation loss is teacher-forced (forward pass on each expert state, loss
+against the expert action), so it needs expert plans; coverage needs rollouts.
+Agreed design (author): two signals - (a) same-size UNSEEN problems, from a
+problem-level split of the existing training problems (no new data); (b)
+larger unseen problems, generated, with LAMA plans (loss) and rollouts
+(coverage). pddlgym here is an editable install: di_ltp_1, ltp_3, ltp_5 all
+import /nfs/hpc/share/mangannr/PLOI_full_repos/pddlgym (train = <dom>/,
+test = <dom>_test/, plans cached per problem file in <dom>/plans/; unused
+<dom>_val folders with 1-11 problems already exist for 7 domains).
+Generators fetched to /nfs/hpc/share/mangannr/di_ltp/external/:
+pddl-generators has all 8 (blocksworld, gripper, miconic, visitall, grid,
+logistics, spanner, rovers). The reviewers' two domains have NO generator:
+classical-domains has the IPC-2018 instances only - Caldera (20 problems, one
+domain; conditional effects + negative preconditions + equality) and Organic
+Synthesis (20 problems, a DIFFERENT domain file per problem, 12-52 actions,
+deep type hierarchy). Both are therefore zero-shot-only.
+
 ## 2026-11-27 11:15: all single-domain runs done - constrained, both rules, both batch sizes
 
 Every number constrained (51 constrained dumps, top-1 proposal legal on
