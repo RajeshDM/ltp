@@ -1,0 +1,6 @@
+description: One GADAR model on all 8 domains
+base: _protocol.yaml
+expid: p2_all8_jc
+domains: manyblocks_ipcc_big,gripper_ipcc,miconic_ipcc,visitall_ipcc,grid_ipcc,logistics_ipcc,spanner_ipcc,rovers_ipcc
+featurization: joint_chain
+test_domains: manyblocks_ipcc_big@easy,manyblocks_ipcc_big@medium,manyblocks_ipcc_big@hard,gripper_ipcc@easy,gripper_ipcc@medium,gripper_ipcc@hard,miconic_ipcc@easy,miconic_ipcc@medium,miconic_ipcc@hard,visitall_ipcc@easy,visitall_ipcc@medium,visitall_ipcc@hard,grid_ipcc@easy,grid_ipcc@medium,grid_ipcc@hard,logistics_ipcc@easy,logistics_ipcc@medium,logistics_ipcc@hard,spanner_ipcc@easy,spanner_ipcc@medium,spanner_ipcc@hard,rovers_ipcc@easy,rovers_ipcc@medium,rovers_ipcc@hard

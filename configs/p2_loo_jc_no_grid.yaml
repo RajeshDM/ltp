@@ -1,0 +1,6 @@
+description: joint_chain, grid held out
+base: _protocol.yaml
+expid: p2_loo_jc_no_grid
+domains: manyblocks_ipcc_big,gripper_ipcc,miconic_ipcc,visitall_ipcc,logistics_ipcc,spanner_ipcc,rovers_ipcc
+featurization: joint_chain
+test_domains: grid_ipcc@easy,grid_ipcc@medium,grid_ipcc@hard

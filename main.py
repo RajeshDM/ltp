@@ -298,6 +298,20 @@ def run_tests(
         if len(planner_types_copy) == 0:  
             return []
     
+    _only_epochs = {int(e) for e in str(getattr(args, 'test_epochs', '') or '').split(',') if e.strip()}
+    if _only_epochs:
+        # Test only the snapshot(s) a selection rule picked
+        # (tools/select_checkpoint.py). Missing epochs are an error, not a
+        # silent fallback to some other checkpoint.
+        _have = {m['epoch'] for m in best_models}
+        if not _only_epochs <= _have:
+            raise SystemExit(f"--test-epochs {sorted(_only_epochs)}: metric {metric!r} "
+                             f"has no checkpoint for {sorted(_only_epochs - _have)} "
+                             f"(has {sorted(_have)})")
+        best_models = [m for m in best_models if m['epoch'] in _only_epochs]
+        num_models_to_test = len(best_models)
+        starting_model_num = 0
+
     results = []
     curr_model = None
     #if PlannerType.LEARNED_MODEL in planner_types or PlannerType.LEARNED_MODEL_VAL in planner_types: 
@@ -759,7 +773,50 @@ if __name__ == "__main__":
                 rng = _random.Random(args.seed)
                 input_hetero_graphs = []
                 val_hetero_graphs = []
+                valid_id_graphs = []
+                if args.val_protocol == 'split' and per_domain_graphs:
+                    # 2026-11 protocol: every training state trains; the
+                    # validation losses come from UNSEEN problems -
+                    # <dom>_val_ood (larger: the 'val' loss) and <dom>_val_id
+                    # (training sizes). Featurized with the training metadata
+                    # and cache tag of the same domain, plans from the same
+                    # planner; the env name carries the split, so the caches
+                    # are separate files.
+                    for dom_idx, (name, num_problems) in enumerate(train_domains):
+                        for _split, _out in (('ValOod', val_hetero_graphs),
+                                             ('ValId', valid_id_graphs)):
+                            if args.featurization == 'union':
+                                _md, _tag = graph_metadata, tag
+                            elif args.featurization == 'per_domain':
+                                _md, _tag = graph_metadata, '_pdmeta'
+                            else:
+                                _md = (build_structural_metadata(per_domain_meta[name][1], kp, ka,
+                                                                 cheating=args.cheating_input)
+                                       if args.featurization == 'structural' else
+                                       build_lifted_metadata(per_domain_meta[name][1], kp, ka,
+                                                             args.featurization,
+                                                             cheating=args.cheating_input))
+                                _fx = _featurizer_version(
+                                    per_domain_meta[name][1],
+                                    lifted=args.featurization in _LIFTED_MODES)
+                                _tag = tag + (f'_fx{_fx}' if _fx else '')
+                            _vg, _, _ = process_pddl_to_graphs(
+                                f"{name}{_split}", train_planner, 0, args,
+                                _create_graph_dataset_ltp,
+                                metadata_override=_md, cache_tag=_tag)
+                            if not _vg:
+                                raise SystemExit(f"--val-protocol split: no graphs for {name}{_split}")
+                            for g in _vg:
+                                g.domain_id = dom_idx
+                            _out.extend(_vg)
+                        print(f"  {name}: validation from unseen problems "
+                              f"(val_ood + val_id graphs so far: {len(val_hetero_graphs)} + "
+                              f"{len(valid_id_graphs)})")
                 for name, dom_graphs in per_domain_graphs.items():
+                    if args.val_protocol == 'split':
+                        input_hetero_graphs.extend(dom_graphs)
+                        print(f"  {name}: {len(dom_graphs)} training graphs (all)")
+                        continue
                     _random.Random(args.seed).shuffle(dom_graphs)
                     n_val = max(1, int(len(dom_graphs) * 0.1))
                     val_hetero_graphs.extend(dom_graphs[:n_val])
@@ -768,6 +825,7 @@ if __name__ == "__main__":
                           f"(train={len(dom_graphs) - n_val}, val={n_val})")
                 rng.shuffle(input_hetero_graphs)
                 rng.shuffle(val_hetero_graphs)
+                args._valid_id_graphs = valid_id_graphs
 
             elif args.mode == 'test':
                 # Single-domain test run (the per-domain GABAR baselines use
@@ -801,6 +859,9 @@ if __name__ == "__main__":
                     print(f"SWEEP mode: subsetting {len(all_input_graphs)} graphs to {target} ({args.data_fraction:.0%})")
                     all_input_graphs = subset_graphs(all_input_graphs, fraction=args.data_fraction, seed=args.seed)
 
+                if args.val_protocol == 'split':
+                    raise SystemExit("--val-protocol split is implemented on the --domains path "
+                                     "only; use `domains: <dom>` (per_domain works there)")
                 num_validation = max(1, int(len(all_input_graphs) * 0.1))
                 input_hetero_graphs = all_input_graphs[num_validation:]
                 val_hetero_graphs = all_input_graphs[:num_validation]
@@ -809,7 +870,8 @@ if __name__ == "__main__":
             # PyG Batch.from_data_list can collate them. Different domains (or
             # problems with different object counts) need uniform tensor widths.
             from ploi.datautils_ltp import pad_pyg_action_scores
-            pad_pyg_action_scores(input_hetero_graphs + val_hetero_graphs)
+            pad_pyg_action_scores(input_hetero_graphs + val_hetero_graphs
+                                  + getattr(args, '_valid_id_graphs', []))
         else :
             training_data = collect_training_data(
                 args.domain, train_planner, num_train_problems=args.num_train_problems
@@ -921,6 +983,15 @@ if __name__ == "__main__":
         '''
 
     datasets = {"train": graph_dataset, "val": graph_dataset_val}
+    if args.mode == 'collect':
+        print(f"[collect] data ready: {len(input_hetero_graphs)} training graphs, "
+              f"{len(val_hetero_graphs)} validation (+ {len(getattr(args, '_valid_id_graphs', []) or [])} "
+              f"val_id); exiting before model construction", flush=True)
+        sys.exit(0)
+    if getattr(args, '_valid_id_graphs', None):
+        # --val-protocol split: Val-ID loss, logged beside the Val-OOD 'val'.
+        datasets["val_id"] = PyGDataLoader(args._valid_id_graphs, batch_size=batch_size,
+                                           shuffle=False, num_workers=0)
     #dataloaders = {"train": dataloader, "val": dataloader_val}
 
     object_level_model = GraphNetwork(
@@ -1215,6 +1286,11 @@ if __name__ == "__main__":
             # Hidden width: varied from 2026-11-27 (model-capacity runs).
             # Defaulted away at 64, so every existing directory keeps its name.
             'rs' : args.representation_size,
+            # Validation protocol (2026-11): which data the 'val' loss and so
+            # the loss-ranked slots see. Defaulted away at the legacy
+            # 'states', so every existing directory keeps its name and a
+            # protocol run can never evict an old run's checkpoints.
+            'vp' : args.val_protocol,
             'fx' : (_featurizer_version(
                         action_space, lifted=args.featurization in _LIFTED_MODES)
                     if (args.featurization == 'structural'
@@ -1229,7 +1305,7 @@ if __name__ == "__main__":
         if os.environ.get("GABAR_LEGACY_CKPT_KEY", "") == "1":
             for _legacy_drop in ('feat', 'nf', 'ef', 'l2', 'rs', 'gru', 'bs',
                                  'pw', 'gam', 'aug', 'amp', 'all', 'kp', 'ka',
-                                 'tp', 'fx'):
+                                 'tp', 'fx', 'vp'):
                 training_hyperparameters.pop(_legacy_drop, None)
             print("GABAR_LEGACY_CKPT_KEY=1: using the pre-featurization "
                   "checkpoint key (old model directories)")
@@ -1254,6 +1330,7 @@ if __name__ == "__main__":
             'tp' : 'fd-lama-first',
             'fx' : 0,
             'rs' : 64,
+            'vp' : 'states',
         }
         _assert_key_covers_variation(args, training_hyperparameters)
 
@@ -1266,6 +1343,7 @@ if __name__ == "__main__":
         manager = ModelManager(save_folder, hyperparameters=training_hyperparameters,
                                max_checkpoints_per_metric=args.keep_checkpoints,
                                periodic_every=args.checkpoint_every,
+                               max_periodic=args.max_periodic,
                                train_env_name=train_env_name,seed=args.seed, ignore_defaults=ignore_defaults)
 
         model_outfile, message_string,save_folder = get_filenames(dataset_size,train_env_name,
@@ -1433,9 +1511,13 @@ if __name__ == "__main__":
             for name, count, _ in parse_domain_arg(args.test_domains, "",
                                                     args.num_test_problems):
                 split = 'test'
-                if name.endswith('@train'):
-                    name = name[:-len('@train')]
-                    split = 'train'
+                if '@' in name:
+                    # name@<split>: train (original easy problems), or a
+                    # 2026-11 protocol split - val_id, val_ood, easy, medium,
+                    # hard (ploi.test_utils.SPLIT_ENV_SUFFIX).
+                    name, split = name.rsplit('@', 1)
+                    from ploi.test_utils import split_env_suffix
+                    split_env_suffix(split)          # fail now, not mid-run
                 is_zs = name not in _train_set
                 eval_plan.append((name, count, is_zs, split))
         else:
@@ -1461,17 +1543,23 @@ if __name__ == "__main__":
         for test_domain, requested_count, is_zero_shot, test_split in eval_plan:
             tag = "zero-shot" if is_zero_shot else "in-domain"
             display_name = (test_domain if test_split == 'test'
-                            else f"{test_domain}@train")
+                            else f"{test_domain}@{test_split}")
             print(f"\n=== {tag} evaluation: {display_name} ===")
 
             # Cap against the problem count of the env that will actually be
             # evaluated ('test' -> PDDLEnv<name>Test-v0; 'train' -> the base
             # env with the easy problems).
-            _env_suffix = "Test" if test_split == 'test' else ""
-            try:
+            from ploi.test_utils import split_env_suffix
+            _env_suffix = split_env_suffix(test_split)
+            if test_split in ('test', 'train'):
+                try:
+                    t_env = pddlgym.make(f"PDDLEnv{test_domain}{_env_suffix}-v0")
+                except Exception:
+                    t_env = pddlgym.make(f"PDDLEnv{test_domain}-v0")
+            else:
+                # A protocol split has no fallback: silently testing on the
+                # training problems instead would be a wrong number.
                 t_env = pddlgym.make(f"PDDLEnv{test_domain}{_env_suffix}-v0")
-            except Exception:
-                t_env = pddlgym.make(f"PDDLEnv{test_domain}-v0")
             domain_test_count = min(requested_count, len(t_env.problems))
             if domain_test_count < requested_count:
                 print(f"  {display_name}: capping test at {domain_test_count} "
@@ -1602,7 +1690,7 @@ if __name__ == "__main__":
             'test_model_metrics': all_model_types,
             'num_models_to_test': num_models_to_test,
             'eval_plan': [
-                {'domain': (d if s == 'test' else f"{d}@train"),
+                {'domain': (d if s == 'test' else f"{d}@{s}"),
                  'count': c, 'zero_shot': z, 'split': s}
                 for d, c, z, s in eval_plan],
             'results': _summary,

@@ -1,0 +1,6 @@
+description: GADAR (joint_chain) trained on logistics alone
+base: _protocol.yaml
+expid: p2_sd_jc_logistics
+domains: logistics_ipcc
+featurization: joint_chain
+test_domains: logistics_ipcc@easy,logistics_ipcc@medium,logistics_ipcc@hard

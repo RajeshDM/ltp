@@ -1,0 +1,6 @@
+description: GADAR (joint_chain) trained on visitall alone
+base: _protocol.yaml
+expid: p2_sd_jc_visitall
+domains: visitall_ipcc
+featurization: joint_chain
+test_domains: visitall_ipcc@easy,visitall_ipcc@medium,visitall_ipcc@hard

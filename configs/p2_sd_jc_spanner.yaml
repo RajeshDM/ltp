@@ -1,0 +1,6 @@
+description: GADAR (joint_chain) trained on spanner alone
+base: _protocol.yaml
+expid: p2_sd_jc_spanner
+domains: spanner_ipcc
+featurization: joint_chain
+test_domains: spanner_ipcc@easy,spanner_ipcc@medium,spanner_ipcc@hard

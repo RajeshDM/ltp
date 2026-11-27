@@ -94,6 +94,20 @@ class PlannerConfig:
     # eval set for held-out domains, since the model never saw them).
     test_split: str = "test"
 
+
+# Evaluation splits -> pddlgym env-name suffix. 'test' / 'train' are the
+# original folders; the rest are the 2026-11 protocol (tools/install_splits.py:
+# <dom>_val_id, _val_ood, _test_easy, _test_medium, _test_hard).
+SPLIT_ENV_SUFFIX = {'test': 'Test', 'train': '', 'val_id': 'ValId',
+                    'val_ood': 'ValOod', 'easy': 'Easy', 'medium': 'Medium',
+                    'hard': 'Hard'}
+
+
+def split_env_suffix(split):
+    if split not in SPLIT_ENV_SUFFIX:
+        raise ValueError(f"unknown split {split!r} (valid: {sorted(SPLIT_ENV_SUFFIX)})")
+    return SPLIT_ENV_SUFFIX[split]
+
 @dataclass
 class PlannerMetrics:
     failures: Dict[int, List[int]]

@@ -423,7 +423,8 @@ def convert_state_and_run_model_val(model, states, action_space ,
 class PlannerTester:
     def __init__(self, config: PlannerConfig):
         self.config = config
-        _suffix = "Test" if getattr(config, "test_split", "test") == "test" else ""
+        from ploi.test_utils import split_env_suffix
+        _suffix = split_env_suffix(getattr(config, "test_split", "test"))
         self.env = pddlgym.make(f"PDDLEnv{config.domain_name}{_suffix}-v0")
         #self.non_optimal_planner_data = {}
         #self.optimal_planner_data = {}
@@ -907,7 +908,8 @@ class PlannerTester:
         # Each problem needs its own env instance (env.step mutates internal
         # state). Deepcopy from a single template so the PDDL domain file is
         # parsed once (pddlgym.make is the expensive part).
-        _suffix = "Test" if getattr(self.config, "test_split", "test") == "test" else ""
+        from ploi.test_utils import split_env_suffix
+        _suffix = split_env_suffix(getattr(self.config, "test_split", "test"))
         template_env = pddlgym.make(f"PDDLEnv{self.config.domain_name}{_suffix}-v0")
 
         def _fname_for(p):

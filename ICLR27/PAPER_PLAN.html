@@ -1,0 +1,684 @@
+<title>GADAR Paper Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a working research notebook - sticky contents rail on wide screens, one reading column, wide tables scroll in place. */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#18202b; --muted:#5b6676; --line:#d9dee6; --soft:#eef1f5;
+  --accent:#1f6f8b; --accent-2:#8a4fbf;
+  --ok:#2e7d4f; --warn:#a86a10; --bad:#b3384a; --info:#2f5fb3;
+  --e-lit:#8a94a3; --e-cand:#2f6fd0; --e-inst:#8a4fbf; --e-pre:#2e8b57; --e-add:#d08a1a; --e-del:#c2404f;
+  --e-type:#7a8a2a; --e-occ:#5d6b7a; --e-bind:#c23d9e; --e-en:#138a8a; --e-th:#d0451b; --e-eff:#b26d00;
+  --n-obj:#e6f0fb; --n-lit:#f1f3f6; --n-goal:#fdf1dc; --n-sym:#efe6fa; --n-occ:#e7f5ee; --n-sch:#dfeaf0;
+  --display:"Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --body:"Public Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#11161d; --panel:#18202a; --ink:#e4e9f0; --muted:#9aa6b6; --line:#2c3644; --soft:#1f2834;
+  --accent:#5fb3cf; --accent-2:#b78ae6;
+  --ok:#5cc489; --warn:#e0a54a; --bad:#ef7d8d; --info:#7ea6ef;
+  --e-lit:#7d8796; --e-cand:#6fa2f2; --e-inst:#b78ae6; --e-pre:#5cc489; --e-add:#f0b14d; --e-del:#ef7d8d;
+  --e-type:#b5c45a; --e-occ:#9aa6b6; --e-bind:#ec7fcf; --e-en:#4fd1d1; --e-th:#ff8a5c; --e-eff:#f2a73b;
+  --n-obj:#1d2f45; --n-lit:#222b37; --n-goal:#3a2f1a; --n-sym:#2e2442; --n-occ:#1c3529; --n-sch:#1d3340;
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#11161d; --panel:#18202a; --ink:#e4e9f0; --muted:#9aa6b6; --line:#2c3644; --soft:#1f2834;
+  --accent:#5fb3cf; --accent-2:#b78ae6;
+  --ok:#5cc489; --warn:#e0a54a; --bad:#ef7d8d; --info:#7ea6ef;
+  --e-lit:#7d8796; --e-cand:#6fa2f2; --e-inst:#b78ae6; --e-pre:#5cc489; --e-add:#f0b14d; --e-del:#ef7d8d;
+  --e-type:#b5c45a; --e-occ:#9aa6b6; --e-bind:#ec7fcf; --e-en:#4fd1d1; --e-th:#ff8a5c; --e-eff:#f2a73b;
+  --n-obj:#1d2f45; --n-lit:#222b37; --n-goal:#3a2f1a; --n-sym:#2e2442; --n-occ:#1c3529; --n-sch:#1d3340;
+  color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 var(--body);
+  padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px))}
+.wrap{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:36px;padding-block:28px 80px}
+@media (max-width:900px){.wrap{grid-template-columns:minmax(0,1fr)} nav.toc{position:static!important;max-height:none!important}}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);align-self:start;max-height:calc(100vh - 32px);overflow:auto;font-size:13.5px}
+nav.toc .brand{font:700 18px/1.2 var(--display);margin-bottom:4px}
+nav.toc .sub{color:var(--muted);font-size:12.5px;margin-bottom:14px}
+nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:4px 8px;border-radius:6px}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);background:var(--soft);outline:none}
+nav.toc .grp{margin-top:12px;font:600 11px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:0 8px 4px}
+main{min-width:0}
+h1{font:700 34px/1.15 var(--display);margin:0 0 6px;text-wrap:balance}
+h2{font:600 24px/1.25 var(--display);margin:56px 0 12px;padding-top:8px;border-top:1px solid var(--line);text-wrap:balance}
+h3{font:600 17px/1.3 var(--display);margin:28px 0 8px;text-wrap:balance}
+p,li{max-width:72ch}
+p{margin:8px 0}
+.lede{color:var(--muted);font-size:16px;max-width:78ch}
+code,.mono{font-family:var(--mono);font-size:.88em}
+code{background:var(--soft);padding:1px 5px;border-radius:4px}
+a{color:var(--accent)}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--muted);font-size:13px;margin:10px 0 18px}
+.meta b{color:var(--ink)}
+.grid{display:grid;gap:14px}
+.g3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.card h4{margin:0 0 6px;font:600 14px/1.3 var(--display)}
+.card p,.card li{font-size:14px}
+.card ul{margin:6px 0;padding-left:18px}
+.big{font:700 28px/1.1 var(--display);font-variant-numeric:tabular-nums}
+.pill{display:inline-block;font:600 11px/1 var(--body);letter-spacing:.04em;text-transform:uppercase;padding:4px 7px;border-radius:999px;border:1px solid currentColor;white-space:nowrap;vertical-align:middle}
+.p-done{color:var(--ok)} .p-run{color:var(--info)} .p-plan{color:var(--muted)} .p-risk{color:var(--warn)} .p-block{color:var(--bad)}
+.chip{display:inline-block;font:600 11.5px/1 var(--mono);padding:3px 6px;border-radius:5px;background:var(--soft);color:var(--ink);margin:1px 2px;white-space:nowrap}
+.tw{overflow-x:auto;margin:10px 0;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-weight:600;background:var(--soft);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+td.n,th.n{text-align:right}
+.hl{font-weight:700}
+.dim{color:var(--muted)}
+.note{border-left:3px solid var(--accent);background:var(--panel);padding:10px 14px;border-radius:0 8px 8px 0;margin:12px 0;max-width:80ch}
+.note.warn{border-left-color:var(--warn)} .note.bad{border-left-color:var(--bad)}
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 14px;font-size:14px}
+.kv dt{color:var(--muted)} .kv dd{margin:0}
+.tl{position:relative;margin:10px 0 0;padding-left:0;list-style:none}
+.tl li{display:grid;grid-template-columns:118px minmax(0,1fr);gap:14px;padding:10px 0;border-bottom:1px dashed var(--line);max-width:none}
+.tl .d{font:600 13px/1.4 var(--mono);color:var(--accent)}
+.tl .w b{font-family:var(--display)}
+/* graph explorer */
+.gx{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin:14px 0}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.tabs button{font:600 13px/1 var(--body);border:1px solid var(--line);background:var(--soft);color:var(--ink);padding:8px 11px;border-radius:8px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.gxgrid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:14px}
+@media (max-width:1050px){.gxgrid{grid-template-columns:minmax(0,1fr)}}
+.svgbox{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.svgbox svg{display:block;min-width:760px;width:100%;height:auto}
+.legend{display:grid;gap:4px;font-size:12.5px;margin-top:8px}
+.legend label{display:flex;align-items:center;gap:8px;cursor:pointer}
+.legend .sw{width:22px;height:0;border-top:3px solid;flex:0 0 22px}
+.legend .sw.dash{border-top-style:dashed}
+.side h4{font:600 14px/1.3 var(--display);margin:0 0 6px}
+.side .info{font-size:13px;background:var(--soft);border-radius:8px;padding:10px;min-height:120px}
+.side .info .mono{font-size:12px}
+.addlist{font-size:13px;padding-left:18px;margin:6px 0}
+.addlist li{margin:2px 0}
+.rowlabel{font:600 10.5px/1 var(--mono);fill:var(--muted);letter-spacing:.06em}
+svg text{font-family:var(--body)}
+.matrix td{text-align:center}
+.matrix td:first-child{text-align:left;white-space:nowrap}
+.yes{color:var(--ok);font-weight:700} .no{color:var(--muted)}
+.foot{margin-top:60px;color:var(--muted);font-size:13px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <div class="brand">GADAR paper plan</div>
+  <div class="sub">ICLR 2027 resubmission · living document</div>
+  <div class="grp">Now</div>
+  <a href="#status">Status at a glance</a>
+  <a href="#plan">12-day plan</a>
+  <a href="#decisions">Open decisions</a>
+  <div class="grp">Paper</div>
+  <a href="#tables">Tables we will report</a>
+  <a href="#experiments">Experiments → tables</a>
+  <a href="#compute">Compute inventory</a>
+  <a href="#rebuttal">Reviews and how we answer them</a>
+  <div class="grp">Method</div>
+  <a href="#methods">Representations, explained</a>
+  <a href="#explorer">Graph explorer</a>
+  <a href="#decoder">Decoder and constrained decoding</a>
+  <a href="#types">Typed vs untyped domains</a>
+  <div class="grp">Protocol</div>
+  <a href="#protocol">Train / validation / test</a>
+  <a href="#selection">Checkpoint selection and seeds</a>
+  <div class="grp">Record</div>
+  <a href="#findings">What we found, and when</a>
+  <a href="#interim">Interim numbers</a>
+  <a href="#where">Where things live</a>
+</nav>
+
+<main>
+<h1>GADAR: one policy for any PDDL domain</h1>
+<p class="lede">Plan, status and reference for the ICLR 2027 resubmission. It explains every representation we compare, lists every table the paper will contain and the experiment that fills it, tracks the reviewers' points, and records what we found along the way. Written so that it can be read cold a year from now.</p>
+<div class="meta"><span>Last updated <b>2026-11-27</b></span><span>Submission <b>2026-12-09</b> (12 days)</span><span>Branch <b class="mono">claude/wizardly-rubin-hqMug</b></span><span>Ledger <b class="mono">train_test_scripts/RUNS_STATUS.md</b></span></div>
+
+<!-- ============================ STATUS ============================ -->
+<h2 id="status">Status at a glance</h2>
+<div class="grid g3">
+  <div class="card"><h4>Phase</h4><p class="big" style="font-size:20px">Protocol built; smoke run, then launch</p><p>New splits installed in pddlgym; validation, selection and campaign jobs written. No paper number from before this protocol will be reported.</p></div>
+  <div class="card"><h4>Running now</h4><ul><li>Grid, Logistics, Rovers, Visitall, Gripper, Miconic: <span class="pill p-done">100% solved</span></li><li>Blocks: easy and hard solved; medium and validation re-running on a compatible node</li><li>Spanner: training extension 80/80, Val-ID 100/100, Val-OOD in progress</li></ul></div>
+  <div class="card"><h4>Next milestone</h4><p>Splits installed in pddlgym, validation selection wired, first in-domain seeds training on all GPU workers. Compute needed: ≈ 1,285 GPU-h of ≈ 1,500 available.</p><p class="dim">Target: 2026-11-28</p></div>
+</div>
+<div class="grid g3" style="margin-top:14px">
+  <div class="card"><h4>Tables</h4><p>3 in the main text (zero-shot, in-domain, ablation ladder), 8 in the appendix. <span class="pill p-done">0 final</span> All results due Dec 3.</p></div>
+  <div class="card"><h4>Representation bugs fixed</h4><p>2: single-effect schemas dropped (Miconic, Rovers); negative preconditions lost their sign (no suite domain affected).</p></div>
+  <div class="card"><h4>Protocol defects fixed</h4><p>6: state-level validation split, training-sized validation, loss-only checkpoint rule, Rovers test leakage, Blocks test sizes, batched evaluator ignoring the decoding constraint.</p></div>
+</div>
+
+<!-- ============================ PLAN ============================ -->
+<h2 id="plan">Plan: every result by Dec 3, one seed</h2>
+<p><b>Rule:</b> finish one seed end to end for every table first; a second seed starts only once every first-seed number exists. That leaves Dec 4–9 for analysis, bug fixes and writing. Compute: up to 17 concurrent GPUs (dgx2 4, gpu 4, eecs 4, dgxh 2, share 2, ampere 1). One seed is ≈ 650 GPU-h of training plus ≈ 60 of evaluation; the long pole is wall-clock: 38 multi-domain runs of ≈ 16–20 h.</p>
+<ol class="tl">
+  <li><span class="d">Nov 27</span><span class="w"><b>Protocol built.</b> Splits filtered, selected and installed (<span class="pill p-done">done</span>); validation from unseen problems, snapshot every 50 epochs, Val-OOD-coverage selection, 58 configs, campaign jobs (<span class="pill p-done">done</span>); end-to-end smoke run on Gripper (<span class="pill p-run">running</span>); Spanner Val-OOD plans (~2 h of LAMA) and typed training sets pre-collected on a CPU node (<span class="pill p-run">running</span>).</span></li>
+  <li><span class="d">Nov 27–28</span><span class="w"><b>Workers on all partitions.</b> GADAR per domain first (8 × ≈ 1.5 h): every domain through train → sweep → select → test within hours, so a pipeline bug costs hours. Then the long runs: all-8 and leave-one-out GADAR, leave-one-out UNION.</span></li>
+  <li><span class="d">Nov 28–Dec 1</span><span class="w"><b>Long runs.</b> 8 LOO GADAR, 8 LOO UNION, 1 all-8, 21 ladder runs (500 epochs, folds Blocks / Logistics / Visitall); GABAR per domain and the typed twins fill gaps. Each model is evaluated as soon as it finishes.</span></li>
+  <li><span class="d">Dec 2–3</span><span class="w"><b>Last evaluations, tables filled.</b> Rule baselines on the new bands (CPU). Organic Synthesis zero-shot. Every table from one generation of models and one rule.</span></li>
+  <li><span class="d">Dec 4–5</span><span class="w"><b>Analysis and fixes.</b> Anything off plan is diagnosed here. Second seed launched if the GPUs are free.</span></li>
+  <li><span class="d">Dec 5–9</span><span class="w"><b>Writing.</b> Method self-contained; terminology; appendix tables.</span></li>
+</ol>
+<div class="note warn"><b>Cut order if Dec 3 slips</b>: GOOSE comparison (E3) → typed twins (E6) → the ladder's "GADAR − effect" and "− chain" rows → GABAR on the domains where it already reaches 100% (Gripper, Miconic). <b>Never cut:</b> zero-shot GADAR and UNION on all 8 folds, the in-domain table, structural / lifted layer / + binding / − binding on all three ladder folds, the rule baselines.</div>
+
+<!-- ============================ DECISIONS ============================ -->
+<h2 id="decisions">Decisions (settled 2026-11-27)</h2>
+<div class="tw"><table>
+<thead><tr><th>Question</th><th>Decision</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td>Seeds</td><td>1 for everything; a second only after every first-seed number exists</td><td>a broken pipeline found late cannot be undone; finish end to end first</td></tr>
+<tr><td>Checkpoint rule</td><td>Best Val-OOD coverage over the snapshots, ties → earlier; same rule for GABAR</td><td>closest to what we report (coverage on larger problems); loss and coverage disagreed badly before</td></tr>
+<tr><td>Zero-shot selection</td><td>Mean Val-OOD coverage over the <i>training</i> domains; nothing from the held-out domain</td><td>strict "never-seen domain"</td></tr>
+<tr><td>Batch size</td><td>64 for every run, GABAR included</td><td>fits the time limits; fair comparison</td></tr>
+<tr><td>Ablation ladder</td><td>500 epochs, 3 folds: Blocks, Logistics, Visitall</td><td>Blocks alone is never sufficient; Logistics is the second hard domain</td></tr>
+<tr><td>Snapshots</td><td>Every 50 epochs, 10 per run, all kept</td><td>checkpoints are written every 10 epochs, so 25 would silently become 50</td></tr>
+<tr><td>Zero-shot statistic</td><td>The selected checkpoint (one number per fold)</td><td>a mean over all snapshots would add ≈ 100 GPU-h of test evaluation</td></tr>
+<tr><td>Typed twins (E6)</td><td>1 seed, both systems</td><td>a spelling check, not a headline</td></tr>
+<tr><td>Typed suite</td><td>Decided by E6's pre-registered reading</td><td>—</td></tr>
+</tbody></table></div>
+
+<!-- ============================ TABLES ============================ -->
+<h2 id="tables">Tables we will report</h2>
+<p><b>The story:</b> a policy that takes the domain description as input, alongside state and goal, chooses ground actions in PDDL domains it never saw in training, with no search. What makes it work is binding each applicable ground action to the parts of the domain description it instantiates.</p>
+<div class="grid g3">
+  <div class="card"><h4>Claim 1 · Capability (C1)</h4><p>One policy runs zero-shot on unseen domains, because the domain is data, not architecture.</p><p class="dim">Table 1</p></div>
+  <div class="card"><h4>Claim 2 · Mechanism (C2)</h4><p>The lifted description becomes usable for choosing actions only once ground applicability is bound to it.</p><p class="dim">Table 3, Prop. 1</p></div>
+  <div class="card"><h4>Claim 3 · No cost</h4><p>Dropping symbol identity loses nothing in-domain, and one model replaces eight.</p><p class="dim">Table 2</p></div>
+</div>
+<p class="dim" style="margin-top:10px">C3 (ranking vs value regression), C4 (compiled vs joint) and C5 (transfer analysis) have no experiment in this round: future work in the text, not implied. Training speed is <i>not</i> a claim unless the measured GPU-hours support it: one seven-domain run (10–27 h) costs more than eight single-domain runs (8–12 h).</p>
+<p>Every cell below: test coverage (% of 50 problems solved within 500 steps, revisits blocked), constrained decoding, checkpoint chosen on validation, mean ± standard deviation over 3 seeds unless marked.</p>
+
+<h3>Table 1 · Zero-shot on a domain never seen in training <span class="pill p-plan">main · headline</span></h3>
+<p>Leave one domain out, train on the other seven, test on the held-out one. The checkpoint is chosen on the <i>training</i> domains' Val-OOD; nothing from the target domain is used. Organic Synthesis is tested with the all-8 models of Table 2.</p>
+<div class="tw"><table>
+<thead><tr><th>Held-out domain</th><th class="n">Random</th><th class="n">Goal-feature rule</th><th class="n">UNION</th><th class="n">GADAR</th></tr></thead>
+<tbody>
+<tr><td>Blocks · Gripper · Miconic · Visitall · Grid · Logistics · Spanner · Rovers (hard band; easy and medium in appendix)</td><td class="n dim">—</td><td class="n dim">—</td><td class="n dim">1 seed</td><td class="n dim">3 seeds</td></tr>
+<tr><td>Organic Synthesis (IPC 2018, 20 problems)</td><td class="n dim">—</td><td class="n dim">—</td><td class="n dim">cannot run</td><td class="n dim">3 seeds</td></tr>
+<tr><td class="hl">Mean</td><td class="n dim">—</td><td class="n dim">—</td><td class="n dim">—</td><td class="n dim">—</td></tr>
+</tbody></table></div>
+<p class="dim">UNION cannot run on Organic Synthesis: its vocabulary has no slots for the new symbols. That is the point of the control.</p>
+
+<h3>Table 2 · In-domain size generalization <span class="pill p-plan">main</span></h3>
+<p>Trained on small problems, tested on larger ones of the same domain. Columns 1 vs 2: does dropping symbol names cost anything? Columns 2 vs 3: does sharing one model across eight domains cost anything?</p>
+<div class="tw"><table>
+<thead><tr><th>Domain (hard band)</th><th class="n">GABAR, per domain</th><th class="n">GADAR, per domain</th><th class="n">GADAR, one model on all 8</th></tr></thead>
+<tbody>
+<tr><td>Blocks · Gripper · Miconic · Visitall · Grid · Logistics · Spanner · Rovers</td><td class="n dim">—</td><td class="n dim">—</td><td class="n dim">—</td></tr>
+<tr><td class="hl">Mean</td><td class="n dim">—</td><td class="n dim">—</td><td class="n dim">—</td></tr>
+</tbody></table></div>
+
+<h3>Table 3 · What makes zero-shot work <span class="pill p-plan">main</span></h3>
+<p>Three folds (held out: Blocks, Visitall, Grid), one seed, in-domain (hard band, mean over the 7 training domains) and zero-shot (hard band of the held-out domain). The top block adds one idea per row; the bottom block removes one component from the full model.</p>
+<div class="tw"><table>
+<thead><tr><th>Representation</th><th>names</th><th>domain description</th><th>bind</th><th>chain</th><th>effect</th><th>goal</th><th class="n">in-domain</th><th class="n">zero-shot</th></tr></thead>
+<tbody>
+<tr><td>UNION</td><td>in weights</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="n dim">from T1 runs</td><td class="n dim">from T1 runs</td></tr>
+<tr><td>Structural</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="n dim">—</td><td class="n dim">—</td></tr>
+<tr><td>Lifted layer (<span class="mono">joint_lite</span>)</td><td class="no">–</td><td>unbound</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="n dim">—</td><td class="n dim">—</td></tr>
+<tr><td>+ binding (<span class="mono">joint</span>)</td><td class="no">–</td><td>bound</td><td class="yes">✓</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="n dim">—</td><td class="n dim">—</td></tr>
+<tr><td class="hl">GADAR (full)</td><td class="no">–</td><td>bound</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="n dim">from T1 runs</td><td class="n dim">from T1 runs</td></tr>
+<tr><td>GADAR − binding</td><td class="no">–</td><td>unbound</td><td class="no">–</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="n dim">—</td><td class="n dim">—</td></tr>
+<tr><td>GADAR − chain</td><td class="no">–</td><td>bound</td><td class="yes">✓</td><td class="no">–</td><td class="yes">✓</td><td class="yes">✓</td><td class="n dim">—</td><td class="n dim">—</td></tr>
+<tr><td>GADAR − effect</td><td class="no">–</td><td>bound</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">–</td><td class="yes">✓</td><td class="n dim">—</td><td class="n dim">—</td></tr>
+<tr><td>GADAR − goal</td><td class="no">–</td><td>bound</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">–</td><td class="n dim">—</td><td class="n dim">—</td></tr>
+</tbody></table></div>
+<p>How to read it: UNION → structural asks whether names transfer; structural → lifted layer asks whether the domain description itself helps (this is what Claim 1's "the domain is data" means); lifted layer → + binding is Claim 2. <b>Risk, recorded in advance:</b> if structural comes close to GADAR zero-shot, Claim 2 weakens, and we report it. Structural in-domain on Miconic was 43.7 vs 100 (it cannot tell <span class="mono">origin</span>, <span class="mono">destin</span> and <span class="mono">above</span> apart), which argues against it.</p>
+
+<h3>Appendix tables</h3>
+<div class="grid g2">
+  <div class="card"><h4>A1 · Splits per domain <span class="pill p-done">decided</span></h4><p>The protocol table below, with problem counts actually collected and LAMA plan lengths.</p></div>
+  <div class="card"><h4>A2 · Per-band results</h4><p>Easy, medium and hard bands for Tables 1 and 2; Val-ID and Val-OOD for reference.</p></div>
+  <div class="card"><h4>A3 · Rule baselines in full <span class="pill p-risk">old sets</span></h4><p>Random, achieve rule, goal-feature rule on every band, with the policy's executor and step bound (reviewer point B).</p></div>
+  <div class="card"><h4>A4 · Decoding <span class="pill p-done">data exists</span></h4><p>Unconstrained vs constrained for GABAR and GADAR; wider-beam results. Why legal-action construction was the Rovers/Logistics bottleneck.</p></div>
+  <div class="card"><h4>A5 · Type spelling (E6) <span class="pill p-plan">planned</span></h4><p>Grid and Logistics, untyped vs typed, both systems, 3 seeds.</p></div>
+  <div class="card"><h4>A6 · Published GABAR vs ours</h4><p>Published numbers beside GABAR re-run under this protocol, labelled as different protocols.</p></div>
+  <div class="card"><h4>A7 · Data, cost, hyperparameters</h4><p>Problems and labelled states per domain; GPU-hours per run (single vs all-8 vs seven-domain); batch 64, lr 5e-4, 9 rounds, hidden 64, beam 2 × 3, snapshot every 50 epochs, 500 epochs.</p></div>
+  <div class="card"><h4>A8 · LAMA reference</h4><p>LAMA coverage and seconds per problem on every band, beside the policy's wall-clock (reviewer point E).</p></div>
+</div>
+
+<!-- ============================ EXPERIMENTS ============================ -->
+<h2 id="experiments">Experiments → tables</h2>
+<div class="tw"><table>
+<thead><tr><th>ID</th><th>What runs</th><th>Answers</th><th>Fills</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td class="mono">SPLITS</td><td>New Val-ID, Val-OOD and test bands; LAMA filter; install</td><td>reviewer C, our protocol defects</td><td>every table, A1, A8</td><td><span class="pill p-run">running</span></td></tr>
+<tr><td class="mono">ZS-LOO</td><td>8 folds × {GADAR × 3 seeds, UNION × 1}</td><td>Claim 1</td><td>T1; T3 rows UNION and GADAR</td><td><span class="pill p-plan">after splits</span></td></tr>
+<tr><td class="mono">ZS-OS</td><td>All-8 models on Organic Synthesis</td><td>Claim 1; reviewer H</td><td>T1 last row</td><td><span class="pill p-risk">pipeline support unverified</span></td></tr>
+<tr><td class="mono">ID-GABAR</td><td>GABAR, 8 domains × 3 seeds</td><td>Claim 3; reviewer C</td><td>T2 col 1, A6</td><td><span class="pill p-plan">after splits</span></td></tr>
+<tr><td class="mono">ID-GADAR</td><td>GADAR, 8 domains × 3 seeds</td><td>Claim 3</td><td>T2 col 2</td><td><span class="pill p-plan">after splits</span></td></tr>
+<tr><td class="mono">ID-ALL8</td><td>One GADAR on all 8 × 3 seeds</td><td>Claim 3</td><td>T2 col 3; ZS-OS</td><td><span class="pill p-plan">after splits</span></td></tr>
+<tr><td class="mono">LADDER</td><td>7 rungs × 3 folds × 1 seed</td><td>Claim 2; reviewer A</td><td>T3</td><td><span class="pill p-plan">after splits</span></td></tr>
+<tr><td class="mono">RULES</td><td>Random, achieve, features rules on every band</td><td>reviewer B</td><td>T1 cols 1–2, A3</td><td><span class="pill p-risk">done on old sets</span></td></tr>
+<tr><td class="mono">E6</td><td>Typed Grid/Logistics, both systems × 3 seeds</td><td>does type spelling matter</td><td>A5; decides suite</td><td><span class="pill p-plan">converter ready</span></td></tr>
+<tr><td class="mono">DEC</td><td>Constrained vs unconstrained; beam width</td><td>why Rovers/Logistics failed</td><td>A4</td><td><span class="pill p-done">done</span></td></tr>
+<tr><td class="mono">E3</td><td>GOOSE domain-independent + GBFS</td><td>reviewer E</td><td>related work</td><td><span class="pill p-risk">stretch</span></td></tr>
+</tbody></table></div>
+
+<!-- ============================ COMPUTE ============================ -->
+<h2 id="compute">Compute inventory</h2>
+<p>Everything that still has to run, in dependency order. GPU-hour figures are estimates from measured times (GADAR single-domain at batch 64 ≈ 1.25 h; seven-domain ≈ 10–27 h, taken as 16 h; batched constrained evaluation ≈ 1.5 min per small Val-OOD split and ≈ 10 min per test band). Measure the first run of each kind and correct this table.</p>
+
+<h3>1 · Code that must exist before any GPU job <span class="pill p-done">written Nov 27</span></h3>
+<div class="tw"><table>
+<thead><tr><th>Item</th><th>What</th><th>Where</th></tr></thead>
+<tbody>
+<tr><td>Split install</td><td>Pick 50 per split (existing test problems first), write <span class="mono">&lt;dom&gt;_val_id</span>, <span class="mono">_val_ood</span>, <span class="mono">_test_easy/_medium/_hard</span> folders in the pddlgym fork and register them; typed Grid/Logistics copies of every split</td><td><span class="mono">tools/install_splits.py</span>; manifest in <span class="mono">campaign/reports/splits_manifest.json</span></td></tr>
+<tr><td>Split flags</td><td><span class="chip">@val_id</span><span class="chip">@val_ood</span><span class="chip">@easy</span><span class="chip">@medium</span><span class="chip">@hard</span> in <span class="mono">--test-domains</span> and the tester's environment-name mapping</td><td><span class="mono">ploi/test_utils.split_env_suffix</span></td></tr>
+<tr><td>Problem-level validation loss</td><td>Teacher-forced loss on Val-ID and Val-OOD expert states (LAMA plans from the filter), replacing the 10%-of-states split; logged per epoch</td><td><span class="mono">--val-protocol split</span> (main.py, traineval.py)</td></tr>
+<tr><td>Snapshots</td><td>Keep a checkpoint every 50 epochs (10 per run) under a key that cannot collide with old runs (<span class="mono">vp</span>)</td><td><span class="mono">--checkpoint-every 50 --max-periodic 10</span></td></tr>
+<tr><td>Selection tool</td><td>Val-OOD coverage sweep over snapshots → best (ties → earlier); for leave-one-out, mean over the training domains. Generalizes <span class="mono">tools/crossfold_select.py</span></td><td><span class="mono">tools/select_checkpoint.py</span>, <span class="mono">--test-epochs</span>, <span class="mono">campaign/jobs/protocol_eval.sh</span></td></tr>
+<tr><td>Organic Synthesis</td><td>Each problem ships its own domain file; the pipeline assumes one domain per environment. Check pddlgym parses it, run <span class="mono">tools/audit_featurizer.py</span>, add per-problem domain loading if needed</td><td><span class="pill p-plan">still to do</span></td></tr>
+<tr><td>Manifest</td><td>Regenerate <span class="mono">campaign/manifest.yaml</span> for the jobs below; retire the old held E2/cdec jobs (archive, don't delete)</td><td><span class="mono">campaign/make_manifest.py</span> (protocol_jobs)</td></tr>
+<tr><td>Smoke run</td><td>Gripper end to end: train 100 epochs, sweep, select, test all bands</td><td><span class="pill p-run">running</span></td></tr>
+</tbody></table></div>
+
+<h3>2 · Data collection (CPU allocations, not GPU) <span class="pill p-run">in progress</span></h3>
+<div class="tw"><table>
+<thead><tr><th>Job</th><th>What</th><th class="n">Cost</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>LAMA filter</td><td>All candidates of every split, 8 domains</td><td class="n">≈ 10 CPU-node-h</td><td><span class="pill p-run">6 of 8 done; Blocks, Spanner running</span></td></tr>
+<tr><td>Spanner training extension</td><td>Plans for the new 7–8-nut training problems into the Spanner training cache (rebuild its cache and featurized sidecars)</td><td class="n">&lt; 1 h</td><td><span class="pill p-done">plans solved</span></td></tr>
+<tr><td>Validation states</td><td>Expert states and actions of Val-ID and Val-OOD per domain, from the LAMA plans</td><td class="n">&lt; 1 h</td><td><span class="pill p-plan">after install</span></td></tr>
+<tr><td>Typed twins</td><td>Grid and Logistics training sets and all splits in typed spelling; plans reused (same actions, verified)</td><td class="n">&lt; 1 h</td><td><span class="pill p-plan">converter ready</span></td></tr>
+<tr><td>Organic Synthesis</td><td>Fetch 20 IPC 2018 problems; LAMA reference</td><td class="n">&lt; 1 h</td><td><span class="pill p-plan">planned</span></td></tr>
+<tr><td>Rule baselines</td><td>Random, achieve, features on every band (no model, no GPU)</td><td class="n">≈ 4 CPU-node-h</td><td><span class="pill p-plan">after install</span></td></tr>
+</tbody></table></div>
+<p class="dim">Featurized graph caches for each representation are built inside the first training job that needs them; their cost is in the training rows.</p>
+
+<h3>3 · Training (GPU, one seed)</h3>
+<div class="tw"><table>
+<thead><tr><th>Job</th><th class="n">Runs</th><th class="n">h / run</th><th class="n">GPU-h</th><th>Fills</th></tr></thead>
+<tbody>
+<tr><td>GADAR per domain</td><td class="n">8</td><td class="n">≈ 1.5</td><td class="n">12</td><td>T2</td></tr>
+<tr><td>GABAR per domain</td><td class="n">8</td><td class="n">≈ 2.5</td><td class="n">20</td><td>T2</td></tr>
+<tr><td>Typed Grid/Logistics, both systems</td><td class="n">4</td><td class="n">≈ 2.5</td><td class="n">10</td><td>A5</td></tr>
+<tr><td>GADAR on all 8</td><td class="n">1</td><td class="n">≈ 26</td><td class="n">26</td><td>T2, T1 (Organic Synthesis)</td></tr>
+<tr><td>Leave-one-out GADAR</td><td class="n">8</td><td class="n">≈ 16–20</td><td class="n">145</td><td>T1, T3</td></tr>
+<tr><td>Leave-one-out UNION</td><td class="n">8</td><td class="n">≈ 16–20</td><td class="n">145</td><td>T1, T3</td></tr>
+<tr><td>Ladder: 7 rungs × 3 folds, 500 epochs</td><td class="n">21</td><td class="n">≈ 14–18</td><td class="n">340</td><td>T3</td></tr>
+<tr><td class="hl">Training total</td><td class="n">58</td><td></td><td class="n hl">≈ 700</td><td></td></tr>
+</tbody></table></div>
+
+<h3>4 · Evaluation (GPU, batched constrained decoder)</h3>
+<p>Per model: a sweep of its 10 snapshots on every training domain's Val-OOD, the selection, then the chosen snapshot on the test bands (<span class="mono">campaign/jobs/protocol_eval.sh</span>). ≈ 0.5 h per single-domain model, ≈ 2–3 h per multi-domain model: ≈ 120 GPU-h in all.</p>
+
+<div class="grid g2" style="margin-top:12px">
+  <div class="card"><h4>Total vs capacity</h4><p class="big">≈ 820 GPU-h</p><p>17 GPUs × 24 h ≈ 400 GPU-h/day when all partitions grant, so ≈ 2–3 days of compute; the 16–20 h runs set the finish line, not the total.</p></div>
+  <div class="card"><h4>Biggest uncertainties</h4><ul><li>Seven-domain run length (10–27 h measured): measure on the first fold.</li><li>Queue waits on dgx2/gpu/eecs: the campaign takes whatever is granted.</li><li>Spanner Val-OOD planning (~2 h of LAMA) gates 42 of 58 runs until pre-collection finishes.</li></ul></div>
+</div>
+
+<!-- ============================ REBUTTAL ============================ -->
+<h2 id="rebuttal">Reviews and how we answer them</h2>
+<p>ICLR 2027 scores 1 / 1 / 2 (reviewers HhM5, QEpz, 9YTx). The next version is an independent paper: these answers shape the experiments and the text, but the paper does not argue with the old reviews.</p>
+<div class="tw"><table>
+<thead><tr><th>#</th><th>Point</th><th>Who</th><th>How it is answered</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>A</td><td>Components never separated: which of binding, chain, effect, goal matters?</td><td>QEpz, 9YTx</td><td>Table 3: the ladder (structural → lifted layer → + binding → full) and leave-one-component-out, three folds, in-domain and zero-shot</td><td><span class="pill p-plan">LADDER</span></td></tr>
+<tr><td>B</td><td>A non-learned ranking by the hand-coded goal features might match GADAR</td><td>QEpz</td><td>Rule baselines as columns of Table 1 and in full in A3. Old sets: the features rule beat GADAR zero-shot on Blocks (8.5 vs 3.0); on Miconic, Visitall, Spanner it reached 40–60% where GADAR reached 0: the information is in the graph, the network did not use it zero-shot</td><td><span class="pill p-risk">re-run on new bands</span></td></tr>
+<tr><td>C</td><td>In-domain numbers far below published GABAR; is the pipeline sound? Re-run GABAR on your split</td><td>QEpz</td><td>GABAR re-run under the same protocol (Table 2). Found: the evaluator's beam proposed actions that do not exist; constrained decoding lifts Rovers 7.4 → 46.3 (GABAR) and 20.4 → 57.4 (GADAR). Validation, checkpoint rule and test-set defects fixed</td><td><span class="pill p-run">protocol rebuilt</span></td></tr>
+<tr><td>D</td><td>Does training on satisficing (LAMA-first) plans matter?</td><td>HhM5</td><td>Optimal-plan runs on Logistics/Rovers: no gain for either system (GABAR Logistics 0.0 both, Rovers 7.4 vs 5.6). Report in appendix</td><td><span class="pill p-done">answered</span></td></tr>
+<tr><td>E</td><td>No comparison with heuristic search (GOOSE, LAMA)</td><td>all three</td><td>LAMA coverage and time per problem from the filtering runs (A8); GOOSE as a stretch; the text must not imply a comparison we did not run</td><td><span class="pill p-run">partial</span></td></tr>
+<tr><td>F</td><td>UNION "trained 100 epochs vs 500"</td><td>QEpz</td><td>Text error: every UNION model trained 500 epochs. Fix the appendix line</td><td><span class="pill p-done">text fix</span></td></tr>
+<tr><td>G</td><td>Method not self-contained (loss, decoder, arity); non-standard terminology ("construct grounded actions")</td><td>HhM5</td><td>Rewrite the method so it stands without the GABAR paper: decoder output, cross-entropy over nodes, arity at train vs test time; planning terms (add/delete effects, plan, ground action)</td><td><span class="pill p-plan">writing</span></td></tr>
+<tr><td>H</td><td>Evaluate grounding-heavy domains (Caldera, Organic Synthesis, IPC 2018)</td><td>a reviewer</td><td>Organic Synthesis zero-shot in Table 1 (20 problems, each with its own domain file, a natural fit for a model that takes the domain as input). Caldera excluded: conditional effects are outside the representation; say so. Clarify that we ground only the states we visit, not the whole task</td><td><span class="pill p-plan">ZS-OS</span></td></tr>
+<tr><td>I</td><td>Evaluate on the IPC 2023 learning track for comparability with GOOSE</td><td>a reviewer</td><td>Deferred: it compares against search, our setting has none; the track's training sets differ from ours. Discuss in limitations</td><td><span class="pill p-risk">text only</span></td></tr>
+<tr><td>J</td><td>What is the strength of outputting a ground action rather than a heuristic value?</td><td>a reviewer</td><td>No search at test time: one forward pass per step; report wall-clock against LAMA. Ranking-not-regression argument (C3) with external evidence</td><td><span class="pill p-plan">writing + E0b</span></td></tr>
+</tbody></table></div>
+<div class="note bad"><b>Errors in the submitted paper we found ourselves</b> (fix regardless): the "GADAR-BIND" rung that was run had no binding edges (it was <span class="mono">joint_lite</span>); UNION epochs; "testing on 300 problems each"; Rovers test set contained 4 training problems; Blocks tested sizes 6–25 instead of 11–40; seven-domain GADAR/BIND models were trained with the single-effect bug; Table 2 used a checkpoint rule that is effectively lowest training loss.</div>
+
+<!-- ============================ METHODS ============================ -->
+<h2 id="methods">Representations, explained</h2>
+<p>All systems share one pipeline: a PDDL state becomes a graph, a graph neural network encodes it, and a GRU decoder picks an action schema, then each of its arguments. They differ only in the graph. The table lists what each graph contains; the explorer below draws them on one Miconic state.</p>
+<div class="tw"><table class="matrix">
+<thead><tr><th>Representation (code name)</th><th>Symbol names as features</th><th>Lifted symbol nodes</th><th>Type compilation</th><th>Occurrence nodes</th><th>Binding edges</th><th>Chain edges</th><th>Effect edges</th><th>Goal features</th><th>Unseen domain?</th></tr></thead>
+<tbody>
+<tr><td>GABAR (<span class="mono">per_domain</span>)</td><td class="yes">✓</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">no</td></tr>
+<tr><td>UNION (<span class="mono">union</span>)</td><td class="yes">✓ (union of training vocabularies)</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="dim">runs, new symbols get no slot</td></tr>
+<tr><td>Structural (<span class="mono">structural</span>)</td><td class="no">– (classes: arity, static)</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="yes">yes</td></tr>
+<tr><td>Lifted layer (<span class="mono">joint_lite</span>)</td><td class="no">–</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="yes">yes</td></tr>
+<tr><td>+ binding (<span class="mono">joint</span>)</td><td class="no">–</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="yes">yes</td></tr>
+<tr><td>GADAR (<span class="mono">joint_chain</span>)</td><td class="no">–</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">yes</td></tr>
+</tbody></table></div>
+<div class="note"><b>Naming trap.</b> In the code and the old tools, "BIND" meant <span class="mono">joint_lite</span>, which has <i>no</i> binding edges. The paper described BIND as having occurrence nodes and binding edges, which is <span class="mono">joint</span>. From now on rungs are named by content: lifted layer, + binding, full.</div>
+
+<h3 id="explorer">Graph explorer</h3>
+<p>One Miconic state: a lift with two floors and one passenger. The lift is at <span class="mono">f0</span>, the passenger <span class="mono">p0</span> waits at <span class="mono">f0</span> and wants to go to <span class="mono">f1</span>; the goal is <span class="mono">served(p0)</span>. Applicable now: <span class="mono">board(f0, p0)</span> and <span class="mono">up(f0, f1)</span>. Pick a representation; click any node to see its features in that representation. Use the legend to hide edge kinds.</p>
+<div class="gx">
+  <div class="tabs" role="group" aria-label="Representation">
+    <button type="button" data-mode="gabar">GABAR</button>
+    <button type="button" data-mode="union">UNION</button>
+    <button type="button" data-mode="structural">Structural</button>
+    <button type="button" data-mode="joint_lite">Lifted layer</button>
+    <button type="button" data-mode="joint">+ Binding</button>
+    <button type="button" data-mode="joint_chain">GADAR (full)</button>
+  </div>
+  <div class="gxgrid">
+    <div>
+      <div class="svgbox"><svg id="gsvg" viewBox="0 0 1000 660" role="img" aria-label="State graph for the selected representation"></svg></div>
+      <p class="dim" style="font-size:12.5px;margin-top:6px">Type preconditions (e.g. <span class="mono">board.pre:__type_floor</span>) and the occurrences of <span class="mono">down</span> exist in the lifted modes but are left out of the drawing for legibility. Chain edges show a representative subset.</p>
+    </div>
+    <div class="side">
+      <h4 id="modeTitle">GABAR</h4>
+      <p id="modeText" style="font-size:13.5px;margin:0 0 6px"></p>
+      <ul class="addlist" id="modeAdds"></ul>
+      <h4 style="margin-top:12px">Selected node</h4>
+      <div class="info" id="nodeInfo">Click a node in the graph.</div>
+      <h4 style="margin-top:12px">Edges</h4>
+      <div class="legend" id="legend"></div>
+    </div>
+  </div>
+</div>
+
+<h3 id="decoder">Decoder and constrained decoding</h3>
+<p>The decoder scores schema nodes against its hidden state and keeps the best 2; for each, it scores object nodes for the first argument and keeps the best 3, then the next argument given the first, and so on. The beam is not pruned, so a step proposes up to 2 × 3<sup>arity</sup> candidates (Miconic 18, Rovers up to 1,458). The executor takes the best-ranked candidate that is applicable and not a revisit, and stops if none is applicable.</p>
+<div class="grid g2">
+  <div class="card"><h4>Unconstrained</h4><p>Each argument's top 3 objects are chosen by score alone. In Rovers, where actions take up to six mutually dependent arguments, most candidates are impossible combinations: GABAR's top candidate was applicable on 25% of steps, GADAR's on 44%. When no candidate is applicable the episode ends.</p></div>
+  <div class="card"><h4>Constrained (<span class="mono">GABAR_CONSTRAINED_DECODE=1</span>)</h4><p>Before each argument's top-3, objects that no applicable ground action allows in that slot (given the arguments already chosen) get score −∞. Scores still decide among legal objects; every candidate is applicable. Uses only the applicable ground actions the graph is built from. Batched and sequential decoders give identical candidate lists (0 mismatches on 600+ Rovers states) and identical results.</p></div>
+</div>
+<svg viewBox="0 0 900 230" style="width:100%;max-width:900px;height:auto;margin-top:10px" role="img" aria-label="Beam with and without the constraint">
+  <g font-size="12" fill="var(--ink)">
+    <rect x="20" y="20" width="160" height="34" rx="7" fill="var(--n-sch)" stroke="var(--line)"/><text x="100" y="42" text-anchor="middle">schema: navigate</text>
+    <rect x="250" y="8" width="150" height="28" rx="6" fill="var(--n-obj)" stroke="var(--line)"/><text x="325" y="27" text-anchor="middle">rover1</text>
+    <rect x="250" y="46" width="150" height="28" rx="6" fill="var(--n-obj)" stroke="var(--line)"/><text x="325" y="65" text-anchor="middle">rover2</text>
+    <line x1="180" y1="37" x2="250" y2="22" stroke="var(--e-cand)" stroke-width="2"/><line x1="180" y1="37" x2="250" y2="60" stroke="var(--e-cand)" stroke-width="2"/>
+    <rect x="470" y="8" width="170" height="28" rx="6" fill="var(--n-obj)" stroke="var(--line)"/><text x="555" y="27" text-anchor="middle">from: waypoint3 ✓</text>
+    <rect x="470" y="46" width="170" height="28" rx="6" fill="var(--n-obj)" stroke="var(--line)" stroke-dasharray="4 3"/><text x="555" y="65" text-anchor="middle" fill="var(--bad)">from: waypoint9 ✗</text>
+    <line x1="400" y1="22" x2="470" y2="22" stroke="var(--e-cand)" stroke-width="2"/><line x1="400" y1="22" x2="470" y2="60" stroke="var(--e-cand)" stroke-width="2"/>
+    <rect x="700" y="8" width="180" height="28" rx="6" fill="var(--n-obj)" stroke="var(--line)"/><text x="790" y="27" text-anchor="middle">to: waypoint5 ✓</text>
+    <line x1="640" y1="22" x2="700" y2="22" stroke="var(--e-cand)" stroke-width="2"/>
+    <text x="20" y="110" font-weight="600">Unconstrained:</text><text x="130" y="110">rover1 is at waypoint3, but "waypoint9" scores high on relevance and takes a beam slot; the candidate cannot be executed.</text>
+    <text x="20" y="140" font-weight="600">Constrained:</text><text x="130" y="140">for (navigate, rover1) only waypoint3 is allowed in the "from" slot; waypoint9 gets −∞ and the slot goes to a legal object.</text>
+    <text x="20" y="180" fill="var(--muted)">Result on Rovers (54 test problems, one seed): GABAR 7.4 → 46.3, GADAR alone 20.4 → 57.4, random policy 30.9.</text>
+    <text x="20" y="205" fill="var(--muted)">Wider beams are no substitute: 9 schemas × 3 objects lifts GABAR only to 13.0; 5 objects per slot runs ~19 h per evaluation.</text>
+  </g>
+</svg>
+
+<h3 id="types">Typed vs untyped domains</h3>
+<p>Six suite domains declare PDDL types (Blocks, Gripper, Miconic, Visitall, Spanner, Rovers); Grid and Logistics spell types as unary predicates. GABAR never mixes them. GADAR does, so its lifted layer <b>compiles declared types into unary static predicates</b>: a parameter <span class="mono">?x - block</span> becomes a precondition <span class="mono">(block ?x)</span>, and every object gets a <span class="mono">has_type</span> edge to its type's symbol node. The two spellings then produce the same domain description (unit test <span class="mono">test_typed_and_predicate_typed_domains_agree_structurally</span>).</p>
+<p>One residual difference: in an untyped domain each type fact, such as <span class="mono">(truck t1)</span>, is also a ground literal node in the state graph. E6 tests whether that matters, using behaviour-identical typed twins of Grid and Logistics (<span class="mono">tools/convert_to_typed.py</span>; Logistics' <span class="mono">airport</span> stays a predicate to avoid a type hierarchy).</p>
+
+<!-- ============================ PROTOCOL ============================ -->
+<h2 id="protocol">Train / validation / test</h2>
+<p>The on-disk training sets are the base and stay unchanged (Spanner extended to 8 nuts). Validation and test sets are new: 50 problems each, test bands stop at today's largest test sizes. Built by <span class="mono">tools/build_splits.py</span> from existing test problems first, then the unused pools, then <span class="mono">pddl-generators</span>; de-duplicated against everything; same file format as the existing problems; LAMA-solved (Spanner test bands excepted: valid by construction, LAMA times out).</p>
+<div class="tw"><table>
+<thead><tr><th>Domain (size measure)</th><th>Train</th><th>Val-ID</th><th>Val-OOD</th><th>Easy</th><th>Medium</th><th>Hard</th></tr></thead>
+<tbody>
+<tr><td>Blocks (blocks)</td><td>6–9</td><td>6–9</td><td>10</td><td>11–20</td><td>21–30</td><td>31–40</td></tr>
+<tr><td>Gripper (balls)</td><td>5–25</td><td>5–25</td><td>26–30</td><td>31–50</td><td>51–75</td><td>76–100</td></tr>
+<tr><td>Miconic (passengers)</td><td>1–12</td><td>1–12</td><td>13–19</td><td>20–40</td><td>41–60</td><td>61–100</td></tr>
+<tr><td>Visitall (cells)</td><td>9–49</td><td>9–49</td><td>50–64</td><td>65–144</td><td>145–225</td><td>226–400</td></tr>
+<tr><td>Grid (cells)</td><td>9–63</td><td>9–63</td><td>64–80</td><td>81–100</td><td>101–125</td><td>126–154</td></tr>
+<tr><td>Logistics (cities)</td><td>5–13</td><td>5–13</td><td>14–15</td><td>16–20</td><td>21–25</td><td>26–30</td></tr>
+<tr><td>Spanner (nuts)</td><td>3–8</td><td>3–8</td><td>9–10</td><td>11–12</td><td>13–14</td><td>15–16</td></tr>
+<tr><td>Rovers (waypoints)</td><td>3–12</td><td>3–12</td><td>13–15</td><td>16–30</td><td>31–50</td><td>51–70</td></tr>
+<tr><td>Organic Synthesis</td><td colspan="3" class="dim">none (zero-shot only)</td><td colspan="3">20 IPC 2018 problems, one domain file each</td></tr>
+</tbody></table></div>
+
+<h3 id="selection">Checkpoint selection and seeds</h3>
+<div class="grid g2">
+  <div class="card"><h4>Why the old rule failed</h4><ul><li>Validation was 10% of training <i>states</i>, split after pooling: same problems, often one step apart.</li><li>Validation was training-sized; we report coverage on problems 2–8× larger.</li><li>Epoch losses are sums over batches and training is ~9× validation, so "combined loss" was effectively lowest training loss.</li><li>Coverage swings between nearby checkpoints: batch-64 Miconic was 34.5% at epoch 490 and 100% at epoch 470.</li></ul></div>
+  <div class="card"><h4>The new rule</h4><ul><li>Snapshot every 50 epochs (10 per run).</li><li>Two validation signals: teacher-forced loss on Val-ID (same size, unseen problems) and on Val-OOD (larger); coverage on Val-OOD by rollout.</li><li>Report the snapshot with best Val-OOD coverage (ties → earlier), fixed before any test number is read. Same rule for GABAR.</li><li>3 seeds, mean ± std.</li><li>Zero-shot: no data from the target domain at all, selection on the training domains' validation sets.</li></ul></div>
+</div>
+
+<!-- ============================ FINDINGS ============================ -->
+<h2 id="findings">What we found, and when</h2>
+<ol class="tl">
+  <li><span class="d">Nov 12</span><span class="w"><b>Single-effect schemas dropped.</b> pddlgym stores a one-effect schema's effect as a bare literal; the featurizer read it as "no effects". Miconic <span class="mono">board</span> and Rovers <span class="mono">calibrate</span> lost their add effects and chain edges. Fixed; models and caches versioned (<span class="mono">fx</span>). Every seven-domain GADAR/BIND model from September is affected.</span></li>
+  <li><span class="d">Nov 13</span><span class="w"><b>Table 2 cell provenance.</b> A checkpoint best under two metrics was tested once; the second metric's cell was filled from an older dump. Fixed; submitted Table 2 unchanged except one cell (95.4 → 95.5). Featurizer audit tool written (<span class="mono">tools/audit_featurizer.py</span>).</span></li>
+  <li><span class="d">Nov 14</span><span class="w"><b>Negative preconditions lost their sign</b> in the lifted layer, inverting chain edges through them. Fixed without new feature columns; no suite domain has one.</span></li>
+  <li><span class="d">Nov 26</span><span class="w"><b>GABAR does not reproduce through our pipeline</b> on Blocks (52.5), Logistics (0.0), Rovers (7.4); optimal plans do not help. Rule baselines: the goal-feature rule beats GADAR zero-shot on Blocks.</span></li>
+  <li><span class="d">Nov 26</span><span class="w"><b>Policies lose to random on Rovers</b> because they propose actions that do not exist. Constrained decoding: Rovers 7.4 → 46.3 (GABAR), 20.4 → 57.4 (GADAR); Logistics GADAR 3.1 → 36.5. The batched evaluator silently ignored the flag; a batched constrained decoder was written and matches exactly.</span></li>
+  <li><span class="d">Nov 26–27</span><span class="w"><b>Batch size and learning rate.</b> Batch 16 lifted Miconic 44.5 → 100 but hurt Blocks, Spanner, Rovers; lr 2e-3 diverges. Then the batch-64 Miconic run turned out to hold a 100% checkpoint already: the problem was the checkpoint rule and single-seed noise.</span></li>
+  <li><span class="d">Nov 27</span><span class="w"><b>Protocol defects.</b> Validation split by state, training-sized validation, Rovers test leakage (4 problems), Blocks test sizes, training sets differing from the GABAR paper's Table 1 in 7 of 8 domains. New protocol designed and being built.</span></li>
+  <li><span class="d">Nov 27</span><span class="w"><b>Cluster trap.</b> Fast Downward does not run on the older <span class="mono">cn-b*</span>/<span class="mono">cn-c*</span> share nodes; it "fails" every problem in 0.4 s. Excluded; the solver now aborts on that signature.</span></li>
+</ol>
+
+<!-- ============================ INTERIM ============================ -->
+<h2 id="interim">Interim numbers (old protocol, will be replaced)</h2>
+<p>Single-domain models, old test sets, one seed, constrained decoding. "Combined" and "validation" are the two old checkpoint rules. These motivated the protocol change and will not appear in the paper.</p>
+<div class="tw"><table>
+<thead><tr><th>Domain</th><th class="n">GABAR</th><th class="n">GADAR b64 combined</th><th class="n">b64 validation</th><th class="n">b16 combined</th><th class="n">b16 validation</th></tr></thead>
+<tbody>
+<tr><td>Blocks</td><td class="n">47.0</td><td class="n hl">98.5</td><td class="n">97.5</td><td class="n">68.0</td><td class="n">59.0</td></tr>
+<tr><td>Gripper</td><td class="n">100.0</td><td class="n">100.0</td><td class="n">100.0</td><td class="n">100.0</td><td class="n">100.0</td></tr>
+<tr><td>Miconic</td><td class="n">100.0</td><td class="n">34.5</td><td class="n hl">100.0</td><td class="n">99.2</td><td class="n">100.0</td></tr>
+<tr><td>Visitall</td><td class="n">74.0</td><td class="n">54.0</td><td class="n">74.0</td><td class="n">78.0</td><td class="n hl">88.0</td></tr>
+<tr><td>Grid</td><td class="n">97.9</td><td class="n">85.4</td><td class="n">68.8</td><td class="n hl">97.9</td><td class="n">95.8</td></tr>
+<tr><td>Logistics</td><td class="n">2.1</td><td class="n hl">36.5</td><td class="n hl">36.5</td><td class="n">6.2</td><td class="n">5.2</td></tr>
+<tr><td>Spanner</td><td class="n">91.7</td><td class="n">90.6</td><td class="n">90.6</td><td class="n">56.2</td><td class="n">89.6</td></tr>
+<tr><td>Rovers</td><td class="n">46.3</td><td class="n hl">57.4</td><td class="n">42.6</td><td class="n">51.9</td><td class="n">35.2</td></tr>
+</tbody></table></div>
+<h3>Floors on the old test sets</h3>
+<div class="tw"><table>
+<thead><tr><th>Domain</th><th class="n">Random</th><th class="n">Achieve rule</th><th class="n">Features rule</th><th class="n">GADAR zero-shot (old)</th></tr></thead>
+<tbody>
+<tr><td>Blocks</td><td class="n">0.2</td><td class="n">2.5</td><td class="n">8.5</td><td class="n">3.0</td></tr>
+<tr><td>Gripper</td><td class="n">0.0</td><td class="n">0.0</td><td class="n">5.2</td><td class="n">0</td></tr>
+<tr><td>Miconic</td><td class="n">1.1</td><td class="n">2.5</td><td class="n">60.5</td><td class="n">0</td></tr>
+<tr><td>Visitall</td><td class="n">6.0</td><td class="n">52.0</td><td class="n">52.0</td><td class="n">0</td></tr>
+<tr><td>Grid</td><td class="n">0.0</td><td class="n">0.0</td><td class="n">0.0</td><td class="n">0</td></tr>
+<tr><td>Logistics</td><td class="n">0.0</td><td class="n">0.0</td><td class="n">0.0</td><td class="n">0</td></tr>
+<tr><td>Spanner</td><td class="n">43.8</td><td class="n">39.6</td><td class="n">39.6</td><td class="n">0</td></tr>
+<tr><td>Rovers</td><td class="n">30.9</td><td class="n">35.2</td><td class="n">3.7</td><td class="n">0</td></tr>
+</tbody></table></div>
+
+<!-- ============================ WHERE ============================ -->
+<h2 id="where">Where things live</h2>
+<dl class="kv">
+  <dt>Repo</dt><dd class="mono">/nfs/hpc/share/mangannr/di_ltp/1_di_ltp/ltp</dd>
+  <dt>Map of the code</dt><dd><span class="mono">CLAUDE.md</span> §1 (live modules, contracts, hazards)</dd>
+  <dt>Results ledger</dt><dd><span class="mono">train_test_scripts/RUNS_STATUS.md</span>, every number with its date and source</dd>
+  <dt>Experiment plan</dt><dd><span class="mono">ICLR27/REVIEW_PLAN.md</span> (E0–E6, pre-registered readings)</dd>
+  <dt>Paper</dt><dd><span class="mono">ICLR27/iclr2027_conference.tex</span></dd>
+  <dt>Problems</dt><dd><span class="mono">/nfs/hpc/share/mangannr/PLOI_full_repos/pddlgym/pddlgym/pddl</span> (editable install used by <span class="mono">di_ltp_1</span>)</dd>
+  <dt>New split staging</dt><dd><span class="mono">/nfs/hpc/share/mangannr/di_ltp/splits_build</span></dd>
+  <dt>Generators</dt><dd><span class="mono">/nfs/hpc/share/mangannr/di_ltp/external/pddl-generators</span>, <span class="mono">…/classical-domains</span></dd>
+  <dt>Campaign</dt><dd><span class="mono">campaign/</span>: manifest, workers, <span class="mono">python campaign/worker.py status</span></dd>
+  <dt>Tools added for this round</dt><dd><span class="mono">tools/build_splits.py</span>, <span class="mono">tools/solve_split_candidates.py</span>, <span class="mono">tools/convert_to_typed.py</span>, <span class="mono">tools/audit_featurizer.py</span></dd>
+</dl>
+<p class="foot">GADAR paper plan · regenerate or edit <span class="mono">ICLR27/PAPER_PLAN.html</span> in the repo and republish.</p>
+</main>
+</div>
+
+<script>
+(function(){
+const MODES = {
+  gabar:{title:"GABAR", text:"Per-domain graph. Every symbol is a one-hot feature named after itself, so the model only runs on the domain it was trained on.", adds:["Object, literal and schema nodes","Literal–argument edges with argument position","Schema–object edges for applicable ground actions, flagged with the preconditions the object satisfies (by name: lift-at1, origin1)"]},
+  union:{title:"UNION", text:"The GABAR graph with one vocabulary for all training domains. It runs on a new domain, but that domain's symbols land in no trained feature slot.", adds:["Same nodes and edges as GABAR","Feature slots for every symbol of every training domain","Unknown symbols at test time: no feature at all"]},
+  structural:{title:"Structural", text:"The GABAR graph with names replaced by classes any domain has: arity, static or not, goal or not. Symbols that look alike become indistinguishable (Miconic's origin, destin and above are all 'arity 2, static').", adds:["Same topology as GABAR","Node classes instead of names","Precondition flags become positional classes"]},
+  joint_lite:{title:"Lifted layer", text:"Adds the domain description itself: one node per predicate symbol, linked to the schemas that use it and to each ground literal of that predicate. Types are compiled into symbol nodes.", adds:["Predicate-symbol nodes (and type symbols)","instance_of: literal → its symbol","Role edges symbol ↔ schema: precondition / add / delete, with argument positions","has_type: object → its type symbol"]},
+  joint:{title:"+ Binding", text:"Each place a predicate occurs in a schema becomes its own node, and every applicable ground action links its objects to the precondition occurrences they satisfy. This is the binding layer: ground applicability expressed in the domain's own vocabulary.", adds:["Occurrence nodes: board.pre:origin, board.add:boarded, …","occ_of and role edges for occurrences","Binding edges: object → precondition occurrence it satisfies, per argument slot"]},
+  joint_chain:{title:"GADAR (full)", text:"Adds how schemas feed each other and the goal: which effect enables or threatens which precondition, which applicable action deletes a true fact or achieves an open goal, and how far each schema is from a goal-adding schema.", adds:["enables / threatens between occurrences","Effect edges: deletes_true, achieves_goal (none applicable in this state)","Goal features: distance bucket per schema, adds_goal_pred, goal_relevant_obj"]}
+};
+const ORDER = ["gabar","union","structural","joint_lite","joint","joint_chain"];
+const LIFT = ["joint_lite","joint","joint_chain"], OCC = ["joint","joint_chain"], CH = ["joint_chain"];
+const ALL = ORDER;
+
+// nodes: id, label, x, y, kind, modes
+const N = [];
+function node(id,label,x,y,kind,modes,feat){N.push({id,label,x,y,kind,modes,feat});}
+// schemas
+[["board",170],["depart",400],["up",640],["down",860]].forEach(([s,x])=>node("S:"+s,s,x,50,"sch",ALL,s));
+// occurrences
+const occ = [
+ ["board",[["pre","lift-at"],["pre","origin"],["add","boarded"]],105],
+ ["depart",[["pre","lift-at"],["pre","destin"],["pre","boarded"],["del","boarded"],["add","served"]],315],
+ ["up",[["pre","lift-at"],["pre","above"],["add","lift-at"],["del","lift-at"]],575]
+];
+occ.forEach(([s,list,x0])=>list.forEach(([r,p],k)=>node(`O:${s}.${r}:${p}`,`${r}:${p}`,x0+k*48,165,"occ",OCC,{schema:s,role:r,pred:p})));
+// symbols
+[["origin",95],["destin",205],["above",315],["lift-at",425],["boarded",535],["served",645],["type:floor",780],["type:passenger",905]]
+ .forEach(([p,x])=>node("P:"+p,p,x,295,"sym",LIFT,p));
+// literals
+[["L:origin","origin(p0,f0)",130],["L:destin","destin(p0,f1)",300],["L:above","above(f0,f1)",470],["L:liftat","lift-at(f0)",630],["G:served","goal: served(p0)",800]]
+ .forEach(([id,l,x])=>node(id,l,x,425,id.startsWith("G")?"goal":"lit",ALL,l));
+// objects
+[["p0",250,"passenger"],["f0",480,"floor"],["f1",710,"floor"]].forEach(([o,x,t])=>node("o:"+o,`${o} : ${t}`,x,565,"obj",ALL,t));
+
+// edges: a, b, kind, modes, label
+const E = [];
+function edge(a,b,k,m,label){E.push({a,b,k,m,label});}
+// literal-argument
+[["L:origin","o:p0"],["L:origin","o:f0"],["L:destin","o:p0"],["L:destin","o:f1"],["L:above","o:f0"],["L:above","o:f1"],["L:liftat","o:f0"],["G:served","o:p0"]].forEach(([a,b])=>edge(a,b,"lit",ALL));
+// candidate schema-object edges (applicable ground actions)
+edge("S:board","o:f0","cand",ALL,{gabar:"slot 0: lift-at1, origin1",structural:"slot 0: precond_pos_1"});
+edge("S:board","o:p0","cand",ALL,{gabar:"slot 1: origin2",structural:"slot 1: precond_pos_2"});
+edge("S:up","o:f0","cand",ALL,{gabar:"slot 0: lift-at1, above1",structural:"slot 0: precond_pos_1"});
+edge("S:up","o:f1","cand",ALL,{gabar:"slot 1: above2",structural:"slot 1: precond_pos_2"});
+// instance_of
+[["L:origin","P:origin"],["L:destin","P:destin"],["L:above","P:above"],["L:liftat","P:lift-at"],["G:served","P:served"]].forEach(([a,b])=>edge(a,b,"inst",LIFT));
+// role symbol-schema
+const roles=[["board","lift-at","pre"],["board","origin","pre"],["board","boarded","add"],["depart","lift-at","pre"],["depart","destin","pre"],["depart","boarded","pre"],["depart","boarded","del"],["depart","served","add"],["up","lift-at","pre"],["up","above","pre"],["up","lift-at","add"],["up","lift-at","del"],["down","lift-at","pre"],["down","above","pre"],["down","lift-at","add"],["down","lift-at","del"],
+ ["board","type:floor","pre"],["board","type:passenger","pre"],["depart","type:floor","pre"],["depart","type:passenger","pre"],["up","type:floor","pre"],["down","type:floor","pre"]];
+roles.forEach(([s,p,r])=>edge("P:"+p,"S:"+s,"role_"+r,["joint_lite"],null));
+// in joint/joint_chain the symbol-schema role edges still exist; draw them lighter via same kind
+roles.forEach(([s,p,r])=>edge("P:"+p,"S:"+s,"role_"+r,OCC,null));
+// has_type
+[["o:p0","P:type:passenger"],["o:f0","P:type:floor"],["o:f1","P:type:floor"]].forEach(([a,b])=>edge(a,b,"type",LIFT));
+// occurrence edges
+occ.forEach(([s,list])=>list.forEach(([r,p])=>{const id=`O:${s}.${r}:${p}`; edge(id,"P:"+p,"occ",OCC); edge(id,"S:"+s,"role_"+r,OCC);}));
+// binding
+[["o:f0","O:board.pre:lift-at","slot 0"],["o:f0","O:board.pre:origin","slot 0"],["o:p0","O:board.pre:origin","slot 1"],["o:f0","O:up.pre:lift-at","slot 0"],["o:f0","O:up.pre:above","slot 0"],["o:f1","O:up.pre:above","slot 1"]].forEach(([a,b,l])=>edge(a,b,"bind",OCC,{all:l}));
+// chain (subset)
+edge("O:board.add:boarded","O:depart.pre:boarded","en",CH);
+edge("O:up.add:lift-at","O:board.pre:lift-at","en",CH);
+edge("O:up.add:lift-at","O:depart.pre:lift-at","en",CH);
+edge("O:depart.del:boarded","O:depart.pre:boarded","th",CH);
+edge("O:up.del:lift-at","O:board.pre:lift-at","th",CH);
+// effect edges: up(f0,f1) deletes the true fact lift-at(f0)
+edge("o:f0","L:liftat","eff",CH,{all:"deletes_true"});
+edge("o:f1","L:liftat","eff",CH,{all:"deletes_true"});
+
+const KINDS = {
+  lit:["Literal ↔ argument","var(--e-lit)",false],
+  cand:["Schema ↔ object (applicable action)","var(--e-cand)",false],
+  inst:["instance_of (literal → symbol)","var(--e-inst)",false],
+  role_pre:["role: precondition","var(--e-pre)",false],
+  role_add:["role: add effect","var(--e-add)",false],
+  role_del:["role: delete effect","var(--e-del)",false],
+  type:["has_type","var(--e-type)",false],
+  occ:["occ_of (occurrence → symbol)","var(--e-occ)",false],
+  bind:["binding (object → precondition it satisfies)","var(--e-bind)",false],
+  en:["enables","var(--e-en)",true],
+  th:["threatens","var(--e-th)",true],
+  eff:["deletes_true / achieves_goal","var(--e-eff)",true]
+};
+const hidden = new Set();
+try{ (JSON.parse(localStorage.getItem("gx-hidden")||"[]")).forEach(k=>hidden.add(k)); }catch(e){}
+let mode = "joint_chain";
+try{ const m=localStorage.getItem("gx-mode"); if(m && MODES[m]) mode=m; }catch(e){}
+let selected = null;
+
+const svg = document.getElementById("gsvg");
+const NS="http://www.w3.org/2000/svg";
+const byId = Object.fromEntries(N.map(n=>[n.id,n]));
+const FILL={sch:"var(--n-sch)",occ:"var(--n-occ)",sym:"var(--n-sym)",lit:"var(--n-lit)",goal:"var(--n-goal)",obj:"var(--n-obj)"};
+const ROWS=[[50,"SCHEMAS"],[165,"OCCURRENCES"],[295,"SYMBOLS"],[425,"LITERALS"],[565,"OBJECTS"]];
+
+function el(t,a){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;}
+function nodeLabel(n){
+  if(mode==="structural"){
+    if(n.kind==="sch") return `schema · arity ${n.id.includes("board")||n.id.includes("depart")||n.id.includes("up")||n.id.includes("down")?2:2}`;
+    if(n.kind==="lit") return n.id==="L:liftat"?"pred · a1 · dynamic":(n.id==="L:above"||n.id==="L:origin"||n.id==="L:destin")?"pred · a2 · static":"pred";
+    if(n.kind==="goal") return "goal pred · a1";
+    if(n.kind==="obj") return "object";
+  }
+  return n.label;
+}
+function features(n){
+  const nm = n.label;
+  if(mode==="gabar") return {sch:`one-hot [schema = ${n.feat}]`,lit:`one-hot [predicate = ${nm.split("(")[0]}]`,goal:`one-hot [goal predicate = served]`,obj:`one-hot [type = ${n.feat}]`}[n.kind];
+  if(mode==="union") return {sch:`one-hot over the union of all training domains' schemas: [${n.feat}]`,lit:`union-vocabulary predicate slot [${nm.split("(")[0]}]; an unseen domain's symbol gets no slot`,goal:`union goal-predicate slot [served]`,obj:`union type slot [${n.feat}]`}[n.kind];
+  if(mode==="structural") return {sch:"class act_a2 (schema with 2 parameters)",lit:n.id==="L:liftat"?"class pred_a1_s0 (arity 1, changes)":"class pred_a2_s1 (arity 2, static)",goal:"class gpred_a1_s0",obj:"class typed_object (all types collapse into one)"}[n.kind];
+  const base = {sch:"schema node · arity class act_a2",lit:n.id==="L:liftat"?"pred_a1_s0":"pred_a2_s1",goal:"gpred_a1_s0 + goal flag",obj:"object · has_type edge to its type symbol",sym:`lifted_pred_node · arity/static class (no name)`,occ:`occ_node_${n.feat&&n.feat.role} (role bit); pair features to its schema slot`}[n.kind];
+  if(mode==="joint_chain"){
+    if(n.kind==="sch"){const d={"S:depart":"gdist_0 + adds_goal_pred","S:board":"gdist_1","S:up":"gdist_1","S:down":"gdist_1"}[n.id];return base+" · "+d;}
+    if(n.id==="o:p0") return base+" · goal_relevant_obj (in the open goal served(p0))";
+  }
+  return base;
+}
+function draw(){
+  svg.innerHTML="";
+  ROWS.forEach(([y,t])=>{const tx=el("text",{x:6,y:y-30,"class":"rowlabel"});tx.textContent=t;
+    if(t==="OCCURRENCES"&&!OCC.includes(mode))return; if(t==="SYMBOLS"&&!LIFT.includes(mode))return; svg.appendChild(tx);});
+  const vis = N.filter(n=>n.modes.includes(mode));
+  const visIds = new Set(vis.map(n=>n.id));
+  const gE = el("g",{});
+  E.filter(e=>e.m.includes(mode)&&!hidden.has(e.k)&&visIds.has(e.a)&&visIds.has(e.b)).forEach(e=>{
+    const A=byId[e.a],B=byId[e.b]; const [lab,col,dash]=KINDS[e.k];
+    let d;
+    if(e.k==="en"||e.k==="th"){const my=Math.min(A.y,B.y)-40-Math.abs(A.x-B.x)*0.15;d=`M${A.x},${A.y-12} Q${(A.x+B.x)/2},${my} ${B.x},${B.y-12}`;}
+    else if(e.k==="cand"){const mx=(A.x+B.x)/2+(B.x>A.x?60:-60);d=`M${A.x},${A.y+14} Q${mx},${(A.y+B.y)/2} ${B.x},${B.y-14}`;}
+    else d=`M${A.x},${A.y} L${B.x},${B.y}`;
+    const p=el("path",{d,fill:"none",stroke:col,"stroke-width":e.k==="cand"||e.k==="bind"?2.4:1.6,"stroke-opacity":e.k.startsWith("role")&&OCC.includes(mode)&&e.a.startsWith("P:")?0.35:0.85});
+    if(dash)p.setAttribute("stroke-dasharray","6 4");
+    if(selected && (e.a===selected||e.b===selected)){p.setAttribute("stroke-width",3.4);p.setAttribute("stroke-opacity",1);}
+    const ttl=el("title",{});ttl.textContent=lab+(e.label?(" — "+(e.label[mode]||e.label.all||e.label.gabar||"")):"");p.appendChild(ttl);
+    gE.appendChild(p);
+  });
+  svg.appendChild(gE);
+  vis.forEach(n=>{
+    const g=el("g",{tabindex:0,role:"button","aria-label":nodeLabel(n),style:"cursor:pointer"});
+    const lab=nodeLabel(n);
+    const w = n.kind==="occ"?44:Math.max(70, lab.length*6.6+18);
+    const h = n.kind==="occ"?54:28;
+    const r=el("rect",{x:n.x-w/2,y:n.y-h/2,width:w,height:h,rx:n.kind==="obj"?14:6,fill:FILL[n.kind],stroke:selected===n.id?"var(--accent)":"var(--line)","stroke-width":selected===n.id?2.5:1});
+    g.appendChild(r);
+    if(n.kind==="occ"){
+      const [role,pred]=lab.split(":");
+      const t1=el("text",{x:n.x,y:n.y-6,"text-anchor":"middle","font-size":10,"font-weight":600,fill:role==="pre"?"var(--e-pre)":role==="add"?"var(--e-add)":"var(--e-del)"});t1.textContent=role;
+      const t2=el("text",{x:n.x,y:n.y+9,"text-anchor":"middle","font-size":8.5,fill:"var(--ink)"});t2.textContent=pred.length>8?pred.slice(0,7)+"…":pred;
+      g.appendChild(t1);g.appendChild(t2);
+    } else {
+      const t=el("text",{x:n.x,y:n.y+4,"text-anchor":"middle","font-size":12,fill:"var(--ink)","font-weight":n.kind==="sch"?600:400});t.textContent=lab;g.appendChild(t);
+    }
+    if(mode==="joint_chain"&&n.kind==="sch"){
+      const dd={"S:depart":"d=0","S:board":"d=1","S:up":"d=1","S:down":"d=1"}[n.id];
+      const b=el("text",{x:n.x+w/2+4,y:n.y-8,"font-size":10,"font-weight":600,fill:"var(--e-en)"});b.textContent=dd;g.appendChild(b);
+    }
+    if(mode==="joint_chain"&&n.id==="o:p0"){const b=el("text",{x:n.x,y:n.y+28,"text-anchor":"middle","font-size":10,"font-weight":600,fill:"var(--e-eff)"});b.textContent="goal-relevant";g.appendChild(b);}
+    const pick=()=>{selected=n.id;showNode(n);draw();};
+    g.addEventListener("click",pick);
+    g.addEventListener("keydown",ev=>{if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();pick();}});
+    svg.appendChild(g);
+  });
+}
+function showNode(n){
+  const info=document.getElementById("nodeInfo");
+  const inc = E.filter(e=>e.m.includes(mode)&&(e.a===n.id||e.b===n.id));
+  const counts={};inc.forEach(e=>counts[KINDS[e.k][0]]=(counts[KINDS[e.k][0]]||0)+1);
+  info.innerHTML = `<div><b>${nodeLabel(n)}</b></div><div class="mono" style="margin:6px 0">${features(n)||""}</div>`+
+    (Object.keys(counts).length?`<div style="font-size:12.5px">Edges here: `+Object.entries(counts).map(([k,v])=>`${k} ×${v}`).join("; ")+`</div>`:"");
+}
+function setMode(m){
+  mode=m; try{localStorage.setItem("gx-mode",m);}catch(e){}
+  document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode===m?"true":"false"));
+  document.getElementById("modeTitle").textContent=MODES[m].title;
+  document.getElementById("modeText").textContent=MODES[m].text;
+  document.getElementById("modeAdds").innerHTML=MODES[m].adds.map(a=>`<li>${a}</li>`).join("");
+  if(selected && !byId[selected].modes.includes(m)) selected=null;
+  if(selected) showNode(byId[selected]); else document.getElementById("nodeInfo").textContent="Click a node in the graph.";
+  buildLegend(); draw();
+}
+function buildLegend(){
+  const lg=document.getElementById("legend"); lg.innerHTML="";
+  const present=new Set(E.filter(e=>e.m.includes(mode)).map(e=>e.k));
+  Object.entries(KINDS).filter(([k])=>present.has(k)).forEach(([k,[lab,col,dash]])=>{
+    const id="lg-"+k;
+    const l=document.createElement("label");
+    l.innerHTML=`<input type="checkbox" id="${id}" ${hidden.has(k)?"":"checked"}><span class="sw${dash?" dash":""}" style="border-top-color:${col}"></span>${lab}`;
+    l.querySelector("input").addEventListener("change",ev=>{ev.target.checked?hidden.delete(k):hidden.add(k);try{localStorage.setItem("gx-hidden",JSON.stringify([...hidden]));}catch(e){} draw();});
+    lg.appendChild(l);
+  });
+}
+document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
+setMode(mode);
+})();
+</script>

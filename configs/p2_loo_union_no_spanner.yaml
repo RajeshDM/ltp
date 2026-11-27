@@ -1,0 +1,6 @@
+description: union, spanner held out
+base: _protocol.yaml
+expid: p2_loo_union_no_spanner
+domains: manyblocks_ipcc_big,gripper_ipcc,miconic_ipcc,visitall_ipcc,grid_ipcc,logistics_ipcc,rovers_ipcc
+featurization: union
+test_domains: spanner_ipcc@easy,spanner_ipcc@medium,spanner_ipcc@hard

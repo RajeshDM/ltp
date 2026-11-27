@@ -1,0 +1,6 @@
+description: GABAR (per_domain) trained on spanner
+base: _protocol.yaml
+expid: p2_sd_gabar_spanner
+domains: spanner_ipcc
+featurization: per_domain
+test_domains: spanner_ipcc@easy,spanner_ipcc@medium,spanner_ipcc@hard

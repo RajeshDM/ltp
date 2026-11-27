@@ -29,20 +29,26 @@ def apply_config_defaults(parser):
     if not isinstance(config, dict):
         raise ValueError(f"Config {config_path} must be a mapping, got {type(config)}")
 
-    # 'base' layers a shared-defaults file under this config (one level only):
-    # precedence constants < base < experiment file < CLI flags.  Path is
-    # relative to the experiment file's directory.
+    # 'base' layers a shared-defaults file under this config, and a base may
+    # have its own base (p2_* -> _protocol.yaml -> _common.yaml): precedence
+    # constants < deepest base < ... < experiment file < CLI flags.  Each path
+    # is relative to the directory of the file naming it.
+    seen = {os.path.abspath(config_path)}
+    here = config_path
     base_name = config.pop('base', None)
-    if base_name is not None:
-        base_path = os.path.join(os.path.dirname(config_path), base_name)
+    while base_name is not None:
+        base_path = os.path.join(os.path.dirname(here), base_name)
+        if os.path.abspath(base_path) in seen:
+            raise ValueError(f"Config base cycle at {base_path}")
+        seen.add(os.path.abspath(base_path))
         with open(base_path) as f:
             base = yaml.safe_load(f) or {}
         if not isinstance(base, dict):
             raise ValueError(f"Base {base_path} must be a mapping, got {type(base)}")
-        if 'base' in base:
-            raise ValueError(f"Base {base_path} may not itself have a 'base' key")
         base.pop('description', None)
+        base_name = base.pop('base', None)
         config = {**base, **config}
+        here = base_path
 
     # 'description' is documentation-only inside experiment configs
     config.pop('description', None)
@@ -108,7 +114,10 @@ def get_ploi_argument_parser():
     parser.add_argument(
         "--mode",
         type=str,
-        choices=["train", "test", "visualize","debug", "train_test"],
+        # collect: the data section only (plans, featurized graphs, caches -
+        # training and --val-protocol split validation), then exit. Fills the
+        # shared caches once, before many training jobs would race to.
+        choices=["train", "test", "visualize","debug", "train_test", "collect"],
         default=constants.MODE,
         help="Mode to run the script in",
     )
@@ -607,5 +616,24 @@ def get_ploi_argument_parser():
              "multiple of the save cadence (checkpoints are only written "
              "every 10 epochs): 75 silently degrades to every-150. Use 50 "
              "for zero-shot runs, then test --test-model-metrics periodic.")
+
+    parser.add_argument(
+        "--val-protocol", choices=["states", "split"], default="states",
+        help="'states' (legacy): validation = 10%% of each domain's training "
+             "STATES, shuffled - same problems as training. 'split' (2026-11 "
+             "protocol): train on every training state; validation loss on the "
+             "<dom>_val_ood problems (the 'val' loss), Val-ID loss on "
+             "<dom>_val_id logged beside it. Part of the checkpoint key.")
+
+    parser.add_argument(
+        "--max-periodic", type=int, default=12,
+        help="Periodic snapshots retained (the LATEST are kept). 20 with "
+             "--checkpoint-every 25 keeps every snapshot of a 500-epoch run.")
+
+    parser.add_argument(
+        "--test-epochs", type=str, default="",
+        help="Comma-separated epochs: test only checkpoints from these epochs "
+             "(e.g. the snapshot tools/select_checkpoint.py picked, with "
+             "--test-model-metrics periodic). Empty = no filter.")
 
     return parser

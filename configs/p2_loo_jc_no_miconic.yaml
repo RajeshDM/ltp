@@ -1,0 +1,6 @@
+description: joint_chain, miconic held out
+base: _protocol.yaml
+expid: p2_loo_jc_no_miconic
+domains: manyblocks_ipcc_big,gripper_ipcc,visitall_ipcc,grid_ipcc,logistics_ipcc,spanner_ipcc,rovers_ipcc
+featurization: joint_chain
+test_domains: miconic_ipcc@easy,miconic_ipcc@medium,miconic_ipcc@hard

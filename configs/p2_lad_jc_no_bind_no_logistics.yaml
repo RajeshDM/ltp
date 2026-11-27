@@ -1,0 +1,6 @@
+description: jc_no_bind, logistics held out
+base: _protocol.yaml
+expid: p2_lad_jc_no_bind_no_logistics
+domains: manyblocks_ipcc_big,gripper_ipcc,miconic_ipcc,visitall_ipcc,grid_ipcc,spanner_ipcc,rovers_ipcc
+featurization: jc_no_bind
+test_domains: logistics_ipcc@easy,logistics_ipcc@medium,logistics_ipcc@hard,manyblocks_ipcc_big@hard,gripper_ipcc@hard,miconic_ipcc@hard,visitall_ipcc@hard,grid_ipcc@hard,spanner_ipcc@hard,rovers_ipcc@hard

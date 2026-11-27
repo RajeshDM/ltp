@@ -53,6 +53,58 @@ def job(id_, cmd, **kw):
     return {"id": id_, "cmd": cmd, **kw}
 
 
+# 2026-11 protocol (ICLR27/PAPER_PLAN.html, "Compute inventory"): one seed,
+# every result by 2026-12-03. Configs from tools/make_protocol_configs.py.
+# Order: the short single-domain GADAR runs first (they put every domain
+# through the whole train -> sweep -> select -> test chain within hours, so a
+# pipeline bug costs hours, not the long runs), then the long multi-domain
+# runs that are the critical path, then the rest. Evaluations outrank
+# training, so finished models are read as soon as they exist.
+P2_SINCE = "20261127"
+P2_DOMS = ["manyblocks", "gripper", "miconic", "visitall", "grid", "logistics", "spanner", "rovers"]
+P2_LADDER = ["structural", "joint_lite", "joint", "jc_no_bind", "jc_no_chain", "jc_no_eff", "jc_no_goal"]
+P2_LADDER_FOLDS = ["manyblocks", "logistics", "visitall"]
+
+
+def protocol_jobs():
+    # Both gates are satisfied by a report file written outside the campaign
+    # (the hold keeps a worker from ever running them; the done check comes
+    # first): the end-to-end smoke run, and logs/protocol/collect.sh (SLURM
+    # CPU job) that plans Spanner's Val-OOD (~2 h of LAMA) and the extended /
+    # typed training sets once, instead of in every job that needs them.
+    gate = "gate_p2_smoke"
+    collect = "gate_p2_collect"
+    jobs = [job(gate, "true", priority=0, est_hours=0.1,
+                hold="released by campaign/reports/p2_smoke.txt (end-to-end smoke run)",
+                done="python tools/campaign_checks.py file campaign/reports/p2_smoke.txt --since " + P2_SINCE),
+            job(collect, "true", priority=0, est_hours=0.1,
+                hold="released by campaign/reports/p2_collect.txt (logs/protocol/collect.sh)",
+                done="python tools/campaign_checks.py file campaign/reports/p2_collect.txt --since " + P2_SINCE)]
+    import yaml as _yaml
+    def needs_collect(cfg):
+        with open(os.path.join(HERE, "..", "configs", cfg + ".yaml")) as f:
+            doms = _yaml.safe_load(f)["domains"]
+        return "spanner" in doms or "_typed_" in doms
+    plan = ([(f"p2_sd_jc_{d}", 0.3, 2) for d in P2_DOMS]
+            + [("p2_all8_jc", 0.4, 26)]
+            + [(f"p2_loo_jc_no_{d}", 0.4, 20) for d in P2_DOMS]
+            + [(f"p2_loo_union_no_{d}", 0.5, 20) for d in P2_DOMS]
+            + [(f"p2_sd_gabar_{d}", 0.55, 3) for d in P2_DOMS]
+            + [(f"p2_lad_{r}_no_{d}", 0.6, 20) for d in P2_LADDER_FOLDS for r in P2_LADDER]
+            + [(f"p2_typed_{s}_{d}", 0.7, 3) for d in ("grid", "logistics") for s in ("jc", "gabar")])
+    for cfg, prio, hours in plan:
+        jobs.append(job(f"p2train_{cfg}", f"./train_test_scripts/train_queue.sh cuda:0 configs/{cfg}.yaml",
+                        kind="gpu", priority=prio, est_hours=hours,
+                        needs=[gate] + ([collect] if needs_collect(cfg) else []),
+                        done=f"python tools/campaign_checks.py trained {cfg} --since {P2_SINCE}"))
+        jobs.append(job(f"p2eval_{cfg}", f"campaign/jobs/protocol_eval.sh configs/{cfg}.yaml",
+                        kind="gpu", priority=0.2, est_hours=1 if hours <= 3 else 3,
+                        needs=[f"p2train_{cfg}"],
+                        done=f"python tools/campaign_checks.py evaluated {cfg} --suffix _final "
+                             f"--since {P2_SINCE} --metrics periodic --min-keys 3"))
+    return jobs
+
+
 def main():
     jobs = []
     # gates ---------------------------------------------------------------
@@ -248,12 +300,14 @@ def main():
                         done=f"python tools/campaign_checks.py evaluated {cfg} --suffix _cdec_val "
                              f"--since {SINCE} --metrics validation"))
 
+    jobs += protocol_jobs()
+
     manifest = {
         "defaults": {"max_attempts": 2},
         # Stops new GPU jobs once this many GPU-hours have been spent (running
         # jobs count). The plan needs ~400 (21 ablation/reference
         # trainings x 16 h + E1); the rest is headroom for retries.
-        "budget": {"gpu_hours": 520},
+        "budget": {"gpu_hours": 1000},
         "jobs": jobs,
     }
     path = os.path.join(HERE, "manifest.yaml")

@@ -1,0 +1,6 @@
+description: GABAR on typed grid (E6)
+base: _protocol.yaml
+expid: p2_typed_gabar_grid
+domains: grid_typed_ipcc
+featurization: per_domain
+test_domains: grid_typed_ipcc@easy,grid_typed_ipcc@medium,grid_typed_ipcc@hard

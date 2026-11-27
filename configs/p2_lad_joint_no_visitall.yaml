@@ -1,0 +1,6 @@
+description: joint, visitall held out
+base: _protocol.yaml
+expid: p2_lad_joint_no_visitall
+domains: manyblocks_ipcc_big,gripper_ipcc,miconic_ipcc,grid_ipcc,logistics_ipcc,spanner_ipcc,rovers_ipcc
+featurization: joint
+test_domains: visitall_ipcc@easy,visitall_ipcc@medium,visitall_ipcc@hard,manyblocks_ipcc_big@hard,gripper_ipcc@hard,miconic_ipcc@hard,grid_ipcc@hard,logistics_ipcc@hard,spanner_ipcc@hard,rovers_ipcc@hard

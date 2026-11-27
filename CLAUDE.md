@@ -314,6 +314,37 @@ tools/check_ablation_modes.py      on real pddlgym states: every C2 ablation
                                    mode zeroes exactly its own component's
                                    feature columns and matches joint_chain on
                                    all others. Run before ablation training
+tools/install_splits.py            the 2026-11 evaluation protocol's splits:
+                                   picks 50 problems per split from the
+                                   tools/build_splits.py candidates (LAMA-
+                                   solved only, Spanner test bands excepted;
+                                   round-robin over sizes, existing test
+                                   problems first within a size), installs
+                                   <dom>_val_id/_val_ood/_test_easy/_medium/
+                                   _hard in the pddlgym fork (registered in
+                                   pddlgym/__init__.py, _PROTOCOL_SPLITS), adds
+                                   Spanner's ext_ 8-nut training problems,
+                                   writes the typed Grid/Logistics twins, and
+                                   records every file in
+                                   campaign/reports/splits_manifest.json.
+                                   main.py reads a split as `<dom>@<split>`
+                                   (ploi.test_utils.split_env_suffix)
+tools/make_protocol_configs.py     writes configs/_protocol.yaml (the delta:
+                                   --val-protocol split, snapshot every 50,
+                                   max_periodic 10, metric periodic) and the 58
+                                   configs/p2_*.yaml, each naming the paper
+                                   table it feeds
+tools/select_checkpoint.py         the protocol's checkpoint rule: best MEAN
+                                   Val-OOD coverage over the TRAINING domains
+                                   from the <expid>_sweep dumps, ties ->
+                                   earlier; test-blind, and zero-shot uses
+                                   nothing from the held-out domain. Pinned by
+                                   tests/test_select_checkpoint.py
+campaign/jobs/protocol_eval.sh     per p2 config: sweep (10 snapshots on each
+                                   training domain's @val_ood) -> select ->
+                                   test that one epoch (--test-epochs) on the
+                                   bands -> cache/results/<expid>_final/.
+                                   Constrained, batched decoding
 train_test_scripts/run_config.sh   nohup-launch one config on one GPU. The
                                    log name is DERIVED from the config plus
                                    the extra flags (`--seed 12` ->
@@ -763,6 +794,17 @@ same `run_tests` machinery.
    (`lifted_layer._ROLE_COLUMNS`). Adding p threatens an `npre` on p,
    deleting p enables it. Any new code that switches on an occurrence's role
    must handle four roles, not three.
+13. **The 2026-11 protocol (`--val-protocol split`, configs/p2_*).** Validation
+   losses come from unseen problems (`<dom>_val_ood` is the 'val' loss,
+   `<dom>_val_id` is logged as `val_id`), built by calling
+   `process_pddl_to_graphs` on the split's env name (`Gripper_ipccValOod`) with
+   the training metadata and cache tag - so each split has its own cache files.
+   `vp` is in the checkpoint key (defaulted away at 'states'), so protocol runs
+   never share a directory with older ones. Only the `--domains` path
+   implements it (GABAR runs use `domains: <d>` with per_domain). Snapshots
+   must be a multiple of the 10-epoch save cadence (25 silently becomes 50).
+   `--mode collect` runs the data section only and exits - use it to fill
+   shared caches once (logs/protocol/collect.sh) instead of in every job.
 9. **Expert-planner failures on hard instances are normal**
    (`Planning failed for problem N`): satisficing `fd-lama-first` vs optimal
    `fd-opt-lmcut` differ in reach; failed problems are skipped — watch the

@@ -1,0 +1,6 @@
+description: GADAR (joint_chain) trained on grid alone
+base: _protocol.yaml
+expid: p2_sd_jc_grid
+domains: grid_ipcc
+featurization: joint_chain
+test_domains: grid_ipcc@easy,grid_ipcc@medium,grid_ipcc@hard

@@ -519,10 +519,14 @@ def train_model_graphnetwork_ltp_batch_allows_both(model, datasets,
         running_num_samples = 0
         if epoch % print_iter == 0 :
             phases = ['train','val']
+            if datasets.get('val_id') is not None:
+                phases.append('val_id')     # --val-protocol split
         else:
             phases = ['train']
 
         running_loss = {'train':0.0,'val':0.0}
+        if 'val_id' in phases:
+            running_loss['val_id'] = 0.0
         if n_domains > 0:
             domain_loss = {p: [0.0] * n_domains for p in phases}
             domain_count = {p: [0] * n_domains for p in phases}

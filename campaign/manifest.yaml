@@ -3,7 +3,7 @@
 defaults:
   max_attempts: 2
 budget:
-  gpu_hours: 520
+  gpu_hours: 1000
 jobs:
 - id: gate_unit_tests
   cmd: campaign/jobs/gate_unit_tests.sh
@@ -1098,3 +1098,985 @@ jobs:
   needs:
   - t1_sd_joint_chain_rovers_bs16
   done: python tools/campaign_checks.py evaluated sd_joint_chain_rovers_bs16 --suffix _cdec_val --since 20261101 --metrics validation
+- id: gate_p2_smoke
+  cmd: 'true'
+  priority: 0
+  est_hours: 0.1
+  hold: released by campaign/reports/p2_smoke.txt (end-to-end smoke run)
+  done: python tools/campaign_checks.py file campaign/reports/p2_smoke.txt --since 20261127
+- id: gate_p2_collect
+  cmd: 'true'
+  priority: 0
+  est_hours: 0.1
+  hold: released by campaign/reports/p2_collect.txt (logs/protocol/collect.sh)
+  done: python tools/campaign_checks.py file campaign/reports/p2_collect.txt --since 20261127
+- id: p2train_p2_sd_jc_manyblocks
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_jc_manyblocks.yaml
+  kind: gpu
+  priority: 0.3
+  est_hours: 2
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_sd_jc_manyblocks --since 20261127
+- id: p2eval_p2_sd_jc_manyblocks
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_jc_manyblocks.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_jc_manyblocks
+  done: python tools/campaign_checks.py evaluated p2_sd_jc_manyblocks --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_sd_jc_gripper
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_jc_gripper.yaml
+  kind: gpu
+  priority: 0.3
+  est_hours: 2
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_sd_jc_gripper --since 20261127
+- id: p2eval_p2_sd_jc_gripper
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_jc_gripper.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_jc_gripper
+  done: python tools/campaign_checks.py evaluated p2_sd_jc_gripper --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_sd_jc_miconic
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_jc_miconic.yaml
+  kind: gpu
+  priority: 0.3
+  est_hours: 2
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_sd_jc_miconic --since 20261127
+- id: p2eval_p2_sd_jc_miconic
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_jc_miconic.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_jc_miconic
+  done: python tools/campaign_checks.py evaluated p2_sd_jc_miconic --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_sd_jc_visitall
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_jc_visitall.yaml
+  kind: gpu
+  priority: 0.3
+  est_hours: 2
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_sd_jc_visitall --since 20261127
+- id: p2eval_p2_sd_jc_visitall
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_jc_visitall.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_jc_visitall
+  done: python tools/campaign_checks.py evaluated p2_sd_jc_visitall --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_sd_jc_grid
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_jc_grid.yaml
+  kind: gpu
+  priority: 0.3
+  est_hours: 2
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_sd_jc_grid --since 20261127
+- id: p2eval_p2_sd_jc_grid
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_jc_grid.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_jc_grid
+  done: python tools/campaign_checks.py evaluated p2_sd_jc_grid --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_sd_jc_logistics
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_jc_logistics.yaml
+  kind: gpu
+  priority: 0.3
+  est_hours: 2
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_sd_jc_logistics --since 20261127
+- id: p2eval_p2_sd_jc_logistics
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_jc_logistics.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_jc_logistics
+  done: python tools/campaign_checks.py evaluated p2_sd_jc_logistics --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_sd_jc_spanner
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_jc_spanner.yaml
+  kind: gpu
+  priority: 0.3
+  est_hours: 2
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_sd_jc_spanner --since 20261127
+- id: p2eval_p2_sd_jc_spanner
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_jc_spanner.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_jc_spanner
+  done: python tools/campaign_checks.py evaluated p2_sd_jc_spanner --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_sd_jc_rovers
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_jc_rovers.yaml
+  kind: gpu
+  priority: 0.3
+  est_hours: 2
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_sd_jc_rovers --since 20261127
+- id: p2eval_p2_sd_jc_rovers
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_jc_rovers.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_jc_rovers
+  done: python tools/campaign_checks.py evaluated p2_sd_jc_rovers --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_all8_jc
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_all8_jc.yaml
+  kind: gpu
+  priority: 0.4
+  est_hours: 26
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_all8_jc --since 20261127
+- id: p2eval_p2_all8_jc
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_all8_jc.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_all8_jc
+  done: python tools/campaign_checks.py evaluated p2_all8_jc --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_jc_no_manyblocks
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_jc_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.4
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_loo_jc_no_manyblocks --since 20261127
+- id: p2eval_p2_loo_jc_no_manyblocks
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_jc_no_manyblocks
+  done: python tools/campaign_checks.py evaluated p2_loo_jc_no_manyblocks --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_jc_no_gripper
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_jc_no_gripper.yaml
+  kind: gpu
+  priority: 0.4
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_loo_jc_no_gripper --since 20261127
+- id: p2eval_p2_loo_jc_no_gripper
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_gripper.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_jc_no_gripper
+  done: python tools/campaign_checks.py evaluated p2_loo_jc_no_gripper --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_jc_no_miconic
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_jc_no_miconic.yaml
+  kind: gpu
+  priority: 0.4
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_loo_jc_no_miconic --since 20261127
+- id: p2eval_p2_loo_jc_no_miconic
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_miconic.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_jc_no_miconic
+  done: python tools/campaign_checks.py evaluated p2_loo_jc_no_miconic --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_jc_no_visitall
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_jc_no_visitall.yaml
+  kind: gpu
+  priority: 0.4
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_loo_jc_no_visitall --since 20261127
+- id: p2eval_p2_loo_jc_no_visitall
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_visitall.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_jc_no_visitall
+  done: python tools/campaign_checks.py evaluated p2_loo_jc_no_visitall --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_jc_no_grid
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_jc_no_grid.yaml
+  kind: gpu
+  priority: 0.4
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_loo_jc_no_grid --since 20261127
+- id: p2eval_p2_loo_jc_no_grid
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_grid.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_jc_no_grid
+  done: python tools/campaign_checks.py evaluated p2_loo_jc_no_grid --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_jc_no_logistics
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_jc_no_logistics.yaml
+  kind: gpu
+  priority: 0.4
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_loo_jc_no_logistics --since 20261127
+- id: p2eval_p2_loo_jc_no_logistics
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_logistics.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_jc_no_logistics
+  done: python tools/campaign_checks.py evaluated p2_loo_jc_no_logistics --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_jc_no_spanner
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_jc_no_spanner.yaml
+  kind: gpu
+  priority: 0.4
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_loo_jc_no_spanner --since 20261127
+- id: p2eval_p2_loo_jc_no_spanner
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_spanner.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_jc_no_spanner
+  done: python tools/campaign_checks.py evaluated p2_loo_jc_no_spanner --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_jc_no_rovers
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_jc_no_rovers.yaml
+  kind: gpu
+  priority: 0.4
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_loo_jc_no_rovers --since 20261127
+- id: p2eval_p2_loo_jc_no_rovers
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_rovers.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_jc_no_rovers
+  done: python tools/campaign_checks.py evaluated p2_loo_jc_no_rovers --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_union_no_manyblocks
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_union_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.5
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_loo_union_no_manyblocks --since 20261127
+- id: p2eval_p2_loo_union_no_manyblocks
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_union_no_manyblocks
+  done: python tools/campaign_checks.py evaluated p2_loo_union_no_manyblocks --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_union_no_gripper
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_union_no_gripper.yaml
+  kind: gpu
+  priority: 0.5
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_loo_union_no_gripper --since 20261127
+- id: p2eval_p2_loo_union_no_gripper
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_gripper.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_union_no_gripper
+  done: python tools/campaign_checks.py evaluated p2_loo_union_no_gripper --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_union_no_miconic
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_union_no_miconic.yaml
+  kind: gpu
+  priority: 0.5
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_loo_union_no_miconic --since 20261127
+- id: p2eval_p2_loo_union_no_miconic
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_miconic.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_union_no_miconic
+  done: python tools/campaign_checks.py evaluated p2_loo_union_no_miconic --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_union_no_visitall
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_union_no_visitall.yaml
+  kind: gpu
+  priority: 0.5
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_loo_union_no_visitall --since 20261127
+- id: p2eval_p2_loo_union_no_visitall
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_visitall.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_union_no_visitall
+  done: python tools/campaign_checks.py evaluated p2_loo_union_no_visitall --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_union_no_grid
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_union_no_grid.yaml
+  kind: gpu
+  priority: 0.5
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_loo_union_no_grid --since 20261127
+- id: p2eval_p2_loo_union_no_grid
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_grid.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_union_no_grid
+  done: python tools/campaign_checks.py evaluated p2_loo_union_no_grid --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_union_no_logistics
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_union_no_logistics.yaml
+  kind: gpu
+  priority: 0.5
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_loo_union_no_logistics --since 20261127
+- id: p2eval_p2_loo_union_no_logistics
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_logistics.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_union_no_logistics
+  done: python tools/campaign_checks.py evaluated p2_loo_union_no_logistics --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_union_no_spanner
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_union_no_spanner.yaml
+  kind: gpu
+  priority: 0.5
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_loo_union_no_spanner --since 20261127
+- id: p2eval_p2_loo_union_no_spanner
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_spanner.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_union_no_spanner
+  done: python tools/campaign_checks.py evaluated p2_loo_union_no_spanner --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_loo_union_no_rovers
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_loo_union_no_rovers.yaml
+  kind: gpu
+  priority: 0.5
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_loo_union_no_rovers --since 20261127
+- id: p2eval_p2_loo_union_no_rovers
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_rovers.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_loo_union_no_rovers
+  done: python tools/campaign_checks.py evaluated p2_loo_union_no_rovers --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_sd_gabar_manyblocks
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_manyblocks.yaml
+  kind: gpu
+  priority: 0.55
+  est_hours: 3
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_sd_gabar_manyblocks --since 20261127
+- id: p2eval_p2_sd_gabar_manyblocks
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_gabar_manyblocks.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_gabar_manyblocks
+  done: python tools/campaign_checks.py evaluated p2_sd_gabar_manyblocks --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_sd_gabar_gripper
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_gripper.yaml
+  kind: gpu
+  priority: 0.55
+  est_hours: 3
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_sd_gabar_gripper --since 20261127
+- id: p2eval_p2_sd_gabar_gripper
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_gabar_gripper.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_gabar_gripper
+  done: python tools/campaign_checks.py evaluated p2_sd_gabar_gripper --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_sd_gabar_miconic
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_miconic.yaml
+  kind: gpu
+  priority: 0.55
+  est_hours: 3
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_sd_gabar_miconic --since 20261127
+- id: p2eval_p2_sd_gabar_miconic
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_gabar_miconic.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_gabar_miconic
+  done: python tools/campaign_checks.py evaluated p2_sd_gabar_miconic --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_sd_gabar_visitall
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_visitall.yaml
+  kind: gpu
+  priority: 0.55
+  est_hours: 3
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_sd_gabar_visitall --since 20261127
+- id: p2eval_p2_sd_gabar_visitall
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_gabar_visitall.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_gabar_visitall
+  done: python tools/campaign_checks.py evaluated p2_sd_gabar_visitall --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_sd_gabar_grid
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_grid.yaml
+  kind: gpu
+  priority: 0.55
+  est_hours: 3
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_sd_gabar_grid --since 20261127
+- id: p2eval_p2_sd_gabar_grid
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_gabar_grid.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_gabar_grid
+  done: python tools/campaign_checks.py evaluated p2_sd_gabar_grid --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_sd_gabar_logistics
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_logistics.yaml
+  kind: gpu
+  priority: 0.55
+  est_hours: 3
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_sd_gabar_logistics --since 20261127
+- id: p2eval_p2_sd_gabar_logistics
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_gabar_logistics.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_gabar_logistics
+  done: python tools/campaign_checks.py evaluated p2_sd_gabar_logistics --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_sd_gabar_spanner
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_spanner.yaml
+  kind: gpu
+  priority: 0.55
+  est_hours: 3
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_sd_gabar_spanner --since 20261127
+- id: p2eval_p2_sd_gabar_spanner
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_gabar_spanner.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_gabar_spanner
+  done: python tools/campaign_checks.py evaluated p2_sd_gabar_spanner --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_sd_gabar_rovers
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_rovers.yaml
+  kind: gpu
+  priority: 0.55
+  est_hours: 3
+  needs:
+  - gate_p2_smoke
+  done: python tools/campaign_checks.py trained p2_sd_gabar_rovers --since 20261127
+- id: p2eval_p2_sd_gabar_rovers
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_sd_gabar_rovers.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_sd_gabar_rovers
+  done: python tools/campaign_checks.py evaluated p2_sd_gabar_rovers --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_structural_no_manyblocks
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_structural_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_structural_no_manyblocks --since 20261127
+- id: p2eval_p2_lad_structural_no_manyblocks
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_structural_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_structural_no_manyblocks
+  done: python tools/campaign_checks.py evaluated p2_lad_structural_no_manyblocks --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_joint_lite_no_manyblocks
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_joint_lite_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_joint_lite_no_manyblocks --since 20261127
+- id: p2eval_p2_lad_joint_lite_no_manyblocks
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_lite_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_joint_lite_no_manyblocks
+  done: python tools/campaign_checks.py evaluated p2_lad_joint_lite_no_manyblocks --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_joint_no_manyblocks
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_joint_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_joint_no_manyblocks --since 20261127
+- id: p2eval_p2_lad_joint_no_manyblocks
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_joint_no_manyblocks
+  done: python tools/campaign_checks.py evaluated p2_lad_joint_no_manyblocks --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_jc_no_bind_no_manyblocks
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_jc_no_bind_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_jc_no_bind_no_manyblocks --since 20261127
+- id: p2eval_p2_lad_jc_no_bind_no_manyblocks
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_bind_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_jc_no_bind_no_manyblocks
+  done: python tools/campaign_checks.py evaluated p2_lad_jc_no_bind_no_manyblocks --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_jc_no_chain_no_manyblocks
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_jc_no_chain_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_jc_no_chain_no_manyblocks --since 20261127
+- id: p2eval_p2_lad_jc_no_chain_no_manyblocks
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_chain_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_jc_no_chain_no_manyblocks
+  done: python tools/campaign_checks.py evaluated p2_lad_jc_no_chain_no_manyblocks --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_jc_no_eff_no_manyblocks
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_jc_no_eff_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_jc_no_eff_no_manyblocks --since 20261127
+- id: p2eval_p2_lad_jc_no_eff_no_manyblocks
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_eff_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_jc_no_eff_no_manyblocks
+  done: python tools/campaign_checks.py evaluated p2_lad_jc_no_eff_no_manyblocks --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_jc_no_goal_no_manyblocks
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_jc_no_goal_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_jc_no_goal_no_manyblocks --since 20261127
+- id: p2eval_p2_lad_jc_no_goal_no_manyblocks
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_goal_no_manyblocks.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_jc_no_goal_no_manyblocks
+  done: python tools/campaign_checks.py evaluated p2_lad_jc_no_goal_no_manyblocks --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_structural_no_logistics
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_structural_no_logistics.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_structural_no_logistics --since 20261127
+- id: p2eval_p2_lad_structural_no_logistics
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_structural_no_logistics.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_structural_no_logistics
+  done: python tools/campaign_checks.py evaluated p2_lad_structural_no_logistics --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_joint_lite_no_logistics
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_joint_lite_no_logistics.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_joint_lite_no_logistics --since 20261127
+- id: p2eval_p2_lad_joint_lite_no_logistics
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_lite_no_logistics.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_joint_lite_no_logistics
+  done: python tools/campaign_checks.py evaluated p2_lad_joint_lite_no_logistics --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_joint_no_logistics
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_joint_no_logistics.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_joint_no_logistics --since 20261127
+- id: p2eval_p2_lad_joint_no_logistics
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_no_logistics.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_joint_no_logistics
+  done: python tools/campaign_checks.py evaluated p2_lad_joint_no_logistics --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_jc_no_bind_no_logistics
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_jc_no_bind_no_logistics.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_jc_no_bind_no_logistics --since 20261127
+- id: p2eval_p2_lad_jc_no_bind_no_logistics
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_bind_no_logistics.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_jc_no_bind_no_logistics
+  done: python tools/campaign_checks.py evaluated p2_lad_jc_no_bind_no_logistics --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_jc_no_chain_no_logistics
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_jc_no_chain_no_logistics.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_jc_no_chain_no_logistics --since 20261127
+- id: p2eval_p2_lad_jc_no_chain_no_logistics
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_chain_no_logistics.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_jc_no_chain_no_logistics
+  done: python tools/campaign_checks.py evaluated p2_lad_jc_no_chain_no_logistics --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_jc_no_eff_no_logistics
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_jc_no_eff_no_logistics.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_jc_no_eff_no_logistics --since 20261127
+- id: p2eval_p2_lad_jc_no_eff_no_logistics
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_eff_no_logistics.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_jc_no_eff_no_logistics
+  done: python tools/campaign_checks.py evaluated p2_lad_jc_no_eff_no_logistics --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_jc_no_goal_no_logistics
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_jc_no_goal_no_logistics.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_jc_no_goal_no_logistics --since 20261127
+- id: p2eval_p2_lad_jc_no_goal_no_logistics
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_goal_no_logistics.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_jc_no_goal_no_logistics
+  done: python tools/campaign_checks.py evaluated p2_lad_jc_no_goal_no_logistics --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_structural_no_visitall
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_structural_no_visitall.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_structural_no_visitall --since 20261127
+- id: p2eval_p2_lad_structural_no_visitall
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_structural_no_visitall.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_structural_no_visitall
+  done: python tools/campaign_checks.py evaluated p2_lad_structural_no_visitall --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_joint_lite_no_visitall
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_joint_lite_no_visitall.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_joint_lite_no_visitall --since 20261127
+- id: p2eval_p2_lad_joint_lite_no_visitall
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_lite_no_visitall.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_joint_lite_no_visitall
+  done: python tools/campaign_checks.py evaluated p2_lad_joint_lite_no_visitall --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_joint_no_visitall
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_joint_no_visitall.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_joint_no_visitall --since 20261127
+- id: p2eval_p2_lad_joint_no_visitall
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_no_visitall.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_joint_no_visitall
+  done: python tools/campaign_checks.py evaluated p2_lad_joint_no_visitall --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_jc_no_bind_no_visitall
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_jc_no_bind_no_visitall.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_jc_no_bind_no_visitall --since 20261127
+- id: p2eval_p2_lad_jc_no_bind_no_visitall
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_bind_no_visitall.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_jc_no_bind_no_visitall
+  done: python tools/campaign_checks.py evaluated p2_lad_jc_no_bind_no_visitall --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_jc_no_chain_no_visitall
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_jc_no_chain_no_visitall.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_jc_no_chain_no_visitall --since 20261127
+- id: p2eval_p2_lad_jc_no_chain_no_visitall
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_chain_no_visitall.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_jc_no_chain_no_visitall
+  done: python tools/campaign_checks.py evaluated p2_lad_jc_no_chain_no_visitall --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_jc_no_eff_no_visitall
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_jc_no_eff_no_visitall.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_jc_no_eff_no_visitall --since 20261127
+- id: p2eval_p2_lad_jc_no_eff_no_visitall
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_eff_no_visitall.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_jc_no_eff_no_visitall
+  done: python tools/campaign_checks.py evaluated p2_lad_jc_no_eff_no_visitall --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_lad_jc_no_goal_no_visitall
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_lad_jc_no_goal_no_visitall.yaml
+  kind: gpu
+  priority: 0.6
+  est_hours: 20
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_lad_jc_no_goal_no_visitall --since 20261127
+- id: p2eval_p2_lad_jc_no_goal_no_visitall
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_goal_no_visitall.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 3
+  needs:
+  - p2train_p2_lad_jc_no_goal_no_visitall
+  done: python tools/campaign_checks.py evaluated p2_lad_jc_no_goal_no_visitall --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_typed_jc_grid
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_typed_jc_grid.yaml
+  kind: gpu
+  priority: 0.7
+  est_hours: 3
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_typed_jc_grid --since 20261127
+- id: p2eval_p2_typed_jc_grid
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_typed_jc_grid.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_typed_jc_grid
+  done: python tools/campaign_checks.py evaluated p2_typed_jc_grid --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_typed_gabar_grid
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_typed_gabar_grid.yaml
+  kind: gpu
+  priority: 0.7
+  est_hours: 3
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_typed_gabar_grid --since 20261127
+- id: p2eval_p2_typed_gabar_grid
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_typed_gabar_grid.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_typed_gabar_grid
+  done: python tools/campaign_checks.py evaluated p2_typed_gabar_grid --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_typed_jc_logistics
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_typed_jc_logistics.yaml
+  kind: gpu
+  priority: 0.7
+  est_hours: 3
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_typed_jc_logistics --since 20261127
+- id: p2eval_p2_typed_jc_logistics
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_typed_jc_logistics.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_typed_jc_logistics
+  done: python tools/campaign_checks.py evaluated p2_typed_jc_logistics --suffix _final --since 20261127 --metrics periodic --min-keys 3
+- id: p2train_p2_typed_gabar_logistics
+  cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_typed_gabar_logistics.yaml
+  kind: gpu
+  priority: 0.7
+  est_hours: 3
+  needs:
+  - gate_p2_smoke
+  - gate_p2_collect
+  done: python tools/campaign_checks.py trained p2_typed_gabar_logistics --since 20261127
+- id: p2eval_p2_typed_gabar_logistics
+  cmd: campaign/jobs/protocol_eval.sh configs/p2_typed_gabar_logistics.yaml
+  kind: gpu
+  priority: 0.2
+  est_hours: 1
+  needs:
+  - p2train_p2_typed_gabar_logistics
+  done: python tools/campaign_checks.py evaluated p2_typed_gabar_logistics --suffix _final --since 20261127 --metrics periodic --min-keys 3

@@ -1,0 +1,6 @@
+description: GABAR (per_domain) trained on logistics
+base: _protocol.yaml
+expid: p2_sd_gabar_logistics
+domains: logistics_ipcc
+featurization: per_domain
+test_domains: logistics_ipcc@easy,logistics_ipcc@medium,logistics_ipcc@hard

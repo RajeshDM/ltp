@@ -1,0 +1,6 @@
+description: GABAR (per_domain) trained on rovers
+base: _protocol.yaml
+expid: p2_sd_gabar_rovers
+domains: rovers_ipcc
+featurization: per_domain
+test_domains: rovers_ipcc@easy,rovers_ipcc@medium,rovers_ipcc@hard

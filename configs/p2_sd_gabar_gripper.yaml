@@ -1,0 +1,6 @@
+description: GABAR (per_domain) trained on gripper
+base: _protocol.yaml
+expid: p2_sd_gabar_gripper
+domains: gripper_ipcc
+featurization: per_domain
+test_domains: gripper_ipcc@easy,gripper_ipcc@medium,gripper_ipcc@hard

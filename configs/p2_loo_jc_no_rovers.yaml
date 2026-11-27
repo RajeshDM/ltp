@@ -1,0 +1,7 @@
+description: joint_chain, rovers held out
+base: _protocol.yaml
+expid: p2_loo_jc_no_rovers
+domains: manyblocks_ipcc_big,gripper_ipcc,miconic_ipcc,visitall_ipcc,grid_ipcc,logistics_ipcc,spanner_ipcc
+featurization: joint_chain
+test_domains: rovers_ipcc@easy,rovers_ipcc@medium,rovers_ipcc@hard
+max_action_arity: 6

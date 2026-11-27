@@ -1,0 +1,16 @@
+# 2026-11 evaluation protocol (ICLR27/PAPER_PLAN.html, "Train / validation /
+# test"). Delta over _common.yaml; every p2_* config points here.
+#   validation : loss on UNSEEN problems (<dom>_val_ood = 'val', <dom>_val_id
+#                logged beside it), not 10% of training states
+#   snapshots  : every 50 epochs (checkpoints are written every 10, so 50 is
+#                the finest interval that is not silently thinned), all kept
+#   selection  : best Val-OOD coverage over those snapshots, ties -> earlier
+#                (tools/select_checkpoint.py; campaign/jobs/protocol_eval.sh)
+#   decoding   : constrained (GABAR_CONSTRAINED_DECODE=1, set by the job)
+description: 2026-11 protocol base
+base: _common.yaml
+val_protocol: split
+checkpoint_every: 50
+max_periodic: 10
+test_model_metrics: periodic
+num_models_to_test: 1

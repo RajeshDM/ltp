@@ -1,0 +1,6 @@
+description: jc_no_chain, manyblocks held out
+base: _protocol.yaml
+expid: p2_lad_jc_no_chain_no_manyblocks
+domains: gripper_ipcc,miconic_ipcc,visitall_ipcc,grid_ipcc,logistics_ipcc,spanner_ipcc,rovers_ipcc
+featurization: jc_no_chain
+test_domains: manyblocks_ipcc_big@easy,manyblocks_ipcc_big@medium,manyblocks_ipcc_big@hard,gripper_ipcc@hard,miconic_ipcc@hard,visitall_ipcc@hard,grid_ipcc@hard,logistics_ipcc@hard,spanner_ipcc@hard,rovers_ipcc@hard

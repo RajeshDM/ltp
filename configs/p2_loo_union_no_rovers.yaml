@@ -1,0 +1,6 @@
+description: union, rovers held out
+base: _protocol.yaml
+expid: p2_loo_union_no_rovers
+domains: manyblocks_ipcc_big,gripper_ipcc,miconic_ipcc,visitall_ipcc,grid_ipcc,logistics_ipcc,spanner_ipcc
+featurization: union
+test_domains: rovers_ipcc@easy,rovers_ipcc@medium,rovers_ipcc@hard

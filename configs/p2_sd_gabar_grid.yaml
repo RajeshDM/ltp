@@ -1,0 +1,6 @@
+description: GABAR (per_domain) trained on grid
+base: _protocol.yaml
+expid: p2_sd_gabar_grid
+domains: grid_ipcc
+featurization: per_domain
+test_domains: grid_ipcc@easy,grid_ipcc@medium,grid_ipcc@hard

@@ -1,0 +1,6 @@
+description: GADAR (joint_chain) trained on miconic alone
+base: _protocol.yaml
+expid: p2_sd_jc_miconic
+domains: miconic_ipcc
+featurization: joint_chain
+test_domains: miconic_ipcc@easy,miconic_ipcc@medium,miconic_ipcc@hard

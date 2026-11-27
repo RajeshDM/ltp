@@ -1,0 +1,6 @@
+description: GADAR on typed logistics (E6)
+base: _protocol.yaml
+expid: p2_typed_jc_logistics
+domains: logistics_typed_ipcc
+featurization: joint_chain
+test_domains: logistics_typed_ipcc@easy,logistics_typed_ipcc@medium,logistics_typed_ipcc@hard

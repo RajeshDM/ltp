@@ -1,0 +1,6 @@
+description: GABAR (per_domain) trained on miconic
+base: _protocol.yaml
+expid: p2_sd_gabar_miconic
+domains: miconic_ipcc
+featurization: per_domain
+test_domains: miconic_ipcc@easy,miconic_ipcc@medium,miconic_ipcc@hard

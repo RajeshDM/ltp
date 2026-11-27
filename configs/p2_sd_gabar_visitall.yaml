@@ -1,0 +1,6 @@
+description: GABAR (per_domain) trained on visitall
+base: _protocol.yaml
+expid: p2_sd_gabar_visitall
+domains: visitall_ipcc
+featurization: per_domain
+test_domains: visitall_ipcc@easy,visitall_ipcc@medium,visitall_ipcc@hard
