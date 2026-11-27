@@ -338,6 +338,39 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27 14:00: new protocol - splits decided, candidates built, LAMA filtering running
+
+Decision (author): the on-disk training sets are the base (unchanged, except
+Spanner extended to 8 nuts); new validation and test sets; 50 problems per
+split; test bands stop at today's largest test sizes (no jumps).
+
+| domain (size) | train | val-ID (new, same size) | val-OOD | test easy | medium | hard |
+|---|---|---|---|---|---|---|
+| Blocks (blocks) | 6-9 | 6-9 | 10 | 11-20 | 21-30 | 31-40 |
+| Gripper (balls) | 5-25 | 5-25 | 26-30 | 31-50 | 51-75 | 76-100 |
+| Miconic (passengers) | 1-12 | 1-12 | 13-19 | 20-40 | 41-60 | 61-100 |
+| Visitall (cells) | 9-49 | 9-49 | 50-64 | 65-144 | 145-225 | 226-400 |
+| Grid (cells) | 9-63 | 9-63 | 64-80 | 81-100 | 101-125 | 126-154 |
+| Logistics (cities) | 5-13 | 5-13 | 14-15 | 16-20 | 21-25 | 26-30 |
+| Spanner (nuts) | 3-8 (8 new) | 3-8 | 9-10 | 11-12 | 13-14 | 15-16 |
+| Rovers (waypoints) | 3-12 | 3-12 | 13-15 | 16-30 | 31-50 | 51-70 |
+| Organic Synthesis | - | - | - | 20 IPC-2018 problems, zero-shot only | | |
+
+Caldera dropped (conditional effects). tools/build_splits.py wrote 2x
+candidates per split to /nfs/hpc/share/mangannr/di_ltp/splits_build/ (existing
+test problems first, then pools - Blocks entirely from the 5000-problem pool,
+whose format matches ours where the generator's does not - then
+pddl-generators; Gripper uses the multi-room `grippers` generator, which
+matches our files). Content-deduplicated against training, every split, and
+each other; every candidate's size measured from the file falls in its band;
+a sample from every split loads in pddlgym with our domain files.
+tools/solve_split_candidates.py runs fd-lama-first (600 s cap) on all of
+them as 8 CPU jobs (solve-<domain>); only solved problems will be installed.
+Spanner is slow for LAMA (56-288 s at 9-10 nuts), Gripper/Rovers ~1-2 s.
+Checked and NOT a bug: collect_training_data executes plan[:-1], but every
+state, including the one before the last action, is paired with its action
+from the full plan, so the goal-achieving action is a training example.
+
 ## 2026-11-27 13:00: the training sets on disk do not match the GABAR paper's Table 1
 
 GABAR paper Table 1 (arXiv 2412.04752v3) gives train / val / test easy, med,
