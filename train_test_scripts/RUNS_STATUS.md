@@ -338,6 +338,14 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27: E4 - why single-domain GADAR trails GABAR (Miconic 44.5 vs 99.2)
+
+Found: every sd_* and LOO run trains at batch 64, the GABAR baselines at 16
+(4x fewer gradient steps over the same 500 epochs). E4 = a five-rung Miconic
+ladder at batch 16 (union -> structural -> joint_lite -> joint_chain, plus
+joint_chain at width 128), priority 1 in the campaign. Readings in
+REVIEW_PLAN E4. Hidden width is now in the checkpoint key (`rs`).
+
 ## 2026-11-27: decision - published GABAR numbers used as given; E2 released
 
 No further GABAR runs (reproduction jobs held). On Logistics/Rovers the

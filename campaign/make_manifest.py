@@ -91,7 +91,7 @@ def main():
                 kind="gpu", priority=2, est_hours=est, needs=["gate_unit_tests"],
                 done=f"python tools/campaign_checks.py evaluated baseline_{dom} --since {SINCE} --metrics combined")
         if dom in INTERRUPTED:
-            j["hold"] = HOLD_NO_GABAR
+            j["hold"] = HOLD_INTERRUPTED     # wanted again for E4 (2026-11-27)
         jobs.append(j)
         e1.append(j["id"])
     for cfg, expid in [("baseline_logistics_opt", "baseline_logistics_opt"),
@@ -125,6 +125,22 @@ def main():
                         needs=["gate_unit_tests", "gate_ablation_miconic", "gate_audit_featurizer"],
                         done=f"python tools/campaign_checks.py evaluated sd_joint_chain_{dom} --since {SINCE} --metrics combined"))
         e1.append(f"e1_sd_{dom}_fixed")
+    # E4: why single-domain GADAR trails GABAR in the same pipeline (Miconic
+    # 44.5 vs 99.2). A ladder from GABAR's features to GADAR's, at GABAR's
+    # batch size; REVIEW_PLAN E4 has the readings. Before E2: ablating a model
+    # that E4 may change would measure the wrong model.
+    e4 = []
+    for cfg in ("sd_union_miconic_bs16", "sd_structural_miconic_bs16",
+                "sd_joint_lite_miconic_bs16", "sd_joint_chain_miconic_bs16",
+                "sd_joint_chain_miconic_bs16_rs128"):
+        jobs.append(job(f"e4_{cfg}",
+                        f"WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/{cfg}.yaml",
+                        kind="gpu", priority=1, est_hours=5,
+                        done=f"python tools/campaign_checks.py evaluated {cfg} --since {SINCE} --metrics combined"))
+        e4.append(jobs[-1]["id"])
+    jobs.append(job("report_e4", "campaign/jobs/report.sh e4", priority=1, est_hours=0.1,
+                    needs=e4,
+                    done=f"python tools/campaign_checks.py file campaign/reports/e4.txt --since {SINCE}"))
     jobs.append(job("report_e1", "campaign/jobs/report.sh e1", priority=2, est_hours=0.1,
                     needs=[j for j in e1 if "gabar_blocks" not in j and "gabar_grid" not in j
                            and "gabar_gripper" not in j],

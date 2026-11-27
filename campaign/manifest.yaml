@@ -105,7 +105,7 @@ jobs:
   needs:
   - gate_unit_tests
   done: python tools/campaign_checks.py evaluated baseline_blocks --since 20261101 --metrics combined
-  hold: 'decision 2026-11-27: published GABAR numbers are used as given; no further GABAR reproduction runs (release only to revisit)'
+  hold: an interrupted September run left a half-trained model for this key and train_then_eval.sh would evaluate it; archive models/*bs16* for this domain first (REVIEW_PLAN E1)
 - id: e1_gabar_gripper
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/baseline_gripper.yaml
   kind: gpu
@@ -114,7 +114,7 @@ jobs:
   needs:
   - gate_unit_tests
   done: python tools/campaign_checks.py evaluated baseline_gripper --since 20261101 --metrics combined
-  hold: 'decision 2026-11-27: published GABAR numbers are used as given; no further GABAR reproduction runs (release only to revisit)'
+  hold: an interrupted September run left a half-trained model for this key and train_then_eval.sh would evaluate it; archive models/*bs16* for this domain first (REVIEW_PLAN E1)
 - id: e1_gabar_grid
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/baseline_grid.yaml
   kind: gpu
@@ -123,7 +123,7 @@ jobs:
   needs:
   - gate_unit_tests
   done: python tools/campaign_checks.py evaluated baseline_grid --since 20261101 --metrics combined
-  hold: 'decision 2026-11-27: published GABAR numbers are used as given; no further GABAR reproduction runs (release only to revisit)'
+  hold: an interrupted September run left a half-trained model for this key and train_then_eval.sh would evaluate it; archive models/*bs16* for this domain first (REVIEW_PLAN E1)
 - id: e1_baseline_logistics_opt
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/baseline_logistics_opt.yaml
   kind: gpu
@@ -191,6 +191,47 @@ jobs:
   - gate_ablation_miconic
   - gate_audit_featurizer
   done: python tools/campaign_checks.py evaluated sd_joint_chain_rovers --since 20261101 --metrics combined
+- id: e4_sd_union_miconic_bs16
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_union_miconic_bs16.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 5
+  done: python tools/campaign_checks.py evaluated sd_union_miconic_bs16 --since 20261101 --metrics combined
+- id: e4_sd_structural_miconic_bs16
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_structural_miconic_bs16.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 5
+  done: python tools/campaign_checks.py evaluated sd_structural_miconic_bs16 --since 20261101 --metrics combined
+- id: e4_sd_joint_lite_miconic_bs16
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_lite_miconic_bs16.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 5
+  done: python tools/campaign_checks.py evaluated sd_joint_lite_miconic_bs16 --since 20261101 --metrics combined
+- id: e4_sd_joint_chain_miconic_bs16
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_miconic_bs16.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 5
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_miconic_bs16 --since 20261101 --metrics combined
+- id: e4_sd_joint_chain_miconic_bs16_rs128
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_miconic_bs16_rs128.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 5
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_miconic_bs16_rs128 --since 20261101 --metrics combined
+- id: report_e4
+  cmd: campaign/jobs/report.sh e4
+  priority: 1
+  est_hours: 0.1
+  needs:
+  - e4_sd_union_miconic_bs16
+  - e4_sd_structural_miconic_bs16
+  - e4_sd_joint_lite_miconic_bs16
+  - e4_sd_joint_chain_miconic_bs16
+  - e4_sd_joint_chain_miconic_bs16_rs128
+  done: python tools/campaign_checks.py file campaign/reports/e4.txt --since 20261101
 - id: report_e1
   cmd: campaign/jobs/report.sh e1
   priority: 2

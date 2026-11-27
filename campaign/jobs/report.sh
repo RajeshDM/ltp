@@ -20,6 +20,11 @@ case "$1" in
       echo; echo "== single-domain GADAR and the seven-domain models, for comparison"
       python tools/indomain_table.py --since 20261101
     } > "$OUT" ;;
+  e4)
+    { echo "== E4 Miconic ladder (REVIEW_PLAN E4); GABAR through our pipeline = baseline_miconic"
+      python tools/analyze_results.py 2>/dev/null \
+          | grep -E "^(experiment|baseline_miconic |sd_[a-z_]*miconic)"
+    } > "$OUT" ;;
   e2)
     RUNGS=joint_chain,jc_no_bind,jc_no_chain,jc_no_eff,jc_no_goal,joint,joint_lite
     FOLDS=manyblocks,visitall,grid

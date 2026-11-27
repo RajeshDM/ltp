@@ -201,7 +201,6 @@ def _apply_arity_override(model, args):
 # sweep_jc_l2 destroyed each other's arm (AAAI27/REVISION_PLAN.md §8).
 # Verified against every configs/*.yaml on 2026-09-06.
 _UNKEYED_WEIGHT_PARAMS = [
-    ('representation_size', 'representation_size', 64),   # n_hidden, shapes
     ('gru_layers',          'gru_layers',          3),    # decoder depth
     ('pos_weight',          'pos_weight',          10.0), # loss weighting
     ('gamma',               'gamma',               0.9),  # LR schedule
@@ -1213,6 +1212,9 @@ if __name__ == "__main__":
             # its sign was dropped before 2026-11-14). A model trained on the
             # changed graphs must not share a directory with one trained
             # before. Defaulted away at 0: every other directory keeps its name.
+            # Hidden width: varied from 2026-11-27 (model-capacity runs).
+            # Defaulted away at 64, so every existing directory keeps its name.
+            'rs' : args.representation_size,
             'fx' : (_featurizer_version(
                         action_space, lifted=args.featurization in _LIFTED_MODES)
                     if (args.featurization == 'structural'
@@ -1251,6 +1253,7 @@ if __name__ == "__main__":
             'ka' : 0,
             'tp' : 'fd-lama-first',
             'fx' : 0,
+            'rs' : 64,
         }
         _assert_key_covers_variation(args, training_hyperparameters)
 

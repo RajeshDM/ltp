@@ -42,11 +42,11 @@ SUITE = {
     'lr': 0.0005, 'gnn_rounds': 9, 'd': 0, 'ad': 0.0, 'wd': 0.0, 'heads': 1,
     'g_node': True, 'abl_': 'main', 'mlp_layers': 2,
     'feat': 'joint_chain', 'nf': 38, 'ef': 60, 'l2': 0.0,
-    'bs': 64, 'ka': 0, 'tp': 'fd-lama-first', 'fx': 0,
+    'bs': 64, 'ka': 0, 'tp': 'fd-lama-first', 'fx': 0, 'rs': 64,
 }
 
 IGNORE = {'mlp_layers': 2, 'l2': 0.0, 'bs': 64, 'ka': 0, 'tp': 'fd-lama-first',
-          'fx': 0}
+          'fx': 0, 'rs': 64}
 
 ENV = ("MULTI-Manyblocks_ipcc_big-Gripper_ipcc-Miconic_ipcc-Visitall_ipcc-"
        "Grid_ipcc-Logistics_ipcc-Spanner_ipcc-Rovers_ipcc")
@@ -76,6 +76,7 @@ def test_every_weight_changing_setting_separates():
         ('ka', 6),              # the 9 rovers configs
         ('tp', 'fd-opt-lmcut'), # optimal vs satisficing training plans
         ('fx', 1),              # featurizer with single-effect schemas kept
+        ('rs', 128),            # hidden width (model-capacity runs)
         ('feat', 'jc_no_bind'), # C2 ablation modes: same widths, own dir
         ('lr', 1e-3), ('gnn_rounds', 6), ('heads', 4), ('wd', 0.1),
         ('ad', 0.1), ('feat', 'union'), ('d', 100), ('abl_', 'non_CD'),

@@ -226,6 +226,38 @@ in-domain numbers and GABAR's published ones come from pipelines that do not
 agree (our pipeline gives GABAR itself 0% / 7%), so the gap on those two
 domains must not be attributed to the representation.
 
+### E4. Why single-domain GADAR trails GABAR in the same pipeline (added 2026-11-27)
+
+The gap that matters most is not cross-domain: trained on Miconic ALONE,
+GADAR gets 44.5% where GABAR gets 99.2% through the same pipeline (Spanner
+85.4 vs 91.7, Visitall 54.0 vs 70.0). Found while setting this up: every
+`sd_*` run (and every LOO run) trains at batch 64 (`_common.yaml`), the GABAR
+baselines at 16 - the same 500 epochs are a QUARTER of the gradient steps.
+The Miconic ladder, all at batch 16, one seed, `campaign` jobs `e4_*`
+(~5 GPU-h each):
+
+| config | features |
+|---|---|
+| sd_union_miconic_bs16 | GABAR's identity features, through the multi-domain harness |
+| sd_structural_miconic_bs16 | identity removed, no lifted layer |
+| sd_joint_lite_miconic_bs16 | + lifted layer |
+| sd_joint_chain_miconic_bs16 | full GADAR (vs 44.5 at batch 64) |
+| sd_joint_chain_miconic_bs16_rs128 | full GADAR, hidden width 128 instead of 64 |
+
+Readings, written before the runs:
+
+| Outcome | Conclusion |
+|---|---|
+| union far below 99 | the multi-domain harness loses something against the `--domain` path: a harness bug. Fix it before anything else (permanent Phase 0 gate) |
+| joint_chain bs16 well above 44.5 | most of the gap was training length. Rerun every `sd_*` at batch 16; the LOO models (also batch 64) likely gain too |
+| structural far below union | removing symbol identity is the cost: Miconic's `origin`/`destin`/`above` are indistinguishable by class. Next: a renaming-invariant feature that tells structurally identical symbols apart |
+| structural ~ union, joint_* far below structural | the lifted layer makes learning harder, not the missing identity: capacity / rounds |
+| rs128 well above joint_chain bs16 | capacity-limited even on one domain: widen before multi-domain runs |
+
+"Well above" = more than 10 points (12 of 119 problems); one seed, so a
+smaller difference is not read as a finding. E2 should run on whatever
+model E4 produces.
+
 ### E2. Component ablations (5 GPUs x ~2 days; answers A)
 
 Modes (`ploi/lifted_layer.py::_MODE_COMPONENTS`), all at the `joint_chain`
