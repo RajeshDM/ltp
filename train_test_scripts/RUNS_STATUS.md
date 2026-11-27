@@ -367,6 +367,16 @@ a sample from every split loads in pddlgym with our domain files.
 tools/solve_split_candidates.py runs fd-lama-first (600 s cap) on all of
 them as 8 CPU jobs (solve-<domain>); only solved problems will be installed.
 Spanner is slow for LAMA (56-288 s at 9-10 nuts), Gripper/Rovers ~1-2 s.
+Format check (all candidates vs ALL existing train+test problems, union of
+domain name, typing, type names, object-name patterns, init/goal predicates):
+identical for every source in every domain - the existing sets were made with
+these same generators. Typing as it stands, and kept: TYPED Blocks (block),
+Gripper (robot/room/gripper/object), Miconic (floor/passenger), Visitall
+(place), Spanner (man/nut/spanner/location), Rovers (camera/lander/mode/
+objective/rover/store); UNTYPED Grid and Logistics (types as unary
+predicates; the Logistics domain's :types line is commented out). No
+conversion needed; Blocks comes from the pool because the generator's format
+(untyped, arm-empty) differs from ours.
 Checked and NOT a bug: collect_training_data executes plan[:-1], but every
 state, including the one before the last action, is paired with its action
 from the full plan, so the goal-achieving action is a training example.
