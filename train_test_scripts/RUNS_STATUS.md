@@ -362,9 +362,16 @@ batch 16: 100.0 / 99.2 cd). Constraining changes GABAR little except on Rovers
 and Grid. Not concluded: one seed; the GADAR column is the old training setup.
 
 E5 so far (batch 64): Miconic lr 1e-3 97.5 (cd 98.3; batch 16: 100.0, cd
-99.2); Visitall lr 1e-3 42.0 (cd 34.0), lr 2e-3 76.0 at E70 (best combined
-loss that early - check its curve before trusting it); Miconic lr 2e-3 and
+99.2); Visitall lr 1e-3 42.0 (cd 34.0), lr 2e-3 76.0 at E70; Miconic lr 2e-3 and
 the Visitall batch-16 control still running.
+Visitall loss curves (logs/sd_joint_chain_visitall_lr*_mode_train.log):
+lr 2e-3 stalls - training loss ~16-17 from epoch 80 to 500, validation
+~2.0 - so its "best" checkpoint is E70 and it is effectively a 70-epoch
+model; lr 1e-3 keeps fitting (train 14.4 -> 7.1) while validation rises
+from 1.84 (E80) to 2.48 (E480): it OVERFITS, and the combined-loss rule
+picks E490. On Visitall lower training loss gives lower coverage here, so
+the combined-loss checkpoint rule is a suspect for this domain, not only
+the learning rate.
 
 ## 2026-11-27 01:50: batched constrained decoding reproduces the sequential runs
 
