@@ -338,6 +338,31 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-26: constrained decoding on Rovers - the bottleneck was building legal actions
+
+Same checkpoints, re-evaluated with GABAR_CONSTRAINED_DECODE=1 (each
+parameter slot limited to objects some applicable grounding puts there;
+sequential evaluator, since the batched one has no constraint and
+eval_queue.sh forces it - run via logs/cdec/run_cdec.sh on share GPU nodes;
+results in cache/results/<config>_cdec/). Rovers test split, 54 problems,
+combined checkpoint, one seed. Random policy 30.9.
+
+| model | unconstrained cov | constrained cov | no monitor | top1-valid | max len |
+|---|---|---|---|---|---|
+| GABAR (baseline_rovers, E280) | 7.4 | **46.3** | 5.6 | 24.6 -> 99.9 | 23 -> 439 |
+| GADAR alone (sd_joint_chain_rovers, E380) | 20.4 | **57.4** | 3.7 | 44.0 -> 100.0 | 80 -> 336 |
+
+Reading (the outcome written in the Rovers entry below): coverage jumped
+well above random, so building legal actions WAS the main bottleneck, for
+both systems. Under the same protocol GADAR beats GABAR on Rovers (57.4 vs
+46.3). Ranking is still imperfect: coverage without the monitor stays at
+4-6%, ~11k blocked revisits, plans up to 439 of the 500-step bound.
+Not concluded: one seed; published GABAR (82) used its own setup; this is a
+TEST-TIME protocol change, so it must apply to every system reported, and
+it uses nothing beyond the applicable groundings the graph already carries.
+Logistics constrained runs still running (partial: GADAR alone 22/45
+solved vs 3.1% unconstrained; GABAR 2/39).
+
 ## 2026-11-26: why learned policies lose to random on Rovers (from existing dumps)
 
 Test split, combined checkpoint. `top1-valid` = fraction of steps whose
