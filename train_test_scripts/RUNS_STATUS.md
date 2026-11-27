@@ -372,8 +372,9 @@ from 1.84 (E80) to 2.48 (E480): it OVERFITS, and the combined-loss rule
 picks E490. On Visitall lower training loss gives lower coverage here, so
 the combined-loss checkpoint rule is a suspect for this domain, not only
 the learning rate.
-Miconic lr 2e-3 at batch 64: 0.0 (cd 13.4), best checkpoint E40 - lr 2e-3
-does not train on Miconic. lr 2e-3 is out; lr 1e-3 is the batch-64
+Miconic lr 2e-3 at batch 64: 0.0 (cd 13.4), best checkpoint E40 - it
+DIVERGES: combined loss 65.4 at E40, 141.7 at E50, never back below it
+(lr 1e-3 reaches 0.42). lr 2e-3 is out; lr 1e-3 is the batch-64
 candidate (Miconic 97.5 vs batch 16 100.0).
 
 ## 2026-11-27 01:50: batched constrained decoding reproduces the sequential runs
