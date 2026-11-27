@@ -338,6 +338,28 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27 11:15: all single-domain runs done - constrained, both rules, both batch sizes
+
+Every number constrained (51 constrained dumps, top-1 proposal legal on
+>= 98.9% of steps in every one - the constraint was active throughout).
+Test split, one seed. GABAR: combined checkpoint, batch 16 (its setting).
+
+| domain | GABAR | GADAR b64 combined | b64 validation | b16 combined | b16 validation |
+|---|---|---|---|---|---|
+| Blocks | 47.0 | 98.5 | 97.5 | 68.0 | 59.0 |
+| Gripper | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 |
+| Miconic | 100.0 | 34.5 | 100.0 | 99.2 | 100.0 |
+| Visitall | 74.0 | 54.0 | 74.0 | 78.0 | 88.0 |
+| Grid | 97.9 | 85.4 | 68.8 | 97.9 | 95.8 |
+| Logistics | 2.1 | 36.5 | 36.5 | 6.2 | 5.2 |
+| Spanner | 91.7 | 90.6 | 90.6 | 56.2 | 89.6 |
+| Rovers | 46.3 | 57.4 | 42.6 | 51.9 | 35.2 |
+
+No single (batch size, rule) cell wins everywhere; the spread between
+neighbouring settings on one seed is as large as any effect, which is the
+case for multi-seed reporting (author's decision). GABAR's validation-rule
+numbers were not evaluated (only GADAR's were).
+
 ## 2026-11-27 08:40: combined vs best-validation checkpoint, all single-domain runs (constrained)
 
 | domain | b64 combined | b64 validation | b16 combined | b16 validation |
