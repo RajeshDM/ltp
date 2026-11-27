@@ -338,6 +338,27 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27 01:50: batched constrained decoding reproduces the sequential runs
+
+Full test sets, same checkpoints, batched evaluator + 7 rollout workers
+(share GPU nodes, 8 CPUs) vs the sequential runs (results <cfg>_cdecb vs
+<cfg>_cdec):
+
+| model | sequential cov | batched cov | failed problems | wall time seq -> batched |
+|---|---|---|---|---|
+| GABAR Rovers | 46.3 | 46.3 | same 29 | ~21 min -> 14.6 min |
+| GADAR alone Rovers | 57.4 | 57.4 | same 23 | ~25 min -> 22.5 min |
+| GABAR Logistics | 2.1 | 2.1 | same 94 | ~80 min -> 14.1 min |
+| GADAR alone Logistics | 36.5 | 36.5 | same 61 | ~80 min -> 19.3 min |
+
+Identical coverage and identical failed-problem sets; plan lengths and
+revisit counts identical except GADAR-alone Logistics (average solved length
+349.3 vs 349.8, revisits 25842 vs 25861: one solved problem took a slightly
+different path - an equal-score tie or fallback order). The batched
+constrained path is trusted from here on. Speed: 4-6x on Logistics, little
+on Rovers, where the unpruned beam (up to 2 x 3^6 candidates per state, with
+a host-side legality loop per beam) dominates rather than featurization.
+
 ## 2026-11-27: constrained decoding on the batched evaluator; E5 queued
 
 `beam_search_parallel_constrained` (new; the unconstrained decoders are
