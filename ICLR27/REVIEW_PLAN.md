@@ -278,6 +278,27 @@ at batch 16 / lr 5e-4 as its control (Miconic's is E4's 100.0).
 | neither does, batch 16 clearly better | next: a schedule (warm-up, then decay) at batch 64 - one code change in the training loop, keyed in the checkpoint key - before accepting 4x |
 | batch 16 no better than batch 64 on Visitall | the Miconic gain is domain-specific; decide per table |
 
+### E6. Does the type spelling matter? (added 2026-11-27)
+
+Six suite domains declare PDDL types; Grid and Logistics spell them as
+unary predicates. GADAR's type compilation makes the two spellings agree in
+the domain description, but per-state graphs still differ: a predicate-typed
+domain also has a ground literal node for every type fact. Rather than
+convert six domains, Grid and Logistics get a typed twin
+(tools/convert_to_typed.py: flat types on every action parameter, Logistics'
+airport kept as a static predicate; seeded rollouts show identical applicable
+actions on train and test; tools/audit_featurizer.py passes, no type-hierarchy
+warning). Same problems, same splits, only the spelling differs.
+
+Runs: GABAR and GADAR alone on {Grid, Logistics} x {untyped, typed}, under
+the new protocol (validation selection, constrained decoding), 3 seeds.
+
+| Outcome | Conclusion |
+|---|---|
+| typed within the seed spread of untyped, both systems | spelling does not matter: the suite uses the typed twins, so every domain is typed |
+| GADAR moves, GABAR does not | the extra type-literal nodes matter to the domain-agnostic representation; use typed and say so |
+| both move | typing changes the problem for learning; report both spellings |
+
 ### E2. Component ablations (5 GPUs x ~2 days; answers A)
 
 Modes (`ploi/lifted_layer.py::_MODE_COMPONENTS`), all at the `joint_chain`

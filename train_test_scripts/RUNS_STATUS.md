@@ -338,6 +338,18 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27 14:40: typed twins of Grid and Logistics (E6)
+
+Author's call: make the 2 untyped domains typed rather than the 6 typed ones
+untyped, and train GABAR/GADAR on both spellings (REVIEW_PLAN E6).
+tools/convert_to_typed.py writes the typed domain files and converts
+problems (each object typed by its unary type fact, which leaves :init).
+Verified on the existing train and test sets: 5 seeded 40-step rollouts per
+set, identical applicable actions at every step and identical goal reach;
+audit_featurizer passes on both (featurizer version 0). Logistics' typed
+domain renames ?loc-from/?loc-to to ?from/?to - pddlgym's parser splits
+parameter names on '-'.
+
 ## 2026-11-27 14:00: new protocol - splits decided, candidates built, LAMA filtering running
 
 Decision (author): the on-disk training sets are the base (unchanged, except
