@@ -400,8 +400,11 @@ both systems. Under the same protocol GADAR beats GABAR on Rovers (57.4 vs
 Not concluded: one seed; published GABAR (82) used its own setup; this is a
 TEST-TIME protocol change, so it must apply to every system reported, and
 it uses nothing beyond the applicable groundings the graph already carries.
-Logistics constrained runs still running (partial: GADAR alone 22/45
-solved vs 3.1% unconstrained; GABAR 2/39).
+Logistics, final (96 problems): GADAR alone 3.1 -> **36.5**
+(sd_joint_chain_logistics, E490), GABAR 0.0 -> 2.1 (baseline_logistics,
+E380); top1-valid 50.1/27.5 -> 100.0, both still 0.0 without the monitor and
+plans up to 489-499 of 500 steps. On Logistics the constraint rescues GADAR
+but not GABAR: GABAR's ranking among legal actions is the failure there.
 
 ## 2026-11-26: why learned policies lose to random on Rovers (from existing dumps)
 
