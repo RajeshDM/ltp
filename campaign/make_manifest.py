@@ -38,6 +38,8 @@ HOLD_INTERRUPTED = ("an interrupted September run left a half-trained model for 
 # Decision 2026-11-27: the published GABAR numbers are taken as given and the
 # pipeline-reproduction question is not pursued, so the ablations run and no
 # further GABAR job does.
+HOLD_AFTER_E4 = ("waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on "
+                 "(batch size, width, features), not the one it may replace")
 HOLD_NO_GABAR = ("decision 2026-11-27: published GABAR numbers are used as given; no "
                  "further GABAR reproduction runs (release only to revisit)")
 # GABAR on optimal Logistics plans already got 0%, so GADAR's run answers
@@ -155,7 +157,7 @@ def main():
             prio = 3 if mode in E2_CORE else 4
             jobs.append(job(f"e2_train_{mode}_{fold}",
                             f"./train_test_scripts/train_queue.sh cuda:0 configs/{cfg}.yaml",
-                            kind="gpu", priority=prio, est_hours=16, needs=gates,
+                            kind="gpu", priority=prio, est_hours=16, needs=gates, hold=HOLD_AFTER_E4,
                             done=f"python tools/campaign_checks.py trained {cfg} --since {SINCE}"))
             jobs.append(job(f"e2_eval_{mode}_{fold}", f"campaign/jobs/eval_ablation.sh configs/{cfg}.yaml",
                             kind="cpu", priority=prio - 0.5, est_hours=6, min_cpus=16,

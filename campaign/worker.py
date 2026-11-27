@@ -243,11 +243,15 @@ def classify(ctx, job):
         return "done", ""
     if st.get("status") == "dead":
         return "dead", f"{st.get('attempts', '?')} attempts, last rc={st.get('rc')}"
+    # Running before held: a hold added while a job runs does not stop it,
+    # and showing it as HELD hid a GPU spending 14 h on a job nobody wanted.
+    if claim_fresh(ctx, jid):
+        note = " (now HELD: stop its worker to free the GPU)" if job.get("hold") else ""
+        return "running", st.get("host", "?") + note
     if job.get("hold") and not os.path.exists(
             os.path.join(ctx["camp"], "release", jid)):
-        return "held", f"{job['hold']} -- release: touch campaign/release/{jid}"
-    if claim_fresh(ctx, jid):
-        return "running", st.get("host", "?")
+        return "held", (f"{job['hold']} -- release: mkdir -p campaign/release && "
+                        f"touch campaign/release/{jid}")
     waiting = [n for n in job["needs"] if not is_done(ctx, ctx["m"]["by_id"][n])]
     if waiting:
         return "waiting", "needs " + ",".join(waiting)

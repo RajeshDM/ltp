@@ -220,6 +220,14 @@ def test_submit_queues_a_successor_with_a_dependency_and_outside_the_limits():
     assert "--dependency" not in plain, plain
 
 
+def test_a_running_job_shows_as_running_even_after_a_hold_is_added():
+    tmp, ctx = _setup([{"id": "x", "cmd": "true", "hold": "added while it ran"}])
+    assert W.classify(ctx, ctx["m"]["by_id"]["x"])[0] == "held"
+    assert W.try_claim(ctx, "x", "w1")
+    state, detail = W.classify(ctx, ctx["m"]["by_id"]["x"])
+    assert state == "running" and "HELD" in detail
+
+
 def test_job_that_cannot_finish_before_the_time_limit_is_not_started():
     tmp, ctx = _setup([{"id": "long", "cmd": "touch l.out", "done": "test -f l.out",
                         "est_hours": 10}])

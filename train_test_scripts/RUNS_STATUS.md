@@ -344,7 +344,8 @@ Found: every sd_* and LOO run trains at batch 64, the GABAR baselines at 16
 (4x fewer gradient steps over the same 500 epochs). E4 = a five-rung Miconic
 ladder at batch 16 (union -> structural -> joint_lite -> joint_chain, plus
 joint_chain at width 128), priority 1 in the campaign. Readings in
-REVIEW_PLAN E4. Hidden width is now in the checkpoint key (`rs`).
+REVIEW_PLAN E4. Hidden width is now in the checkpoint key (`rs`). E2 held
+until E4 reads out (ablate the model E4 settles on).
 
 ## 2026-11-27: decision - published GABAR numbers used as given; E2 released
 

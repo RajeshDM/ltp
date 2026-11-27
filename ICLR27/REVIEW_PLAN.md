@@ -255,8 +255,14 @@ Readings, written before the runs:
 | rs128 well above joint_chain bs16 | capacity-limited even on one domain: widen before multi-domain runs |
 
 "Well above" = more than 10 points (12 of 119 problems); one seed, so a
-smaller difference is not read as a finding. E2 should run on whatever
-model E4 produces.
+smaller difference is not read as a finding. E2 is held until this reads
+out, and then runs on whatever model E4 settles on.
+
+Evidence for "undertrained" before any run: the selected (best combined
+loss) checkpoint of the batch-64 single-domain runs sits in the last tenth
+of training on 6 of 8 domains (E460-E500; Miconic E490), i.e. the loss was
+still falling at epoch 500; GABAR at batch 16 peaks earlier (Miconic E330,
+Rovers E280, Logistics E380).
 
 ### E2. Component ablations (5 GPUs x ~2 days; answers A)
 

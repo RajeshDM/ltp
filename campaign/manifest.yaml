@@ -259,6 +259,7 @@ jobs:
   - gate_ablation_logistics
   - gate_audit_featurizer
   - gate_fingerprint
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_chain_no_manyblocks --since 20261101
 - id: e2_eval_joint_chain_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_chain_no_manyblocks.yaml
@@ -276,6 +277,7 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_chain_no_visitall --since 20261101
 - id: e2_eval_joint_chain_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_chain_no_visitall.yaml
@@ -293,6 +295,7 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_chain_no_grid --since 20261101
 - id: e2_eval_joint_chain_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_chain_no_grid.yaml
@@ -310,6 +313,7 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_bind_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_bind_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_bind_no_manyblocks.yaml
@@ -327,6 +331,7 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_bind_no_visitall --since 20261101
 - id: e2_eval_jc_no_bind_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_bind_no_visitall.yaml
@@ -344,6 +349,7 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_bind_no_grid --since 20261101
 - id: e2_eval_jc_no_bind_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_bind_no_grid.yaml
@@ -361,6 +367,7 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_goal_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_goal_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_goal_no_manyblocks.yaml
@@ -378,6 +385,7 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_goal_no_visitall --since 20261101
 - id: e2_eval_jc_no_goal_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_goal_no_visitall.yaml
@@ -395,6 +403,7 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_goal_no_grid --since 20261101
 - id: e2_eval_jc_no_goal_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_goal_no_grid.yaml
@@ -412,6 +421,7 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_chain_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_chain_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_chain_no_manyblocks.yaml
@@ -429,6 +439,7 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_chain_no_visitall --since 20261101
 - id: e2_eval_jc_no_chain_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_chain_no_visitall.yaml
@@ -446,6 +457,7 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_chain_no_grid --since 20261101
 - id: e2_eval_jc_no_chain_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_chain_no_grid.yaml
@@ -463,6 +475,7 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_eff_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_eff_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_eff_no_manyblocks.yaml
@@ -480,6 +493,7 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_eff_no_visitall --since 20261101
 - id: e2_eval_jc_no_eff_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_eff_no_visitall.yaml
@@ -497,6 +511,7 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_jc_no_eff_no_grid --since 20261101
 - id: e2_eval_jc_no_eff_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_eff_no_grid.yaml
@@ -514,6 +529,7 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_no_manyblocks --since 20261101
 - id: e2_eval_joint_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_no_manyblocks.yaml
@@ -531,6 +547,7 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_no_visitall --since 20261101
 - id: e2_eval_joint_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_no_visitall.yaml
@@ -548,6 +565,7 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_no_grid --since 20261101
 - id: e2_eval_joint_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_no_grid.yaml
@@ -565,6 +583,7 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_lite_no_manyblocks --since 20261101
 - id: e2_eval_joint_lite_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_lite_no_manyblocks.yaml
@@ -582,6 +601,7 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_lite_no_visitall --since 20261101
 - id: e2_eval_joint_lite_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_lite_no_visitall.yaml
@@ -599,6 +619,7 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
+  hold: 'waits for the E4 reading (REVIEW_PLAN E4): ablate the model E4 settles on (batch size, width, features), not the one it may replace'
   done: python tools/campaign_checks.py trained loo8_joint_lite_no_grid --since 20261101
 - id: e2_eval_joint_lite_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_lite_no_grid.yaml
