@@ -338,6 +338,28 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27 08:40: combined vs best-validation checkpoint, all single-domain runs (constrained)
+
+| domain | b64 combined | b64 validation | b16 combined | b16 validation |
+|---|---|---|---|---|
+| Blocks | 98.5 E370 | 97.5 E100 | 68.0 E490 | 59.0 E460 |
+| Gripper | 100.0 E500 | 100.0 E300 | training | training |
+| Miconic | 34.5 E490 | **100.0 E470** | 99.2 E490 | 100.0 E450 |
+| Visitall | 54.0 E500 | 74.0 E250 | 78.0 E500 | **88.0 E190** |
+| Grid | **85.4 E460** | 68.8 E470 | training | training |
+| Logistics | 36.5 E490 | 36.5 E350 | training | training |
+| Spanner | 90.6 E470 | 90.6 E460 | 56.2 E500 | **89.6 E420** |
+| Rovers | **57.4 E380** | 42.6 E120 | 51.9 E460 | 35.2 E70 |
+
+Validation selection helps Miconic, Visitall and Spanner-b16 and hurts Grid,
+Rovers and Blocks-b16; one seed per cell, so single-run differences of this
+size are within checkpoint-to-checkpoint noise. Decision by the author
+(2026-11-27): report the MEAN OVER SEEDS. Proposed (awaiting go-ahead):
+batch 64 / lr 5e-4, best-validation checkpoint fixed as the rule BEFORE the
+new seeds are evaluated (chosen after seeing these test numbers - mild
+selection, recorded), constrained decoding, seeds 10 (exists), 11, 12 for
+GADAR alone on all 8 domains, and the same for GABAR.
+
 ## 2026-11-27 08:10: best-validation checkpoints, first results (constrained)
 
 | run (batch 64) | combined ckpt | best-validation ckpt |
