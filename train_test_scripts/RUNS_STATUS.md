@@ -338,6 +338,40 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-26: why learned policies lose to random on Rovers (from existing dumps)
+
+Test split, combined checkpoint. `top1-valid` = fraction of steps whose
+first-ranked proposal is an applicable action; `repeated` = total revisits
+the monitor blocked; successes' plan lengths.
+
+| run | cov | cov no monitor | top1-valid | repeated | avg/max len (solved) |
+|---|---|---|---|---|---|
+| GABAR, Rovers (baseline_rovers) | 7.4 | 3.7 | 24.6 | 11638 | 14 / 23 |
+| GADAR alone, Rovers | 20.4 | 3.7 | 44.0 | 17379 | 34 / 80 |
+| GADAR LOO, Rovers (7 folds) | 3.7-11.1 | 0-7.4 | 4.3-46.0 | 3509-5511 | 13-30 / 18-41 |
+| GABAR, Miconic (contrast) | 99.2 | 99.2 | 97.8 | 0 | 181 / 295 |
+| GADAR alone, Miconic (contrast) | 44.5 | 0.0 | 92.4 | 42768 | 322 / 497 |
+
+Reading (classified per the research skill; not pre-registered):
+- Rovers is an ACTION-CONSTRUCTION failure, for GABAR and GADAR alike: the
+  top-ranked proposal is applicable on only 4-46% of steps (Miconic: 92-98).
+  The executor takes the first applicable proposal in the beam and gives up
+  when there is none, while the random policy always picks an applicable
+  action - which is how random (30.9) beats them. Only short plans ever
+  succeed (max 23-80 steps).
+- Miconic GADAR-alone is the opposite: it constructs legal actions (92.4)
+  but ranks them badly - zero coverage without the monitor, 42768 blocked
+  revisits, plans near the 500-step bound. A RANKING failure, which is what
+  E4 probes.
+- Not concluded: whether Rovers' failures end on "no applicable proposal"
+  or at the step bound (the dumps keep no per-problem step counts).
+Cheapest decisive test: re-evaluate the existing Rovers models with
+GABAR_CONSTRAINED_DECODE=1 (each parameter slot restricted to objects some
+applicable grounding puts there; every proposal applicable by construction;
+uses only the groundings the graph already carries). Coverage jumping well
+above 30.9 = construction was the bottleneck; staying near 7-20 = ranking too.
+Evaluation only, no training.
+
 ## 2026-11-26: E0a rule baselines (campaign/reports/e0.txt)
 
 Test split, coverage %, same executor/monitor/500-step bound as the policy,
