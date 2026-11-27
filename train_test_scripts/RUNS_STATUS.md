@@ -338,6 +338,23 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27 15:00: LAMA filtering - node trap and Spanner
+
+- First pass: Grid, Logistics, Rovers, Visitall solved 100/100 in every
+  split. Gripper, Blocks and Miconic "failed" 100/100 in ~0.4 s each: those
+  jobs ran on cn-b10 / cn-c10 / cn-c15, and the same problems solve on
+  cn-gpu6 (Xeon Gold 6248R, avx512) - the Fast Downward build does not run on
+  the older cn-b*/cn-c* share nodes. Resubmitted excluding them;
+  solve_split_candidates.py now aborts when its first 8 problems all fail in
+  < 2 s, and has --retry-failed.
+- Spanner: 11-12 nuts already time out at 600 s for LAMA (40/40). The
+  existing Spanner test set was only ~50% LAMA-solved too (nonopt column).
+  Spanner's generator is solvable by construction (spanners >= nuts, one
+  connected corridor), so Spanner TEST bands do not require a LAMA plan;
+  plan quality there is over the LAMA-solved subset, as before. Spanner's
+  train_ext / val_id / val_ood (which need plans for training and validation
+  loss) are being solved first.
+
 ## 2026-11-27 14:40: typed twins of Grid and Logistics (E6)
 
 Author's call: make the 2 untyped domains typed rather than the 6 typed ones

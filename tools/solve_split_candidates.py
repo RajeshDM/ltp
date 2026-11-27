@@ -62,9 +62,11 @@ def _solve(index):
                           plan=None, error=f"{type(e).__name__}: {str(e)[:200]}")
 
 
-def solve_split(domain, split_dir, timeout, workers):
+def solve_split(domain, split_dir, timeout, workers, retry_failed=False):
     out = os.path.join(split_dir, "solve_results.json")
     results = json.load(open(out)) if os.path.exists(out) else {}
+    if retry_failed:
+        results = {k: v for k, v in results.items() if v["solved"]}
     from pddlgym.core import PDDLEnv
     domain_file = os.path.join(PDDL, DOMAIN_FILES[domain] + ".pddl")
     env = PDDLEnv(domain_file, split_dir, operators_as_actions=True, dynamic_action_space=True)
@@ -74,8 +76,19 @@ def solve_split(domain, split_dir, timeout, workers):
           flush=True)
     if todo:
         with mp.Pool(workers, initializer=_init, initargs=(domain_file, split_dir, timeout)) as pool:
+            fast_fail = 0
             for k, (name, res) in enumerate(pool.imap_unordered(_solve, todo), 1):
                 results[name] = res
+                # A planner that cannot run on this node (FD built for a newer
+                # CPU: seen on cn-b/cn-c nodes) "fails" every problem in <1 s.
+                # Stop rather than record a split of false failures.
+                if res["error"] == "PlanningFailure" and res["seconds"] < 2:
+                    fast_fail += 1
+                    if fast_fail >= 8 and fast_fail == k:
+                        pool.terminate()
+                        sys.exit(f"{domain}/{os.path.basename(split_dir)}: the first {k} problems all "
+                                 f"failed in under 2 s on {os.uname().nodename} - the planner does not "
+                                 f"run here; nothing recorded. Resubmit on another node.")
                 if k % 10 == 0 or k == len(todo):
                     with open(out + ".tmp", "w") as f:
                         json.dump(results, f)
@@ -91,6 +104,8 @@ def main():
     ap.add_argument("--splits", default="", help="comma-separated; default all of the domain's")
     ap.add_argument("--timeout", type=int, default=600, help="seconds per problem")
     ap.add_argument("--workers", type=int, default=max(1, len(os.sched_getaffinity(0)) - 1))
+    ap.add_argument("--retry-failed", action="store_true",
+                    help="re-solve candidates recorded as unsolved")
     args = ap.parse_args()
     if not os.environ.get("SLURM_JOB_ID"):
         sys.exit("refusing to plan outside a SLURM allocation (login node)")
@@ -98,7 +113,8 @@ def main():
     splits = [s for s in args.splits.split(",") if s] or sorted(os.listdir(base))
     for s in splits:
         if os.path.isdir(os.path.join(base, s)):
-            solve_split(args.domain, os.path.join(base, s), args.timeout, args.workers)
+            solve_split(args.domain, os.path.join(base, s), args.timeout, args.workers,
+                        args.retry_failed)
 
 
 if __name__ == "__main__":
