@@ -338,6 +338,22 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27: decision - constrained decoding is the evaluation protocol
+
+Author's decision: every system reported from now on is evaluated with
+GABAR_CONSTRAINED_DECODE=1 (each parameter slot limited to objects some
+applicable grounding puts there), GABAR re-run under it too; published
+GABAR did not use it, so published numbers are not compared against
+constrained ones without saying so. Basis: Rovers GABAR 7.4 -> 46.3, GADAR
+alone 20.4 -> 57.4; Logistics GADAR alone 3.1 -> 36.5. A wider unconstrained
+beam is not a practical substitute: 9 schemas x 5 objects ran out of GPU
+memory, and 2 schemas x 5 objects ran at ~19 h per Rovers evaluation (vs
+~25 min constrained) - those two runs were cancelled at 1.6 h (partial:
+GABAR 9/54 solved, GADAR alone 11/54). The 9-schema x 3-object runs are
+left to finish. Status of "wider beam": cut-ranked on cost, not refuted.
+Note: constrained decoding runs on the SEQUENTIAL evaluator only; the
+batched one (eval_queue.sh's default) silently ignores the flag.
+
 ## 2026-11-26: E4 Miconic ladder at batch 16 (campaign/reports/e4.txt)
 
 Miconic alone, test split (119), combined checkpoint, one seed, unconstrained
