@@ -338,6 +338,37 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27 08:00: batch 16 is not uniformly better; checkpoint rule suspected
+
+GADAR alone, test split, combined checkpoint, one seed (cd = constrained):
+
+| domain | batch 64 | batch 64 cd | batch 16 | batch 16 cd |
+|---|---|---|---|---|
+| Miconic | 44.5 | 34.5 | **100.0** | **99.2** |
+| Visitall | 54.0 | 54.0 | **70.0** | **78.0** |
+| Blocks | **95.5** | **98.5** | 73.0 | 68.0 |
+| Spanner | **85.4** | **90.6** | 61.5 | 56.2 |
+| Rovers | 20.4 | **57.4** | 14.8 | 51.9 |
+| Gripper / Grid / Logistics | 100.0 / 87.5 / 3.1 | 100.0 / 85.4 / 36.5 | training | training |
+
+Contradicts the E5 extrapolation (batch 16 everywhere); E5 only tested
+Miconic and Visitall. Loss curves (logs/sd_joint_chain_<d>_bs16_mode_train.log)
+show three different behaviours: Blocks batch 16 is still falling steeply at
+E500 (undertrained in a different way); Spanner batch 16 is unstable
+(train 12.7 -> 18.2 -> 4.5 over E300-E500); Rovers batch 16 overfits
+(validation 15.3 at E100 -> 27.0 at E500) and Rovers batch 64 too (4.0 ->
+11.8).
+Found while reading them: per-epoch losses are SUMS over batches
+(traineval running_loss), and the training split is ~9x validation, so the
+"combined" checkpoint rule (train + val) is in effect lowest TRAINING loss:
+it picks the most-fitted, possibly overfit, checkpoint. Every run also keeps
+its 2 best-VALIDATION checkpoints (validation = held-out training plans, not
+test problems). Queued: `cdecval_<cfg>` - constrained evaluation of the
+best-validation checkpoint for all 16 single-domain runs (batch 64 and 16),
+results cache/results/<cfg>_cdec_val/. If validation selection closes the
+batch-16 losses (and Rovers' overfitting), the reported rule changes, not the
+batch size. Not pre-registered; one seed.
+
 ## 2026-11-27 05:00: E5 reading - batch 16 wins; Table-1 retrains queued at batch 16
 
 campaign/reports/e5.txt. Test split, combined checkpoint, one seed

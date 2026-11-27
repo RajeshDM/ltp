@@ -229,6 +229,25 @@ def main():
                         done=f"python tools/campaign_checks.py evaluated {cfg} --suffix _cdec "
                              f"--since {SINCE} --metrics combined"))
 
+    # Checkpoint-selection test (RUNS_STATUS 2026-11-27 08:00): per-epoch
+    # losses are SUMS over batches and the training split is ~9x validation,
+    # so the "combined" rule is effectively lowest TRAINING loss and picks
+    # overfit checkpoints (Rovers batch 16: validation 15 -> 27 while it picks
+    # E460). Evaluate each run's best-VALIDATION checkpoint, constrained.
+    # Validation = the 10% held-out training plans, never test problems.
+    VAL_CONFIGS = ([f"sd_joint_chain_{d}" for d in ("manyblocks", "gripper", "miconic", "visitall",
+                                                    "grid", "logistics", "spanner", "rovers")]
+                   + [f"sd_joint_chain_{d}_bs16" for d in ("manyblocks", "gripper", "miconic", "visitall",
+                                                           "grid", "logistics", "spanner", "rovers")])
+    for cfg in VAL_CONFIGS:
+        jobs.append(job(f"cdecval_{cfg}",
+                        "GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec_val METRICS=validation NMODELS=1 "
+                        f"DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/{cfg}.yaml",
+                        kind="gpu", priority=1.5, est_hours=1,
+                        needs=[trainer[cfg]] if cfg in trainer else [],
+                        done=f"python tools/campaign_checks.py evaluated {cfg} --suffix _cdec_val "
+                             f"--since {SINCE} --metrics validation"))
+
     manifest = {
         "defaults": {"max_attempts": 2},
         # Stops new GPU jobs once this many GPU-hours have been spent (running
