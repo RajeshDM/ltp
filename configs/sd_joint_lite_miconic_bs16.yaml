@@ -1,0 +1,12 @@
+# E4 single-domain ladder (ICLR27/REVIEW_PLAN.md E4): Miconic alone, at the
+# published GABAR batch size (16; the suite's sd_* runs used 64, i.e. a
+# quarter of the gradient steps over the same 500 epochs). Rungs: union
+# (GABAR's identity features through the multi-domain harness) -> structural
+# (identity removed) -> joint_lite (+ lifted layer) -> joint_chain (full GADAR).
+description: E4 ladder - joint_lite on miconic alone, batch 16
+base: _common.yaml
+expid: sd_joint_lite_miconic_bs16
+domains: miconic_ipcc
+featurization: joint_lite
+batch_size: 16
+test_domains: miconic_ipcc:119

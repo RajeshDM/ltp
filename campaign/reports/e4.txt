@@ -1,0 +1,9 @@
+== E4 Miconic ladder (REVIEW_PLAN E4); GABAR through our pipeline = baseline_miconic
+experiment                 domain                 ZS  sel           ep    succ succ-noM  quality    plan   time  nonopt
+baseline_miconic           Miconic_ipcc               combined     330   99.2%    99.2%    0.000   181.3 214.56    100%
+sd_joint_chain_miconic     Miconic_ipcc               combined     490   44.5%     0.0%    0.000   322.5 443.36    100%
+sd_joint_chain_miconic_bs16 Miconic_ipcc               combined     490  100.0%    21.0%    0.000   218.5 488.60    100%
+sd_joint_chain_miconic_bs16_rs128 Miconic_ipcc               combined     200   43.7%     0.0%    0.000   203.4 395.93    100%
+sd_joint_lite_miconic_bs16 Miconic_ipcc               combined     490   99.2%    99.2%    0.000   182.1 407.31    100%
+sd_structural_miconic_bs16 Miconic_ipcc               combined     480   43.7%     0.0%    0.000   192.3 370.33    100%
+sd_union_miconic_bs16      Miconic_ipcc               combined     470  100.0%   100.0%    0.000   181.5 357.30    100%

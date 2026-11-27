@@ -1,0 +1,11 @@
+# Single-domain GADAR: the full joint_chain representation trained on ONE
+# domain. Against the 8-domain models' in-domain numbers on the same test
+# problems, this separates "the representation costs in-domain coverage"
+# from "one model shared across eight domains costs it" (AAAI-27 review,
+# R1 Q1). Same epochs, seed and selection rule as the LOO suite.
+description: Single-domain GADAR (joint_chain) - miconic
+base: _common.yaml
+expid: sd_joint_chain_miconic
+domains: miconic_ipcc
+featurization: joint_chain
+test_domains: miconic_ipcc:119

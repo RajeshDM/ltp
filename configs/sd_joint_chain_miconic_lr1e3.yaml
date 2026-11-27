@@ -1,0 +1,10 @@
+# E5 learning-rate scaling (RUNS_STATUS 2026-11-27): batch 64 (the fast
+# setting) with the learning rate scaled up, against batch 16 at lr 5e-4,
+# which fixed single-domain Miconic (44.5 -> 100.0) at 4x the training time.
+description: E5 - joint_chain on miconic alone, batch 64, lr 0.001
+base: _common.yaml
+expid: sd_joint_chain_miconic_lr1e3
+domains: miconic_ipcc
+featurization: joint_chain
+lr: 0.001
+test_domains: miconic_ipcc:119
