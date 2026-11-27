@@ -153,6 +153,15 @@ def main():
                         kind="gpu", priority=1, est_hours=hours,
                         done=f"python tools/campaign_checks.py evaluated {cfg} --since {SINCE} --metrics combined"))
         e5.append(jobs[-1]["id"])
+    # Table 1 retrains at batch 16 (E5 reading 2026-11-27: no batch-64 lr
+    # within 5 points of batch 16 on both Miconic and Visitall). Miconic and
+    # Visitall at batch 16 already exist (E4/E5 configs).
+    for dom in ("manyblocks", "gripper", "grid", "logistics", "spanner", "rovers"):
+        cfg = f"sd_joint_chain_{dom}_bs16"
+        jobs.append(job(f"t1_{cfg}",
+                        f"WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/{cfg}.yaml",
+                        kind="gpu", priority=1, est_hours=7,
+                        done=f"python tools/campaign_checks.py evaluated {cfg} --since {SINCE} --metrics combined"))
     jobs.append(job("report_e5", "campaign/jobs/report.sh e5", priority=1, est_hours=0.1,
                     needs=e5,
                     done=f"python tools/campaign_checks.py file campaign/reports/e5.txt --since {SINCE}"))
@@ -208,7 +217,9 @@ def main():
            "sd_joint_chain_miconic_bs16",
            "sd_joint_chain_miconic_lr1e3", "sd_joint_chain_miconic_lr2e3",
            "sd_joint_chain_visitall_lr1e3", "sd_joint_chain_visitall_lr2e3",
-           "sd_joint_chain_visitall_bs16"])
+           "sd_joint_chain_visitall_bs16"]
+        + [f"sd_joint_chain_{d}_bs16" for d in ("manyblocks", "gripper", "grid",
+                                                 "logistics", "spanner", "rovers")])
     for cfg in CDEC_CONFIGS:
         jobs.append(job(f"cdec_{cfg}",
                         "GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 "

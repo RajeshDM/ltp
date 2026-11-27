@@ -1,0 +1,9 @@
+# Table 1 retrain (RUNS_STATUS 2026-11-27, E5 reading): GADAR alone at batch 16,
+# the setting that fixed Miconic (44.5 -> 100.0) and Visitall (54.0 -> 70.0).
+description: Single-domain GADAR (joint_chain) - logistics, batch 16 (Table 1)
+base: _common.yaml
+expid: sd_joint_chain_logistics_bs16
+domains: logistics_ipcc
+featurization: joint_chain
+test_domains: logistics_ipcc:96
+batch_size: 16

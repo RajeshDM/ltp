@@ -251,6 +251,42 @@ jobs:
   priority: 1
   est_hours: 5
   done: python tools/campaign_checks.py evaluated sd_joint_chain_visitall_bs16 --since 20261101 --metrics combined
+- id: t1_sd_joint_chain_manyblocks_bs16
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_manyblocks_bs16.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 7
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_manyblocks_bs16 --since 20261101 --metrics combined
+- id: t1_sd_joint_chain_gripper_bs16
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_gripper_bs16.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 7
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_gripper_bs16 --since 20261101 --metrics combined
+- id: t1_sd_joint_chain_grid_bs16
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_grid_bs16.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 7
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_grid_bs16 --since 20261101 --metrics combined
+- id: t1_sd_joint_chain_logistics_bs16
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_logistics_bs16.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 7
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_logistics_bs16 --since 20261101 --metrics combined
+- id: t1_sd_joint_chain_spanner_bs16
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_spanner_bs16.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 7
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_spanner_bs16 --since 20261101 --metrics combined
+- id: t1_sd_joint_chain_rovers_bs16
+  cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_rovers_bs16.yaml
+  kind: gpu
+  priority: 1
+  est_hours: 7
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_rovers_bs16 --since 20261101 --metrics combined
 - id: report_e5
   cmd: campaign/jobs/report.sh e5
   priority: 1
@@ -892,3 +928,51 @@ jobs:
   needs:
   - e5_sd_joint_chain_visitall_bs16
   done: python tools/campaign_checks.py evaluated sd_joint_chain_visitall_bs16 --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_manyblocks_bs16
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_manyblocks_bs16.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - t1_sd_joint_chain_manyblocks_bs16
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_manyblocks_bs16 --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_gripper_bs16
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_gripper_bs16.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - t1_sd_joint_chain_gripper_bs16
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_gripper_bs16 --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_grid_bs16
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_grid_bs16.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - t1_sd_joint_chain_grid_bs16
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_grid_bs16 --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_logistics_bs16
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_logistics_bs16.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - t1_sd_joint_chain_logistics_bs16
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_logistics_bs16 --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_spanner_bs16
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_spanner_bs16.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - t1_sd_joint_chain_spanner_bs16
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_spanner_bs16 --suffix _cdec --since 20261101 --metrics combined
+- id: cdec_sd_joint_chain_rovers_bs16
+  cmd: GABAR_CONSTRAINED_DECODE=1 EXPID_SUFFIX=_cdec METRICS=combined NMODELS=1 DEV=cuda:0 WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/eval_queue.sh configs/sd_joint_chain_rovers_bs16.yaml
+  kind: gpu
+  priority: 1.5
+  est_hours: 1
+  needs:
+  - t1_sd_joint_chain_rovers_bs16
+  done: python tools/campaign_checks.py evaluated sd_joint_chain_rovers_bs16 --suffix _cdec --since 20261101 --metrics combined

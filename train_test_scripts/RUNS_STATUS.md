@@ -338,6 +338,33 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27 05:00: E5 reading - batch 16 wins; Table-1 retrains queued at batch 16
+
+campaign/reports/e5.txt. Test split, combined checkpoint, one seed
+(cd = constrained decoding).
+
+| run | Miconic | Visitall |
+|---|---|---|
+| batch 64, lr 5e-4 (old setting) | 44.5 (cd 34.5) | 54.0 (cd 54.0) |
+| batch 64, lr 1e-3 | **97.5** (cd 98.3) | 42.0 (cd 34.0) - overfits |
+| batch 64, lr 2e-3 | 0.0 (cd 13.4) - diverges ~E45 | 76.0 (cd 74.0) at E70 - stalls |
+| batch 16, lr 5e-4 | **100.0** (cd 99.2) | **70.0** (cd **78.0**) |
+
+Pre-registered reading (REVIEW_PLAN E5), row 2: no batch-64 learning rate
+is within 5 points of batch 16 on BOTH domains (lr 1e-3: yes on Miconic,
+-28 on Visitall), batch 16 clearly better. So: Table 1 retrains at batch 16
+(4x the training time is affordable on one domain, ~5-7 h); before the
+seven-domain and all-8 runs (where 4x exceeds the 2-day limit), the next
+test is a learning-rate SCHEDULE at batch 64 (warm-up then decay), which
+needs a training-loop change and the user's go-ahead.
+Note: Visitall at batch 16 still picks its LAST checkpoint (E500), so it may
+also be undertrained at 500 epochs.
+
+Queued (campaign `t1_*`, then `cdec_*`): GADAR alone at batch 16 on
+manyblocks, gripper, grid, logistics, spanner, rovers (configs
+sd_joint_chain_<dom>_bs16.yaml); Miconic and Visitall at batch 16 already
+exist. Workers: 4 dgx2 + 1 dgxh submitted, plus the running gpu worker.
+
 ## 2026-11-27 02:55: Table-1 view - GABAR vs GADAR alone, both protocols (interim)
 
 Test split, combined checkpoint, one seed. "cd" = constrained decoding

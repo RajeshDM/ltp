@@ -1,0 +1,9 @@
+# Table 1 retrain (RUNS_STATUS 2026-11-27, E5 reading): GADAR alone at batch 16,
+# the setting that fixed Miconic (44.5 -> 100.0) and Visitall (54.0 -> 70.0).
+description: Single-domain GADAR (joint_chain) - manyblocks, batch 16 (Table 1)
+base: _common.yaml
+expid: sd_joint_chain_manyblocks_bs16
+domains: manyblocks_ipcc_big
+featurization: joint_chain
+test_domains: manyblocks_ipcc_big:200
+batch_size: 16
