@@ -338,6 +338,34 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27 13:00: the training sets on disk do not match the GABAR paper's Table 1
+
+GABAR paper Table 1 (arXiv 2412.04752v3) gives train / val / test easy, med,
+hard (100 problems each). The training folders every run here loads
+(PLOI_full_repos/pddlgym/pddlgym/pddl/<dom>/, top level only) vs the paper,
+size measured from the problem files:
+
+| domain (size) | on disk | paper train | paper val | on disk above paper train max (of which at val size) |
+|---|---|---|---|---|
+| Blocks (blocks) | 6-9, 200 | 6-9 | 10 | 0 |
+| Gripper (balls) | 5-25, 147 | 5-15 | 17 | 70 (7) |
+| Miconic (passengers) | 1-12, 228 | 1-9 | 10 | 57 (19) |
+| Visitall (cells) | 9-49, 125 | 9-36 | 49 | 15 (5) |
+| Grid (cells) | 9-63, 192 | 25-49 | 63 | 16 (16) |
+| Logistics (cities) | 5-13, 156 | 4-7 | 8 | 72 (28) |
+| Spanner (spanners) | 3-19, 234 | 2-9 | 10 | 150 (12) |
+| Rovers (waypoints) | 3-12, 312 | 3-9 | 10 | 108 (36) |
+
+So in 7 of 8 domains the training data includes the paper's validation sizes
+and larger. The GABAR-era pddlgym copy in the gnn env has only 5 domains and
+its Gripper training set is the same 5-25. Test folders do not match the
+paper's 3 x 100 bands either. Unloaded problem POOLS exist inside the domain
+folders (pddlgym reads only the top level): Blocks manyblocks_ipcc_big/all_data
+(5000) and manyblocks_ipcc_big_test/all_problem_data (5000, incl. 26-39),
+plus 15 other Blocks subsets; gripper_ipcc/complex_traning_data (200),
+gripper_ipcc_test/{simple_test 128, complex_test 30};
+logistics_ipcc/training_data_trial_2 (148). Other domains have no pool.
+
 ## 2026-11-27 12:30: test-set defects found while designing the splits
 
 - Rovers: 4 of the 54 test problems are byte-identical (up to the problem
