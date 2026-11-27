@@ -105,7 +105,7 @@ jobs:
   needs:
   - gate_unit_tests
   done: python tools/campaign_checks.py evaluated baseline_blocks --since 20261101 --metrics combined
-  hold: an interrupted September run left a half-trained model for this key and train_then_eval.sh would evaluate it; archive models/*bs16* for this domain first (REVIEW_PLAN E1)
+  hold: 'decision 2026-11-27: published GABAR numbers are used as given; no further GABAR reproduction runs (release only to revisit)'
 - id: e1_gabar_gripper
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/baseline_gripper.yaml
   kind: gpu
@@ -114,7 +114,7 @@ jobs:
   needs:
   - gate_unit_tests
   done: python tools/campaign_checks.py evaluated baseline_gripper --since 20261101 --metrics combined
-  hold: an interrupted September run left a half-trained model for this key and train_then_eval.sh would evaluate it; archive models/*bs16* for this domain first (REVIEW_PLAN E1)
+  hold: 'decision 2026-11-27: published GABAR numbers are used as given; no further GABAR reproduction runs (release only to revisit)'
 - id: e1_gabar_grid
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/baseline_grid.yaml
   kind: gpu
@@ -123,7 +123,7 @@ jobs:
   needs:
   - gate_unit_tests
   done: python tools/campaign_checks.py evaluated baseline_grid --since 20261101 --metrics combined
-  hold: an interrupted September run left a half-trained model for this key and train_then_eval.sh would evaluate it; archive models/*bs16* for this domain first (REVIEW_PLAN E1)
+  hold: 'decision 2026-11-27: published GABAR numbers are used as given; no further GABAR reproduction runs (release only to revisit)'
 - id: e1_baseline_logistics_opt
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/baseline_logistics_opt.yaml
   kind: gpu
@@ -162,12 +162,14 @@ jobs:
   kind: gpu
   priority: 1
   est_hours: 12
+  hold: 'decision 2026-11-27: published GABAR numbers are used as given; no further GABAR reproduction runs (release only to revisit)'
   done: python tools/campaign_checks.py file campaign/reports/e1_gabar_logistics_ipcc_prejuly.txt --since 20261101 && grep -qi 'testing model from epoch' campaign/reports/e1_gabar_logistics_ipcc_prejuly.txt
 - id: e1_gabar_rovers_prejuly
   cmd: campaign/jobs/gabar_prejuly.sh rovers_ipcc 54
   kind: gpu
   priority: 1
   est_hours: 12
+  hold: 'decision 2026-11-27: published GABAR numbers are used as given; no further GABAR reproduction runs (release only to revisit)'
   done: python tools/campaign_checks.py file campaign/reports/e1_gabar_rovers_ipcc_prejuly.txt --since 20261101 && grep -qi 'testing model from epoch' campaign/reports/e1_gabar_rovers_ipcc_prejuly.txt
 - id: e1_sd_miconic_fixed
   cmd: WORKERS=$CAMPAIGN_WORKERS ./train_test_scripts/train_then_eval.sh configs/sd_joint_chain_miconic.yaml
@@ -201,8 +203,6 @@ jobs:
   - e1_baseline_logistics_opt
   - e1_baseline_rovers_opt
   - e1_sd_joint_chain_rovers_opt
-  - e1_gabar_logistics_prejuly
-  - e1_gabar_rovers_prejuly
   - e1_sd_miconic_fixed
   - e1_sd_rovers_fixed
   done: python tools/campaign_checks.py file campaign/reports/e1.txt --since 20261101
@@ -218,8 +218,6 @@ jobs:
   - gate_ablation_logistics
   - gate_audit_featurizer
   - gate_fingerprint
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_joint_chain_no_manyblocks --since 20261101
 - id: e2_eval_joint_chain_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_chain_no_manyblocks.yaml
@@ -237,8 +235,6 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_joint_chain_no_visitall --since 20261101
 - id: e2_eval_joint_chain_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_chain_no_visitall.yaml
@@ -256,8 +252,6 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_joint_chain_no_grid --since 20261101
 - id: e2_eval_joint_chain_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_chain_no_grid.yaml
@@ -275,8 +269,6 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_jc_no_bind_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_bind_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_bind_no_manyblocks.yaml
@@ -294,8 +286,6 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_jc_no_bind_no_visitall --since 20261101
 - id: e2_eval_jc_no_bind_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_bind_no_visitall.yaml
@@ -313,8 +303,6 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_jc_no_bind_no_grid --since 20261101
 - id: e2_eval_jc_no_bind_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_bind_no_grid.yaml
@@ -332,8 +320,6 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_jc_no_goal_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_goal_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_goal_no_manyblocks.yaml
@@ -351,8 +337,6 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_jc_no_goal_no_visitall --since 20261101
 - id: e2_eval_jc_no_goal_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_goal_no_visitall.yaml
@@ -370,8 +354,6 @@ jobs:
   priority: 3
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_jc_no_goal_no_grid --since 20261101
 - id: e2_eval_jc_no_goal_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_goal_no_grid.yaml
@@ -389,8 +371,6 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_jc_no_chain_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_chain_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_chain_no_manyblocks.yaml
@@ -408,8 +388,6 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_jc_no_chain_no_visitall --since 20261101
 - id: e2_eval_jc_no_chain_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_chain_no_visitall.yaml
@@ -427,8 +405,6 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_jc_no_chain_no_grid --since 20261101
 - id: e2_eval_jc_no_chain_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_chain_no_grid.yaml
@@ -446,8 +422,6 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_jc_no_eff_no_manyblocks --since 20261101
 - id: e2_eval_jc_no_eff_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_eff_no_manyblocks.yaml
@@ -465,8 +439,6 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_jc_no_eff_no_visitall --since 20261101
 - id: e2_eval_jc_no_eff_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_eff_no_visitall.yaml
@@ -484,8 +456,6 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_jc_no_eff_no_grid --since 20261101
 - id: e2_eval_jc_no_eff_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_jc_no_eff_no_grid.yaml
@@ -503,8 +473,6 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_joint_no_manyblocks --since 20261101
 - id: e2_eval_joint_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_no_manyblocks.yaml
@@ -522,8 +490,6 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_joint_no_visitall --since 20261101
 - id: e2_eval_joint_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_no_visitall.yaml
@@ -541,8 +507,6 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_joint_no_grid --since 20261101
 - id: e2_eval_joint_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_no_grid.yaml
@@ -560,8 +524,6 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_joint_lite_no_manyblocks --since 20261101
 - id: e2_eval_joint_lite_manyblocks
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_lite_no_manyblocks.yaml
@@ -579,8 +541,6 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_joint_lite_no_visitall --since 20261101
 - id: e2_eval_joint_lite_visitall
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_lite_no_visitall.yaml
@@ -598,8 +558,6 @@ jobs:
   priority: 4
   est_hours: 16
   needs: *id001
-  hold: 'E1 reading ''low | low'': our pipeline does not reproduce published GABAR on Logistics/Rovers; pre-registered: stop and debug first. Waits for campaign/reports/e1_gabar_*_prejuly.txt (REVIEW_PLAN
-    E1)'
   done: python tools/campaign_checks.py trained loo8_joint_lite_no_grid --since 20261101
 - id: e2_eval_joint_lite_grid
   cmd: campaign/jobs/eval_ablation.sh configs/loo8_joint_lite_no_grid.yaml

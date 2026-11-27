@@ -219,6 +219,13 @@ same ~0 -> the setup differs from the published run (test instances,
 training-set size, hyperparameters, plan-length bound), and what the paper
 actually ran must be recovered from the GABAR-paper checkout or its logs.
 
+**Decision 2026-11-27 (author): not pursued.** The published GABAR numbers
+are used as given; the pre-July reproduction jobs are held and E2 is
+released. Consequence for the paper: on Logistics and Rovers, GADAR's
+in-domain numbers and GABAR's published ones come from pipelines that do not
+agree (our pipeline gives GABAR itself 0% / 7%), so the gap on those two
+domains must not be attributed to the representation.
+
 ### E2. Component ablations (5 GPUs x ~2 days; answers A)
 
 Modes (`ploi/lifted_layer.py::_MODE_COMPONENTS`), all at the `joint_chain`

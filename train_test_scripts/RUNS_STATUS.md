@@ -338,6 +338,12 @@ Zero-shot table as submitted: Blocks/others from the cross-fold sweep above;
 the Visitall, Miconic and Grid rows use the AAAI-submission (July, pre-type-
 compilation) numbers, by the author's decision.
 
+## 2026-11-27: decision - published GABAR numbers used as given; E2 released
+
+No further GABAR runs (reproduction jobs held). On Logistics/Rovers the
+GADAR-vs-GABAR gap is across pipelines and is not attributed to the
+representation (REVIEW_PLAN E1).
+
 ## 2026-11-26: E1 says our pipeline does not reproduce GABAR (Logistics, Rovers)
 
 GABAR through our pipeline: Logistics 0.0% (LAMA) / 0.0% (optimal), Rovers
