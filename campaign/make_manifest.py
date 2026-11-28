@@ -101,10 +101,13 @@ def protocol_jobs(share="main"):
         if share == "second" and cfg not in SECOND_SHARE:
             continue
         hold = {"hold": HOLD_SECOND} if share == "main" and cfg in SECOND_SHARE else {}
+        multi = not cfg.startswith(("p2_sd_", "p2_typed_"))
+        mem = {"min_mem_gb": 70 if cfg == "p2_all8_jc" else 60} if multi else {}
         jobs.append(job(f"p2train_{cfg}", f"./train_test_scripts/train_queue.sh cuda:0 configs/{cfg}.yaml",
                         kind="gpu", priority=prio, est_hours=hours,
                         needs=[gate] + ([collect] if needs_collect(cfg) else []),
-                        done=f"python tools/campaign_checks.py trained {cfg} --since {P2_SINCE}", **hold))
+                        done=f"python tools/campaign_checks.py trained {cfg} --since {P2_SINCE}",
+                        **hold, **mem))
         jobs.append(job(f"p2eval_{cfg}", f"campaign/jobs/protocol_eval.sh configs/{cfg}.yaml",
                         kind="gpu", priority=0.2, est_hours=1 if hours <= 3 else 3,
                         needs=[f"p2train_{cfg}"],

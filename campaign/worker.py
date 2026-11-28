@@ -54,7 +54,7 @@ HEARTBEAT = 30
 START_MARGIN_H = 0.25    # never start a job that cannot finish this far ahead of the limit
 _TERM = threading.Event()
 
-JOB_DEFAULTS = {"kind": "cpu", "min_cpus": 1, "est_hours": 1.0, "needs": [],
+JOB_DEFAULTS = {"kind": "cpu", "min_cpus": 1, "min_mem_gb": 0, "est_hours": 1.0, "needs": [],
                 "priority": 5, "max_attempts": 2}
 
 
@@ -319,6 +319,8 @@ def next_job(ctx, caps, hours_left, max_priority=None):
             continue
         if job["min_cpus"] > caps["cpus"]:
             continue
+        if job.get("min_mem_gb", 0) > caps.get("mem_gb", float("inf")):
+            continue      # e.g. a seven-domain run (~47 GB peak) on a 32 GB allocation
         if job["est_hours"] > hours_left - START_MARGIN_H:
             continue
         if job["kind"] == "gpu" and cap is not None and used >= cap:
@@ -388,6 +390,9 @@ def detect_caps(kind=None):
         except (OSError, subprocess.TimeoutExpired):
             gpu = "0"
     caps = {"gpu": gpu == "1", "cpus": len(os.sched_getaffinity(0))}
+    mem = os.environ.get("SLURM_MEM_PER_NODE")          # MB, set inside an allocation
+    if mem and mem.isdigit():
+        caps["mem_gb"] = int(mem) / 1024
     caps["kind"] = kind or ("gpu" if caps["gpu"] else "cpu")
     return caps
 

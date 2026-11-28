@@ -27,6 +27,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_structural_no_manyblocks --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_structural_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_structural_no_manyblocks.yaml
   kind: gpu
@@ -44,6 +45,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_joint_lite_no_manyblocks --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_joint_lite_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_lite_no_manyblocks.yaml
   kind: gpu
@@ -61,6 +63,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_joint_no_manyblocks --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_joint_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_no_manyblocks.yaml
   kind: gpu
@@ -78,6 +81,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_bind_no_manyblocks --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_bind_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_bind_no_manyblocks.yaml
   kind: gpu
@@ -95,6 +99,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_chain_no_manyblocks --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_chain_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_chain_no_manyblocks.yaml
   kind: gpu
@@ -112,6 +117,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_eff_no_manyblocks --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_eff_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_eff_no_manyblocks.yaml
   kind: gpu
@@ -129,6 +135,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_goal_no_manyblocks --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_goal_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_goal_no_manyblocks.yaml
   kind: gpu
@@ -146,6 +153,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_structural_no_logistics --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_structural_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_structural_no_logistics.yaml
   kind: gpu
@@ -163,6 +171,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_joint_lite_no_logistics --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_joint_lite_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_lite_no_logistics.yaml
   kind: gpu
@@ -180,6 +189,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_joint_no_logistics --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_joint_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_no_logistics.yaml
   kind: gpu
@@ -197,6 +207,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_bind_no_logistics --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_bind_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_bind_no_logistics.yaml
   kind: gpu
@@ -214,6 +225,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_chain_no_logistics --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_chain_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_chain_no_logistics.yaml
   kind: gpu
@@ -231,6 +243,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_eff_no_logistics --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_eff_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_eff_no_logistics.yaml
   kind: gpu
@@ -248,6 +261,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_goal_no_logistics --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_goal_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_goal_no_logistics.yaml
   kind: gpu
@@ -265,6 +279,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_structural_no_visitall --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_structural_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_structural_no_visitall.yaml
   kind: gpu
@@ -282,6 +297,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_joint_lite_no_visitall --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_joint_lite_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_lite_no_visitall.yaml
   kind: gpu
@@ -299,6 +315,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_joint_no_visitall --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_joint_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_no_visitall.yaml
   kind: gpu
@@ -316,6 +333,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_bind_no_visitall --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_bind_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_bind_no_visitall.yaml
   kind: gpu
@@ -333,6 +351,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_chain_no_visitall --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_chain_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_chain_no_visitall.yaml
   kind: gpu
@@ -350,6 +369,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_eff_no_visitall --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_eff_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_eff_no_visitall.yaml
   kind: gpu
@@ -367,6 +387,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_goal_no_visitall --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_goal_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_goal_no_visitall.yaml
   kind: gpu

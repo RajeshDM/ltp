@@ -1248,6 +1248,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_all8_jc --since 20261127
+  min_mem_gb: 70
 - id: p2eval_p2_all8_jc
   cmd: campaign/jobs/protocol_eval.sh configs/p2_all8_jc.yaml
   kind: gpu
@@ -1265,6 +1266,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_loo_jc_no_manyblocks --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_jc_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_manyblocks.yaml
   kind: gpu
@@ -1282,6 +1284,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_loo_jc_no_gripper --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_jc_no_gripper
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_gripper.yaml
   kind: gpu
@@ -1299,6 +1302,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_loo_jc_no_miconic --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_jc_no_miconic
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_miconic.yaml
   kind: gpu
@@ -1316,6 +1320,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_loo_jc_no_visitall --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_jc_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_visitall.yaml
   kind: gpu
@@ -1333,6 +1338,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_loo_jc_no_grid --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_jc_no_grid
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_grid.yaml
   kind: gpu
@@ -1350,6 +1356,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_loo_jc_no_logistics --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_jc_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_logistics.yaml
   kind: gpu
@@ -1366,6 +1373,7 @@ jobs:
   needs:
   - gate_p2_smoke
   done: python tools/campaign_checks.py trained p2_loo_jc_no_spanner --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_jc_no_spanner
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_spanner.yaml
   kind: gpu
@@ -1383,6 +1391,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_loo_jc_no_rovers --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_jc_no_rovers
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_jc_no_rovers.yaml
   kind: gpu
@@ -1400,6 +1409,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_loo_union_no_manyblocks --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_union_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_manyblocks.yaml
   kind: gpu
@@ -1417,6 +1427,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_loo_union_no_gripper --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_union_no_gripper
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_gripper.yaml
   kind: gpu
@@ -1434,6 +1445,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_loo_union_no_miconic --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_union_no_miconic
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_miconic.yaml
   kind: gpu
@@ -1451,6 +1463,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_loo_union_no_visitall --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_union_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_visitall.yaml
   kind: gpu
@@ -1468,6 +1481,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_loo_union_no_grid --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_union_no_grid
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_grid.yaml
   kind: gpu
@@ -1485,6 +1499,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_loo_union_no_logistics --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_union_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_logistics.yaml
   kind: gpu
@@ -1501,6 +1516,7 @@ jobs:
   needs:
   - gate_p2_smoke
   done: python tools/campaign_checks.py trained p2_loo_union_no_spanner --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_union_no_spanner
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_spanner.yaml
   kind: gpu
@@ -1518,6 +1534,7 @@ jobs:
   - gate_p2_smoke
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_loo_union_no_rovers --since 20261127
+  min_mem_gb: 60
 - id: p2eval_p2_loo_union_no_rovers
   cmd: campaign/jobs/protocol_eval.sh configs/p2_loo_union_no_rovers.yaml
   kind: gpu
@@ -1665,6 +1682,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_structural_no_manyblocks --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_structural_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_structural_no_manyblocks.yaml
   kind: gpu
@@ -1684,6 +1702,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_joint_lite_no_manyblocks --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_joint_lite_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_lite_no_manyblocks.yaml
   kind: gpu
@@ -1703,6 +1722,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_joint_no_manyblocks --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_joint_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_no_manyblocks.yaml
   kind: gpu
@@ -1722,6 +1742,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_bind_no_manyblocks --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_bind_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_bind_no_manyblocks.yaml
   kind: gpu
@@ -1741,6 +1762,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_chain_no_manyblocks --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_chain_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_chain_no_manyblocks.yaml
   kind: gpu
@@ -1760,6 +1782,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_eff_no_manyblocks --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_eff_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_eff_no_manyblocks.yaml
   kind: gpu
@@ -1779,6 +1802,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_goal_no_manyblocks --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_goal_no_manyblocks
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_goal_no_manyblocks.yaml
   kind: gpu
@@ -1798,6 +1822,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_structural_no_logistics --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_structural_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_structural_no_logistics.yaml
   kind: gpu
@@ -1817,6 +1842,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_joint_lite_no_logistics --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_joint_lite_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_lite_no_logistics.yaml
   kind: gpu
@@ -1836,6 +1862,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_joint_no_logistics --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_joint_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_no_logistics.yaml
   kind: gpu
@@ -1855,6 +1882,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_bind_no_logistics --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_bind_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_bind_no_logistics.yaml
   kind: gpu
@@ -1874,6 +1902,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_chain_no_logistics --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_chain_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_chain_no_logistics.yaml
   kind: gpu
@@ -1893,6 +1922,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_eff_no_logistics --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_eff_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_eff_no_logistics.yaml
   kind: gpu
@@ -1912,6 +1942,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_goal_no_logistics --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_goal_no_logistics
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_goal_no_logistics.yaml
   kind: gpu
@@ -1931,6 +1962,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_structural_no_visitall --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_structural_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_structural_no_visitall.yaml
   kind: gpu
@@ -1950,6 +1982,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_joint_lite_no_visitall --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_joint_lite_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_lite_no_visitall.yaml
   kind: gpu
@@ -1969,6 +2002,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_joint_no_visitall --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_joint_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_joint_no_visitall.yaml
   kind: gpu
@@ -1988,6 +2022,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_bind_no_visitall --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_bind_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_bind_no_visitall.yaml
   kind: gpu
@@ -2007,6 +2042,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_chain_no_visitall --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_chain_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_chain_no_visitall.yaml
   kind: gpu
@@ -2026,6 +2062,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_eff_no_visitall --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_eff_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_eff_no_visitall.yaml
   kind: gpu
@@ -2045,6 +2082,7 @@ jobs:
   - gate_p2_collect
   done: python tools/campaign_checks.py trained p2_lad_jc_no_goal_no_visitall --since 20261127
   hold: runs on the second account (campaign/manifest_second.yaml)
+  min_mem_gb: 60
 - id: p2eval_p2_lad_jc_no_goal_no_visitall
   cmd: campaign/jobs/protocol_eval.sh configs/p2_lad_jc_no_goal_no_visitall.yaml
   kind: gpu
