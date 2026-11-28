@@ -345,6 +345,16 @@ campaign/jobs/protocol_eval.sh     per p2 config: sweep (10 snapshots on each
                                    test that one epoch (--test-epochs) on the
                                    bands -> cache/results/<expid>_final/.
                                    Constrained, batched decoding
+tools/campaign_dashboard.py        the protocol campaign's state (worker
+                                   status, each p2 run's epoch/ETA from its
+                                   log, selected checkpoint, hard-band
+                                   results, squeue, campaign/reports/
+                                   dashboard_notes.json) embedded as JSON
+                                   between the TRACKER-DATA markers of
+                                   ICLR27/PAPER_PLAN.html, which renders the
+                                   live tracker from it; republish after
+                                   running. campaign/watch_changes.sh blocks
+                                   until a p2 job or gate changes state
 train_test_scripts/run_config.sh   nohup-launch one config on one GPU. The
                                    log name is DERIVED from the config plus
                                    the extra flags (`--seed 12` ->
