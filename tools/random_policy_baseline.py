@@ -56,8 +56,8 @@ def parse_domains(spec):
         split = "test"
         if "@" in raw:
             raw, split = raw.split("@", 1)
-            if split != "train":
-                raise ValueError(f"Unknown split '{split}' (only @train)")
+            from ploi.test_utils import split_env_suffix
+            split_env_suffix(split)      # train, or a 2026-11 protocol split
         entries.append((raw.capitalize(), split, count))
     return entries
 
@@ -215,7 +215,8 @@ def main():
             results = json.load(f)
 
     for name, split, count in parse_domains(args.domains):
-        suffix = "Test" if split == "test" else ""
+        from ploi.test_utils import split_env_suffix
+        suffix = split_env_suffix(split)
         env = pddlgym.make(f"PDDLEnv{name}{suffix}-v0")
         n = len(env.problems) if count <= 0 else min(count, len(env.problems))
         key = f"{name}@{split}"

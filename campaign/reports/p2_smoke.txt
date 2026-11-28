@@ -1,0 +1,7 @@
+p2 smoke run, 2026-11-27 (cn-gpu6, Quadro RTX 8000): configs/p2_sd_jc_gripper.yaml, --seed 999 --epochs 100
+train  : val_ood 4981 + val_id 2454 graphs from unseen problems, 7287 training graphs (all); 27m45s (16.6 s/epoch)
+sweep  : 2 periodic snapshots (50, 100) on Gripper_ipcc@val_ood (10 problems) -> 100% / 100%
+select : epoch 50 (ties -> earlier); cache/results/p2_smoke/selected_checkpoint.json
+test   : --test-epochs 50 on @easy/@medium/@hard (10 each), constrained batched decoding -> 100/100/100
+          (without revisit monitor 90/90/70; top-1 valid 100%)
+chain  : campaign/jobs/protocol_eval.sh rc 0

@@ -99,7 +99,7 @@ def final_results(cfg):
             dom = m[1].split("_")[0].lower()
             if "typed" in m[1].lower():
                 dom = "typed_" + dom
-            res[f"{dom}@{m[2]}"] = round(learned["success_rate_with_monitor"], 1)
+            res[f"{dom}@{m[2]}"] = round(100 * learned["success_rate_with_monitor"], 1)   # rate -> %
     return res
 
 
@@ -130,7 +130,7 @@ def snapshot():
                          train=dict(state=tr.get("state", "?"), detail=tr.get("detail", ""),
                                     est_h=tr.get("est_hours"), **(train_progress(cfg) or {})),
                          eval=dict(state=ev.get("state", "?"), detail=ev.get("detail", "")),
-                         selected=(dict(epoch=sel["epoch"], mean_val_ood=round(sel["mean_val_ood"], 1))
+                         selected=(dict(epoch=sel["epoch"], mean_val_ood=round(100 * sel["mean_val_ood"], 1))
                                    if sel else None),
                          results=final_results(cfg)))
     gates = [dict(id=k, state=v["state"], detail=v["detail"]) for k, v in st.items() if k.startswith("gate_p2")]
