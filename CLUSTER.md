@@ -85,6 +85,14 @@ The interactive aliases in `~/.bashrc` that exceed a cap simply pend: for
 example `get_share` asks for 1 GPU × 7 days on `share` = 7 GPU-days against a
 2 GPU-day cap.
 
+**Most `share` GPUs are too small.** Its GPU nodes are GTX 980 (4 GB), M60
+(8 GB) and GTX 1080 (8 GB), plus the A40s on cn-r-* (48 GB): GABAR on Grid ran
+out of memory on cn-c22 (2026-11-27), so the gpu-share preset requests
+`--constraint=a40`. A failed LAMA call during evaluation is CACHED as plan
+length -1 in `cache/results/planner_data/<Domain>_non_optimal.json` (keyed by
+`<folder>/<file>`), so one bad node poisons the plan-quality reference for
+every later run: drop instant (<2 s) failures from that file after one.
+
 **Fast Downward runs only on el9 nodes.** On the el8 share nodes (cn-a*,
 cn-b*, cn-c* - 36 of the 68 share nodes) every LAMA call fails in under a
 second. Anything that may plan - LAMA filtering, `--mode collect`, a training
