@@ -55,6 +55,33 @@ run it in the background (over ssh) as the "wake me" signal.
 The user talks to Claude through comments on the artifact sent to Claude:
 arm the watch with ArtifactComments `watch` on the URL.
 
+## Second account (dugarp, with the owner's agreement; set up 2026-11-27)
+
+Runs ONLY the 21 ablation-ladder jobs (`campaign/manifest_second.yaml`; held
+in `manifest.yaml`). Repo `/nfs/hpc/share/dugarp/rajesh/gadar/2_full_repo/ltp`
+(branch auto/campaign), env `ltp_3`, pddlgym = our fork copied to
+`/nfs/hpc/share/dugarp/rajesh/gadar/p2/pddlgym`, used via PYTHONPATH (ltp_3's
+own pddlgym is untouched). Its old caches are in
+`cache/results/_pre_p2_20261127/`. Reach it with
+`ssh dugarp@submit-a.hpc.engr.oregonstate.edu` (key auth).
+
+Pending at handoff:
+1. Parity job 22165317 (in that account): our p2_sd_jc_manyblocks model,
+   epoch 450, evaluated on its stack; ours is easy 92.0 / medium 18.0 /
+   hard 0.0 (`cache/results/p2_parity_acct2/` there). Only if it matches:
+2. Copy the finished collection's plan caches + `campaign/reports/p2_collect.txt`
+   there (tar over ssh, as for the first copy), then submit its workers at
+   ~75% of its caps, from its repo, with
+   `CAMPAIGN_MANIFEST=campaign/manifest_second.yaml CAMPAIGN_ENV=ltp_3
+   CONDA_SH=/nfs/hpc/share/dugarp/miniconda3/etc/profile.d/conda.sh
+   PYTHONPATH=/nfs/hpc/share/dugarp/rajesh/gadar/p2/pddlgym
+   bash campaign/submit.sh gpu-dgx2 3` (and gpu-gpu 3, gpu-dgxh 1, gpu-share 1).
+3. `campaign/sync_second.sh` before every dashboard refresh.
+
+Background tasks a resumed session must restart: `campaign/watch_changes.sh`
+(the wake-up), a waiter on the parity job, and the ArtifactComments watch
+on the dashboard URL.
+
 ## Status commands
 
 ```
