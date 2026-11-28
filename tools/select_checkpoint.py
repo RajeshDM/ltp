@@ -22,6 +22,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -59,15 +60,35 @@ def val_coverage(dumps, domains):
     return out
 
 
-def choose(cov, domains):
-    """(epoch, mean) maximizing the mean over `domains`, ties -> earliest."""
+def choose(cov, domains, loss=None):
+    """(epoch, mean) maximizing the mean over `domains`. Ties -> the lowest
+    validation (Val-OOD) loss when `loss` ({epoch: loss}) has every tied epoch,
+    then the earliest epoch."""
     full = {e: sum(v[d] for d in domains) / len(domains)
             for e, v in cov.items() if all(d in v for d in domains)}
     if not full:
         return None, None
     best = max(full.values())
-    epoch = min(e for e, m in full.items() if m == best)
-    return epoch, best
+    tied = sorted(e for e, m in full.items() if m == best)
+    if loss and len(tied) > 1 and all(e in loss for e in tied):
+        return min(tied, key=lambda e: (loss[e], e)), best
+    return tied[0], best
+
+
+def val_losses(root, cfg_name):
+    """{epoch: Val-OOD loss} from the config's newest training log (the 'val'
+    entry of each `Epoch N/M loss: {...}` line; with --val-protocol split it is
+    the loss on the <dom>_val_ood problems, summed over batches)."""
+    logs = sorted(glob.glob(os.path.join(root, "logs", f"{cfg_name}_mode_train*.log")),
+                  key=os.path.getmtime)
+    out = {}
+    if logs:
+        with open(logs[-1], errors="replace") as f:
+            for line in f:
+                m = re.match(r"Epoch (\d+)/\d+ loss: \{[^}]*'val': ([\d.eE+-]+)", line)
+                if m:
+                    out[int(m.group(1))] = float(m.group(2))
+    return out
 
 
 def main():
@@ -78,6 +99,9 @@ def main():
     ap.add_argument("--val-domains", action="store_true")
     ap.add_argument("--write", action="store_true")
     ap.add_argument("--print-epoch", action="store_true")
+    ap.add_argument("--tiebreak", choices=["loss", "earliest"], default="earliest",
+                    help="among snapshots with equal best coverage: lowest Val-OOD loss, "
+                         "or earliest epoch")
     ap.add_argument("--min-epochs", type=int, default=10,
                     help="snapshots that must have a number on every domain")
     args = ap.parse_args()
@@ -92,7 +116,9 @@ def main():
         with open(p) as f:
             dumps.append(json.load(f))
     cov = val_coverage(dumps, doms)
-    epoch, mean = choose(cov, doms)
+    cfg_name = os.path.basename(args.config)[:-5]
+    loss = val_losses(ROOT, cfg_name) if args.tiebreak == "loss" else None
+    epoch, mean = choose(cov, doms, loss)
     complete = sum(all(d in v for d in doms) for v in cov.values())
     if args.print_epoch:
         if epoch is None or complete < args.min_epochs:
@@ -103,6 +129,8 @@ def main():
         print(f"{expid}: {complete} snapshots with Val-OOD coverage on all {len(doms)} training domain(s)")
         for e in sorted(cov):
             row = " ".join(f"{cov[e].get(d, float('nan')):5.1f}" for d in doms)
+            if loss:
+                row += f"   val loss {loss.get(e, float('nan')):8.2f}"
             mark = "  <- selected" if e == epoch else ""
             print(f"  epoch {e:4d}  {row}{mark}")
         print(f"selected epoch {epoch} (mean Val-OOD coverage {mean})")
@@ -112,7 +140,8 @@ def main():
         with open(os.path.join(out, "selected_checkpoint.json"), "w") as f:
             json.dump(dict(expid=expid, epoch=epoch, mean_val_ood=mean, domains=doms,
                            per_domain=cov[epoch], snapshots=complete,
-                           rule="max mean Val-OOD coverage over training domains, ties -> earlier"),
+                           rule=("max mean Val-OOD coverage over training domains, ties -> "
+                                 + ("lowest Val-OOD loss, then earlier" if loss else "earlier"))),
                       f, indent=1)
     return 0
 

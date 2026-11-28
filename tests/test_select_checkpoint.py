@@ -43,7 +43,18 @@ def test_incomplete_epochs_ineligible_newest_dump_wins():
     print("ok  an epoch missing a domain is ineligible; a newer dump replaces an older one")
 
 
+def test_ties_broken_by_lowest_val_loss_then_earlier():
+    d = dump("1", [("A@val_ood", 50, 1.0), ("A@val_ood", 100, 1.0), ("A@val_ood", 150, 1.0),
+                   ("A@val_ood", 200, 0.9)])
+    cov = val_coverage([d], ["A"])
+    loss = {50: 30.0, 100: 20.0, 150: 20.0, 200: 5.0}
+    assert choose(cov, ["A"], loss) == (100, 1.0), choose(cov, ["A"], loss)   # 200 has worse coverage
+    assert choose(cov, ["A"], {50: 1.0}) == (50, 1.0)                        # loss missing for a tie -> earliest
+    print("ok  ties go to the lowest Val-OOD loss, then the earlier epoch; coverage still decides first")
+
+
 if __name__ == "__main__":
+    test_ties_broken_by_lowest_val_loss_then_earlier()
     test_mean_over_training_domains_ties_earlier()
     test_test_splits_and_heldout_domain_never_count()
     test_incomplete_epochs_ineligible_newest_dump_wins()
