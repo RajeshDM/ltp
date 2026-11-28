@@ -117,6 +117,84 @@ def slurm_jobs():
     return rows
 
 
+def run_kind(cfg):
+    m = re.match(r"p2_(sd_jc|sd_gabar|typed_jc|typed_gabar|all8_jc|loo_jc|loo_union|lad)", cfg)
+    return m.group(1) if m else "other"
+
+
+def load_manifest_jobs():
+    import yaml
+    jobs = {}
+    for name in ("manifest.yaml", "manifest_second.yaml"):
+        path = os.path.join(ROOT, "campaign", name)
+        if os.path.exists(path):
+            with open(path) as f:
+                for j in (yaml.safe_load(f) or {}).get("jobs", []):
+                    if name == "manifest.yaml" or j["id"] not in jobs or jobs[j["id"]].get("hold"):
+                        jobs[j["id"]] = dict(j, account=2 if name != "manifest.yaml" else 1)
+    return jobs
+
+
+def estimate(runs, jobs, st, n_workers, collect_eta_h):
+    """Expected hours to done per run, and the finish of everything, by list
+    scheduling: running jobs keep their worker until their ETA; queued runs
+    (train then eval on the same worker, priority order) take the next free
+    worker of their account; runs that need the collection gate wait for it.
+    Durations: measured median per run kind where any run of that kind has
+    logged epochs, else the manifest estimate."""
+    import heapq
+    import statistics
+    measured = {}
+    for r in runs:
+        t = r["train"]
+        if t.get("sec_per_10") and t.get("total"):
+            measured.setdefault(run_kind(r["cfg"]), []).append(t["total"] / 10 * t["sec_per_10"] / 3600 + 0.3)
+    med = {k: statistics.median(v) for k, v in measured.items()}
+    pools = {1: [0.0] * max(1, n_workers.get(1, 1)), 2: [0.0] * max(1, n_workers.get(2, 8))}
+    for p in pools.values():
+        heapq.heapify(p)
+    queued = []
+    for r in runs:
+        cfg = r["cfg"]
+        tj, ej = jobs.get(f"p2train_{cfg}", {}), jobs.get(f"p2eval_{cfg}", {})
+        acct = 2 if tj.get("account") == 2 else 1
+        multi = run_kind(cfg) in ("all8_jc", "loo_jc", "loo_union", "lad")
+        ev = 1.0 if multi else 0.3
+        tr = med.get(run_kind(cfg), float(tj.get("est_hours", 2)))
+        r["est_h"] = round(tr + ev, 1)                       # full duration, for reference
+        ts, es = r["train"]["state"], r["eval"]["state"]
+        if es == "done":
+            r["done_in_h"] = 0.0
+            continue
+        if ts == "running":
+            left = (r["train"].get("eta_h") if r["train"].get("eta_h") is not None else tr) + ev
+            r["done_in_h"] = round(left, 1)
+            heapq.heapreplace(pools[acct], left) if pools[acct][0] == 0.0 else heapq.heappush(pools[acct], left)
+            continue
+        if es == "running":
+            r["done_in_h"] = ev / 2
+            continue
+        if ts == "done":
+            queued.append((0.1, cfg, ev, False, acct, r))     # only the eval is left
+        else:
+            needs = "gate_p2_collect" in (tj.get("needs") or [])
+            queued.append((float(tj.get("priority", 1)), cfg, tr + ev, needs, acct, r))
+    for prio, cfg, dur, needs, acct, r in sorted(queued, key=lambda q: (q[0], q[1])):
+        free = heapq.heappop(pools[acct])
+        start = max(free, collect_eta_h if needs else 0.0)
+        heapq.heappush(pools[acct], start + dur)
+        r["done_in_h"] = round(start + dur, 1)
+    remaining_gpu_h = sum((r.get("done_in_h") or 0) and min(r["done_in_h"], r["est_h"]) for r in runs)
+    finish = max([r.get("done_in_h") or 0 for r in runs] + [0])
+    per_table = {}
+    for r in runs:
+        per_table[r["table"]] = max(per_table.get(r["table"], 0), r.get("done_in_h") or 0)
+    return dict(finish_in_h=round(finish, 1), remaining_gpu_h=round(remaining_gpu_h),
+                per_table={k: round(v, 1) for k, v in per_table.items()},
+                workers=n_workers, measured_h={k: round(v, 1) for k, v in med.items()},
+                collect_eta_h=collect_eta_h)
+
+
 def snapshot():
     st = status_rows()
     # The second account's share (campaign/sync_second.sh): its live states
@@ -146,8 +224,14 @@ def snapshot():
     gates = [dict(id=k, state=v["state"], detail=v["detail"]) for k, v in st.items() if k.startswith("gate_p2")]
     notes_path = os.path.join(ROOT, "campaign", "reports", "dashboard_notes.json")
     notes = json.load(open(notes_path)) if os.path.exists(notes_path) else []
-    return dict(updated=time.strftime("%Y-%m-%d %H:%M %Z"), updated_epoch=int(time.time()),
-                runs=runs, gates=gates, slurm=slurm_jobs(), notes=notes)
+    jobs = load_manifest_jobs()
+    slurm = slurm_jobs()
+    n1 = sum(1 for j in slurm if j["name"].startswith("camp-") and j["state"] == "RUNNING")
+    n2 = 8   # the second account's planned workers (campaign/start_second.sh)
+    gate = st.get("gate_p2_collect", {}).get("state")
+    eta = estimate(runs, jobs, st, {1: n1, 2: n2}, 0.0 if gate == "done" else 1.5)
+    return dict(updated=time.strftime("%Y-%m-%d %H:%M %Z"), updated_epoch=int(time.time()), eta=eta,
+                runs=runs, gates=gates, slurm=slurm, notes=notes)
 
 
 def embed(page, data):

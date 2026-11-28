@@ -94,9 +94,9 @@ def protocol_jobs(share="main"):
             + [("p2_all8_jc", 0.4, 26)]
             + [(f"p2_loo_jc_no_{d}", 0.4, 20) for d in P2_DOMS]
             + [(f"p2_loo_union_no_{d}", 0.5, 20) for d in P2_DOMS]
-            + [(f"p2_sd_gabar_{d}", 0.55, 3) for d in P2_DOMS]
+            + [(f"p2_sd_gabar_{d}", 0.3, 3) for d in P2_DOMS]
             + [(f"p2_lad_{r}_no_{d}", 0.6, 20) for d in P2_LADDER_FOLDS for r in P2_LADDER]
-            + [(f"p2_typed_{s}_{d}", 0.7, 3) for d in ("grid", "logistics") for s in ("jc", "gabar")])
+            + [(f"p2_typed_{s}_{d}", 0.35, 3) for d in ("grid", "logistics") for s in ("jc", "gabar")])
     for cfg, prio, hours in plan:
         if share == "second" and cfg not in SECOND_SHARE:
             continue

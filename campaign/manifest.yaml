@@ -1529,7 +1529,7 @@ jobs:
 - id: p2train_p2_sd_gabar_manyblocks
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_manyblocks.yaml
   kind: gpu
-  priority: 0.55
+  priority: 0.3
   est_hours: 3
   needs:
   - gate_p2_smoke
@@ -1545,7 +1545,7 @@ jobs:
 - id: p2train_p2_sd_gabar_gripper
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_gripper.yaml
   kind: gpu
-  priority: 0.55
+  priority: 0.3
   est_hours: 3
   needs:
   - gate_p2_smoke
@@ -1561,7 +1561,7 @@ jobs:
 - id: p2train_p2_sd_gabar_miconic
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_miconic.yaml
   kind: gpu
-  priority: 0.55
+  priority: 0.3
   est_hours: 3
   needs:
   - gate_p2_smoke
@@ -1577,7 +1577,7 @@ jobs:
 - id: p2train_p2_sd_gabar_visitall
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_visitall.yaml
   kind: gpu
-  priority: 0.55
+  priority: 0.3
   est_hours: 3
   needs:
   - gate_p2_smoke
@@ -1593,7 +1593,7 @@ jobs:
 - id: p2train_p2_sd_gabar_grid
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_grid.yaml
   kind: gpu
-  priority: 0.55
+  priority: 0.3
   est_hours: 3
   needs:
   - gate_p2_smoke
@@ -1609,7 +1609,7 @@ jobs:
 - id: p2train_p2_sd_gabar_logistics
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_logistics.yaml
   kind: gpu
-  priority: 0.55
+  priority: 0.3
   est_hours: 3
   needs:
   - gate_p2_smoke
@@ -1625,7 +1625,7 @@ jobs:
 - id: p2train_p2_sd_gabar_spanner
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_spanner.yaml
   kind: gpu
-  priority: 0.55
+  priority: 0.3
   est_hours: 3
   needs:
   - gate_p2_smoke
@@ -1642,7 +1642,7 @@ jobs:
 - id: p2train_p2_sd_gabar_rovers
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_sd_gabar_rovers.yaml
   kind: gpu
-  priority: 0.55
+  priority: 0.3
   est_hours: 3
   needs:
   - gate_p2_smoke
@@ -2057,7 +2057,7 @@ jobs:
 - id: p2train_p2_typed_jc_grid
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_typed_jc_grid.yaml
   kind: gpu
-  priority: 0.7
+  priority: 0.35
   est_hours: 3
   needs:
   - gate_p2_smoke
@@ -2074,7 +2074,7 @@ jobs:
 - id: p2train_p2_typed_gabar_grid
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_typed_gabar_grid.yaml
   kind: gpu
-  priority: 0.7
+  priority: 0.35
   est_hours: 3
   needs:
   - gate_p2_smoke
@@ -2091,7 +2091,7 @@ jobs:
 - id: p2train_p2_typed_jc_logistics
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_typed_jc_logistics.yaml
   kind: gpu
-  priority: 0.7
+  priority: 0.35
   est_hours: 3
   needs:
   - gate_p2_smoke
@@ -2108,7 +2108,7 @@ jobs:
 - id: p2train_p2_typed_gabar_logistics
   cmd: ./train_test_scripts/train_queue.sh cuda:0 configs/p2_typed_gabar_logistics.yaml
   kind: gpu
-  priority: 0.7
+  priority: 0.35
   est_hours: 3
   needs:
   - gate_p2_smoke

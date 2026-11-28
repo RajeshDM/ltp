@@ -357,7 +357,10 @@ tools/campaign_dashboard.py        the protocol campaign's state (worker
                                    status, each p2 run's epoch/ETA from its
                                    log, selected checkpoint, hard-band
                                    results, squeue, campaign/reports/
-                                   dashboard_notes.json) embedded as JSON
+                                   dashboard_notes.json; expected finish per
+                                   run, per table and overall by list-
+                                   scheduling the queue on the workers, with
+                                   measured per-kind durations) embedded as JSON
                                    between the TRACKER-DATA markers of
                                    ICLR27/PAPER_PLAN.html, which renders the
                                    live tracker from it; republish after
