@@ -85,6 +85,13 @@ The interactive aliases in `~/.bashrc` that exceed a cap simply pend: for
 example `get_share` asks for 1 GPU × 7 days on `share` = 7 GPU-days against a
 2 GPU-day cap.
 
+**Fast Downward runs only on el9 nodes.** On the el8 share nodes (cn-a*,
+cn-b*, cn-c* - 36 of the 68 share nodes) every LAMA call fails in under a
+second. Anything that may plan - LAMA filtering, `--mode collect`, a training
+run whose plans are not cached yet - needs `--constraint=el9` (the gpu-share
+preset carries it). Found twice on 2026-11-27: the split filter on cn-b/cn-c,
+then the plan collection on cn-a13.
+
 ## 3. Interactive vs batch, and why the campaign uses batch
 
 | | `srun --pty bash` (what `get_*` aliases do) | `sbatch` |
