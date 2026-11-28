@@ -119,6 +119,14 @@ def slurm_jobs():
 
 def snapshot():
     st = status_rows()
+    # The second account's share (campaign/sync_second.sh): its live states
+    # replace the 'held' placeholders this account's manifest shows for them.
+    sec_path = os.path.join(ROOT, "campaign", "reports", "second_status.json")
+    if os.path.exists(sec_path):
+        for r in json.load(open(sec_path)):
+            mine = st.get(r["id"])
+            if mine is None or mine["state"] == "held":
+                st[r["id"]] = dict(r, detail=("acct 2 · " + r.get("detail", "")).strip(" ·"))
     runs = []
     for path in sorted(glob.glob(os.path.join(ROOT, "configs", "p2_*.yaml"))):
         cfg = os.path.basename(path)[:-5]

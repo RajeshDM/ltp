@@ -102,7 +102,12 @@ def _mtime(path):
 def make_ctx(manifest=None, camp=None, logs=None, root=None):
     root = root or ROOT
     camp = camp or os.path.join(root, "campaign")
-    path = manifest or os.path.join(camp, "manifest.yaml")
+    # CAMPAIGN_MANIFEST picks another manifest (the second account runs
+    # campaign/manifest_second.yaml, a disjoint share of the protocol jobs).
+    path = (manifest or os.environ.get("CAMPAIGN_MANIFEST")
+            or os.path.join(camp, "manifest.yaml"))
+    if not os.path.isabs(path):
+        path = os.path.join(root, path)
     return {"m": load_manifest(path), "manifest_path": path,
             "manifest_mtime": _mtime(path),
             "camp": camp, "logs": logs or os.path.join(root, "logs"),
