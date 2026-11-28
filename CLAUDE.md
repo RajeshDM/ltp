@@ -353,6 +353,17 @@ campaign/jobs/protocol_eval.sh     per p2 config: sweep (10 snapshots on each
                                    test that one epoch (--test-epochs) on the
                                    bands -> cache/results/<expid>_final/.
                                    Constrained, batched decoding
+tools/verify_runs.py               every FINISHED p2 run checked for having
+                                   finished correctly, beyond the done-checks:
+                                   final epoch reached, no NaN, Val-OOD loss at
+                                   every snapshot, a result for every band,
+                                   one tested epoch = the selection rule's,
+                                   50 problems per band, no traceback / NO
+                                   MODELS (LAMA reference failures = warning).
+                                   campaign/reports/verify.json, shown per run
+                                   on the dashboard. campaign/refresh_dashboard.sh
+                                   = sync second account + requalify + verify
+                                   + regenerate, in that order
 tools/campaign_dashboard.py        the protocol campaign's state (worker
                                    status, each p2 run's epoch/ETA from its
                                    log, selected checkpoint, hard-band

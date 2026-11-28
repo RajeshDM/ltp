@@ -221,6 +221,11 @@ def snapshot():
                                     dict(epoch=sel["epoch"], mean_val_ood=round(100 * sel["mean_val_ood"], 1)))
                                    if sel else None),
                          results=final_results(cfg)))
+    vpath = os.path.join(ROOT, "campaign", "reports", "verify.json")   # tools/verify_runs.py
+    ver = json.load(open(vpath)) if os.path.exists(vpath) else {}
+    for r in runs:
+        if r["cfg"] in ver:
+            r["verify"] = ver[r["cfg"]]
     gates = [dict(id=k, state=v["state"], detail=v["detail"]) for k, v in st.items() if k.startswith("gate_p2")]
     notes_path = os.path.join(ROOT, "campaign", "reports", "dashboard_notes.json")
     notes = json.load(open(notes_path)) if os.path.exists(notes_path) else []
