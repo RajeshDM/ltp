@@ -343,7 +343,12 @@ tools/select_checkpoint.py         the protocol's checkpoint rule (since
                                    the training log's `domain:` lines (teacher-
                                    forced), ties -> earlier. Decided by the
                                    user 2026-11-27: Val-OOD is only ~1.5x the
-                                   training sizes, so its coverage saturates. `--rule coverage`
+                                   training sizes, so its coverage saturates.
+                                   `--rule hybrid` (coverage, ties -> relative
+                                   loss) is ready; the ACTIVE rule is the first
+                                   word of campaign/SELECTION_RULE, read by
+                                   select_checkpoint, protocol_eval.sh,
+                                   requalify and verify - one switch `--rule coverage`
                                    is the earlier rule (best Val-OOD coverage
                                    from the <expid>_sweep dumps), dropped
                                    because coverage saturated at 100% and the

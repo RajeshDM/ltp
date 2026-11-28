@@ -1,0 +1,5 @@
+loss
+# The campaign's checkpoint rule, read by tools/select_checkpoint.py (default --rule),
+# campaign/jobs/protocol_eval.sh and so tools/requalify_selection.py / verify_runs.py.
+# loss | coverage | hybrid. Changing it: edit this line, commit, and run
+# tools/requalify_selection.py (coverage and hybrid need the Val-OOD sweep).

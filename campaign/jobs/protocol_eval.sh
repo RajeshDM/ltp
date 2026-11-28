@@ -16,7 +16,7 @@ cd "$(dirname "$0")/../.." || exit 1
 CFG=${1:?usage: protocol_eval.sh configs/<name>.yaml}
 BASE=${EXPID:-$(basename "$CFG" .yaml)}   # EXPID / EXTRA / MIN_SNAPSHOTS: smoke runs
 EXTRA=${EXTRA:-}
-RULE=${SELECT_RULE:-loss}
+RULE=${SELECT_RULE:-$(awk 'NR==1{print $1}' campaign/SELECTION_RULE 2>/dev/null || echo loss)}
 SEL=(python tools/select_checkpoint.py --config "$CFG" --expid "$BASE" --rule "$RULE" --min-epochs "${MIN_SNAPSHOTS:-10}")
 DEV="${CAMPAIGN_DEV:-cuda:0}"
 export GABAR_CONSTRAINED_DECODE=1 GABAR_BATCH_EVAL=1 GABAR_FEATURIZE_WORKERS="${CAMPAIGN_WORKERS:-8}"
@@ -31,7 +31,7 @@ run() {   # run <log> <main.py args...>: fail loudly on an empty result
     [ $rc -eq 0 ] || { echo "FAIL rc=$rc ($log)"; tail -5 "$log"; exit $rc; }
 }
 
-if [ "$RULE" = coverage ] && ! "${SEL[@]}" --print-epoch > /dev/null 2>&1; then
+if [ "$RULE" != loss ] && ! "${SEL[@]}" --print-epoch > /dev/null 2>&1; then
     echo "[$BASE] sweep: periodic snapshots on Val-OOD"
     run "logs/protocol/${BASE}_sweep.log" --test-model-metrics periodic --num-models-to-test 10 \
         --test-domains "$(python tools/select_checkpoint.py --config "$CFG" --val-domains)" \

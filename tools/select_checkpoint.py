@@ -119,6 +119,27 @@ def choose_by_loss(losses, domains):
     return min(e for e, m in score.items() if m == best), best
 
 
+def relative_loss_scores(losses, domains):
+    """{epoch: mean over domains of L_d(e) / min_e' L_d(e')} - the scale-free
+    score choose_by_loss minimizes, for use as choose()'s tie-break."""
+    if not losses:
+        return {}
+    best_d = {d: min(v[d] for v in losses.values()) for d in domains}
+    return {e: sum(v[d] / best_d[d] if best_d[d] > 0 else 1.0 for d in domains) / len(domains)
+            for e, v in losses.items()}
+
+
+def active_rule():
+    """The campaign-wide rule: the first word of campaign/SELECTION_RULE."""
+    path = os.path.join(ROOT, "campaign", "SELECTION_RULE")
+    try:
+        with open(path) as f:
+            rule = f.read().split()[0]
+        return rule if rule in ("loss", "coverage", "hybrid") else "loss"
+    except (OSError, IndexError):
+        return "loss"
+
+
 def val_losses(root, cfg_name):
     """{epoch: Val-OOD loss} from the config's newest training log (the 'val'
     entry of each `Epoch N/M loss: {...}` line; with --val-protocol split it is
@@ -143,10 +164,12 @@ def main():
     ap.add_argument("--val-domains", action="store_true")
     ap.add_argument("--write", action="store_true")
     ap.add_argument("--print-epoch", action="store_true")
-    ap.add_argument("--rule", choices=["loss", "coverage"], default="loss",
-                    help="loss (2026-11-27 decision): lowest mean per-domain Val-OOD loss over "
-                         "the training domains, from the training log - no sweep needed; "
-                         "coverage: best mean Val-OOD coverage from the <expid>_sweep dumps")
+    ap.add_argument("--rule", choices=["loss", "coverage", "hybrid"], default=active_rule(),
+                    help="default: campaign/SELECTION_RULE (one switch for every tool). "
+                         "loss: lowest relative Val-OOD loss over the training domains, from "
+                         "the training log - no sweep; coverage: best mean Val-OOD coverage from "
+                         "the <expid>_sweep dumps, ties -> earlier; hybrid: best coverage, ties "
+                         "-> lowest relative Val-OOD loss, then earlier"),
     ap.add_argument("--tiebreak", choices=["loss", "earliest"], default="earliest",
                     help="among snapshots with equal best coverage: lowest Val-OOD loss, "
                          "or earliest epoch")
@@ -193,6 +216,9 @@ def main():
     cov = val_coverage(dumps, doms)
     cfg_name = os.path.basename(args.config)[:-5]
     loss = val_losses(ROOT, cfg_name) if args.tiebreak == "loss" else None
+    if args.rule == "hybrid":
+        loss = relative_loss_scores(domain_val_losses(ROOT, cfg_name, doms,
+                                                      int(cfg.get("checkpoint_every") or 50)), doms)
     epoch, mean = choose(cov, doms, loss)
     complete = sum(all(d in v for d in doms) for v in cov.values())
     if args.print_epoch:
@@ -216,7 +242,7 @@ def main():
             json.dump(dict(expid=expid, epoch=epoch, mean_val_ood=mean, domains=doms,
                            per_domain=cov[epoch], snapshots=complete,
                            rule=("max mean Val-OOD coverage over training domains, ties -> "
-                                 + ("lowest Val-OOD loss, then earlier" if loss else "earlier"))),
+                                 + ("lowest relative Val-OOD loss, then earlier" if loss else "earlier"))),
                       f, indent=1)
     return 0
 
