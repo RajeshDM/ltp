@@ -31,8 +31,9 @@ BASE = """# 2026-11 evaluation protocol (ICLR27/PAPER_PLAN.html, "Train / valida
 #                logged beside it), not 10% of training states
 #   snapshots  : every 50 epochs (checkpoints are written every 10, so 50 is
 #                the finest interval that is not silently thinned), all kept
-#   selection  : lowest mean per-domain Val-OOD loss (teacher-forced) over
-#                those snapshots, ties -> earlier (tools/select_checkpoint.py;
+#   selection  : lowest Val-OOD loss (teacher-forced) over those snapshots,
+#                multi-domain: mean of each domain's loss / its own best,
+#                ties -> earlier (tools/select_checkpoint.py;
 #                campaign/jobs/protocol_eval.sh). Was best Val-OOD coverage
 #                until 2026-11-27 evening; coverage saturated at 100%.
 #   decoding   : constrained (GABAR_CONSTRAINED_DECODE=1, set by the job)

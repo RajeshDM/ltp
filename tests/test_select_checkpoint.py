@@ -54,15 +54,24 @@ def test_ties_broken_by_lowest_val_loss_then_earlier():
 
 
 def test_loss_rule_mean_over_domains_ties_earlier():
+    # equal-scale domains: plain trade-off
     losses = {50: {"A": 0.30, "B": 0.10}, 100: {"A": 0.10, "B": 0.20}, 150: {"A": 0.20, "B": 0.10}}
-    assert choose_by_loss(losses, ["A", "B"]) == (100, 0.15000000000000002) or \
-           choose_by_loss(losses, ["A", "B"])[0] == 100
+    assert choose_by_loss(losses, ["A", "B"])[0] == 100      # 100 and 150 tie at 1.5 -> earlier
     assert choose_by_loss({50: {"A": 1.0}, 100: {"A": 1.0}}, ["A"]) == (50, 1.0)
-    print("ok  loss rule: lowest mean per-domain Val-OOD loss, ties go to the earlier epoch")
+    print("ok  loss rule: lowest mean relative Val-OOD loss, ties go to the earlier epoch")
+
+
+def test_loss_rule_is_scale_free_across_domains():
+    # B's loss is 10x A's scale: a plain mean would follow B (epoch 50);
+    # relative to each domain's best, A's 3x worse at 50 outweighs B's 1.1x.
+    losses = {50: {"A": 0.30, "B": 3.0}, 100: {"A": 0.10, "B": 3.3}}
+    assert choose_by_loss(losses, ["A", "B"])[0] == 100, choose_by_loss(losses, ["A", "B"])
+    print("ok  loss rule: each domain counts equally whatever its loss scale")
 
 
 if __name__ == "__main__":
     test_loss_rule_mean_over_domains_ties_earlier()
+    test_loss_rule_is_scale_free_across_domains()
     test_ties_broken_by_lowest_val_loss_then_earlier()
     test_mean_over_training_domains_ties_earlier()
     test_test_splits_and_heldout_domain_never_count()

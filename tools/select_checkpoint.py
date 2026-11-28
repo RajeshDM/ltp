@@ -102,12 +102,21 @@ def domain_val_losses(root, cfg_name, domains, every=50):
 
 
 def choose_by_loss(losses, domains):
-    """(epoch, mean loss) minimizing the mean per-domain Val-OOD loss, ties -> earliest."""
+    """(epoch, score) minimizing the mean over domains of each domain's Val-OOD
+    loss RELATIVE TO ITS OWN BEST snapshot (L_d(e) / min_e' L_d(e')), ties ->
+    earliest. Scale-free, so every training domain weighs the same: raw losses
+    differ by domain (Rovers ~3.4 vs Gripper ~0.2 per state at epoch 50 of a
+    seven-domain run - more parameter slots, more object-choice terms), and a
+    plain mean would let the largest one decide. Per-domain losses are already
+    per-state means, so domains with more or longer plans get no extra weight.
+    For one domain this is plain argmin."""
     if not losses:
         return None, None
-    mean = {e: sum(v[d] for d in domains) / len(domains) for e, v in losses.items()}
-    best = min(mean.values())
-    return min(e for e, m in mean.items() if m == best), best
+    best_d = {d: min(v[d] for v in losses.values()) for d in domains}
+    score = {e: sum(v[d] / best_d[d] if best_d[d] > 0 else 1.0 for d in domains) / len(domains)
+             for e, v in losses.items()}
+    best = min(score.values())
+    return min(e for e, m in score.items() if m == best), best
 
 
 def val_losses(root, cfg_name):

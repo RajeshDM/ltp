@@ -336,10 +336,14 @@ tools/make_protocol_configs.py     writes configs/_protocol.yaml (the delta:
                                    table it feeds
 tools/select_checkpoint.py         the protocol's checkpoint rule (since
                                    2026-11-27 evening): the snapshot with the
-                                   lowest MEAN per-domain Val-OOD loss
-                                   (teacher-forced, read from the training
-                                   log's `domain:` lines) over the TRAINING
-                                   domains, ties -> earlier. `--rule coverage`
+                                   lowest mean over the TRAINING domains of
+                                   each domain's Val-OOD loss relative to its
+                                   own best snapshot (scale-free: raw per-state
+                                   losses differ ~20x across domains), from
+                                   the training log's `domain:` lines (teacher-
+                                   forced), ties -> earlier. Decided by the
+                                   user 2026-11-27: Val-OOD is only ~1.5x the
+                                   training sizes, so its coverage saturates. `--rule coverage`
                                    is the earlier rule (best Val-OOD coverage
                                    from the <expid>_sweep dumps), dropped
                                    because coverage saturated at 100% and the
