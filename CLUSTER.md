@@ -93,6 +93,11 @@ length -1 in `cache/results/planner_data/<Domain>_non_optimal.json` (keyed by
 `<folder>/<file>`), so one bad node poisons the plan-quality reference for
 every later run: drop instant (<2 s) failures from that file after one.
 
+**Host memory: seven-domain runs peak at ~47 GB** (sstat MaxRSS, 2026-11-27;
+single-domain 6-14 GB). Presets give 80 GB (dgxh 96 GB) and multi-domain jobs
+carry `min_mem_gb` in the manifest, which `worker.py` checks against
+`SLURM_MEM_PER_NODE`. A 32 GB worker killed a seven-domain run at epoch 0.
+
 **Fast Downward runs only on el9 nodes.** On the el8 share nodes (cn-a*,
 cn-b*, cn-c* - 36 of the 68 share nodes) every LAMA call fails in under a
 second. Anything that may plan - LAMA filtering, `--mode collect`, a training
