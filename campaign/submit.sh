@@ -21,7 +21,6 @@ gpu-dgxh      dgxh     gpu:1   8  64G   1-00:00:00  gpu   2   -
 gpu-dgx2      dgx2     gpu:1   4  32G   2-00:00:00  gpu   4   -
 gpu-gpu       gpu      gpu:1   4  32G   2-00:00:00  gpu   4   -
 gpu-share     share    gpu:1   8  64G   1-00:00:00  gpu   2   -
-gpu-eecs      eecs     gpu:1   4  32G   2-00:00:00  gpu   4   -
 gpu-ampere    ampere   gpu:1   8  64G   2-00:00:00  gpu   1   -
 big-share     share    gpu:1   32 128G  2-00:00:00  cpu   1   --constraint=a40
 cpu-share     share    -       32 64G   2-00:00:00  cpu   8   -
