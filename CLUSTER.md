@@ -8,7 +8,7 @@ anything marked UNVERIFIED has not been tried.
 
 | Place | What it is | Rule |
 |---|---|---|
-| `flip1` | the user's ssh jump host; tmux lives here today | not a compute host |
+| `flip1` | the user's ssh jump host (`ssh flip1`, then `ProxyJump flip1` to `submit-a`, then `ProxyJump submit-a` to any `cn*`/`dgx*` node: the user's `~/.ssh/config`); tmux lives here today | not a compute host |
 | `submit-a` … `submit-d` | **login nodes**; same NFS disk, same SLURM | **never run compute here** (training, evaluation, rollouts, anything over a few seconds). Launching, `squeue`, reading files and `git` are what they are for |
 | compute nodes | `dgx2-*`, `dgxh-*`, `cn-gpu*`, `cn-r-*`, `cn-s-*` … | reached only through SLURM |
 | shared disk | `/nfs/hpc/share/mangannr/di_ltp/1_di_ltp/ltp` | every node sees the same files; `logs/`, `models/`, `cache/` are shared by every machine |
@@ -31,26 +31,55 @@ exist inside `sbatch` unless sourced; `campaign/worker_entry.sh` does it.
 
 ## 2. Partitions and the per-user caps that decide how to size a request
 
-From the cluster documentation. The CPU/GPU/GB-time limits are "the amount you
-can have running at one time", i.e. **resource × time limit, summed over your
-running jobs** (interactive allocations included). Requesting less time is how
-you fit more concurrent GPUs.
+From the cluster's own documentation (full text supplied by the user,
+2026-11-27). Every cap is "the amount you can have running at one time", i.e.
+**resource × time limit, summed over your running jobs, interactive
+allocations included**. Requesting less time is how you fit more concurrent
+GPUs - and an interactive session (this project's VS Code allocation: 1 GPU ×
+4 days on `gpu`) spends the same cap as the workers.
 
-| Partition | Max time | CPU-time cap | GPU-time cap | Fits, at the stated time |
-|---|---|---|---|---|
-| `share` | 14 d | 1024 CPU-days | 2 GPU-days | 2 GPUs × 1 d, or 1 GPU × 2 d |
-| `dgxh` | 2 d | 64 CPU-days | 2 GPU-days | 2 GPUs × 1 d, 4 × 12 h |
-| `dgx2` | 7 d | 48 CPU-days | 8 GPU-days | 4 GPUs × 2 d, 1 × 7 d |
-| `gpu` | 7 d | 48 CPU-days | 8 GPU-days | 4 GPUs × 2 d |
-| `eecs` | 7 d | 48 CPU-days | 8 GPU-days | as `gpu` |
-| `ampere` | 2 d | 64 CPU-days | 2 GPU-days | 1 GPU × 2 d |
-| `preempt` | 7 d | none | none | **can be killed at any time** |
+Partitions this user can use (account `-A eecs`; every other partition in the
+cluster list - athena, sail, hw-grp, sy-grp, nacse, tiamat, ... - belongs to a
+research group we are not in):
 
-Also: at most 1000 submitted and 400 running jobs per user. Account is
-`-A eecs` for every partition above (`-A mcs -p dgx` and class accounts exist
-but are not used here). Node features: `--constraint=a40|h100|h200|v100|rtx8000|
-vram80g|el8|el9|avx512 …`; a constraint does not request the GPU, `--gres=gpu:1`
-does.
+| Partition | GPU (memory) | Max time | GPU cap | CPU cap | RAM cap |
+|---|---|---|---|---|---|
+| `share` | a40 (48 GB), m60; most nodes CPU-only | 14 d | 2 GPU-days | 1024 CPU-days | 3072 GB-days, 750 GB |
+| `dgxh` | h100 (40/80 GB), h200 (140 GB) | 2 d | 2 GPU-days, ≤ 8 GPUs | 64 CPU-days, ≤ 224 | 500 GB-days, ≤ 2000 GB |
+| `dgx2` | v100 (32 GB) | 7 d | 8 GPU-days, ≤ 16 GPUs | 48 CPU-days, ≤ 96 | 750 GB-days, ≤ 1500 GB |
+| `gpu` | rtx8000 (48 GB) | 7 d | 8 GPU-days, ≤ 8 GPUs | 48 CPU-days, ≤ 40 | 750 GB-days |
+| `ampere` | a40 (48 GB) | 2 d | 2 GPU-days | 64 CPU-days | 250 GB-days |
+| `eecs` | rtx2080 (**11 GB**), old Broadwell CPUs | 7 d | 8 GPU-days | 48 CPU-days, ≤ 40 | 250 GB-days |
+| `preempt` | everything | 7 d | none | none | none - **can be killed at any time** |
+
+The same cap at different time limits (concurrent GPUs):
+
+| Partition | 6 h | 12 h | 1 d | 2 d | 4 d | 7 d |
+|---|---|---|---|---|---|---|
+| `dgx2` | 16 | 16 | 8 | 4 | 2 | 1 |
+| `gpu` | 8 | 8 | 8 | 4 | 2 | 1 |
+| `dgxh` | 8 | 4 | 2 | 1 | - | - |
+| `share` | 2* | 2* | 2 | 1 | - | - |
+| `ampere` | 2* | 2* | 2 | 1 | - | - |
+
+(* other caps bind first: few GPU nodes / at most 2 GPUs.) CPU and RAM caps
+bind too: at 12 h, 16 dgx2 workers × 4 CPUs × 32 GB fit (96 CPUs, 1500 GB).
+
+**What this means for the campaign.** Long runs (seven-domain training,
+16-27 h) need 1-2 day allocations; everything else (single-domain training
+~1-2.5 h, every evaluation) fits 12 h allocations, which buy 2-4× the GPUs.
+The worker never starts a job whose `est_hours` exceeds its allocation's time
+left, so short and long workers can share one manifest. `eecs` GPUs are too
+small for batch 64 on Rovers or any multi-domain run (OOM, 2026-11-27) - its
+preset was removed.
+
+Also: at most 1000 submitted and 400 running jobs per user. Node features for
+`--constraint`: el8 el9 | avx avx2 avx512 | haswell broadwell skylake
+cascadelake epyc sapphire | m60 t4 rtx6000 rtx8000 v100 a40 h100 h200 l40s
+vram40g vram80g vram140g. A constraint does not request the GPU,
+`--gres=gpu:1` does. Useful commands: `squ` / `sqe -u <onid>` (own jobs),
+`showjob <id>`, `nodestat <partition>` (free CPU/GPU/RAM per node),
+`#SBATCH --mail-type=FAIL,TIMELIMIT_90`.
 
 The interactive aliases in `~/.bashrc` that exceed a cap simply pend: for
 example `get_share` asks for 1 GPU × 7 days on `share` = 7 GPU-days against a
