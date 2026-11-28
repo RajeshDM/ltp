@@ -6,7 +6,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
-from select_checkpoint import choose, val_coverage  # noqa: E402
+from select_checkpoint import choose, choose_by_loss, val_coverage  # noqa: E402
 
 LEARNED = "PlannerType.LEARNED_MODEL"
 
@@ -53,7 +53,16 @@ def test_ties_broken_by_lowest_val_loss_then_earlier():
     print("ok  ties go to the lowest Val-OOD loss, then the earlier epoch; coverage still decides first")
 
 
+def test_loss_rule_mean_over_domains_ties_earlier():
+    losses = {50: {"A": 0.30, "B": 0.10}, 100: {"A": 0.10, "B": 0.20}, 150: {"A": 0.20, "B": 0.10}}
+    assert choose_by_loss(losses, ["A", "B"]) == (100, 0.15000000000000002) or \
+           choose_by_loss(losses, ["A", "B"])[0] == 100
+    assert choose_by_loss({50: {"A": 1.0}, 100: {"A": 1.0}}, ["A"]) == (50, 1.0)
+    print("ok  loss rule: lowest mean per-domain Val-OOD loss, ties go to the earlier epoch")
+
+
 if __name__ == "__main__":
+    test_loss_rule_mean_over_domains_ties_earlier()
     test_ties_broken_by_lowest_val_loss_then_earlier()
     test_mean_over_training_domains_ties_earlier()
     test_test_splits_and_heldout_domain_never_count()

@@ -1,9 +1,11 @@
 #!/bin/bash
 # Evaluate one trained p2_* config under the 2026-11 protocol (C1):
-#   1. sweep  - every periodic snapshot on each TRAINING domain's @val_ood
-#               -> cache/results/<expid>_sweep/
-#   2. select - tools/select_checkpoint.py: best mean Val-OOD coverage, ties
-#               -> earlier; written to cache/results/<expid>/selected_checkpoint.json
+#   1. select - tools/select_checkpoint.py: the snapshot with the lowest mean
+#               per-domain Val-OOD loss (teacher-forced, from the training log)
+#               over the TRAINING domains; written to
+#               cache/results/<expid>/selected_checkpoint.json. (SELECT_RULE=
+#               coverage restores the earlier rule: sweep every snapshot on each
+#               training domain's @val_ood first -> cache/results/<expid>_sweep/.)
 #   3. test   - that one snapshot on the config's test_domains (the bands)
 #               -> cache/results/<expid>_final/
 # Constrained, batched decoding throughout. Each step is skipped when its
@@ -14,7 +16,8 @@ cd "$(dirname "$0")/../.." || exit 1
 CFG=${1:?usage: protocol_eval.sh configs/<name>.yaml}
 BASE=${EXPID:-$(basename "$CFG" .yaml)}   # EXPID / EXTRA / MIN_SNAPSHOTS: smoke runs
 EXTRA=${EXTRA:-}
-SEL=(python tools/select_checkpoint.py --config "$CFG" --expid "$BASE" --min-epochs "${MIN_SNAPSHOTS:-10}")
+RULE=${SELECT_RULE:-loss}
+SEL=(python tools/select_checkpoint.py --config "$CFG" --expid "$BASE" --rule "$RULE" --min-epochs "${MIN_SNAPSHOTS:-10}")
 DEV="${CAMPAIGN_DEV:-cuda:0}"
 export GABAR_CONSTRAINED_DECODE=1 GABAR_BATCH_EVAL=1 GABAR_FEATURIZE_WORKERS="${CAMPAIGN_WORKERS:-8}"
 mkdir -p logs/protocol
@@ -28,7 +31,7 @@ run() {   # run <log> <main.py args...>: fail loudly on an empty result
     [ $rc -eq 0 ] || { echo "FAIL rc=$rc ($log)"; tail -5 "$log"; exit $rc; }
 }
 
-if ! "${SEL[@]}" --print-epoch > /dev/null 2>&1; then
+if [ "$RULE" = coverage ] && ! "${SEL[@]}" --print-epoch > /dev/null 2>&1; then
     echo "[$BASE] sweep: periodic snapshots on Val-OOD"
     run "logs/protocol/${BASE}_sweep.log" --test-model-metrics periodic --num-models-to-test 10 \
         --test-domains "$(python tools/select_checkpoint.py --config "$CFG" --val-domains)" \

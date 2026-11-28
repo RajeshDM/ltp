@@ -138,7 +138,9 @@ def snapshot():
                          train=dict(state=tr.get("state", "?"), detail=tr.get("detail", ""),
                                     est_h=tr.get("est_hours"), **(train_progress(cfg) or {})),
                          eval=dict(state=ev.get("state", "?"), detail=ev.get("detail", "")),
-                         selected=(dict(epoch=sel["epoch"], mean_val_ood=round(100 * sel["mean_val_ood"], 1))
+                         selected=((dict(epoch=sel["epoch"], val_loss=round(sel["mean_val_ood_loss"], 3))
+                                    if "mean_val_ood_loss" in sel else
+                                    dict(epoch=sel["epoch"], mean_val_ood=round(100 * sel["mean_val_ood"], 1)))
                                    if sel else None),
                          results=final_results(cfg)))
     gates = [dict(id=k, state=v["state"], detail=v["detail"]) for k, v in st.items() if k.startswith("gate_p2")]

@@ -75,6 +75,41 @@ def choose(cov, domains, loss=None):
     return tied[0], best
 
 
+def domain_val_losses(root, cfg_name, domains, every=50):
+    """{epoch: {domain: mean Val-OOD loss}} at snapshot epochs (multiples of
+    `every`, > 0) from the config's newest training log: the `v` value of each
+    domain on the `domain:` line printed after every `Epoch N/M loss:` line
+    (teacher-forced cross-entropy on the expert path of the <dom>_val_ood
+    problems, averaged per state)."""
+    logs = sorted(glob.glob(os.path.join(root, "logs", f"{cfg_name}_mode_train*.log")),
+                  key=os.path.getmtime)
+    out, epoch = {}, None
+    if not logs:
+        return out
+    with open(logs[-1], errors="replace") as f:
+        for line in f:
+            m = re.match(r"Epoch (\d+)/\d+ loss:", line)
+            if m:
+                epoch = int(m.group(1))
+                continue
+            if epoch is not None and line.lstrip().startswith("domain:"):
+                if epoch > 0 and epoch % every == 0:
+                    vals = dict(re.findall(r"([A-Za-z0-9_]+):t[\d.eE+-]+/v([\d.eE+-]+)", line))
+                    if all(d in vals for d in domains):
+                        out[epoch] = {d: float(vals[d]) for d in domains}
+                epoch = None
+    return out
+
+
+def choose_by_loss(losses, domains):
+    """(epoch, mean loss) minimizing the mean per-domain Val-OOD loss, ties -> earliest."""
+    if not losses:
+        return None, None
+    mean = {e: sum(v[d] for d in domains) / len(domains) for e, v in losses.items()}
+    best = min(mean.values())
+    return min(e for e, m in mean.items() if m == best), best
+
+
 def val_losses(root, cfg_name):
     """{epoch: Val-OOD loss} from the config's newest training log (the 'val'
     entry of each `Epoch N/M loss: {...}` line; with --val-protocol split it is
@@ -99,6 +134,10 @@ def main():
     ap.add_argument("--val-domains", action="store_true")
     ap.add_argument("--write", action="store_true")
     ap.add_argument("--print-epoch", action="store_true")
+    ap.add_argument("--rule", choices=["loss", "coverage"], default="loss",
+                    help="loss (2026-11-27 decision): lowest mean per-domain Val-OOD loss over "
+                         "the training domains, from the training log - no sweep needed; "
+                         "coverage: best mean Val-OOD coverage from the <expid>_sweep dumps")
     ap.add_argument("--tiebreak", choices=["loss", "earliest"], default="earliest",
                     help="among snapshots with equal best coverage: lowest Val-OOD loss, "
                          "or earliest epoch")
@@ -111,6 +150,33 @@ def main():
         print(",".join(f"{d.lower()}@val_ood" for d in doms))
         return 0
     expid = args.expid or cfg["expid"]
+    if args.rule == "loss":
+        cfg_name = os.path.basename(args.config)[:-5]
+        every = int(cfg.get("checkpoint_every") or 50)
+        losses = domain_val_losses(ROOT, cfg_name, doms, every)
+        epoch, mean = choose_by_loss(losses, doms)
+        n = len(losses)
+        if args.print_epoch:
+            if epoch is None or n < args.min_epochs:
+                print(f"{expid}: {n} snapshot epochs with Val-OOD loss (need {args.min_epochs})",
+                      file=sys.stderr)
+                return 1
+            print(epoch)
+        else:
+            print(f"{expid}: {n} snapshot epochs with Val-OOD loss on all {len(doms)} training domain(s)")
+            for e in sorted(losses):
+                row = " ".join(f"{losses[e][d]:6.3f}" for d in doms)
+                print(f"  epoch {e:4d}  {row}" + ("  <- selected" if e == epoch else ""))
+            print(f"selected epoch {epoch} (mean Val-OOD loss {mean})")
+        if args.write and epoch is not None:
+            out = os.path.join(args.results, expid)
+            os.makedirs(out, exist_ok=True)
+            with open(os.path.join(out, "selected_checkpoint.json"), "w") as f:
+                json.dump(dict(expid=expid, epoch=epoch, mean_val_ood_loss=mean, domains=doms,
+                               per_domain_loss=losses[epoch], snapshots=n,
+                               rule="min mean per-domain Val-OOD loss (teacher-forced) over "
+                                    "training domains, ties -> earlier"), f, indent=1)
+        return 0
     dumps = []
     for p in glob.glob(os.path.join(args.results, f"{expid}_sweep", "results_*.json")):
         with open(p) as f:

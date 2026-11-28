@@ -334,12 +334,20 @@ tools/make_protocol_configs.py     writes configs/_protocol.yaml (the delta:
                                    max_periodic 10, metric periodic) and the 58
                                    configs/p2_*.yaml, each naming the paper
                                    table it feeds
-tools/select_checkpoint.py         the protocol's checkpoint rule: best MEAN
-                                   Val-OOD coverage over the TRAINING domains
-                                   from the <expid>_sweep dumps, ties ->
-                                   earlier; test-blind, and zero-shot uses
-                                   nothing from the held-out domain. Pinned by
-                                   tests/test_select_checkpoint.py
+tools/select_checkpoint.py         the protocol's checkpoint rule (since
+                                   2026-11-27 evening): the snapshot with the
+                                   lowest MEAN per-domain Val-OOD loss
+                                   (teacher-forced, read from the training
+                                   log's `domain:` lines) over the TRAINING
+                                   domains, ties -> earlier. `--rule coverage`
+                                   is the earlier rule (best Val-OOD coverage
+                                   from the <expid>_sweep dumps), dropped
+                                   because coverage saturated at 100% and the
+                                   tie rule then picked epoch 50. Test-blind;
+                                   zero-shot uses nothing from the held-out
+                                   domain. tools/requalify_selection.py
+                                   re-queues evaluations tested at another
+                                   epoch. Pinned by tests/test_select_checkpoint.py
 campaign/jobs/protocol_eval.sh     per p2 config: sweep (10 snapshots on each
                                    training domain's @val_ood) -> select ->
                                    test that one epoch (--test-epochs) on the
